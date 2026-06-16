@@ -334,6 +334,18 @@ button {
   flex: 0;
 }
 
+.footer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.version {
+  font-size: 12px;
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
 .github-link {
   display: flex;
   align-items: center;
@@ -398,4 +410,93 @@ button {
   gap: 6px;
   cursor: pointer;
   font-weight: normal;
+}
+
+/* Advanced Settings (collapsible) */
+.advanced {
+  border-top: 1px solid var(--border-color);
+  padding-top: 8px;
+}
+
+.advanced-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 6px 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.advanced-toggle:hover {
+  color: var(--text-color);
+}
+
+.advanced-toggle .chevron {
+  transition: transform 0.2s ease;
+}
+
+.advanced-toggle[aria-expanded="true"] .chevron {
+  transform: rotate(180deg);
+}
+
+.advanced-body {
+  padding-top: 8px;
+}
+
+.hint {
+  margin: 0 0 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.selector-row {
+  display: flex;
+  gap: 8px;
+}
+
+.selector-row input[type="text"] {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.pick-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: 8px 12px;
+}
+
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  resize: vertical;
+  min-height: 60px;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.danger-btn {
+  width: 100%;
+  flex: 1;
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.danger-btn:hover {
+  background: #fecaca;
 }

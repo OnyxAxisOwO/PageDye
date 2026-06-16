@@ -1,0 +1,28 @@
+# Changelog
+
+All notable changes to PageDye are documented here.
+
+## [0.2.0]
+
+### Added
+- **Background Selector** (advanced settings): pick an element with an
+  AdGuard-style **element picker** (or type a CSS selector) and PageDye applies
+  your color/image directly to *that element's* background with `!important`,
+  instead of the full-page overlay. Useful when a site's own CSS makes the page
+  background unreachable. The picked element updates immediately — no need to
+  reopen the popup.
+- **Custom CSS**: inject arbitrary CSS into the current site.
+- **Clear All Sites**: remove the saved settings for every website in one click.
+- Extension **version shown in the popup footer**.
+
+### Changed
+- The popup ensures the latest content script is running before picking, and the
+  content script now reacts to `chrome.storage` changes, so settings (including
+  "Clear All") apply live across open tabs without a reload.
+
+## [0.0.1]
+
+### Added
+- Per-site custom backgrounds (solid color or image via local file / URL).
+- Opacity, blur, fixed/scroll, size and repeat controls.
+- English / Chinese UI based on browser language.
