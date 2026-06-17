@@ -2,6 +2,16 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.2.2]
+
+### Fixed
+- **Background Selector**: blur/opacity were lost after a page reload (they
+  worked right after applying, but not on refresh). Because the content script
+  runs at `document_start`, our injected styles landed before the page's own
+  stylesheets and lost the CSS document-order tiebreak to same-specificity
+  `!important` site rules. The background is now re-applied once the document is
+  ready so our styles end up last.
+
 ## [0.2.1]
 
 ### Fixed

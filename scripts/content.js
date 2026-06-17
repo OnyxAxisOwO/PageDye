@@ -27,8 +27,32 @@
     const domain = window.location.hostname;
     chrome.storage.local.get(domain, (data) => {
       const settings = data[domain];
-      if (settings) applyBackground(settings);
+      if (settings) {
+        applyBackground(settings);
+        // We run at document_start, so our injected <style> lands *before* the
+        // page's own stylesheets. With equal specificity and !important, the
+        // CSS "later wins" tiebreak then favors the site — which can drop our
+        // selector-mode blur/opacity and let the element's own background
+        // cover the image layer (the bug: works on apply, gone after reload).
+        // Re-apply once the document is ready so our <style> ends up last.
+        reapplyWhenReady();
+      }
     });
+  }
+
+  // Re-applies the background after the page's own stylesheets have loaded, so
+  // our injected rules win the document-order tiebreak against same-specificity
+  // !important site rules. Re-reads storage each time so it always uses the
+  // latest settings (in case they changed since document_start).
+  function reapplyWhenReady() {
+    const domain = window.location.hostname;
+    const rerun = () => chrome.storage.local.get(domain, (data) => {
+      if (data[domain]) applyBackground(data[domain]);
+    });
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', rerun, { once: true });
+    }
+    window.addEventListener('load', rerun, { once: true });
   }
 
   function onMessage(message, sender, sendResponse) {
