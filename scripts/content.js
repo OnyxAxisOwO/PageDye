@@ -155,28 +155,57 @@
   function applyTargetBackground(selector, settings) {
     removeTargetStyle();
 
-    let rules = '';
+    let css = '';
     if (settings.type === 'color') {
-      rules =
-        'background-image: none !important;' +
-        `background-color: ${hexToRgba(settings.value, settings.opacity / 100)} !important;`;
+      const alpha = (typeof settings.opacity === 'number' ? settings.opacity : 100) / 100;
+      css =
+        `${selector} {` +
+          'background-image: none !important;' +
+          `background-color: ${hexToRgba(settings.value, alpha)} !important;` +
+        '}';
     } else if (settings.type === 'image') {
       const st = settings.style || {};
-      // background-attachment is left as 'scroll' so the image fills the
-      // selected element's own box (cover/contain size against the element),
-      // rather than being anchored to the viewport like a fixed full-page bg.
-      rules =
-        `background-image: url("${settings.value}") !important;` +
-        'background-position: center center !important;' +
-        `background-size: ${st.size || 'cover'} !important;` +
-        `background-repeat: ${st.repeat ? 'repeat' : 'no-repeat'} !important;`;
-      // Note: opacity/blur are intentionally not applied in selector mode,
-      // since they would also affect the element's own content.
+      const opacity = (typeof settings.opacity === 'number' ? settings.opacity : 100) / 100;
+      const blur = settings.blur || 0;
+
+      // We can't put opacity/blur on the element itself — that would also dim
+      // and blur its text/children. Instead we paint the image on a ::before
+      // layer sitting *behind* the element's content (z-index:-1), and clear
+      // the element's own background so the layer shows through. This lets
+      // opacity, blur, fixed-attachment and tiling all work without touching
+      // the readability of the element's content.
+      //
+      // `isolation: isolate` confines the negative-z-index layer to the
+      // element's own stacking context so it can't slip behind ancestors.
+      const layerPos = st.fixed
+        ? 'position: fixed !important; top: 0 !important; left: 0 !important;' +
+          'width: 100vw !important; height: 100vh !important;'
+        : 'position: absolute !important; inset: 0 !important;';
+
+      css =
+        `${selector} {` +
+          'position: relative !important;' +
+          'isolation: isolate !important;' +
+          'background-image: none !important;' +
+          'background-color: transparent !important;' +
+        '}' +
+        `${selector}::before {` +
+          'content: "" !important;' +
+          layerPos +
+          'z-index: -1 !important;' +
+          'pointer-events: none !important;' +
+          `background-image: url("${settings.value}") !important;` +
+          'background-position: center center !important;' +
+          `background-size: ${st.size || 'cover'} !important;` +
+          `background-repeat: ${st.repeat ? 'repeat' : 'no-repeat'} !important;` +
+          `filter: blur(${blur}px) !important;` +
+          `opacity: ${opacity} !important;` +
+        '}';
     }
 
     const style = document.createElement('style');
     style.id = TARGET_STYLE_ID;
-    style.textContent = `${selector} { ${rules} }`;
+    style.textContent = css;
     (document.head || document.documentElement).appendChild(style);
   }
 

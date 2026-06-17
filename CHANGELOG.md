@@ -2,6 +2,14 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.2.1]
+
+### Fixed
+- **Background Selector**: opacity, blur and fixed-position now work for image
+  backgrounds in selector mode. The image is painted on a `::before` layer
+  behind the element's content, so these effects no longer require dimming or
+  blurring the element's own text/children (previously they were skipped).
+
 ## [0.2.0]
 
 ### Added
