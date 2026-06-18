@@ -27,32 +27,8 @@
     const domain = window.location.hostname;
     chrome.storage.local.get(domain, (data) => {
       const settings = data[domain];
-      if (settings) {
-        applyBackground(settings);
-        // We run at document_start, so our injected <style> lands *before* the
-        // page's own stylesheets. With equal specificity and !important, the
-        // CSS "later wins" tiebreak then favors the site — which can drop our
-        // selector-mode blur/opacity and let the element's own background
-        // cover the image layer (the bug: works on apply, gone after reload).
-        // Re-apply once the document is ready so our <style> ends up last.
-        reapplyWhenReady();
-      }
+      if (settings) applyBackground(settings);
     });
-  }
-
-  // Re-applies the background after the page's own stylesheets have loaded, so
-  // our injected rules win the document-order tiebreak against same-specificity
-  // !important site rules. Re-reads storage each time so it always uses the
-  // latest settings (in case they changed since document_start).
-  function reapplyWhenReady() {
-    const domain = window.location.hostname;
-    const rerun = () => chrome.storage.local.get(domain, (data) => {
-      if (data[domain]) applyBackground(data[domain]);
-    });
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', rerun, { once: true });
-    }
-    window.addEventListener('load', rerun, { once: true });
   }
 
   function onMessage(message, sender, sendResponse) {
@@ -179,11 +155,21 @@
   function applyTargetBackground(selector, settings) {
     removeTargetStyle();
 
+    // We run at document_start, so our <style> is injected *before* the page's
+    // own stylesheets. With equal specificity and !important, CSS breaks the tie
+    // by document order (later wins) — so the site's rules would override ours
+    // after a reload, leaving the element's own (opaque) background in place and
+    // hiding the image/blur layer behind it. That was the "works on apply/pick,
+    // gone after refresh" bug. Prefixing each selector with `:root ` raises our
+    // specificity above the site's same-selector rule, so we win regardless of
+    // order — no dependence on injection timing.
+    const sel = scopeSelector(selector);
+
     let css = '';
     if (settings.type === 'color') {
       const alpha = (typeof settings.opacity === 'number' ? settings.opacity : 100) / 100;
       css =
-        `${selector} {` +
+        `${sel} {` +
           'background-image: none !important;' +
           `background-color: ${hexToRgba(settings.value, alpha)} !important;` +
         '}';
@@ -207,13 +193,13 @@
         : 'position: absolute !important; inset: 0 !important;';
 
       css =
-        `${selector} {` +
+        `${sel} {` +
           'position: relative !important;' +
           'isolation: isolate !important;' +
           'background-image: none !important;' +
           'background-color: transparent !important;' +
         '}' +
-        `${selector}::before {` +
+        `${sel}::before {` +
           'content: "" !important;' +
           layerPos +
           'z-index: -1 !important;' +
@@ -231,6 +217,19 @@
     style.id = TARGET_STYLE_ID;
     style.textContent = css;
     (document.head || document.documentElement).appendChild(style);
+  }
+
+  // Prefixes every selector in a (possibly comma-separated) list with `:root `
+  // to boost specificity so our !important rules outrank the site's own rules
+  // on the same element, independent of stylesheet order. The target is always
+  // a descendant of <html>, so `:root <sel>` still matches it.
+  function scopeSelector(selector) {
+    return selector
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => `:root ${s}`)
+      .join(', ');
   }
 
   function removeBackdrop() {

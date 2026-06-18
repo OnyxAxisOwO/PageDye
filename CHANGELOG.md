@@ -2,6 +2,20 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.2.3]
+
+### Fixed
+- **Background Selector**: blur/opacity were lost after a page reload (they only
+  showed right after picking/applying). Root cause: the content script runs at
+  `document_start`, so its `<style>` is injected *before* the page's own
+  stylesheets — and with equal specificity + `!important`, CSS breaks the tie by
+  document order, letting the site's background win after a reload. The site's
+  opaque background then covered the image/blur layer (which sits behind it).
+  PageDye now scopes its selector-mode rules with `:root` to win on specificity
+  regardless of stylesheet order, so blur/opacity survive reloads. The popup
+  also re-injects the latest content script before saving, so an already-open
+  tab can't keep applying stale logic.
+
 ## [0.2.2]
 
 ### Fixed

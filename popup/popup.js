@@ -246,12 +246,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   // not reachable (page predates the extension, or the extension was reloaded
   // while the tab stayed open). Requires the "scripting" permission.
   async function sendToTab(tabId, message) {
+    // Always (re)inject the latest content script first. An already-open tab may
+    // still be running an older version from before the extension was reloaded;
+    // messaging that stale instance would run outdated logic (e.g. the
+    // pre-:root selector background code), so saving wouldn't reflect the fix.
     try {
-      return await chrome.tabs.sendMessage(tabId, message);
-    } catch (e) {
       await chrome.scripting.executeScript({ target: { tabId }, files: ['scripts/content.js'] });
-      return await chrome.tabs.sendMessage(tabId, message);
+    } catch (e) {
+      // Injection can fail on restricted pages (chrome://, Web Store, etc.).
+      // Fall through and message whatever content script is already present.
     }
+    return await chrome.tabs.sendMessage(tabId, message);
   }
 
   // State
