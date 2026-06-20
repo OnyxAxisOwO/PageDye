@@ -1,56 +1,48 @@
 # PageDye
 
-PageDye is an open-source browser extension that allows you to set custom backgrounds (images or solid colors) for any website.
+给任意网站设置自定义背景——纯色或图片，按站点独立保存，无追踪。
 
-## Features
+## 下载
 
-- **Custom Backgrounds**: Set a background image (URL or local file) or a solid color for any domain.
-- **Per-Site Settings**: Configurations are saved independently for each website.
-- **Style Controls**: Adjust opacity, blur (image mode only), and fixed/scroll behavior.
-- **Background Selector**: On sites where the page background is hard to reach (covered by another element's CSS), use the **element picker** (AdGuard-style) to click an element — PageDye then applies your color/image directly to *that element's* background with `!important`, instead of the full-page layer. You can also type a CSS selector manually.
-- **Custom CSS**: Inject your own CSS into any site for fine-grained tweaks.
-- **Clear All**: One click wipes the saved settings for every website.
-- **i18n Support**: Automatically switches between English and Chinese based on browser language.
-- **Privacy Focused**: No tracking, no ads, no internet permissions required for core functionality (images are stored locally).
+前往 [**Actions**](../../actions) → 选择最近一次成功的运行 → 在页面底部下载 artifact `.zip`。
 
-## Installation
+或从 [**Releases**](../../releases) 获取已标记的正式版本。
 
-### Chrome / Edge / Brave
+## 安装
 
-1.  Download or clone this repository.
-2.  Open your browser's extensions page (`chrome://extensions`).
-3.  Enable **Developer mode** in the top right corner.
-4.  Click **Load unpacked**.
-5.  Select the folder containing this project.
+**Chrome / Edge / Brave**
 
-### Firefox
+1. 解压下载的压缩包。
+2. 打开 `chrome://extensions`，开启右上角的**开发者模式**。
+3. 点击**加载已解压的扩展程序**，选择解压后的文件夹。
 
-1.  Open `about:debugging#/runtime/this-firefox`.
-2.  Click **Load Temporary Add-on...**.
-3.  Select the `manifest.json` file from this project.
+**Firefox**
 
-## Usage
+1. 打开 `about:debugging#/runtime/this-firefox`。
+2. 点击**临时载入附加组件…**，选择 `manifest.json`。
 
-1.  Go to any website (e.g., google.com).
-2.  Click the PageDye extension icon.
-3.  Choose **Color** or **Image**.
-    *   **Color**: Pick a solid color.
-    *   **Image**: Drag & drop a local file (default) or paste an image URL.
-4.  Adjust **Opacity** and **Blur** (for images) to your liking.
-5.  Click **Save**.
+## 使用
 
-### Advanced
+1. 访问任意网站，点击 PageDye 图标。
+2. 选择**纯色**或**图片**（本地文件或 URL），调整不透明度 / 模糊度，保存即可。
 
-Open the **Advanced** section at the bottom of the popup for:
+对于大多数网站，到这里就完成了。若网站自身的 CSS 遮挡了整页背景，请使用下方的元素拾取器。
 
--   **Background Selector**: Choose a color or image, then click **Pick** and click an element on the page — PageDye applies the background directly to that element (rather than the whole page), and the change shows immediately. (You can also enter a CSS selector by hand, e.g. `#app, .layout-bg`.) Note: in selector mode, opacity applies to colors only; blur is not applied. Leave the selector empty for a full-page background with full opacity/blur control.
--   **Custom CSS**: Write CSS that gets injected into the current site.
--   **Clear All Sites**: Remove every saved PageDye configuration in one click.
+## 元素拾取器
 
-## Releases
+部分网站会用自己的不透明元素覆盖页面背景，导致整页覆盖层不可见。元素拾取器允许你将背景直接应用到任意元素上。
 
-Tagged releases are built automatically by [GitHub Actions](.github/workflows/release.yml): pushing a `vX.Y.Z` tag (matching the `manifest.json` version) packages the extension into a `.zip` and publishes it as a GitHub Release. See the [CHANGELOG](CHANGELOG.md) for what changed.
+打开**高级设置 → 背景选择器**，先配置好颜色或图片，再点击**拾取**。弹窗关闭后，页面上会出现一个蓝色高亮框跟随鼠标移动，同时显示当前元素的 CSS 选择器。**点击**即可将背景应用到该元素，按 **Esc** 取消。
 
-## License
+背景通过 `!important` 直接作用于目标元素（图片模式使用 `::before` 层，确保不透明度和模糊效果不影响元素内的文字和子元素）。效果立即生效，刷新页面后依然保留。
 
-Released under the [MIT License](LICENSE).
+也可以跳过拾取，直接手动输入 CSS 选择器（如 `#app`、`.layout-bg`）。
+
+## 其他高级功能
+
+- **自定义 CSS** — 向任意网站注入自定义样式。
+- **清除全部网站** — 一键清除所有 PageDye 配置。
+
+## 许可证
+
+[MIT](LICENSE)
