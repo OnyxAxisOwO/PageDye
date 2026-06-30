@@ -2,6 +2,14 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.2.6]
+
+### Added
+- **Deep Site Customization**: Added support for clicking on any configured site domain name in the dashboard sites table to open a full settings editing page to perform deep customization and custom CSS.
+
+### Fixed
+- **Preview Opacity**: Fixed a bug where the opacity slider did not affect the image preview box inside the popup and options interfaces.
+
 ## [0.2.5]
 
 ### Changed
