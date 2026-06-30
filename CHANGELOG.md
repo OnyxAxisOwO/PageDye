@@ -2,6 +2,16 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.2.7]
+
+### Added
+- **Interactive Domain Copying**: Click on the domain badge in the popup header to copy the active domain name directly to the clipboard.
+- **Custom Styled Checkboxes**: Custom styled, premium checkboxes with smooth scale transitions, borders, and theme contrast integration across all interfaces.
+
+### Fixed
+- **Mobile Responsive Layouts**: Removed verbose "Back to Sites" text on mobile back-buttons for a clean square arrow icon layout. Prevented table cell text wrapping for background badge labels ("图片" / "纯色") and headers on small screens.
+- **Fixed Position Label Wrapping**: Added wrapping prevention and flex-shrink rules on checkbox labels inside row control groups.
+
 ## [0.2.6]
 
 ### Added

@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       bgTypeImage: "Image",
       deleteBtn: "Delete",
       confirmDelete: "Are you sure you want to delete settings for {domain}?",
+      modalTitle: "Notification",
+      confirmOk: "Confirm",
+      confirmCancel: "Cancel",
       backupTitle: "Backup & Restore",
       backupHint: "Export all site configurations (including local images) as a JSON file, or import from a previous backup.",
       exportCardTitle: "Export Backup",
@@ -88,6 +91,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       bgTypeImage: "图片",
       deleteBtn: "删除",
       confirmDelete: "确定要删除 {domain} 的配置吗？",
+      modalTitle: "提示",
+      confirmOk: "确定",
+      confirmCancel: "取消",
       backupTitle: "备份与恢复",
       backupHint: "将所有网站配置（包括本地图片）导出为 JSON 文件，或从之前的备份中导入。",
       exportCardTitle: "导出备份",
@@ -307,7 +313,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       `;
       deleteBtn.addEventListener('click', async () => {
         const confirmMsg = t('confirmDelete').replace('{domain}', domain);
-        if (confirm(confirmMsg)) {
+        if (await showConfirm(confirmMsg)) {
           await chrome.storage.local.remove(domain);
           await loadSitesList();
           showStatus(t('clearAllDone')); // reuse standard status
@@ -375,7 +381,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           return;
         }
 
-        if (!confirm(t('confirmImport'))) return;
+        if (!(await showConfirm(t('confirmImport')))) return;
 
         await chrome.storage.local.clear();
         await chrome.storage.local.set(importedData);
@@ -393,7 +399,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function clearAllSites() {
-    if (!confirm(t('clearAllConfirm'))) return;
+    if (!(await showConfirm(t('clearAllConfirm')))) return;
     await chrome.storage.local.clear();
     await loadSitesList();
     showStatus(t('clearAllDone'));
@@ -403,6 +409,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.statusMsg.textContent = msg;
     els.statusMsg.classList.remove('hidden');
     setTimeout(() => els.statusMsg.classList.add('hidden'), 2000);
+  }
+
+  function showConfirm(message) {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('confirm-modal');
+      const msgEl = document.getElementById('confirm-modal-message');
+      const titleEl = document.getElementById('confirm-modal-title');
+      const cancelBtn = document.getElementById('confirm-modal-cancel');
+      const okBtn = document.getElementById('confirm-modal-ok');
+
+      titleEl.textContent = t('modalTitle');
+      msgEl.textContent = message;
+      cancelBtn.textContent = t('confirmCancel');
+      okBtn.textContent = t('confirmOk');
+
+      // Clear previous listeners by replacing nodes
+      const newCancelBtn = cancelBtn.cloneNode(true);
+      const newOkBtn = okBtn.cloneNode(true);
+      cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+      okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+
+      const hide = () => {
+        modal.classList.remove('active');
+        setTimeout(() => modal.classList.add('hidden'), 250);
+      };
+
+      newCancelBtn.addEventListener('click', () => {
+        hide();
+        resolve(false);
+      });
+
+      newOkBtn.addEventListener('click', () => {
+        hide();
+        resolve(true);
+      });
+
+      // Show modal
+      modal.classList.remove('hidden');
+      // trigger reflow
+      modal.offsetHeight; 
+      modal.classList.add('active');
+    });
   }
 
   // Edit Site Feature Implementation
@@ -549,7 +597,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function resetEditSettings() {
-    if (!confirm(t('confirmDelete').replace('{domain}', currentEditingDomain))) return;
+    if (!(await showConfirm(t('confirmDelete').replace('{domain}', currentEditingDomain)))) return;
     await chrome.storage.local.remove(currentEditingDomain);
     
     document.getElementById('edit-type-none').checked = true;

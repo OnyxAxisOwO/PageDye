@@ -123,6 +123,13 @@ h1 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.domain-badge:hover {
+  background: var(--primary-color);
+  color: var(--primary-color-text);
 }
 
 .control-group {
@@ -136,6 +143,12 @@ h1 {
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
+}
+
+.control-group.row select {
+  width: auto;
+  max-width: 160px;
+  flex: 1;
 }
 
 label {
@@ -474,6 +487,56 @@ button {
   gap: 6px;
   cursor: pointer;
   font-weight: normal;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.checkbox-label input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 4px;
+  outline: none;
+  background-color: var(--surface-card);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.2s ease;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.checkbox-label input[type="checkbox"]::after {
+  content: '';
+  width: 4px;
+  height: 8px;
+  border: solid transparent;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.2s cubic-bezier(0.12, 0.4, 0.29, 1.46);
+  margin-top: -2px;
+}
+
+.checkbox-label input[type="checkbox"]:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.checkbox-label input[type="checkbox"]:checked::after {
+  border-color: var(--primary-color-text);
+  transform: rotate(45deg) scale(1);
+}
+
+.checkbox-label input[type="checkbox"]:hover {
+  border-color: var(--primary-color);
+}
+
+.checkbox-label input[type="checkbox"]:focus-visible {
+  box-shadow: 0 0 0 2px var(--input-focus-shadow);
 }
 
 /* Advanced Settings (collapsible) */

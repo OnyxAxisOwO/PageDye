@@ -722,6 +722,36 @@ body {
     grid-template-columns: 1fr;
     gap: 16px;
   }
+
+  /* Mobile specific navigation and table formatting fixes */
+  .back-btn span {
+    display: none;
+  }
+
+  .back-btn {
+    padding: 10px;
+    width: 38px !important;
+    height: 38px;
+    justify-content: center;
+  }
+
+  .edit-site-header {
+    gap: 12px;
+  }
+
+  .edit-site-header h2 {
+    font-size: 16px;
+  }
+
+  .sites-table th, 
+  .sites-table td {
+    padding: 10px 12px;
+    white-space: nowrap;
+  }
+
+  .bg-type-badge {
+    white-space: nowrap;
+  }
 }
 
 /* Edit Site Form Styling */
@@ -778,6 +808,12 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 16px;
+}
+
+.control-group.row select {
+  width: auto;
+  max-width: 160px;
+  flex: 1;
 }
 
 .control-label {
@@ -998,12 +1034,56 @@ input[type="range"]::-webkit-slider-thumb {
   font-weight: normal;
   font-size: 13px;
   color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .checkbox-label input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
   width: 16px;
   height: 16px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 4px;
+  outline: none;
+  background-color: var(--surface-card);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.2s ease;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.checkbox-label input[type="checkbox"]::after {
+  content: '';
+  width: 4px;
+  height: 8px;
+  border: solid transparent;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.2s cubic-bezier(0.12, 0.4, 0.29, 1.46);
+  margin-top: -2px;
+}
+
+.checkbox-label input[type="checkbox"]:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.checkbox-label input[type="checkbox"]:checked::after {
+  border-color: var(--primary-color-text);
+  transform: rotate(45deg) scale(1);
+}
+
+.checkbox-label input[type="checkbox"]:hover {
+  border-color: var(--primary-color);
+}
+
+.checkbox-label input[type="checkbox"]:focus-visible {
+  box-shadow: 0 0 0 2px var(--input-focus-shadow);
 }
 
 /* Advanced Settings */
@@ -1079,4 +1159,130 @@ textarea:focus {
   border-color: var(--primary-color);
   box-shadow: 0 0 0 2px var(--input-focus-shadow);
 }
+
+/* File upload details styling */
+#edit-file-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-sizing: border-box;
+  margin-top: 8px;
+}
+
+.file-info-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-color);
+}
+
+.file-info-left .file-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+#edit-file-info .filename {
+  font-weight: 500;
+  font-size: 14px;
+  max-width: 350px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#edit-remove-file {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger-text);
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+#edit-remove-file:hover {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+  transform: scale(1.05);
+}
+
+/* Custom Confirm Modal styling */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.modal-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-content {
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(20px);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  padding: 24px;
+}
+
+.modal-backdrop.active .modal-content {
+  transform: translateY(0);
+}
+
+.modal-header h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.modal-body p {
+  margin: 0 0 24px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.modal-footer .btn {
+  width: auto;
+  min-width: 80px;
+}
+
 

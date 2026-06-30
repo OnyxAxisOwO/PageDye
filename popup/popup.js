@@ -268,6 +268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const url = new URL(tab.url);
       currentDomain = url.hostname;
       els.domainBadge.textContent = currentDomain;
+      els.domainBadge.title = lang === 'zh' ? '点击复制域名' : 'Click to copy domain';
       await loadSettings(currentDomain);
     } catch (e) {
       els.domainBadge.textContent = t('invalidUrl');
@@ -358,6 +359,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Actions
   els.saveBtn.addEventListener('click', () => saveSettings());
   els.resetBtn.addEventListener('click', resetSettings);
+  // Copy domain hostname
+  els.domainBadge.addEventListener('click', async () => {
+    const text = els.domainBadge.textContent;
+    if (!text || text === '...' || text === t('invalidUrl') || text === t('noTab')) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      showStatus(lang === 'zh' ? '已复制域名!' : 'Domain copied!');
+    } catch (err) {
+      console.error('Failed to copy domain name:', err);
+    }
+  });
 
   // Functions
   function initI18n() {

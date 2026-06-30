@@ -218,8 +218,14 @@
                   <input type="file" id="edit-image-file" accept="image/*" hidden>
                 </div>
                 <div id="edit-file-info" class="hidden">
-                  <span class="filename" id="edit-filename"></span>
-                  <button id="edit-remove-file" class="icon-btn">×</button>
+                  <div class="file-info-left">
+                    <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                      <polyline points="13 2 13 9 20 9"></polyline>
+                    </svg>
+                    <span class="filename" id="edit-filename"></span>
+                  </div>
+                  <button type="button" id="edit-remove-file" class="icon-btn">×</button>
                 </div>
               </div>
             </div>
@@ -309,6 +315,22 @@
     </main>
     
     <div id="status-msg" class="status-msg hidden">Saved!</div>
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal" class="modal-backdrop hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="confirm-modal-title">提示</h3>
+        </div>
+        <div class="modal-body">
+          <p id="confirm-modal-message"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="confirm-modal-cancel" class="btn secondary-btn">取消</button>
+          <button type="button" id="confirm-modal-ok" class="btn danger-btn">确定</button>
+        </div>
+      </div>
+    </div>
   </div>
   <script src="options.js"></script>
 </body>
