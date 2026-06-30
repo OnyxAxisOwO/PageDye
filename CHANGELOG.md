@@ -2,6 +2,13 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.2.4]
+
+### Added
+- **Options Dashboard Page**: A separate, full-page dashboard settings interface containing site management, backup/restore, and info.
+- **Dark Mode Support**: Full support for prefers-color-scheme browser dark mode across all interfaces.
+- **Backup & Restore**: One-click configuration backup and restore (including base64-encoded local images).
+
 ## [0.2.3]
 
 ### Fixed

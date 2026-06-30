@@ -3,10 +3,27 @@
   --primary-hover: #1d4ed8;
   --bg-color: #ffffff;
   --text-color: #1f2937;
-  --text-secondary: #6b7280;
+  --text-secondary: #4b5563;
   --border-color: #e5e7eb;
   --radius: 8px;
   --spacing: 12px;
+  --surface-bg: #f3f4f6;
+  --surface-card: #ffffff;
+  --input-focus-shadow: rgba(37, 99, 235, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-color: #0f172a;
+    --text-color: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+    --surface-bg: #1e293b;
+    --surface-card: #1e293b;
+    --primary-color: #3b82f6;
+    --primary-hover: #60a5fa;
+    --input-focus-shadow: rgba(59, 130, 246, 0.2);
+  }
 }
 
 body {
@@ -34,6 +51,12 @@ header {
   padding-bottom: 12px;
 }
 
+.header-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 h1 {
   margin: 0;
   font-size: 18px;
@@ -41,10 +64,38 @@ h1 {
   color: var(--primary-color);
 }
 
+.settings-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  width: auto;
+  flex: none;
+}
+
+.settings-btn:hover {
+  background: var(--surface-bg);
+  color: var(--text-color);
+}
+
+.settings-btn svg {
+  transition: transform 0.3s ease;
+}
+
+.settings-btn:hover svg {
+  transform: rotate(45deg);
+}
+
 .domain-badge {
   font-size: 12px;
   color: var(--text-secondary);
-  background: #f3f4f6;
+  background: var(--surface-bg);
   padding: 4px 8px;
   border-radius: 12px;
   max-width: 180px;
@@ -80,7 +131,7 @@ label {
 
 .val-badge {
   font-size: 11px;
-  background: #f3f4f6;
+  background: var(--surface-bg);
   padding: 2px 6px;
   border-radius: 4px;
   color: var(--text-secondary);
@@ -89,7 +140,7 @@ label {
 /* Segmented Control */
 .segmented-control {
   display: flex;
-  background: #f3f4f6;
+  background: var(--surface-bg);
   padding: 4px;
   border-radius: var(--radius);
 }
@@ -111,7 +162,7 @@ label {
 }
 
 .segmented-control input:checked + label {
-  background: white;
+  background: var(--surface-card);
   color: var(--primary-color);
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   font-weight: 600;
@@ -136,6 +187,8 @@ select {
   font-size: 13px;
   width: 100%;
   box-sizing: border-box;
+  background: var(--surface-card);
+  color: var(--text-color);
 }
 
 input[type="text"]:focus,
@@ -143,23 +196,13 @@ input[type="url"]:focus,
 select:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 2px var(--input-focus-shadow);
 }
 
 /* Color Picker */
 .color-input-wrapper {
   display: flex;
   gap: 8px;
-}
-
-.color-input-wrapper.small input[type="text"] {
-  padding: 4px 8px;
-  height: 28px;
-}
-
-.color-input-wrapper.small input[type="color"] {
-  width: 28px;
-  height: 28px;
 }
 
 input[type="color"] {
@@ -236,14 +279,14 @@ input[type="color"]::-webkit-color-swatch {
 
 .file-drop-area:hover, .file-drop-area.dragover {
   border-color: var(--primary-color);
-  background: #eff6ff;
+  background: var(--surface-bg);
   color: var(--primary-color);
 }
 
 .image-preview {
   width: 100%;
   height: 100px;
-  background-color: #f3f4f6;
+  background-color: var(--surface-bg);
   border-radius: var(--radius);
   border: 1px solid var(--border-color);
   margin-top: 8px;
@@ -263,7 +306,7 @@ input[type="color"]::-webkit-color-swatch {
 input[type="range"] {
   width: 100%;
   height: 6px;
-  background: #e5e7eb;
+  background: var(--border-color);
   border-radius: 3px;
   -webkit-appearance: none;
   appearance: none;
@@ -316,19 +359,19 @@ button {
 }
 
 .secondary {
-  background: white;
+  background: var(--surface-card);
   border-color: var(--border-color);
   color: var(--text-color);
 }
 
 .secondary:hover {
-  background: #f9fafb;
+  background: var(--surface-bg);
 }
 
 .icon-btn {
   padding: 4px 8px;
-  background: #fee2e2;
-  color: #dc2626;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
   border-radius: 4px;
   font-size: 14px;
   flex: 0;
@@ -367,7 +410,7 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #f3f4f6;
+  background: var(--surface-bg);
   padding: 8px;
   border-radius: 6px;
   font-size: 12px;
@@ -474,6 +517,8 @@ button {
 textarea {
   width: 100%;
   box-sizing: border-box;
+  background: var(--surface-card);
+  color: var(--text-color);
   padding: 8px 12px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
@@ -486,17 +531,5 @@ textarea {
 textarea:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
-}
-
-.danger-btn {
-  width: 100%;
-  flex: 1;
-  background: #fee2e2;
-  color: #dc2626;
-  border-color: #fecaca;
-}
-
-.danger-btn:hover {
-  background: #fecaca;
+  box-shadow: 0 0 0 2px var(--input-focus-shadow);
 }

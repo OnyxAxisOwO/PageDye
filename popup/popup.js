@@ -154,9 +154,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       pickElement: "Pick",
       customCss: "Custom CSS",
       customCssHint: "Injected into this site. Use !important to override stubborn styles.",
-      clearAll: "Clear All Sites",
-      clearAllConfirm: "Remove PageDye settings for ALL websites? This cannot be undone.",
-      clearAllDone: "All sites cleared!",
       pickerFailed: "Can't pick on this page"
     },
     zh: {
@@ -190,9 +187,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       pickElement: "拾取",
       customCss: "自定义 CSS",
       customCssHint: "将注入到本网站。可用 !important 覆盖顽固样式。",
-      clearAll: "清除全部网站",
-      clearAllConfirm: "确定要清除所有网站的 PageDye 设置吗？此操作无法撤销。",
-      clearAllDone: "已清除全部网站!",
       pickerFailed: "此页面无法拾取"
     }
   };
@@ -235,7 +229,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     targetSelector: document.getElementById('target-selector'),
     pickBtn: document.getElementById('pick-btn'),
     customCss: document.getElementById('custom-css'),
-    clearAllBtn: document.getElementById('clear-all-btn'),
+    settingsBtn: document.getElementById('settings-btn'),
 
     saveBtn: document.getElementById('save-btn'),
     resetBtn: document.getElementById('reset-btn'),
@@ -348,8 +342,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Advanced: element picker
   els.pickBtn.addEventListener('click', startPicker);
 
-  // Advanced: clear every site's settings
-  els.clearAllBtn.addEventListener('click', clearAllSites);
+  // Advanced: open settings dashboard with robust fallback
+  els.settingsBtn.addEventListener('click', () => {
+    if (chrome.runtime.openOptionsPage) {
+      chrome.runtime.openOptionsPage(() => {
+        if (chrome.runtime.lastError) {
+          chrome.tabs.create({ url: chrome.runtime.getURL('options/options.html') });
+        }
+      });
+    } else {
+      chrome.tabs.create({ url: chrome.runtime.getURL('options/options.html') });
+    }
+  });
 
   // Actions
   els.saveBtn.addEventListener('click', () => saveSettings());
@@ -370,6 +374,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         el.textContent = i18n[lang][key];
       }
     });
+
+    const settingsBtn = document.getElementById('settings-btn');
+    if (settingsBtn) {
+      settingsBtn.title = lang === 'zh' ? '设置' : 'Settings';
+    }
   }
 
   function t(key) {
@@ -607,30 +616,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Wipe PageDye settings for every website.
-  async function clearAllSites() {
-    if (!confirm(t('clearAllConfirm'))) return;
-    await chrome.storage.local.clear();
 
-    // Reset the current site's UI and live preview.
-    document.querySelector('input[value="none"]').click();
-    els.opacity.value = 100;
-    els.blur.value = 0;
-    clearFile();
-    els.imageUrl.value = '';
-    els.targetSelector.value = '';
-    els.customCss.value = '';
-
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab) {
-      try {
-        await sendToTab(tab.id, { action: 'updateBackground', settings: { type: 'none' } });
-      } catch (err) {
-        console.log('Content script might not be ready', err);
-      }
-    }
-    showStatus(t('clearAllDone'));
-  }
 
   function showStatus(msg) {
     els.statusMsg.textContent = msg;

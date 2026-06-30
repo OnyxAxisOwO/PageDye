@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="title">PageDye Dashboard</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-icon"></div>
+        <h1 data-i18n="appName">PageDye</h1>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <button type="button" class="nav-item active" data-target="section-sites">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="9"></rect>
+            <rect x="14" y="3" width="7" height="5"></rect>
+            <rect x="14" y="12" width="7" height="9"></rect>
+            <rect x="3" y="16" width="7" height="5"></rect>
+          </svg>
+          <span data-i18n="navSites">Configured Sites</span>
+        </button>
+        <button type="button" class="nav-item" data-target="section-backup">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <span data-i18n="navBackup">Backup & Restore</span>
+        </button>
+        <button type="button" class="nav-item" data-target="section-about">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span data-i18n="navAbout">About</span>
+        </button>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <span id="version" class="version-label">v0.2.0</span>
+      </div>
+    </aside>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Section 1: Configured Sites -->
+      <section id="section-sites" class="content-section active">
+        <div class="section-header">
+          <h2 data-i18n="sitesTitle">Configured Sites</h2>
+          <p class="section-subtitle" data-i18n="sitesHint">Manage settings for specific websites. You can remove configurations individually.</p>
+        </div>
+        
+        <div class="card search-card">
+          <input type="text" id="search-input" placeholder="Search domains..." data-i18n-placeholder="searchPlaceholder">
+        </div>
+        
+        <div class="card table-card">
+          <div class="table-responsive">
+            <table class="sites-table">
+              <thead>
+                <tr>
+                  <th data-i18n="thDomain">Domain</th>
+                  <th data-i18n="thBgType">Background Type</th>
+                  <th data-i18n="thPreview">Preview</th>
+                  <th data-i18n="thActions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="sites-list-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+          <div id="no-sites-msg" class="no-data hidden">
+            <svg class="no-data-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+            <p data-i18n="noSites">No websites configured yet.</p>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Section 2: Backup & Restore -->
+      <section id="section-backup" class="content-section">
+        <div class="section-header">
+          <h2 data-i18n="backupTitle">Backup & Restore</h2>
+          <p class="section-subtitle" data-i18n="backupHint">Export all site configurations (including local images) as a JSON file, or import from a previous backup.</p>
+        </div>
+        
+        <div class="card grid-cards">
+          <div class="action-card">
+            <div class="action-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+            </div>
+            <h3 data-i18n="exportCardTitle">Export Backup</h3>
+            <p data-i18n="exportCardText">Save all website background settings and custom styles into a backup file.</p>
+            <button type="button" id="export-btn" class="btn primary-btn" data-i18n="exportBtn">Export Configs</button>
+          </div>
+          
+          <div class="action-card">
+            <div class="action-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <h3 data-i18n="importCardTitle">Import Backup</h3>
+            <p data-i18n="importCardText">Restore background settings from a previously saved JSON backup file.</p>
+            <button type="button" id="import-btn" class="btn secondary-btn" data-i18n="importBtn">Import Configs</button>
+            <input type="file" id="import-file" accept=".json" hidden>
+          </div>
+        </div>
+        
+        <div class="card danger-card">
+          <div class="danger-header">
+            <h3 data-i18n="dangerZoneTitle">Danger Zone</h3>
+            <p data-i18n="dangerZoneText">These operations cannot be undone. Please be careful.</p>
+          </div>
+          <div class="danger-body">
+            <button type="button" id="clear-all-btn" class="btn danger-btn" data-i18n="clearAllBtn">Wipe All Configurations</button>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Section 3: About -->
+      <section id="section-about" class="content-section">
+        <div class="section-header">
+          <h2 data-i18n="aboutTitle">About PageDye</h2>
+        </div>
+        
+        <div class="card about-card">
+          <div class="about-logo">
+            <div class="logo-circle"></div>
+            <h3>PageDye</h3>
+            <span class="badge" id="about-version">v0.2.0</span>
+          </div>
+          
+          <p class="about-desc" data-i18n="aboutText">PageDye is a browser extension that allows you to dye any webpage's background with your choice of color or custom image. You can adjust opacity, blur, repetition, element selector, and even inject custom CSS for complete control over readability and design.</p>
+          
+          <hr class="divider">
+          
+          <div class="meta-info">
+            <div class="meta-row">
+              <span class="meta-label" data-i18n="aboutAuthor">Developer</span>
+              <span class="meta-value">OnyxAxis</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label" data-i18n="aboutGithub">Source Code</span>
+              <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="meta-link">GitHub Repo</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    
+    <div id="status-msg" class="status-msg hidden">Saved!</div>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>

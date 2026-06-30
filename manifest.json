@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PageDye - Custom Website Backgrounds",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Customize the background of any website with images or colors.",
   "permissions": [
     "storage",
@@ -14,6 +14,10 @@
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "PageDye Settings"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
   },
   "content_scripts": [
     {
