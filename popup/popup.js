@@ -412,6 +412,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const blur = els.blur.value;
     els.imagePreviewBg.style.filter = `blur(${blur}px)`;
     els.imagePreviewBg.style.transform = 'scale(1.08)';
+
+    // 3. Opacity (Fix bug: opacity preview was missing)
+    const opacity = els.opacity.value;
+    els.imagePreviewBg.style.opacity = opacity / 100;
   }
 
   async function loadSettings(domain) {

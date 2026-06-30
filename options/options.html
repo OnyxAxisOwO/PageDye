@@ -163,6 +163,149 @@
           </div>
         </div>
       </section>
+      
+      <!-- Section 4: Edit Site Config -->
+      <section id="section-edit-site" class="content-section">
+        <div class="section-header edit-site-header">
+          <button type="button" id="edit-back-btn" class="btn secondary-btn back-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span data-i18n="backToSites">Back to Sites</span>
+          </button>
+          <h2><span data-i18n="editTitle">Edit Configuration:</span> <span id="edit-domain-name">domain.com</span></h2>
+        </div>
+
+        <div class="card">
+          <!-- Background Type -->
+          <div class="control-group">
+            <label class="control-label" data-i18n="bgType">Background Type</label>
+            <div class="segmented-control">
+              <input type="radio" name="edit-bgType" value="none" id="edit-type-none" checked>
+              <label for="edit-type-none" data-i18n="typeNone">None</label>
+              
+              <input type="radio" name="edit-bgType" value="color" id="edit-type-color">
+              <label for="edit-type-color" data-i18n="typeColor">Color</label>
+              
+              <input type="radio" name="edit-bgType" value="image" id="edit-type-image">
+              <label for="edit-type-image" data-i18n="typeImage">Image</label>
+            </div>
+          </div>
+
+          <!-- Color Section -->
+          <div id="edit-section-color" class="section hidden">
+            <div class="control-group">
+              <label for="edit-color-picker" data-i18n="color">Color</label>
+              <div class="color-input-wrapper">
+                <input type="color" id="edit-color-picker" value="#ffffff">
+                <input type="text" id="edit-color-text" value="#ffffff">
+              </div>
+            </div>
+          </div>
+
+          <!-- Image Section -->
+          <div id="edit-section-image" class="section hidden">
+            <div class="tabs">
+              <button class="tab-btn active" data-tab="edit-local" data-i18n="tabLocal">Local File</button>
+              <button class="tab-btn" data-tab="edit-url" data-i18n="tabUrl">URL</button>
+            </div>
+
+            <div class="tab-content active" id="tab-edit-local">
+              <div class="control-group">
+                <div class="file-drop-area" id="edit-drop-area">
+                  <p data-i18n="dropText">Click or Drop image here</p>
+                  <input type="file" id="edit-image-file" accept="image/*" hidden>
+                </div>
+                <div id="edit-file-info" class="hidden">
+                  <span class="filename" id="edit-filename"></span>
+                  <button id="edit-remove-file" class="icon-btn">×</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-content" id="tab-edit-url">
+              <div class="control-group">
+                <input type="url" id="edit-image-url" placeholder="https://example.com/image.jpg">
+              </div>
+            </div>
+            
+            <div class="control-group preview-group">
+               <div id="edit-image-preview" class="image-preview">
+                 <div id="edit-image-preview-bg" class="image-preview-bg"></div>
+               </div>
+            </div>
+          </div>
+
+          <!-- Common Styles -->
+          <div id="edit-section-styles" class="section hidden">
+            <div class="control-group">
+              <div class="label-row">
+                <label for="edit-opacity" data-i18n="opacity">Opacity</label>
+                <span id="edit-opacity-val" class="val-badge">100%</span>
+              </div>
+              <input type="range" id="edit-opacity" min="0" max="100" value="100">
+            </div>
+
+            <div class="control-group" id="edit-blur-control">
+              <div class="label-row">
+                <label for="edit-blur" data-i18n="blur">Blur</label>
+                <span id="edit-blur-val" class="val-badge">0px</span>
+              </div>
+              <input type="range" id="edit-blur" min="0" max="20" value="0">
+            </div>
+
+            <div id="edit-image-options" class="hidden">
+               <div class="control-group row">
+                 <label class="checkbox-label">
+                   <input type="checkbox" id="edit-bg-fixed" checked>
+                   <span data-i18n="fixed">Fixed Position</span>
+                 </label>
+                 <select id="edit-bg-size">
+                   <option value="cover" data-i18n="sizeCover">Cover</option>
+                   <option value="contain" data-i18n="sizeContain">Contain</option>
+                   <option value="auto" data-i18n="sizeAuto">Auto</option>
+                 </select>
+               </div>
+               
+               <div class="control-group row">
+                 <label class="checkbox-label">
+                   <input type="checkbox" id="edit-bg-repeat">
+                   <span data-i18n="repeat">Repeat</span>
+                 </label>
+               </div>
+            </div>
+          </div>
+
+          <!-- Advanced Settings -->
+          <div id="edit-section-advanced" class="advanced">
+            <button type="button" id="edit-advanced-toggle" class="advanced-toggle" aria-expanded="false">
+              <span data-i18n="advanced">Advanced</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+
+            <div id="edit-advanced-body" class="advanced-body hidden">
+              <div class="control-group">
+                <label for="edit-target-selector" data-i18n="targetSelector">Background Selector</label>
+                <p class="hint" data-i18n="targetSelectorHint">Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.</p>
+                <div class="selector-row">
+                  <input type="text" id="edit-target-selector" placeholder="#app, .main-bg">
+                </div>
+              </div>
+
+              <div class="control-group">
+                <label for="edit-custom-css" data-i18n="customCss">Custom CSS</label>
+                <p class="hint" data-i18n="customCssHint">Injected into this site. Use !important to override stubborn styles.</p>
+                <textarea id="edit-custom-css" rows="4" spellcheck="false" placeholder="body { color: #fff !important; }"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-actions-card">
+          <button id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
+          <button id="edit-save-btn" class="btn primary-btn" data-i18n="save">Save</button>
+        </div>
     </main>
     
     <div id="status-msg" class="status-msg hidden">Saved!</div>
