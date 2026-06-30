@@ -2,6 +2,13 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.2.5]
+
+### Changed
+- **Responsive Settings Layout**: Adapted the options dashboard page to work beautifully on mobile with a top-bar tab navigation UI, and on desktop with a centered container wrapper.
+- **Pure Black-and-White Theme**: Redesigned options page and popup UI color schemes to a pure black and white theme.
+- **Scrollbar Styling**: Customized scrollbars for a cleaner, modern, and premium aesthetic.
+
 ## [0.2.4]
 
 ### Added

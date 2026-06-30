@@ -1,6 +1,7 @@
 :root {
-  --primary-color: #2563eb;
-  --primary-hover: #1d4ed8;
+  --primary-color: #000000;
+  --primary-color-text: #ffffff;
+  --primary-hover: #333333;
   --bg-color: #ffffff;
   --text-color: #1f2937;
   --text-secondary: #4b5563;
@@ -9,21 +10,41 @@
   --spacing: 12px;
   --surface-bg: #f3f4f6;
   --surface-card: #ffffff;
-  --input-focus-shadow: rgba(37, 99, 235, 0.1);
+  --input-focus-shadow: rgba(0, 0, 0, 0.05);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-color: #0f172a;
-    --text-color: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --border-color: #334155;
-    --surface-bg: #1e293b;
-    --surface-card: #1e293b;
-    --primary-color: #3b82f6;
-    --primary-hover: #60a5fa;
-    --input-focus-shadow: rgba(59, 130, 246, 0.2);
+    --bg-color: #000000;
+    --text-color: #ffffff;
+    --text-secondary: #a0a0a0;
+    --border-color: #222222;
+    --surface-bg: #121212;
+    --surface-card: #0a0a0a;
+    --primary-color: #ffffff;
+    --primary-color-text: #000000;
+    --primary-hover: #e5e5e5;
+    --input-focus-shadow: rgba(255, 255, 255, 0.15);
   }
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
 }
 
 body {
@@ -351,7 +372,7 @@ button {
 
 .primary {
   background: var(--primary-color);
-  color: white;
+  color: var(--primary-color-text);
 }
 
 .primary:hover {
