@@ -5,7 +5,7 @@
 // (current form state + the picked selector) straight to storage for this
 // domain. The content script's storage listener then paints that element
 // immediately — no popup reopen required.
-function pagedyeElementPicker(settings, domain) {
+function pagedyeElementPicker(settings, domain, fieldPath) {
   if (window.__pagedyePicking) return;
   window.__pagedyePicking = true;
 
@@ -105,7 +105,14 @@ function pagedyeElementPicker(settings, domain) {
     const el = current || document.elementFromPoint(e.clientX, e.clientY);
     const selector = getSelector(el);
     try {
-      const next = Object.assign({}, settings, { targetSelector: selector });
+      const path = fieldPath && fieldPath.length ? fieldPath : ['targetSelector'];
+      const next = JSON.parse(JSON.stringify(settings));
+      let obj = next;
+      for (let i = 0; i < path.length - 1; i++) {
+        obj[path[i]] = obj[path[i]] || {};
+        obj = obj[path[i]];
+      }
+      obj[path[path.length - 1]] = selector;
       chrome.storage.local.set({ [domain]: next });
     } catch (err) { /* storage unavailable */ }
     cleanup();
@@ -130,6 +137,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       typeNone: "None",
       typeColor: "Color",
       typeImage: "Image",
+      typeEffect: "Effects",
+      effectKind: "Effect",
+      effectKindHint: "A minimalist black & white animated wallpaper, rendered locally with Canvas — no external assets.",
+      effectMatrix: "Matrix",
+      effectParticles: "Particles",
+      effectWaves: "Waves",
+      effectStarfield: "Starfield",
+      effectRipple: "Ripple",
+      effectColor: "Color",
+      effectDensity: "Density",
+      effectSpeed: "Speed",
       color: "Color",
       opacity: "Opacity",
       blur: "Blur",
@@ -145,10 +163,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       error: "Error saving!",
       noTab: "No Active Tab",
       invalidUrl: "Invalid URL",
+      tabWallpaper: "Wallpaper",
+      tabFrostedGlass: "Frosted Glass",
       advanced: "Advanced",
       targetSelector: "Background Selector",
       targetSelectorHint: "Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.",
       pickElement: "Pick",
+      frostedGlass: "Frosted Glass",
+      frostedGlassHint: "Pick a card/container element and PageDye makes its background semi-transparent and blurred, so your wallpaper shows through underneath it.",
+      frostedBlur: "Blur",
+      frostedOpacity: "Tint",
       customCss: "Custom CSS",
       customCssHint: "Injected into this site. Use !important to override stubborn styles.",
       pickerFailed: "Can't pick on this page",
@@ -206,6 +230,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       typeNone: "无",
       typeColor: "颜色",
       typeImage: "图片",
+      typeEffect: "动效",
+      effectKind: "特效",
+      effectKindHint: "极简黑白动态壁纸，完全通过 Canvas 本地渲染，不依赖任何外部资源。",
+      effectMatrix: "代码雨",
+      effectParticles: "粒子",
+      effectWaves: "波浪",
+      effectStarfield: "星空穿梭",
+      effectRipple: "水波纹",
+      effectColor: "颜色",
+      effectDensity: "密度",
+      effectSpeed: "速度",
       color: "颜色",
       opacity: "不透明度",
       blur: "模糊度",
@@ -221,10 +256,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       error: "保存失败!",
       noTab: "无活动标签页",
       invalidUrl: "无效的链接",
+      tabWallpaper: "壁纸",
+      tabFrostedGlass: "磨砂玻璃",
       advanced: "高级设置",
       targetSelector: "背景选择器",
       targetSelectorHint: "拾取一个元素（或手动输入 CSS 选择器），PageDye 会把颜色/图片直接应用到该元素，而不是整页。留空则为整页背景。",
       pickElement: "拾取",
+      frostedGlass: "磨砂玻璃",
+      frostedGlassHint: "拾取一个卡片/容器元素，PageDye 会让它的背景变为半透明并加上模糊效果，让底层的壁纸若隐若现地透上来。",
+      frostedBlur: "模糊度",
+      frostedOpacity: "透明度",
       customCss: "自定义 CSS",
       customCssHint: "将注入到本网站。可用 !important 覆盖顽固样式。",
       pickerFailed: "此页面无法拾取",
@@ -283,6 +324,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     bgTypes: document.getElementsByName('bgType'),
     sectionColor: document.getElementById('section-color'),
     sectionImage: document.getElementById('section-image'),
+    sectionEffects: document.getElementById('section-effects'),
+    effectKind: document.getElementById('effect-kind'),
+    effectColor: document.getElementById('effect-color'),
+    effectColorText: document.getElementById('effect-color-text'),
+    effectDensity: document.getElementById('effect-density'),
+    effectDensityVal: document.getElementById('effect-density-val'),
+    effectSpeed: document.getElementById('effect-speed'),
+    effectSpeedVal: document.getElementById('effect-speed-val'),
     sectionStyles: document.getElementById('section-styles'),
     colorPicker: document.getElementById('color-picker'),
     colorText: document.getElementById('color-text'),
@@ -331,6 +380,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Advanced
     targetSelector: document.getElementById('target-selector'),
     pickBtn: document.getElementById('pick-btn'),
+    frostedSelector: document.getElementById('frosted-selector'),
+    frostedPickBtn: document.getElementById('frosted-pick-btn'),
+    frostedBlur: document.getElementById('frosted-blur'),
+    frostedBlurVal: document.getElementById('frosted-blur-val'),
+    frostedOpacity: document.getElementById('frosted-opacity'),
+    frostedOpacityVal: document.getElementById('frosted-opacity-val'),
     customCss: document.getElementById('custom-css'),
     settingsBtn: document.getElementById('settings-btn'),
 
@@ -373,9 +428,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentSettings = null;
   let saveDebounceTimer = null;
   let gradientStopsState = [];
+  let cssEditorController = null;
 
   // Init
   initI18n();
+  cssEditorController = initCustomCssEditor('custom-css', 'custom-css-editor');
   const gradientKeyframesStyle = document.createElement('style');
   gradientKeyframesStyle.textContent = window.PageDyeGradient.GRADIENT_KEYFRAMES_CSS;
   document.head.appendChild(gradientKeyframesStyle);
@@ -408,6 +465,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateInteractivePreviews();
       triggerImmediateSave();
     });
+  });
+
+  // Effect kind / color / density / speed
+  els.effectKind.addEventListener('change', () => triggerImmediateSave());
+  els.effectColor.addEventListener('input', (e) => {
+    els.effectColorText.value = e.target.value;
+    queueAutoSave();
+  });
+  els.effectColorText.addEventListener('input', (e) => {
+    els.effectColor.value = e.target.value;
+    queueAutoSave();
+  });
+  els.effectDensity.addEventListener('input', (e) => {
+    els.effectDensityVal.textContent = `${e.target.value}%`;
+    queueAutoSave();
+  });
+  els.effectSpeed.addEventListener('input', (e) => {
+    els.effectSpeedVal.textContent = `${e.target.value}%`;
+    queueAutoSave();
   });
 
   // Color Picker Sync
@@ -635,9 +711,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Advanced inputs
   els.targetSelector.addEventListener('input', () => queueAutoSave());
   els.customCss.addEventListener('input', () => queueAutoSave());
+  els.frostedSelector.addEventListener('input', () => queueAutoSave());
+  els.frostedBlur.addEventListener('input', (e) => {
+    els.frostedBlurVal.textContent = `${e.target.value}px`;
+    queueAutoSave();
+  });
+  els.frostedOpacity.addEventListener('input', (e) => {
+    els.frostedOpacityVal.textContent = `${e.target.value}%`;
+    queueAutoSave();
+  });
 
   // Advanced: element picker
   els.pickBtn.addEventListener('click', startPicker);
+  els.frostedPickBtn.addEventListener('click', startFrostedPicker);
+
+  // Top-level tabs: Wallpaper vs Frosted Glass
+  const panelWallpaper = document.getElementById('panel-wallpaper');
+  const panelFrosted = document.getElementById('panel-frosted');
+  document.getElementsByName('mainTab').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      const isFrosted = radio.checked && radio.value === 'frosted';
+      panelWallpaper.classList.toggle('hidden', isFrosted);
+      panelFrosted.classList.toggle('hidden', !isFrosted);
+    });
+  });
 
   // Wallpaper Mode Switch
   els.wpModes.forEach(radio => {
@@ -872,6 +969,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         els.imageUrl.value = subSettings.value || '';
       }
+    } else if (subSettings.type === 'effect') {
+      els.effectKind.value = subSettings.effect || 'waves';
+      els.effectColor.value = subSettings.effectColor || '#ffffff';
+      els.effectColorText.value = subSettings.effectColor || '#ffffff';
+      els.effectDensity.value = subSettings.effectDensity !== undefined ? subSettings.effectDensity : 50;
+      els.effectDensityVal.textContent = `${els.effectDensity.value}%`;
+      els.effectSpeed.value = subSettings.effectSpeed !== undefined ? subSettings.effectSpeed : 50;
+      els.effectSpeedVal.textContent = `${els.effectSpeed.value}%`;
     }
 
     els.opacity.value = subSettings.opacity !== undefined ? subSettings.opacity : 100;
@@ -916,6 +1021,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       dest.gradient = collectGradientFromForm();
     } else if (type === 'image') {
       value = currentImageBase64 || els.imageUrl.value;
+    } else if (type === 'effect') {
+      dest.effect = els.effectKind.value;
+      dest.effectColor = els.effectColor.value;
+      dest.effectDensity = parseInt(els.effectDensity.value, 10);
+      dest.effectSpeed = parseInt(els.effectSpeed.value, 10);
     }
 
     dest.type = type;
@@ -995,7 +1105,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     els.targetSelector.value = currentSettings.targetSelector || '';
     els.customCss.value = currentSettings.customCss || '';
-    
+    if (cssEditorController) cssEditorController.update();
+
+    const frostedGlass = currentSettings.frostedGlass || {};
+    els.frostedSelector.value = frostedGlass.selector || '';
+    els.frostedBlur.value = frostedGlass.blur !== undefined ? frostedGlass.blur : 12;
+    els.frostedBlurVal.textContent = `${els.frostedBlur.value}px`;
+    els.frostedOpacity.value = frostedGlass.opacity !== undefined ? frostedGlass.opacity : 55;
+    els.frostedOpacityVal.textContent = `${els.frostedOpacity.value}%`;
+
     // Auto expand accordion if target selector or custom css has values
     const accordionAdvanced = document.getElementById('accordion-advanced');
     if (els.targetSelector.value || els.customCss.value) {
@@ -1066,6 +1184,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         card.style.backgroundImage = 'none';
       } else if (item.type === 'image' && item.value) {
         card.style.backgroundImage = `url('${item.value}')`;
+      } else if (item.type === 'effect') {
+        card.classList.add('type-none');
+        card.textContent = t('typeEffect');
       } else {
         card.classList.add('type-none');
         card.textContent = 'None';
@@ -1162,6 +1283,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateUI(type) {
     els.sectionColor.classList.add('hidden');
     els.sectionImage.classList.add('hidden');
+    els.sectionEffects.classList.add('hidden');
     els.sectionStyles.classList.add('hidden');
     els.blurControl.classList.add('hidden');
     const advFilters = document.getElementById('advanced-filters');
@@ -1178,8 +1300,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       els.blurControl.classList.remove('hidden');
       if (advFilters) advFilters.classList.remove('hidden');
       updatePreview();
+    } else if (type === 'effect') {
+      els.sectionEffects.classList.remove('hidden');
+      els.sectionStyles.classList.remove('hidden');
     }
-    
+
     // Toggle image position options if image is active
     const imgOptions = document.getElementById('image-options');
     if (imgOptions) {
@@ -1388,6 +1513,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     currentSettings.targetSelector = els.targetSelector.value.trim();
     currentSettings.customCss = els.customCss.value;
+    currentSettings.frostedGlass = {
+      selector: els.frostedSelector.value.trim(),
+      blur: parseInt(els.frostedBlur.value, 10) || 0,
+      opacity: parseInt(els.frostedOpacity.value, 10)
+    };
     currentSettings.timestamp = Date.now();
 
     return currentSettings;
@@ -1462,7 +1592,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         ]
       },
       targetSelector: '',
-      customCss: ''
+      customCss: '',
+      frostedGlass: { selector: '', blur: 12, opacity: 55 }
     };
     activeScheme = 'light';
     activeSlideshowIndex = 0;
@@ -1474,10 +1605,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelector('input[value="none"]').click();
     els.opacity.value = 100;
     els.blur.value = 0;
+    els.effectKind.value = 'waves';
+    els.effectColor.value = '#ffffff';
+    els.effectColorText.value = '#ffffff';
+    els.effectDensity.value = 50;
+    els.effectDensityVal.textContent = '50%';
+    els.effectSpeed.value = 50;
+    els.effectSpeedVal.textContent = '50%';
     clearFile();
     els.imageUrl.value = '';
     els.targetSelector.value = '';
     els.customCss.value = '';
+    els.frostedSelector.value = '';
+    els.frostedBlur.value = 12;
+    els.frostedBlurVal.textContent = '12px';
+    els.frostedOpacity.value = 55;
+    els.frostedOpacityVal.textContent = '55%';
+    if (cssEditorController) cssEditorController.update();
 
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab) {
@@ -1503,7 +1647,31 @@ document.addEventListener('DOMContentLoaded', async () => {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: pagedyeElementPicker,
-        args: [settings, currentDomain]
+        args: [settings, currentDomain, ['targetSelector']]
+      });
+      window.close();
+    } catch (err) {
+      console.log('Cannot start picker on this page', err);
+      setSavingState();
+      els.statusText.textContent = t('pickerFailed');
+    }
+  }
+
+  // Same flow as startPicker(), but writes the picked selector into
+  // frostedGlass.selector instead of targetSelector.
+  async function startFrostedPicker() {
+    const settings = collectSettings();
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) return;
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['scripts/gradient.js', 'scripts/content.js']
+      });
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: pagedyeElementPicker,
+        args: [settings, currentDomain, ['frostedGlass', 'selector']]
       });
       window.close();
     } catch (err) {
@@ -1513,3 +1681,122 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 });
+
+function initCustomCssEditor(textareaId, containerId) {
+  const textarea = document.getElementById(textareaId);
+  const container = document.getElementById(containerId);
+  if (!textarea || !container) return null;
+
+  const gutter = container.querySelector('.editor-gutter');
+  const codeBlock = container.querySelector('.editor-highlight code');
+  const preBlock = container.querySelector('.editor-highlight');
+
+  function updateEditor() {
+    let code = textarea.value;
+    const isPlaceholder = !code;
+    
+    if (isPlaceholder) {
+      code = textarea.getAttribute('placeholder') || '';
+      container.classList.add('placeholder-active');
+    } else {
+      container.classList.remove('placeholder-active');
+    }
+
+    const highlighted = Prism.highlight(code, Prism.languages.css, 'css');
+    codeBlock.innerHTML = code.endsWith('\n') ? highlighted + ' ' : highlighted;
+
+    const lineCount = code.split('\n').length;
+    let gutterHTML = '';
+    for (let i = 1; i <= lineCount; i++) {
+      gutterHTML += `<span class="editor-gutter-num">${i}</span>`;
+    }
+    gutter.innerHTML = gutterHTML;
+    
+    syncScrolls();
+  }
+
+  function syncScrolls() {
+    gutter.scrollTop = textarea.scrollTop;
+    preBlock.scrollTop = textarea.scrollTop;
+    preBlock.scrollLeft = textarea.scrollLeft;
+  }
+
+  textarea.addEventListener('scroll', syncScrolls);
+  textarea.addEventListener('input', updateEditor);
+
+  textarea.addEventListener('keydown', (e) => {
+    const val = textarea.value;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    // 1. Tab Key Support (2 spaces)
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      textarea.value = val.substring(0, start) + '  ' + val.substring(end);
+      textarea.selectionStart = textarea.selectionEnd = start + 2;
+      updateEditor();
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    // 2. Overwrite closing character if already typed
+    const closers = ['}', ')', ']', '"', "'"];
+    if (closers.includes(e.key) && start === end) {
+      const nextChar = val.charAt(start);
+      if (nextChar === e.key) {
+        e.preventDefault();
+        textarea.selectionStart = textarea.selectionEnd = start + 1;
+        return;
+      }
+    }
+
+    // 3. Auto-closing brackets
+    const pairs = {
+      '{': '}',
+      '(': ')',
+      '[': ']',
+      '"': '"',
+      "'": "'"
+    };
+
+    if (pairs[e.key] !== undefined) {
+      e.preventDefault();
+      const closing = pairs[e.key];
+      if (start !== end) {
+        const selected = val.substring(start, end);
+        textarea.value = val.substring(0, start) + e.key + selected + closing + val.substring(end);
+        textarea.selectionStart = start + 1;
+        textarea.selectionEnd = end + 1;
+      } else {
+        textarea.value = val.substring(0, start) + e.key + closing + val.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 1;
+      }
+      updateEditor();
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    // 4. Smart Indentation on Enter key
+    if (e.key === 'Enter' && start === end) {
+      const charBefore = val.charAt(start - 1);
+      const charAfter = val.charAt(start);
+      if (charBefore === '{' && charAfter === '}') {
+        e.preventDefault();
+        textarea.value = val.substring(0, start) + '\n  \n' + val.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 3;
+        updateEditor();
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      } else if (charBefore === '{') {
+        e.preventDefault();
+        textarea.value = val.substring(0, start) + '\n  ' + val.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 3;
+        updateEditor();
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  });
+
+  updateEditor();
+
+  return {
+    update: updateEditor
+  };
+}

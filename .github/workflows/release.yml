@@ -41,7 +41,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           ZIP="pagedye-${VERSION}.zip"
-          FILES="manifest.json popup options scripts icons"
+          FILES="manifest.json popup options scripts icons lib"
           [ -d images ] && FILES="$FILES images"
           zip -r "$ZIP" $FILES
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"

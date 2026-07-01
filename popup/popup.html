@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title data-i18n="title">PageDye Settings</title>
+  <link rel="stylesheet" href="../lib/prism.css">
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -22,6 +23,15 @@
     </header>
 
     <main>
+      <div class="segmented-control main-tabs" id="main-tabs">
+        <input type="radio" name="mainTab" value="wallpaper" id="tab-wallpaper" checked>
+        <label for="tab-wallpaper" data-i18n="tabWallpaper">Wallpaper</label>
+
+        <input type="radio" name="mainTab" value="frosted" id="tab-frosted">
+        <label for="tab-frosted" data-i18n="tabFrostedGlass">Frosted Glass</label>
+      </div>
+
+      <div id="panel-wallpaper">
       <!-- Details 1: Wallpaper Mode & Rotation -->
       <details class="accordion" id="accordion-mode" open>
         <summary class="accordion-summary">
@@ -114,6 +124,9 @@
               
               <input type="radio" name="bgType" value="image" id="type-image">
               <label for="type-image" data-i18n="typeImage">Image</label>
+
+              <input type="radio" name="bgType" value="effect" id="type-effect">
+              <label for="type-effect" data-i18n="typeEffect">Effects</label>
             </div>
           </div>
 
@@ -234,6 +247,45 @@
             </div>
           </div>
 
+          <!-- Effects Section -->
+          <div id="section-effects" class="section hidden">
+            <div class="control-group">
+              <label for="effect-kind" data-i18n="effectKind">Effect</label>
+              <p class="hint" data-i18n="effectKindHint">A minimalist black &amp; white animated wallpaper, rendered locally with Canvas — no external assets.</p>
+              <select id="effect-kind">
+                <option value="matrix" data-i18n="effectMatrix">Matrix</option>
+                <option value="particles" data-i18n="effectParticles">Particles</option>
+                <option value="waves" selected data-i18n="effectWaves">Waves</option>
+                <option value="starfield" data-i18n="effectStarfield">Starfield</option>
+                <option value="ripple" data-i18n="effectRipple">Ripple</option>
+              </select>
+            </div>
+
+            <div class="control-group">
+              <label for="effect-color" data-i18n="effectColor">Color</label>
+              <div class="color-input-wrapper">
+                <input type="color" id="effect-color" value="#ffffff">
+                <input type="text" id="effect-color-text" value="#ffffff">
+              </div>
+            </div>
+
+            <div class="control-group">
+              <div class="label-row">
+                <label for="effect-density" data-i18n="effectDensity">Density</label>
+                <span id="effect-density-val" class="val-badge">50%</span>
+              </div>
+              <input type="range" id="effect-density" min="0" max="100" value="50">
+            </div>
+
+            <div class="control-group" style="margin-bottom: 0;">
+              <div class="label-row">
+                <label for="effect-speed" data-i18n="effectSpeed">Speed</label>
+                <span id="effect-speed-val" class="val-badge">50%</span>
+              </div>
+              <input type="range" id="effect-speed" min="0" max="100" value="50">
+            </div>
+          </div>
+
           <!-- Common Styles -->
           <div id="section-styles" class="section hidden">
             <div class="control-group">
@@ -341,10 +393,38 @@
           <div class="control-group" style="margin-bottom: 0;">
             <label for="custom-css" data-i18n="customCss">Custom CSS</label>
             <p class="hint" data-i18n="customCssHint">Injected into this site. Use !important to override stubborn styles.</p>
-            <textarea id="custom-css" rows="4" spellcheck="false" placeholder="body { color: #fff !important; }"></textarea>
+            <div class="pagedye-code-editor" id="custom-css-editor">
+              <div class="editor-gutter" aria-hidden="true"></div>
+              <div class="editor-textarea-wrapper">
+                <textarea id="custom-css" spellcheck="false" placeholder="body { color: #fff !important; }"></textarea>
+                <pre class="editor-highlight" aria-hidden="true"><code class="language-css"></code></pre>
+              </div>
+            </div>
           </div>
         </div>
       </details>
+      </div>
+
+      <div id="panel-frosted" class="hidden">
+        <div class="control-group">
+          <label for="frosted-selector" data-i18n="frostedGlass">Frosted Glass</label>
+          <p class="hint" data-i18n="frostedGlassHint">Pick a card/container element and PageDye makes its background semi-transparent and blurred, so your wallpaper shows through underneath it.</p>
+          <div class="selector-row">
+            <input type="text" id="frosted-selector" placeholder=".card, main">
+            <button type="button" id="frosted-pick-btn" class="secondary pick-btn" data-i18n="pickElement">Pick</button>
+          </div>
+          <div class="label-row">
+            <label for="frosted-blur" data-i18n="frostedBlur">Blur</label>
+            <span id="frosted-blur-val" class="val-badge">12px</span>
+          </div>
+          <input type="range" id="frosted-blur" min="0" max="30" value="12">
+          <div class="label-row">
+            <label for="frosted-opacity" data-i18n="frostedOpacity">Tint</label>
+            <span id="frosted-opacity-val" class="val-badge">55%</span>
+          </div>
+          <input type="range" id="frosted-opacity" min="0" max="100" value="55">
+        </div>
+      </div>
     </main>
 
     <footer>
@@ -364,6 +444,7 @@
     </footer>
   </div>
   <script src="../scripts/gradient.js"></script>
+  <script src="../lib/prism.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

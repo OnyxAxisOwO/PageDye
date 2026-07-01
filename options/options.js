@@ -50,6 +50,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       typeNone: "None",
       typeColor: "Color",
       typeImage: "Image",
+      typeEffect: "Effects",
+      effectKind: "Effect",
+      effectKindHint: "A minimalist black & white animated wallpaper, rendered locally with Canvas — no external assets.",
+      effectMatrix: "Matrix",
+      effectParticles: "Particles",
+      effectWaves: "Waves",
+      effectStarfield: "Starfield",
+      effectRipple: "Ripple",
+      effectColor: "Color",
+      effectDensity: "Density",
+      effectSpeed: "Speed",
       color: "Color",
       tabLocal: "Local File",
       tabUrl: "URL",
@@ -66,9 +77,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       saved: "Saved!",
       resetMsg: "Reset!",
       error: "Error saving!",
+      tabWallpaper: "Wallpaper",
+      tabFrostedGlass: "Frosted Glass",
       advanced: "Advanced Settings",
       targetSelector: "Background Selector",
       targetSelectorHint: "Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.",
+      frostedGlass: "Frosted Glass",
+      frostedGlassHint: "Pick a card/container element and PageDye makes its background semi-transparent and blurred, so your wallpaper shows through underneath it.",
+      frostedBlur: "Blur",
+      frostedOpacity: "Tint",
       customCss: "Custom CSS",
       customCssHint: "Injected into this site. Use !important to override stubborn styles.",
       autoScheme: "Auto Light/Dark",
@@ -162,6 +179,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       typeNone: "无",
       typeColor: "颜色",
       typeImage: "图片",
+      typeEffect: "动效",
+      effectKind: "特效",
+      effectKindHint: "极简黑白动态壁纸，完全通过 Canvas 本地渲染，不依赖任何外部资源。",
+      effectMatrix: "代码雨",
+      effectParticles: "粒子",
+      effectWaves: "波浪",
+      effectStarfield: "星空穿梭",
+      effectRipple: "水波纹",
+      effectColor: "颜色",
+      effectDensity: "密度",
+      effectSpeed: "速度",
       color: "颜色",
       tabLocal: "本地文件",
       tabUrl: "链接",
@@ -178,9 +206,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       saved: "已保存!",
       resetMsg: "已重置!",
       error: "保存失败!",
+      tabWallpaper: "壁纸",
+      tabFrostedGlass: "磨砂玻璃",
       advanced: "高级设置",
       targetSelector: "背景选择器",
       targetSelectorHint: "拾取一个元素（或手动输入 CSS 选择器），PageDye 会把颜色/图片直接应用到该元素，而不是整页。留空则为整页背景。",
+      frostedGlass: "磨砂玻璃",
+      frostedGlassHint: "拾取一个卡片/容器元素，PageDye 会让它的背景变为半透明并加上模糊效果，让底层的壁纸若隐若现地透上来。",
+      frostedBlur: "模糊度",
+      frostedOpacity: "透明度",
       customCss: "自定义 CSS",
       customCssHint: "将注入到本网站。可用 !important 覆盖顽固样式。",
       autoScheme: "昼夜双态联动",
@@ -260,6 +294,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Init translations & versions
   initI18n();
+  editCssEditorController = initCustomCssEditor('edit-custom-css', 'edit-custom-css-editor');
   const editGradientKeyframesStyle = document.createElement('style');
   editGradientKeyframesStyle.textContent = window.PageDyeGradient.GRADIENT_KEYFRAMES_CSS;
   document.head.appendChild(editGradientKeyframesStyle);
@@ -620,6 +655,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let editActiveSlideshowIndex = 0;
   let currentEditSettings = null;
   let editGradientStopsState = [];
+  let editCssEditorController = null;
 
   function populateEditForm(subSettings) {
     document.querySelector(`input[name="edit-bgType"][value="${subSettings.type || 'none'}"]`).checked = true;
@@ -647,6 +683,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         document.getElementById('edit-image-url').value = subSettings.value || '';
       }
+    } else if (subSettings.type === 'effect') {
+      document.getElementById('edit-effect-kind').value = subSettings.effect || 'waves';
+      document.getElementById('edit-effect-color').value = subSettings.effectColor || '#ffffff';
+      document.getElementById('edit-effect-color-text').value = subSettings.effectColor || '#ffffff';
+      document.getElementById('edit-effect-density').value = subSettings.effectDensity !== undefined ? subSettings.effectDensity : 50;
+      document.getElementById('edit-effect-density-val').textContent = `${document.getElementById('edit-effect-density').value}%`;
+      document.getElementById('edit-effect-speed').value = subSettings.effectSpeed !== undefined ? subSettings.effectSpeed : 50;
+      document.getElementById('edit-effect-speed-val').textContent = `${document.getElementById('edit-effect-speed').value}%`;
     }
 
     document.getElementById('edit-opacity').value = subSettings.opacity !== undefined ? subSettings.opacity : 100;
@@ -691,6 +735,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       dest.gradient = collectEditGradientFromForm();
     } else if (type === 'image') {
       value = editCurrentImageBase64 || document.getElementById('edit-image-url').value;
+    } else if (type === 'effect') {
+      dest.effect = document.getElementById('edit-effect-kind').value;
+      dest.effectColor = document.getElementById('edit-effect-color').value;
+      dest.effectDensity = parseInt(document.getElementById('edit-effect-density').value, 10);
+      dest.effectSpeed = parseInt(document.getElementById('edit-effect-speed').value, 10);
     }
 
     dest.type = type;
@@ -801,6 +850,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('edit-target-selector').value = currentEditSettings.targetSelector || '';
     document.getElementById('edit-custom-css').value = currentEditSettings.customCss || '';
+    if (editCssEditorController) editCssEditorController.update();
+
+    const editFrostedGlass = currentEditSettings.frostedGlass || {};
+    document.getElementById('edit-frosted-selector').value = editFrostedGlass.selector || '';
+    document.getElementById('edit-frosted-blur').value = editFrostedGlass.blur !== undefined ? editFrostedGlass.blur : 12;
+    document.getElementById('edit-frosted-blur-val').textContent = `${document.getElementById('edit-frosted-blur').value}px`;
+    document.getElementById('edit-frosted-opacity').value = editFrostedGlass.opacity !== undefined ? editFrostedGlass.opacity : 55;
+    document.getElementById('edit-frosted-opacity-val').textContent = `${document.getElementById('edit-frosted-opacity').value}%`;
 
     if (currentEditSettings.targetSelector || currentEditSettings.customCss) {
       document.getElementById('edit-advanced-body').classList.remove('hidden');
@@ -870,6 +927,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         card.style.backgroundImage = 'none';
       } else if (item.type === 'image' && item.value) {
         card.style.backgroundImage = `url('${item.value}')`;
+      } else if (item.type === 'effect') {
+        card.classList.add('type-none');
+        card.textContent = t('typeEffect');
       } else {
         card.classList.add('type-none');
         card.textContent = 'None';
@@ -966,6 +1026,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateEditUI(type) {
     document.getElementById('edit-section-color').classList.add('hidden');
     document.getElementById('edit-section-image').classList.add('hidden');
+    document.getElementById('edit-section-effects').classList.add('hidden');
     document.getElementById('edit-section-styles').classList.add('hidden');
     document.getElementById('edit-image-options').classList.add('hidden');
     document.getElementById('edit-blur-control').classList.add('hidden');
@@ -983,6 +1044,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('edit-blur-control').classList.remove('hidden');
       document.getElementById('edit-advanced-filters').classList.remove('hidden');
       updateEditPreview();
+    } else if (type === 'effect') {
+      document.getElementById('edit-section-effects').classList.remove('hidden');
+      document.getElementById('edit-section-styles').classList.remove('hidden');
     }
   }
 
@@ -1188,6 +1252,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     currentEditSettings.targetSelector = document.getElementById('edit-target-selector').value.trim();
     currentEditSettings.customCss = document.getElementById('edit-custom-css').value;
+    currentEditSettings.frostedGlass = {
+      selector: document.getElementById('edit-frosted-selector').value.trim(),
+      blur: parseInt(document.getElementById('edit-frosted-blur').value, 10) || 0,
+      opacity: parseInt(document.getElementById('edit-frosted-opacity').value, 10)
+    };
     currentEditSettings.timestamp = Date.now();
   }
 
@@ -1229,7 +1298,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         ]
       },
       targetSelector: '',
-      customCss: ''
+      customCss: '',
+      frostedGlass: { selector: '', blur: 12, opacity: 55 }
     };
     editActiveScheme = 'light';
     editActiveSlideshowIndex = 0;
@@ -1244,6 +1314,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-opacity-val').textContent = '100%';
     document.getElementById('edit-blur').value = 0;
     document.getElementById('edit-blur-val').textContent = '0px';
+    document.getElementById('edit-effect-kind').value = 'waves';
+    document.getElementById('edit-effect-color').value = '#ffffff';
+    document.getElementById('edit-effect-color-text').value = '#ffffff';
+    document.getElementById('edit-effect-density').value = 50;
+    document.getElementById('edit-effect-density-val').textContent = '50%';
+    document.getElementById('edit-effect-speed').value = 50;
+    document.getElementById('edit-effect-speed-val').textContent = '50%';
     editCurrentImageBase64 = null;
     document.getElementById('edit-image-file').value = '';
     document.getElementById('edit-drop-area').classList.remove('hidden');
@@ -1251,6 +1328,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-image-url').value = '';
     document.getElementById('edit-target-selector').value = '';
     document.getElementById('edit-custom-css').value = '';
+    document.getElementById('edit-frosted-selector').value = '';
+    document.getElementById('edit-frosted-blur').value = 12;
+    document.getElementById('edit-frosted-blur-val').textContent = '12px';
+    document.getElementById('edit-frosted-opacity').value = 55;
+    document.getElementById('edit-frosted-opacity-val').textContent = '55%';
+    if (editCssEditorController) editCssEditorController.update();
 
     notifyTabsOfDomain(currentEditingDomain, { type: 'none' });
     setEditSyncedState();
@@ -1316,6 +1399,31 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateEditInteractivePreviews();
       triggerEditImmediateSave();
     });
+  });
+
+  // Effect kind / color / density / speed
+  document.getElementById('edit-effect-kind').addEventListener('change', () => triggerEditImmediateSave());
+  const editEffectColor = document.getElementById('edit-effect-color');
+  const editEffectColorText = document.getElementById('edit-effect-color-text');
+  editEffectColor.addEventListener('input', (e) => {
+    editEffectColorText.value = e.target.value;
+    queueEditAutoSave();
+  });
+  editEffectColorText.addEventListener('input', (e) => {
+    editEffectColor.value = e.target.value;
+    queueEditAutoSave();
+  });
+  const editEffectDensity = document.getElementById('edit-effect-density');
+  const editEffectDensityVal = document.getElementById('edit-effect-density-val');
+  editEffectDensity.addEventListener('input', (e) => {
+    editEffectDensityVal.textContent = `${e.target.value}%`;
+    queueEditAutoSave();
+  });
+  const editEffectSpeed = document.getElementById('edit-effect-speed');
+  const editEffectSpeedVal = document.getElementById('edit-effect-speed-val');
+  editEffectSpeed.addEventListener('input', (e) => {
+    editEffectSpeedVal.textContent = `${e.target.value}%`;
+    queueEditAutoSave();
   });
 
   const editColorPicker = document.getElementById('edit-color-picker');
@@ -1571,11 +1679,37 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('edit-bg-repeat').addEventListener('change', () => triggerEditImmediateSave());
   document.getElementById('edit-target-selector').addEventListener('input', () => queueEditAutoSave());
   document.getElementById('edit-custom-css').addEventListener('input', () => queueEditAutoSave());
+  document.getElementById('edit-frosted-selector').addEventListener('input', () => queueEditAutoSave());
+
+  const editFrostedBlur = document.getElementById('edit-frosted-blur');
+  const editFrostedBlurVal = document.getElementById('edit-frosted-blur-val');
+  editFrostedBlur.addEventListener('input', (e) => {
+    editFrostedBlurVal.textContent = `${e.target.value}px`;
+    queueEditAutoSave();
+  });
+
+  const editFrostedOpacity = document.getElementById('edit-frosted-opacity');
+  const editFrostedOpacityVal = document.getElementById('edit-frosted-opacity-val');
+  editFrostedOpacity.addEventListener('input', (e) => {
+    editFrostedOpacityVal.textContent = `${e.target.value}%`;
+    queueEditAutoSave();
+  });
 
   document.getElementById('edit-back-btn').addEventListener('click', () => {
     els.sections.forEach(s => s.classList.remove('active'));
     document.getElementById('section-sites').classList.add('active');
     loadSitesList();
+  });
+
+  // Top-level tabs: Wallpaper vs Frosted Glass
+  const editPanelWallpaper = document.getElementById('edit-panel-wallpaper');
+  const editPanelFrosted = document.getElementById('edit-panel-frosted');
+  document.getElementsByName('edit-mainTab').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      const isFrosted = radio.checked && radio.value === 'frosted';
+      editPanelWallpaper.classList.toggle('hidden', isFrosted);
+      editPanelFrosted.classList.toggle('hidden', !isFrosted);
+    });
   });
 
   // Edit Wallpaper Mode Switch
@@ -1693,3 +1827,122 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   els.editResetBtn.addEventListener('click', resetEditSettings);
 });
+
+function initCustomCssEditor(textareaId, containerId) {
+  const textarea = document.getElementById(textareaId);
+  const container = document.getElementById(containerId);
+  if (!textarea || !container) return null;
+
+  const gutter = container.querySelector('.editor-gutter');
+  const codeBlock = container.querySelector('.editor-highlight code');
+  const preBlock = container.querySelector('.editor-highlight');
+
+  function updateEditor() {
+    let code = textarea.value;
+    const isPlaceholder = !code;
+    
+    if (isPlaceholder) {
+      code = textarea.getAttribute('placeholder') || '';
+      container.classList.add('placeholder-active');
+    } else {
+      container.classList.remove('placeholder-active');
+    }
+
+    const highlighted = Prism.highlight(code, Prism.languages.css, 'css');
+    codeBlock.innerHTML = code.endsWith('\n') ? highlighted + ' ' : highlighted;
+
+    const lineCount = code.split('\n').length;
+    let gutterHTML = '';
+    for (let i = 1; i <= lineCount; i++) {
+      gutterHTML += `<span class="editor-gutter-num">${i}</span>`;
+    }
+    gutter.innerHTML = gutterHTML;
+    
+    syncScrolls();
+  }
+
+  function syncScrolls() {
+    gutter.scrollTop = textarea.scrollTop;
+    preBlock.scrollTop = textarea.scrollTop;
+    preBlock.scrollLeft = textarea.scrollLeft;
+  }
+
+  textarea.addEventListener('scroll', syncScrolls);
+  textarea.addEventListener('input', updateEditor);
+
+  textarea.addEventListener('keydown', (e) => {
+    const val = textarea.value;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    // 1. Tab Key Support (2 spaces)
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      textarea.value = val.substring(0, start) + '  ' + val.substring(end);
+      textarea.selectionStart = textarea.selectionEnd = start + 2;
+      updateEditor();
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    // 2. Overwrite closing character if already typed
+    const closers = ['}', ')', ']', '"', "'"];
+    if (closers.includes(e.key) && start === end) {
+      const nextChar = val.charAt(start);
+      if (nextChar === e.key) {
+        e.preventDefault();
+        textarea.selectionStart = textarea.selectionEnd = start + 1;
+        return;
+      }
+    }
+
+    // 3. Auto-closing brackets
+    const pairs = {
+      '{': '}',
+      '(': ')',
+      '[': ']',
+      '"': '"',
+      "'": "'"
+    };
+
+    if (pairs[e.key] !== undefined) {
+      e.preventDefault();
+      const closing = pairs[e.key];
+      if (start !== end) {
+        const selected = val.substring(start, end);
+        textarea.value = val.substring(0, start) + e.key + selected + closing + val.substring(end);
+        textarea.selectionStart = start + 1;
+        textarea.selectionEnd = end + 1;
+      } else {
+        textarea.value = val.substring(0, start) + e.key + closing + val.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 1;
+      }
+      updateEditor();
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    // 4. Smart Indentation on Enter key
+    if (e.key === 'Enter' && start === end) {
+      const charBefore = val.charAt(start - 1);
+      const charAfter = val.charAt(start);
+      if (charBefore === '{' && charAfter === '}') {
+        e.preventDefault();
+        textarea.value = val.substring(0, start) + '\n  \n' + val.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 3;
+        updateEditor();
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      } else if (charBefore === '{') {
+        e.preventDefault();
+        textarea.value = val.substring(0, start) + '\n  ' + val.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 3;
+        updateEditor();
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  });
+
+  updateEditor();
+
+  return {
+    update: updateEditor
+  };
+}

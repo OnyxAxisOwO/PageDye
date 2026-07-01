@@ -2,6 +2,13 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.5.0] - 2026-07-01
+
+### Added
+- **Frosted Glass (磨砂玻璃)**: Pick a card/container element and PageDye turns its background semi-transparent with a `backdrop-filter` blur, so the wallpaper shows through underneath — with its own selector, blur and tint controls, independent of the main background.
+- **Effects (动效)**: A fourth background type alongside Color/Image — five minimalist black & white Canvas 2D animated wallpapers: Matrix rain, Particles (mouse-repel), Waves, Starfield and Ripple. Each has a customizable color, density and speed. Rendering pauses automatically when the tab is hidden or `prefers-reduced-motion` is set, to avoid wasting battery.
+- **Tabbed popup/options layout**: The popup and options editor now split into "Wallpaper" and "Frosted Glass" tabs instead of one long scrolling list of accordions.
+
 ## [0.3.0] - 2026-07-01
 
 ### Added

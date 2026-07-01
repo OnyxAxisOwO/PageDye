@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title data-i18n="title">PageDye Dashboard</title>
+  <link rel="stylesheet" href="../lib/prism.css">
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
@@ -178,6 +179,15 @@
         </div>
 
         <div class="card">
+          <div class="segmented-control main-tabs" id="edit-main-tabs">
+            <input type="radio" name="edit-mainTab" value="wallpaper" id="edit-tab-wallpaper" checked>
+            <label for="edit-tab-wallpaper" data-i18n="tabWallpaper">Wallpaper</label>
+
+            <input type="radio" name="edit-mainTab" value="frosted" id="edit-tab-frosted">
+            <label for="edit-tab-frosted" data-i18n="tabFrostedGlass">Frosted Glass</label>
+          </div>
+
+          <div id="edit-panel-wallpaper">
           <!-- Details 1: Wallpaper Mode & Rotation -->
           <details class="accordion" id="edit-accordion-mode" open>
             <summary class="accordion-summary">
@@ -270,6 +280,9 @@
                   
                   <input type="radio" name="edit-bgType" value="image" id="edit-type-image">
                   <label for="edit-type-image" data-i18n="typeImage">Image</label>
+
+                  <input type="radio" name="edit-bgType" value="effect" id="edit-type-effect">
+                  <label for="edit-type-effect" data-i18n="typeEffect">Effects</label>
                 </div>
               </div>
 
@@ -390,6 +403,45 @@
                 </div>
               </div>
 
+              <!-- Effects Section -->
+              <div id="edit-section-effects" class="section hidden">
+                <div class="control-group">
+                  <label for="edit-effect-kind" data-i18n="effectKind">Effect</label>
+                  <p class="hint" data-i18n="effectKindHint">A minimalist black &amp; white animated wallpaper, rendered locally with Canvas — no external assets.</p>
+                  <select id="edit-effect-kind">
+                    <option value="matrix" data-i18n="effectMatrix">Matrix</option>
+                    <option value="particles" data-i18n="effectParticles">Particles</option>
+                    <option value="waves" selected data-i18n="effectWaves">Waves</option>
+                    <option value="starfield" data-i18n="effectStarfield">Starfield</option>
+                    <option value="ripple" data-i18n="effectRipple">Ripple</option>
+                  </select>
+                </div>
+
+                <div class="control-group">
+                  <label for="edit-effect-color" data-i18n="effectColor">Color</label>
+                  <div class="color-input-wrapper">
+                    <input type="color" id="edit-effect-color" value="#ffffff">
+                    <input type="text" id="edit-effect-color-text" value="#ffffff">
+                  </div>
+                </div>
+
+                <div class="control-group">
+                  <div class="label-row">
+                    <label for="edit-effect-density" data-i18n="effectDensity">Density</label>
+                    <span id="edit-effect-density-val" class="val-badge">50%</span>
+                  </div>
+                  <input type="range" id="edit-effect-density" min="0" max="100" value="50">
+                </div>
+
+                <div class="control-group" style="margin-bottom: 0;">
+                  <div class="label-row">
+                    <label for="edit-effect-speed" data-i18n="effectSpeed">Speed</label>
+                    <span id="edit-effect-speed-val" class="val-badge">50%</span>
+                  </div>
+                  <input type="range" id="edit-effect-speed" min="0" max="100" value="50">
+                </div>
+              </div>
+
               <!-- Common Styles -->
               <div id="edit-section-styles" class="section hidden">
                 <div class="control-group">
@@ -505,10 +557,37 @@
               <div class="control-group" style="margin-bottom: 0;">
                 <label for="edit-custom-css" data-i18n="customCss">Custom CSS</label>
                 <p class="hint" data-i18n="customCssHint">Injected into this site. Use !important to override stubborn styles.</p>
-                <textarea id="edit-custom-css" rows="4" spellcheck="false" placeholder="body { color: #fff !important; }"></textarea>
+                <div class="pagedye-code-editor" id="edit-custom-css-editor">
+                  <div class="editor-gutter" aria-hidden="true"></div>
+                  <div class="editor-textarea-wrapper">
+                    <textarea id="edit-custom-css" spellcheck="false" placeholder="body { color: #fff !important; }"></textarea>
+                    <pre class="editor-highlight" aria-hidden="true"><code class="language-css"></code></pre>
+                  </div>
+                </div>
               </div>
             </div>
           </details>
+          </div>
+
+          <div id="edit-panel-frosted" class="hidden">
+            <div class="control-group">
+              <label for="edit-frosted-selector" data-i18n="frostedGlass">Frosted Glass</label>
+              <p class="hint" data-i18n="frostedGlassHint">Pick a card/container element and PageDye makes its background semi-transparent and blurred, so your wallpaper shows through underneath it.</p>
+              <div class="selector-row">
+                <input type="text" id="edit-frosted-selector" placeholder=".card, main">
+              </div>
+              <div class="label-row">
+                <label for="edit-frosted-blur" data-i18n="frostedBlur">Blur</label>
+                <span id="edit-frosted-blur-val" class="val-badge">12px</span>
+              </div>
+              <input type="range" id="edit-frosted-blur" min="0" max="30" value="12">
+              <div class="label-row">
+                <label for="edit-frosted-opacity" data-i18n="frostedOpacity">Tint</label>
+                <span id="edit-frosted-opacity-val" class="val-badge">55%</span>
+              </div>
+              <input type="range" id="edit-frosted-opacity" min="0" max="100" value="55">
+            </div>
+          </div>
         </div>
 
         <div class="edit-actions-card">
@@ -545,6 +624,7 @@
     </div>
   </div>
   <script src="../scripts/gradient.js"></script>
+  <script src="../lib/prism.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

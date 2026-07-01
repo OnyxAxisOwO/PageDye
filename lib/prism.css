@@ -1,0 +1,95 @@
+/* Custom, themeable Prism stylesheet for PageDye CSS Editor */
+
+:root {
+  --prism-comment: #64748b;
+  --prism-punctuation: #475569;
+  --prism-selector: #2563eb;
+  --prism-property: #0f766e;
+  --prism-value: #16a34a;
+  --prism-function: #7c3aed;
+  --prism-keyword: #dc2626;
+  --prism-important: #ea580c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --prism-comment: #718096;
+    --prism-punctuation: #cbd5e1;
+    --prism-selector: #60a5fa;
+    --prism-property: #2dd4bf;
+    --prism-value: #4ade80;
+    --prism-function: #c084fc;
+    --prism-keyword: #f87171;
+    --prism-important: #fb923c;
+  }
+}
+
+code[class*="language-"],
+pre[class*="language-"] {
+  color: var(--text-color);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  white-space: pre-wrap;
+  word-spacing: normal;
+  word-break: normal;
+  word-wrap: break-word;
+  tab-size: 2;
+  hyphens: none;
+}
+
+/* Code tokens */
+.token.comment,
+.token.block-comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: var(--prism-comment);
+  font-style: italic;
+}
+
+.token.punctuation {
+  color: var(--prism-punctuation);
+}
+
+.token.selector,
+.token.class-name,
+.token.id,
+.token.tag {
+  color: var(--prism-selector);
+  font-weight: 500;
+}
+
+.token.property,
+.token.attr-name {
+  color: var(--prism-property);
+}
+
+.token.string,
+.token.value,
+.token.number,
+.token.boolean,
+.token.url {
+  color: var(--prism-value);
+}
+
+.token.function,
+.token.method-name {
+  color: var(--prism-function);
+}
+
+.token.keyword,
+.token.atrule {
+  color: var(--prism-keyword);
+}
+
+.token.important,
+.token.bold {
+  color: var(--prism-important);
+  font-weight: 600;
+}
+
+.token.italic {
+  font-style: italic;
+}
