@@ -179,14 +179,32 @@ document.addEventListener('DOMContentLoaded', async () => {
       filterContrast: "Contrast",
       filterGrayscale: "Grayscale",
       filterHue: "Hue Rotate",
-      filterInvert: "Invert"
+      filterInvert: "Invert",
+      colorModeSolid: "Solid",
+      colorModeGradient: "Gradient",
+      gradientLinear: "Linear",
+      gradientRadial: "Radial",
+      gradientAngle: "Angle",
+      gradientShape: "Shape",
+      gradientShapeCircle: "Circle",
+      gradientShapeEllipse: "Ellipse",
+      gradientStops: "Color Stops",
+      gradientAddStop: "+ Add Stop",
+      gradientRemoveStop: "Remove stop",
+      gradientPresets: "Style Palette",
+      gradientExtractFromImage: "Extract from wallpaper",
+      gradientExtractDisabledHint: "Set an image first to extract colors from it",
+      gradientExtractFailed: "Couldn't read colors from this image",
+      gradientGenerateFromColor: "Generate from color",
+      gradientAnimated: "Animated",
+      gradientSpeed: "Speed"
     },
     zh: {
       title: "PageDye 设置",
       appName: "PageDye",
       bgType: "背景类型",
       typeNone: "无",
-      typeColor: "纯色",
+      typeColor: "颜色",
       typeImage: "图片",
       color: "颜色",
       opacity: "不透明度",
@@ -237,7 +255,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       filterContrast: "对比度",
       filterGrayscale: "灰度",
       filterHue: "色相旋转",
-      filterInvert: "反色"
+      filterInvert: "反色",
+      colorModeSolid: "纯色",
+      colorModeGradient: "渐变",
+      gradientLinear: "线性",
+      gradientRadial: "径向",
+      gradientAngle: "角度",
+      gradientShape: "形状",
+      gradientShapeCircle: "圆形",
+      gradientShapeEllipse: "椭圆形",
+      gradientStops: "颜色节点",
+      gradientAddStop: "+ 添加节点",
+      gradientRemoveStop: "删除此节点",
+      gradientPresets: "风格调色板",
+      gradientExtractFromImage: "从壁纸提取",
+      gradientExtractDisabledHint: "请先设置图片才能提取颜色",
+      gradientExtractFailed: "无法从该图片提取颜色",
+      gradientGenerateFromColor: "从颜色生成",
+      gradientAnimated: "流动动画",
+      gradientSpeed: "速度"
     }
   };
 
@@ -270,6 +306,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     bgRepeat: document.getElementById('bg-repeat'),
     imageOptions: document.getElementById('image-options'),
 
+    // Gradient
+    colorModes: document.getElementsByName('colorMode'),
+    solidColorPanel: document.getElementById('solid-color-panel'),
+    gradientPanel: document.getElementById('gradient-panel'),
+    gradientPreviewBg: document.getElementById('gradient-preview-bg'),
+    gradientKinds: document.getElementsByName('gradientKind'),
+    gradientAngleControl: document.getElementById('gradient-angle-control'),
+    gradientAngle: document.getElementById('gradient-angle'),
+    gradientAngleVal: document.getElementById('gradient-angle-val'),
+    gradientShapeControl: document.getElementById('gradient-shape-control'),
+    gradientShape: document.getElementById('gradient-shape'),
+    gradientStopsList: document.getElementById('gradient-stops-list'),
+    gradientAddStop: document.getElementById('gradient-add-stop'),
+    gradientPresetsGrid: document.getElementById('gradient-presets-grid'),
+    gradientExtractBtn: document.getElementById('gradient-extract-btn'),
+    gradientGenerateBtn: document.getElementById('gradient-generate-btn'),
+    gradientAnimated: document.getElementById('gradient-animated'),
+    gradientSpeedControl: document.getElementById('gradient-speed-control'),
+    gradientSpeed: document.getElementById('gradient-speed'),
+    gradientSpeedVal: document.getElementById('gradient-speed-val'),
+
     // Advanced
     targetSelector: document.getElementById('target-selector'),
     pickBtn: document.getElementById('pick-btn'),
@@ -299,7 +356,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // while the tab stayed open). Requires the "scripting" permission.
   async function sendToTab(tabId, message) {
     try {
-      await chrome.scripting.executeScript({ target: { tabId }, files: ['scripts/content.js'] });
+      await chrome.scripting.executeScript({ target: { tabId }, files: ['scripts/gradient.js', 'scripts/content.js'] });
     } catch (e) {
       // Injection can fail on restricted pages (chrome://, Web Store, etc.).
     }
@@ -314,9 +371,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   let activeSlideshowIndex = 0;
   let currentSettings = null;
   let saveDebounceTimer = null;
+  let gradientStopsState = [];
 
   // Init
   initI18n();
+  const gradientKeyframesStyle = document.createElement('style');
+  gradientKeyframesStyle.textContent = window.PageDyeGradient.GRADIENT_KEYFRAMES_CSS;
+  document.head.appendChild(gradientKeyframesStyle);
+  renderGradientPresetsGrid();
   const versionEl = document.getElementById('version');
   if (versionEl) versionEl.textContent = 'v' + chrome.runtime.getManifest().version;
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -357,6 +419,129 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.colorPicker.value = e.target.value;
     updateInteractivePreviews();
     queueAutoSave();
+  });
+
+  // Gradient: Solid <-> Gradient sub-mode switch.
+  // Note the order below (save, then re-derive the preview) for every
+  // *discrete* gradient action in this section: triggerImmediateSave()
+  // synchronously runs collectFormTo(), which is what writes the form's
+  // gradient into currentSettings[activeSlot] — updateGradientPreview()
+  // piggybacks a scheme-card/slideshow-thumbnail refresh (see its own
+  // definition) that reads exactly that object, so it must run *after* the
+  // save or it renders one action behind. Debounced slider edits (angle,
+  // speed, per-stop color/position) keep the opposite order, matching the
+  // existing solid-color/opacity slider precedent elsewhere in this file.
+  els.colorModes.forEach(radio => {
+    radio.addEventListener('change', () => {
+      updateColorModeUI(radio.value);
+      triggerImmediateSave();
+      updateGradientPreview();
+    });
+  });
+
+  // Gradient: Linear <-> Radial
+  els.gradientKinds.forEach(radio => {
+    radio.addEventListener('change', () => {
+      updateGradientKindUI(radio.value);
+      triggerImmediateSave();
+      updateGradientPreview();
+    });
+  });
+
+  els.gradientAngle.addEventListener('input', (e) => {
+    els.gradientAngleVal.textContent = `${e.target.value}°`;
+    updateGradientPreview();
+    queueAutoSave();
+  });
+
+  els.gradientShape.addEventListener('change', () => {
+    triggerImmediateSave();
+    updateGradientPreview();
+  });
+
+  els.gradientAnimated.addEventListener('change', (e) => {
+    els.gradientSpeedControl.classList.toggle('hidden', !e.target.checked);
+    triggerImmediateSave();
+    updateGradientPreview();
+  });
+
+  els.gradientSpeed.addEventListener('input', (e) => {
+    els.gradientSpeedVal.textContent = `${e.target.value}s`;
+    updateGradientPreview();
+    queueAutoSave();
+  });
+
+  els.gradientAddStop.addEventListener('click', () => {
+    if (gradientStopsState.length >= window.PageDyeGradient.MAX_STOPS) return;
+    const lastPos = gradientStopsState.length ? gradientStopsState[gradientStopsState.length - 1].position : 0;
+    gradientStopsState.push({ color: '#ffffff', position: Math.min(100, lastPos + 10) });
+    renderGradientStops(gradientStopsState);
+    triggerImmediateSave();
+    updateGradientPreview();
+  });
+
+  // Stop rows are rebuilt on every render, so listeners are delegated on the
+  // (stable) parent container rather than attached per-row.
+  els.gradientStopsList.addEventListener('input', (e) => {
+    const row = e.target.closest('.gradient-stop-row');
+    if (!row) return;
+    const idx = parseInt(row.dataset.index, 10);
+    if (e.target.classList.contains('gradient-stop-color')) {
+      row.querySelector('.gradient-stop-hex').value = e.target.value;
+      gradientStopsState[idx].color = e.target.value;
+    } else if (e.target.classList.contains('gradient-stop-hex')) {
+      row.querySelector('.gradient-stop-color').value = e.target.value;
+      gradientStopsState[idx].color = e.target.value;
+    } else if (e.target.classList.contains('gradient-stop-pos')) {
+      gradientStopsState[idx].position = Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0));
+    }
+    updateGradientPreview();
+    queueAutoSave();
+  });
+
+  els.gradientStopsList.addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('.gradient-stop-remove');
+    if (!removeBtn) return;
+    if (gradientStopsState.length <= window.PageDyeGradient.MIN_STOPS) return;
+    const idx = parseInt(removeBtn.closest('.gradient-stop-row').dataset.index, 10);
+    gradientStopsState.splice(idx, 1);
+    renderGradientStops(gradientStopsState);
+    triggerImmediateSave();
+    updateGradientPreview();
+  });
+
+  els.gradientPresetsGrid.addEventListener('click', (e) => {
+    const swatch = e.target.closest('.gradient-preset-swatch');
+    if (!swatch) return;
+    const preset = window.PageDyeGradient.GRADIENT_PRESETS[parseInt(swatch.dataset.index, 10)];
+    populateGradientPanel(Object.assign({ animated: false, speed: 10 }, preset));
+    triggerImmediateSave();
+    updateGradientPreview();
+  });
+
+  els.gradientGenerateBtn.addEventListener('click', () => {
+    const seed = els.colorPicker.value;
+    const stops = window.PageDyeGradient.clampStops(normalizeToStopObjects(window.PageDyeGradient.generateTonalPalette(seed)));
+    renderGradientStops(stops);
+    triggerImmediateSave();
+    updateGradientPreview();
+  });
+
+  els.gradientExtractBtn.addEventListener('click', async () => {
+    const imgSrc = currentImageBase64 || els.imageUrl.value;
+    if (!imgSrc) return;
+    els.gradientExtractBtn.disabled = true;
+    const result = await window.PageDyeGradient.extractPaletteFromImage(imgSrc, 5);
+    updateGradientExtractButtonState();
+    if (!result.ok) {
+      els.statusText.textContent = t('gradientExtractFailed');
+      setTimeout(setSyncedState, 1800);
+      return;
+    }
+    const stops = window.PageDyeGradient.clampStops(normalizeToStopObjects(result.colors));
+    renderGradientStops(stops);
+    triggerImmediateSave();
+    updateGradientPreview();
   });
 
   // File Upload
@@ -673,6 +858,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (subSettings.type === 'color') {
       els.colorPicker.value = subSettings.value || '#ffffff';
       els.colorText.value = subSettings.value || '#ffffff';
+
+      const colorMode = subSettings.colorMode || 'solid';
+      populateGradientPanel(subSettings.gradient || window.PageDyeGradient.defaultGradient(subSettings.value));
+      updateColorModeUI(colorMode);
     } else if (subSettings.type === 'image') {
       if (subSettings.value && subSettings.value.startsWith('data:')) {
         currentImageBase64 = subSettings.value;
@@ -722,6 +911,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (type === 'color') {
       value = els.colorPicker.value;
+      dest.colorMode = document.querySelector('input[name="colorMode"]:checked').value;
+      dest.gradient = collectGradientFromForm();
     } else if (type === 'image') {
       value = currentImageBase64 || els.imageUrl.value;
     }
@@ -867,7 +1058,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       card.className = 'wallpaper-grid-card';
       if (idx === activeSlideshowIndex) card.classList.add('active');
       
-      if (item.type === 'color') {
+      if (item.type === 'color' && item.colorMode === 'gradient' && item.gradient) {
+        card.style.backgroundImage = window.PageDyeGradient.buildGradientCss(item.gradient);
+      } else if (item.type === 'color') {
         card.style.backgroundColor = item.value || '#ffffff';
         card.style.backgroundImage = 'none';
       } else if (item.type === 'image' && item.value) {
@@ -901,7 +1094,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mode = currentSettings.mode || 'single';
     if (mode === 'auto') {
       const light = currentSettings.light;
-      if (light.type === 'color') {
+      if (light.type === 'color' && light.colorMode === 'gradient' && light.gradient) {
+        els.previewCardLight.style.backgroundImage = window.PageDyeGradient.buildGradientCss(light.gradient);
+        els.previewCardLight.style.backgroundColor = '';
+      } else if (light.type === 'color') {
         els.previewCardLight.style.backgroundColor = light.value || '#ffffff';
         els.previewCardLight.style.backgroundImage = 'none';
       } else if (light.type === 'image' && light.value) {
@@ -911,9 +1107,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         els.previewCardLight.style.backgroundImage = 'none';
       }
       els.previewCardLight.style.opacity = (light.opacity !== undefined ? light.opacity : 100) / 100;
-      
+
       const dark = currentSettings.dark;
-      if (dark.type === 'color') {
+      if (dark.type === 'color' && dark.colorMode === 'gradient' && dark.gradient) {
+        els.previewCardDark.style.backgroundImage = window.PageDyeGradient.buildGradientCss(dark.gradient);
+        els.previewCardDark.style.backgroundColor = '';
+      } else if (dark.type === 'color') {
         els.previewCardDark.style.backgroundColor = dark.value || '#ffffff';
         els.previewCardDark.style.backgroundImage = 'none';
       } else if (dark.type === 'image' && dark.value) {
@@ -931,7 +1130,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           activeCard.textContent = '';
           activeCard.style.backgroundColor = '';
           activeCard.style.backgroundImage = '';
-          if (item.type === 'color') {
+          if (item.type === 'color' && item.colorMode === 'gradient' && item.gradient) {
+            activeCard.style.backgroundImage = window.PageDyeGradient.buildGradientCss(item.gradient);
+            activeCard.className = 'wallpaper-grid-card active';
+          } else if (item.type === 'color') {
             activeCard.style.backgroundColor = item.value || '#ffffff';
             activeCard.className = 'wallpaper-grid-card active';
           } else if (item.type === 'image' && item.value) {
@@ -965,6 +1167,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (type === 'color') {
       els.sectionColor.classList.remove('hidden');
+      const checkedColorMode = document.querySelector('input[name="colorMode"]:checked');
+      updateColorModeUI(checkedColorMode ? checkedColorMode.value : 'solid');
     } else if (type === 'image') {
       els.sectionImage.classList.remove('hidden');
       els.blurControl.classList.remove('hidden');
@@ -981,6 +1185,154 @@ document.addEventListener('DOMContentLoaded', async () => {
         imgOptions.classList.add('hidden');
       }
     }
+  }
+
+  function updateColorModeUI(colorMode) {
+    const isGradient = colorMode === 'gradient';
+    const radio = document.querySelector(`input[name="colorMode"][value="${colorMode || 'solid'}"]`);
+    if (radio) radio.checked = true;
+    els.solidColorPanel.classList.toggle('hidden', isGradient);
+    els.gradientPanel.classList.toggle('hidden', !isGradient);
+    if (isGradient) {
+      // Guards against toggling to Gradient on a slot that has never been
+      // through populateGradientPanel (e.g. a fresh domain whose type
+      // starts as 'none'/'image') — without this, the stop list and live
+      // preview would stay empty until the next full populateForm call.
+      if (gradientStopsState.length < window.PageDyeGradient.MIN_STOPS) {
+        renderGradientStops(window.PageDyeGradient.defaultGradient(els.colorPicker.value).stops);
+      }
+      const kindRadio = document.querySelector('input[name="gradientKind"]:checked');
+      updateGradientKindUI(kindRadio ? kindRadio.value : 'linear');
+      updateGradientPreview();
+      updateGradientExtractButtonState();
+    }
+  }
+
+  function updateGradientKindUI(kind) {
+    els.gradientAngleControl.classList.toggle('hidden', kind !== 'linear');
+    els.gradientShapeControl.classList.toggle('hidden', kind !== 'radial');
+  }
+
+  function populateGradientPanel(gradient) {
+    const kindRadio = document.querySelector(`input[name="gradientKind"][value="${gradient.kind || 'linear'}"]`);
+    if (kindRadio) kindRadio.checked = true;
+    els.gradientAngle.value = gradient.angle !== undefined ? gradient.angle : 90;
+    els.gradientAngleVal.textContent = `${els.gradientAngle.value}°`;
+    els.gradientShape.value = gradient.shape || 'circle';
+    els.gradientAnimated.checked = !!gradient.animated;
+    els.gradientSpeed.value = gradient.speed !== undefined ? gradient.speed : 10;
+    els.gradientSpeedVal.textContent = `${els.gradientSpeed.value}s`;
+    els.gradientSpeedControl.classList.toggle('hidden', !gradient.animated);
+
+    const stops = (gradient.stops && gradient.stops.length >= window.PageDyeGradient.MIN_STOPS)
+      ? gradient.stops
+      : window.PageDyeGradient.defaultGradient().stops;
+    renderGradientStops(stops);
+
+    updateGradientKindUI(gradient.kind || 'linear');
+    updateGradientPreview();
+  }
+
+  // Rebuilds the stop-row list from scratch. Rows are plain DOM nodes built
+  // via createElement (not innerHTML) so user-typed hex text never needs
+  // HTML-escaping. Listeners are delegated on the parent (see the
+  // gradient-stops-list input/click handlers above), since rows are
+  // recreated on every add/remove.
+  function renderGradientStops(stops) {
+    gradientStopsState = stops.map(s => ({ color: s.color, position: s.position }));
+    els.gradientStopsList.innerHTML = '';
+
+    gradientStopsState.forEach((stop, idx) => {
+      const row = document.createElement('div');
+      row.className = 'gradient-stop-row';
+      row.dataset.index = idx;
+
+      const colorInput = document.createElement('input');
+      colorInput.type = 'color';
+      colorInput.className = 'gradient-stop-color';
+      colorInput.value = stop.color;
+
+      const hexInput = document.createElement('input');
+      hexInput.type = 'text';
+      hexInput.className = 'gradient-stop-hex';
+      hexInput.value = stop.color;
+
+      const posInput = document.createElement('input');
+      posInput.type = 'number';
+      posInput.className = 'gradient-stop-pos';
+      posInput.min = '0';
+      posInput.max = '100';
+      posInput.value = stop.position;
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'gradient-stop-remove';
+      removeBtn.textContent = '×';
+      removeBtn.title = t('gradientRemoveStop');
+      removeBtn.disabled = gradientStopsState.length <= window.PageDyeGradient.MIN_STOPS;
+
+      row.appendChild(colorInput);
+      row.appendChild(hexInput);
+      row.appendChild(posInput);
+      row.appendChild(removeBtn);
+      els.gradientStopsList.appendChild(row);
+    });
+
+    els.gradientAddStop.disabled = gradientStopsState.length >= window.PageDyeGradient.MAX_STOPS;
+  }
+
+  function collectGradientFromForm() {
+    const kindRadio = document.querySelector('input[name="gradientKind"]:checked');
+    return {
+      kind: kindRadio ? kindRadio.value : 'linear',
+      angle: parseInt(els.gradientAngle.value, 10),
+      shape: els.gradientShape.value,
+      stops: gradientStopsState.map(s => ({ color: s.color, position: s.position })),
+      animated: els.gradientAnimated.checked,
+      speed: parseInt(els.gradientSpeed.value, 10)
+    };
+  }
+
+  function updateGradientPreview() {
+    const gradient = collectGradientFromForm();
+    els.gradientPreviewBg.style.backgroundImage = window.PageDyeGradient.buildGradientCss(gradient);
+    els.gradientPreviewBg.style.opacity = (parseInt(els.opacity.value, 10) || 100) / 100;
+    if (gradient.animated) {
+      els.gradientPreviewBg.style.backgroundSize = gradient.kind === 'radial' ? '200% 200%' : '300% 300%';
+      els.gradientPreviewBg.style.animation = `pagedye-gradient-flow ${gradient.speed || 10}s ease infinite`;
+    } else {
+      els.gradientPreviewBg.style.backgroundSize = 'auto';
+      els.gradientPreviewBg.style.animation = 'none';
+    }
+    // Every gradient control funnels through this function, so this is the
+    // one place needed to keep the Auto/Slideshow scheme-card swatches live
+    // too (they read currentSettings.light/dark/slideshow directly, same as
+    // the solid-color and image controls already keep them in sync).
+    updateInteractivePreviews();
+  }
+
+  function renderGradientPresetsGrid() {
+    els.gradientPresetsGrid.innerHTML = '';
+    window.PageDyeGradient.GRADIENT_PRESETS.forEach((preset, idx) => {
+      const swatch = document.createElement('div');
+      swatch.className = 'gradient-preset-swatch';
+      swatch.style.background = window.PageDyeGradient.buildGradientCss(preset);
+      swatch.title = lang === 'zh' ? preset.name_zh : preset.name_en;
+      swatch.dataset.index = idx;
+      els.gradientPresetsGrid.appendChild(swatch);
+    });
+  }
+
+  function updateGradientExtractButtonState() {
+    const hasImage = !!(currentImageBase64 || els.imageUrl.value);
+    els.gradientExtractBtn.disabled = !hasImage;
+    els.gradientExtractBtn.title = hasImage ? '' : t('gradientExtractDisabledHint');
+  }
+
+  // Maps a flat hex list (from either Monet helper) to evenly-spaced stops.
+  function normalizeToStopObjects(hexColors) {
+    const n = hexColors.length;
+    return hexColors.map((color, i) => ({ color, position: n === 1 ? 0 : Math.round((i * 100) / (n - 1)) }));
   }
 
   function handleFileSelect(e) {
@@ -1142,7 +1494,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ['scripts/content.js']
+        files: ['scripts/gradient.js', 'scripts/content.js']
       });
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },

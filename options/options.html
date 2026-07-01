@@ -275,11 +275,88 @@
 
               <!-- Color Section -->
               <div id="edit-section-color" class="section hidden">
-                <div class="control-group" style="margin-bottom: 0;">
+                <div class="control-group" style="margin-bottom: 10px;">
+                  <div class="segmented-control" id="edit-color-mode-toggle">
+                    <input type="radio" name="edit-colorMode" value="solid" id="edit-colormode-solid" checked>
+                    <label for="edit-colormode-solid" data-i18n="colorModeSolid">Solid</label>
+
+                    <input type="radio" name="edit-colorMode" value="gradient" id="edit-colormode-gradient">
+                    <label for="edit-colormode-gradient" data-i18n="colorModeGradient">Gradient</label>
+                  </div>
+                </div>
+
+                <div id="edit-solid-color-panel" class="control-group" style="margin-bottom: 0;">
                   <label for="edit-color-picker" data-i18n="color">Color</label>
                   <div class="color-input-wrapper">
                     <input type="color" id="edit-color-picker" value="#ffffff">
                     <input type="text" id="edit-color-text" value="#ffffff">
+                  </div>
+                </div>
+
+                <!-- Gradient Panel -->
+                <div id="edit-gradient-panel" class="section hidden">
+                  <div class="control-group preview-group" style="margin-bottom: 10px;">
+                    <div id="edit-gradient-preview" class="image-preview" style="margin-top: 0; height: 56px;">
+                      <div id="edit-gradient-preview-bg" class="image-preview-bg"></div>
+                    </div>
+                  </div>
+
+                  <div class="control-group" style="margin-bottom: 10px;">
+                    <div class="segmented-control" id="edit-gradient-kind-toggle">
+                      <input type="radio" name="edit-gradientKind" value="linear" id="edit-gradient-kind-linear" checked>
+                      <label for="edit-gradient-kind-linear" data-i18n="gradientLinear">Linear</label>
+
+                      <input type="radio" name="edit-gradientKind" value="radial" id="edit-gradient-kind-radial">
+                      <label for="edit-gradient-kind-radial" data-i18n="gradientRadial">Radial</label>
+                    </div>
+                  </div>
+
+                  <div class="control-group" id="edit-gradient-angle-control">
+                    <div class="label-row">
+                      <label for="edit-gradient-angle" data-i18n="gradientAngle">Angle</label>
+                      <span id="edit-gradient-angle-val" class="val-badge">90&deg;</span>
+                    </div>
+                    <input type="range" id="edit-gradient-angle" min="0" max="360" value="90" step="1">
+                  </div>
+
+                  <div class="control-group row hidden" id="edit-gradient-shape-control">
+                    <label data-i18n="gradientShape">Shape</label>
+                    <select id="edit-gradient-shape">
+                      <option value="circle" data-i18n="gradientShapeCircle">Circle</option>
+                      <option value="ellipse" data-i18n="gradientShapeEllipse">Ellipse</option>
+                    </select>
+                  </div>
+
+                  <div class="control-group" style="margin-bottom: 10px;">
+                    <div class="label-row">
+                      <label data-i18n="gradientStops">Color Stops</label>
+                      <button type="button" id="edit-gradient-add-stop" class="filters-reset-btn" data-i18n="gradientAddStop">+ Add Stop</button>
+                    </div>
+                    <div id="edit-gradient-stops-list"></div>
+                  </div>
+
+                  <div class="control-group" style="margin-bottom: 10px;">
+                    <label data-i18n="gradientPresets">Style Palette</label>
+                    <div id="edit-gradient-presets-grid" class="gradient-presets-grid"></div>
+                  </div>
+
+                  <div class="control-group row" style="margin-bottom: 10px; gap: 8px;">
+                    <button type="button" id="edit-gradient-extract-btn" class="filters-reset-btn" data-i18n="gradientExtractFromImage" disabled>Extract from wallpaper</button>
+                    <button type="button" id="edit-gradient-generate-btn" class="filters-reset-btn" data-i18n="gradientGenerateFromColor">Generate from color</button>
+                  </div>
+
+                  <div class="control-group row" style="margin-bottom: 8px;">
+                    <label class="checkbox-label">
+                      <input type="checkbox" id="edit-gradient-animated">
+                      <span data-i18n="gradientAnimated">Animated</span>
+                    </label>
+                  </div>
+                  <div class="control-group hidden" id="edit-gradient-speed-control" style="margin-bottom: 0;">
+                    <div class="label-row">
+                      <label for="edit-gradient-speed" data-i18n="gradientSpeed">Speed</label>
+                      <span id="edit-gradient-speed-val" class="val-badge">10s</span>
+                    </div>
+                    <input type="range" id="edit-gradient-speed" min="2" max="30" value="10" step="1">
                   </div>
                 </div>
               </div>
@@ -475,6 +552,7 @@
       </div>
     </div>
   </div>
+  <script src="../scripts/gradient.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

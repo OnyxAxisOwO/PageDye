@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PageDye - Custom Website Backgrounds",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Customize the background of any website with images or colors.",
   "permissions": [
     "storage",
@@ -22,7 +22,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["scripts/content.js"],
+      "js": ["scripts/gradient.js", "scripts/content.js"],
       "run_at": "document_start"
     }
   ],

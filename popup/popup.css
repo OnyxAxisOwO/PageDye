@@ -429,6 +429,72 @@ input[type="range"]::-webkit-slider-thumb {
   height: 13px;
 }
 
+/* Gradient Builder */
+.gradient-stop-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.gradient-stop-row .gradient-stop-hex {
+  flex: 1;
+  min-width: 0;
+}
+
+.gradient-stop-row .gradient-stop-pos {
+  width: 52px;
+  flex: 0 0 auto;
+  padding: 6px 4px;
+  text-align: center;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--surface-card);
+  color: var(--text-color);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.gradient-stop-row .gradient-stop-remove {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.gradient-stop-row .gradient-stop-remove:hover {
+  color: #ef4444;
+}
+
+.gradient-stop-row .gradient-stop-remove:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.gradient-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.gradient-preset-swatch {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.gradient-preset-swatch:hover {
+  transform: scale(1.08);
+  border-color: var(--primary-color);
+}
+
 
 .accordion {
   border: 1px solid var(--border-color);

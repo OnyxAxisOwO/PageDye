@@ -92,7 +92,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       filterContrast: "Contrast",
       filterGrayscale: "Grayscale",
       filterHue: "Hue Rotate",
-      filterInvert: "Invert"
+      filterInvert: "Invert",
+      colorModeSolid: "Solid",
+      colorModeGradient: "Gradient",
+      gradientLinear: "Linear",
+      gradientRadial: "Radial",
+      gradientAngle: "Angle",
+      gradientShape: "Shape",
+      gradientShapeCircle: "Circle",
+      gradientShapeEllipse: "Ellipse",
+      gradientStops: "Color Stops",
+      gradientAddStop: "+ Add Stop",
+      gradientRemoveStop: "Remove stop",
+      gradientPresets: "Style Palette",
+      gradientExtractFromImage: "Extract from wallpaper",
+      gradientExtractDisabledHint: "Set an image first to extract colors from it",
+      gradientExtractFailed: "Couldn't read colors from this image",
+      gradientGenerateFromColor: "Generate from color",
+      gradientAnimated: "Animated",
+      gradientSpeed: "Speed"
     },
     zh: {
       title: "PageDye 控制面板",
@@ -109,7 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       thActions: "操作",
       noSites: "暂无已配置的网站。",
       bgTypeNone: "无",
-      bgTypeColor: "纯色",
+      bgTypeColor: "颜色",
       bgTypeImage: "图片",
       deleteBtn: "删除",
       confirmDelete: "确定要删除 {domain} 的配置吗？",
@@ -142,7 +160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       editTitle: "编辑配置:",
       bgType: "背景类型",
       typeNone: "无",
-      typeColor: "纯色",
+      typeColor: "颜色",
       typeImage: "图片",
       color: "颜色",
       tabLocal: "本地文件",
@@ -186,7 +204,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       filterContrast: "对比度",
       filterGrayscale: "灰度",
       filterHue: "色相旋转",
-      filterInvert: "反色"
+      filterInvert: "反色",
+      colorModeSolid: "纯色",
+      colorModeGradient: "渐变",
+      gradientLinear: "线性",
+      gradientRadial: "径向",
+      gradientAngle: "角度",
+      gradientShape: "形状",
+      gradientShapeCircle: "圆形",
+      gradientShapeEllipse: "椭圆形",
+      gradientStops: "颜色节点",
+      gradientAddStop: "+ 添加节点",
+      gradientRemoveStop: "删除此节点",
+      gradientPresets: "风格调色板",
+      gradientExtractFromImage: "从壁纸提取",
+      gradientExtractDisabledHint: "请先设置图片才能提取颜色",
+      gradientExtractFailed: "无法从该图片提取颜色",
+      gradientGenerateFromColor: "从颜色生成",
+      gradientAnimated: "流动动画",
+      gradientSpeed: "速度"
     }
   };
 
@@ -224,6 +260,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Init translations & versions
   initI18n();
+  const editGradientKeyframesStyle = document.createElement('style');
+  editGradientKeyframesStyle.textContent = window.PageDyeGradient.GRADIENT_KEYFRAMES_CSS;
+  document.head.appendChild(editGradientKeyframesStyle);
+  renderEditGradientPresetsGrid();
   const extensionVersion = 'v' + chrome.runtime.getManifest().version;
   if (els.versionLabel) els.versionLabel.textContent = extensionVersion;
   if (els.aboutVersion) els.aboutVersion.textContent = extensionVersion;
@@ -359,16 +399,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const lightSwatch = document.createElement('div');
         lightSwatch.className = 'swatch-half light-half';
-        if (settings.light.type === 'color') {
+        if (settings.light.type === 'color' && settings.light.colorMode === 'gradient' && settings.light.gradient) {
+          lightSwatch.style.backgroundImage = window.PageDyeGradient.buildGradientCss(settings.light.gradient);
+        } else if (settings.light.type === 'color') {
           lightSwatch.style.backgroundColor = settings.light.value;
         } else if (settings.light.type === 'image' && settings.light.value) {
           lightSwatch.style.backgroundImage = `url('${settings.light.value}')`;
         }
         lightSwatch.style.opacity = (settings.light.opacity !== undefined ? settings.light.opacity : 100) / 100;
-        
+
         const darkSwatch = document.createElement('div');
         darkSwatch.className = 'swatch-half dark-half';
-        if (settings.dark.type === 'color') {
+        if (settings.dark.type === 'color' && settings.dark.colorMode === 'gradient' && settings.dark.gradient) {
+          darkSwatch.style.backgroundImage = window.PageDyeGradient.buildGradientCss(settings.dark.gradient);
+        } else if (settings.dark.type === 'color') {
           darkSwatch.style.backgroundColor = settings.dark.value;
         } else if (settings.dark.type === 'image' && settings.dark.value) {
           darkSwatch.style.backgroundImage = `url('${settings.dark.value}')`;
@@ -386,7 +430,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         items.forEach((item) => {
           const itemEl = document.createElement('div');
           itemEl.className = 'stack-item';
-          if (item.type === 'color') {
+          if (item.type === 'color' && item.colorMode === 'gradient' && item.gradient) {
+            itemEl.style.backgroundImage = window.PageDyeGradient.buildGradientCss(item.gradient);
+          } else if (item.type === 'color') {
             itemEl.style.backgroundColor = item.value;
           } else if (item.type === 'image' && item.value) {
             itemEl.style.backgroundImage = `url('${item.value}')`;
@@ -398,7 +444,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         const swatch = document.createElement('div');
         swatch.className = 'preview-swatch';
-        if (settings.type === 'color') {
+        if (settings.type === 'color' && settings.colorMode === 'gradient' && settings.gradient) {
+          swatch.style.backgroundImage = window.PageDyeGradient.buildGradientCss(settings.gradient);
+        } else if (settings.type === 'color') {
           swatch.style.backgroundColor = settings.value;
         } else if (settings.type === 'image' && settings.value) {
           swatch.style.backgroundImage = `url('${settings.value}')`;
@@ -571,6 +619,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let editActiveScheme = 'light';
   let editActiveSlideshowIndex = 0;
   let currentEditSettings = null;
+  let editGradientStopsState = [];
 
   function populateEditForm(subSettings) {
     document.querySelector(`input[name="edit-bgType"][value="${subSettings.type || 'none'}"]`).checked = true;
@@ -585,6 +634,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (subSettings.type === 'color') {
       document.getElementById('edit-color-picker').value = subSettings.value || '#ffffff';
       document.getElementById('edit-color-text').value = subSettings.value || '#ffffff';
+
+      const colorMode = subSettings.colorMode || 'solid';
+      populateEditGradientPanel(subSettings.gradient || window.PageDyeGradient.defaultGradient(subSettings.value));
+      updateEditColorModeUI(colorMode);
     } else if (subSettings.type === 'image') {
       if (subSettings.value && subSettings.value.startsWith('data:')) {
         editCurrentImageBase64 = subSettings.value;
@@ -634,6 +687,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (type === 'color') {
       value = document.getElementById('edit-color-picker').value;
+      dest.colorMode = document.querySelector('input[name="edit-colorMode"]:checked').value;
+      dest.gradient = collectEditGradientFromForm();
     } else if (type === 'image') {
       value = editCurrentImageBase64 || document.getElementById('edit-image-url').value;
     }
@@ -808,7 +863,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       card.className = 'wallpaper-grid-card';
       if (idx === editActiveSlideshowIndex) card.classList.add('active');
       
-      if (item.type === 'color') {
+      if (item.type === 'color' && item.colorMode === 'gradient' && item.gradient) {
+        card.style.backgroundImage = window.PageDyeGradient.buildGradientCss(item.gradient);
+      } else if (item.type === 'color') {
         card.style.backgroundColor = item.value || '#ffffff';
         card.style.backgroundImage = 'none';
       } else if (item.type === 'image' && item.value) {
@@ -818,7 +875,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         card.textContent = 'None';
       }
       card.dataset.index = idx;
-      
+
       if (items.length > 1) {
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'delete-grid-btn';
@@ -842,7 +899,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mode = currentEditSettings.mode || 'single';
     if (mode === 'auto') {
       const light = currentEditSettings.light;
-      if (light.type === 'color') {
+      if (light.type === 'color' && light.colorMode === 'gradient' && light.gradient) {
+        els.editPreviewCardLight.style.backgroundImage = window.PageDyeGradient.buildGradientCss(light.gradient);
+        els.editPreviewCardLight.style.backgroundColor = '';
+      } else if (light.type === 'color') {
         els.editPreviewCardLight.style.backgroundColor = light.value || '#ffffff';
         els.editPreviewCardLight.style.backgroundImage = 'none';
       } else if (light.type === 'image' && light.value) {
@@ -852,9 +912,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         els.editPreviewCardLight.style.backgroundImage = 'none';
       }
       els.editPreviewCardLight.style.opacity = (light.opacity !== undefined ? light.opacity : 100) / 100;
-      
+
       const dark = currentEditSettings.dark;
-      if (dark.type === 'color') {
+      if (dark.type === 'color' && dark.colorMode === 'gradient' && dark.gradient) {
+        els.editPreviewCardDark.style.backgroundImage = window.PageDyeGradient.buildGradientCss(dark.gradient);
+        els.editPreviewCardDark.style.backgroundColor = '';
+      } else if (dark.type === 'color') {
         els.editPreviewCardDark.style.backgroundColor = dark.value || '#ffffff';
         els.editPreviewCardDark.style.backgroundImage = 'none';
       } else if (dark.type === 'image' && dark.value) {
@@ -872,7 +935,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           activeCard.textContent = '';
           activeCard.style.backgroundColor = '';
           activeCard.style.backgroundImage = '';
-          if (item.type === 'color') {
+          if (item.type === 'color' && item.colorMode === 'gradient' && item.gradient) {
+            activeCard.style.backgroundImage = window.PageDyeGradient.buildGradientCss(item.gradient);
+            activeCard.className = 'wallpaper-grid-card active';
+          } else if (item.type === 'color') {
             activeCard.style.backgroundColor = item.value || '#ffffff';
             activeCard.className = 'wallpaper-grid-card active';
           } else if (item.type === 'image' && item.value) {
@@ -908,6 +974,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (type === 'color') {
       document.getElementById('edit-section-color').classList.remove('hidden');
       document.getElementById('edit-section-styles').classList.remove('hidden');
+      const checkedColorMode = document.querySelector('input[name="edit-colorMode"]:checked');
+      updateEditColorModeUI(checkedColorMode ? checkedColorMode.value : 'solid');
     } else if (type === 'image') {
       document.getElementById('edit-section-image').classList.remove('hidden');
       document.getElementById('edit-section-styles').classList.remove('hidden');
@@ -916,6 +984,156 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('edit-advanced-filters').classList.remove('hidden');
       updateEditPreview();
     }
+  }
+
+  function updateEditColorModeUI(colorMode) {
+    const isGradient = colorMode === 'gradient';
+    const radio = document.querySelector(`input[name="edit-colorMode"][value="${colorMode || 'solid'}"]`);
+    if (radio) radio.checked = true;
+    document.getElementById('edit-solid-color-panel').classList.toggle('hidden', isGradient);
+    document.getElementById('edit-gradient-panel').classList.toggle('hidden', !isGradient);
+    if (isGradient) {
+      // Guards against toggling to Gradient on a slot that has never been
+      // through populateEditGradientPanel (e.g. a fresh domain whose type
+      // starts as 'none'/'image') — without this, the stop list and live
+      // preview would stay empty until the next full populateEditForm call.
+      if (editGradientStopsState.length < window.PageDyeGradient.MIN_STOPS) {
+        renderEditGradientStops(window.PageDyeGradient.defaultGradient(document.getElementById('edit-color-picker').value).stops);
+      }
+      const kindRadio = document.querySelector('input[name="edit-gradientKind"]:checked');
+      updateEditGradientKindUI(kindRadio ? kindRadio.value : 'linear');
+      updateEditGradientPreview();
+      updateEditGradientExtractButtonState();
+    }
+  }
+
+  function updateEditGradientKindUI(kind) {
+    document.getElementById('edit-gradient-angle-control').classList.toggle('hidden', kind !== 'linear');
+    document.getElementById('edit-gradient-shape-control').classList.toggle('hidden', kind !== 'radial');
+  }
+
+  function populateEditGradientPanel(gradient) {
+    const kindRadio = document.querySelector(`input[name="edit-gradientKind"][value="${gradient.kind || 'linear'}"]`);
+    if (kindRadio) kindRadio.checked = true;
+    document.getElementById('edit-gradient-angle').value = gradient.angle !== undefined ? gradient.angle : 90;
+    document.getElementById('edit-gradient-angle-val').textContent = `${document.getElementById('edit-gradient-angle').value}°`;
+    document.getElementById('edit-gradient-shape').value = gradient.shape || 'circle';
+    document.getElementById('edit-gradient-animated').checked = !!gradient.animated;
+    document.getElementById('edit-gradient-speed').value = gradient.speed !== undefined ? gradient.speed : 10;
+    document.getElementById('edit-gradient-speed-val').textContent = `${document.getElementById('edit-gradient-speed').value}s`;
+    document.getElementById('edit-gradient-speed-control').classList.toggle('hidden', !gradient.animated);
+
+    const stops = (gradient.stops && gradient.stops.length >= window.PageDyeGradient.MIN_STOPS)
+      ? gradient.stops
+      : window.PageDyeGradient.defaultGradient().stops;
+    renderEditGradientStops(stops);
+
+    updateEditGradientKindUI(gradient.kind || 'linear');
+    updateEditGradientPreview();
+  }
+
+  // Rebuilds the stop-row list from scratch; listeners are delegated on the
+  // parent (see the edit-gradient-stops-list input/click handlers below)
+  // since rows are recreated on every add/remove.
+  function renderEditGradientStops(stops) {
+    editGradientStopsState = stops.map(s => ({ color: s.color, position: s.position }));
+    const list = document.getElementById('edit-gradient-stops-list');
+    list.innerHTML = '';
+
+    editGradientStopsState.forEach((stop, idx) => {
+      const row = document.createElement('div');
+      row.className = 'gradient-stop-row';
+      row.dataset.index = idx;
+
+      const colorInput = document.createElement('input');
+      colorInput.type = 'color';
+      colorInput.className = 'gradient-stop-color';
+      colorInput.value = stop.color;
+
+      const hexInput = document.createElement('input');
+      hexInput.type = 'text';
+      hexInput.className = 'gradient-stop-hex';
+      hexInput.value = stop.color;
+
+      const posInput = document.createElement('input');
+      posInput.type = 'number';
+      posInput.className = 'gradient-stop-pos';
+      posInput.min = '0';
+      posInput.max = '100';
+      posInput.value = stop.position;
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'gradient-stop-remove';
+      removeBtn.textContent = '×';
+      removeBtn.title = t('gradientRemoveStop');
+      removeBtn.disabled = editGradientStopsState.length <= window.PageDyeGradient.MIN_STOPS;
+
+      row.appendChild(colorInput);
+      row.appendChild(hexInput);
+      row.appendChild(posInput);
+      row.appendChild(removeBtn);
+      list.appendChild(row);
+    });
+
+    document.getElementById('edit-gradient-add-stop').disabled = editGradientStopsState.length >= window.PageDyeGradient.MAX_STOPS;
+  }
+
+  function collectEditGradientFromForm() {
+    const kindRadio = document.querySelector('input[name="edit-gradientKind"]:checked');
+    return {
+      kind: kindRadio ? kindRadio.value : 'linear',
+      angle: parseInt(document.getElementById('edit-gradient-angle').value, 10),
+      shape: document.getElementById('edit-gradient-shape').value,
+      stops: editGradientStopsState.map(s => ({ color: s.color, position: s.position })),
+      animated: document.getElementById('edit-gradient-animated').checked,
+      speed: parseInt(document.getElementById('edit-gradient-speed').value, 10)
+    };
+  }
+
+  function updateEditGradientPreview() {
+    const gradient = collectEditGradientFromForm();
+    const bg = document.getElementById('edit-gradient-preview-bg');
+    bg.style.backgroundImage = window.PageDyeGradient.buildGradientCss(gradient);
+    bg.style.opacity = (parseInt(document.getElementById('edit-opacity').value, 10) || 100) / 100;
+    if (gradient.animated) {
+      bg.style.backgroundSize = gradient.kind === 'radial' ? '200% 200%' : '300% 300%';
+      bg.style.animation = `pagedye-gradient-flow ${gradient.speed || 10}s ease infinite`;
+    } else {
+      bg.style.backgroundSize = 'auto';
+      bg.style.animation = 'none';
+    }
+    // Every gradient control funnels through this function, so this is the
+    // one place needed to keep the Auto/Slideshow scheme-card swatches live
+    // too (they read currentEditSettings.light/dark/slideshow directly,
+    // same as the solid-color and image controls already keep them in sync).
+    updateEditInteractivePreviews();
+  }
+
+  function renderEditGradientPresetsGrid() {
+    const grid = document.getElementById('edit-gradient-presets-grid');
+    grid.innerHTML = '';
+    window.PageDyeGradient.GRADIENT_PRESETS.forEach((preset, idx) => {
+      const swatch = document.createElement('div');
+      swatch.className = 'gradient-preset-swatch';
+      swatch.style.background = window.PageDyeGradient.buildGradientCss(preset);
+      swatch.title = lang === 'zh' ? preset.name_zh : preset.name_en;
+      swatch.dataset.index = idx;
+      grid.appendChild(swatch);
+    });
+  }
+
+  function updateEditGradientExtractButtonState() {
+    const hasImage = !!(editCurrentImageBase64 || document.getElementById('edit-image-url').value);
+    const btn = document.getElementById('edit-gradient-extract-btn');
+    btn.disabled = !hasImage;
+    btn.title = hasImage ? '' : t('gradientExtractDisabledHint');
+  }
+
+  // Maps a flat hex list (from either Monet helper) to evenly-spaced stops.
+  function normalizeEditStopObjects(hexColors) {
+    const n = hexColors.length;
+    return hexColors.map((color, i) => ({ color, position: n === 1 ? 0 : Math.round((i * 100) / (n - 1)) }));
   }
 
   function updateEditPreview() {
@@ -1047,7 +1265,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const url = new URL(tab.url);
             if (url.hostname.toLowerCase() === domain.toLowerCase()) {
               try {
-                await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['scripts/content.js'] });
+                await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['scripts/gradient.js', 'scripts/content.js'] });
               } catch (e) {}
               chrome.tabs.sendMessage(tab.id, { action: 'updateBackground', settings });
             }
@@ -1111,6 +1329,130 @@ document.addEventListener('DOMContentLoaded', async () => {
     editColorPicker.value = e.target.value;
     updateEditInteractivePreviews();
     queueEditAutoSave();
+  });
+
+  // Gradient: Solid <-> Gradient sub-mode switch.
+  // Note the order below (save, then re-derive the preview) for every
+  // *discrete* gradient action in this section: triggerEditImmediateSave()
+  // synchronously runs collectEditFormTo(), which is what writes the form's
+  // gradient into currentEditSettings[activeSlot] — updateEditGradientPreview()
+  // piggybacks a scheme-card/slideshow-thumbnail refresh (see its own
+  // definition) that reads exactly that object, so it must run *after* the
+  // save or it renders one action behind. Debounced slider edits (angle,
+  // speed, per-stop color/position) keep the opposite order, matching the
+  // existing solid-color/opacity slider precedent elsewhere in this file.
+  document.getElementsByName('edit-colorMode').forEach(radio => {
+    radio.addEventListener('change', () => {
+      updateEditColorModeUI(radio.value);
+      triggerEditImmediateSave();
+      updateEditGradientPreview();
+    });
+  });
+
+  // Gradient: Linear <-> Radial
+  document.getElementsByName('edit-gradientKind').forEach(radio => {
+    radio.addEventListener('change', () => {
+      updateEditGradientKindUI(radio.value);
+      triggerEditImmediateSave();
+      updateEditGradientPreview();
+    });
+  });
+
+  document.getElementById('edit-gradient-angle').addEventListener('input', (e) => {
+    document.getElementById('edit-gradient-angle-val').textContent = `${e.target.value}°`;
+    updateEditGradientPreview();
+    queueEditAutoSave();
+  });
+
+  document.getElementById('edit-gradient-shape').addEventListener('change', () => {
+    triggerEditImmediateSave();
+    updateEditGradientPreview();
+  });
+
+  document.getElementById('edit-gradient-animated').addEventListener('change', (e) => {
+    document.getElementById('edit-gradient-speed-control').classList.toggle('hidden', !e.target.checked);
+    triggerEditImmediateSave();
+    updateEditGradientPreview();
+  });
+
+  document.getElementById('edit-gradient-speed').addEventListener('input', (e) => {
+    document.getElementById('edit-gradient-speed-val').textContent = `${e.target.value}s`;
+    updateEditGradientPreview();
+    queueEditAutoSave();
+  });
+
+  document.getElementById('edit-gradient-add-stop').addEventListener('click', () => {
+    if (editGradientStopsState.length >= window.PageDyeGradient.MAX_STOPS) return;
+    const lastPos = editGradientStopsState.length ? editGradientStopsState[editGradientStopsState.length - 1].position : 0;
+    editGradientStopsState.push({ color: '#ffffff', position: Math.min(100, lastPos + 10) });
+    renderEditGradientStops(editGradientStopsState);
+    triggerEditImmediateSave();
+    updateEditGradientPreview();
+  });
+
+  const editGradientStopsList = document.getElementById('edit-gradient-stops-list');
+
+  editGradientStopsList.addEventListener('input', (e) => {
+    const row = e.target.closest('.gradient-stop-row');
+    if (!row) return;
+    const idx = parseInt(row.dataset.index, 10);
+    if (e.target.classList.contains('gradient-stop-color')) {
+      row.querySelector('.gradient-stop-hex').value = e.target.value;
+      editGradientStopsState[idx].color = e.target.value;
+    } else if (e.target.classList.contains('gradient-stop-hex')) {
+      row.querySelector('.gradient-stop-color').value = e.target.value;
+      editGradientStopsState[idx].color = e.target.value;
+    } else if (e.target.classList.contains('gradient-stop-pos')) {
+      editGradientStopsState[idx].position = Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0));
+    }
+    updateEditGradientPreview();
+    queueEditAutoSave();
+  });
+
+  editGradientStopsList.addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('.gradient-stop-remove');
+    if (!removeBtn) return;
+    if (editGradientStopsState.length <= window.PageDyeGradient.MIN_STOPS) return;
+    const idx = parseInt(removeBtn.closest('.gradient-stop-row').dataset.index, 10);
+    editGradientStopsState.splice(idx, 1);
+    renderEditGradientStops(editGradientStopsState);
+    triggerEditImmediateSave();
+    updateEditGradientPreview();
+  });
+
+  document.getElementById('edit-gradient-presets-grid').addEventListener('click', (e) => {
+    const swatch = e.target.closest('.gradient-preset-swatch');
+    if (!swatch) return;
+    const preset = window.PageDyeGradient.GRADIENT_PRESETS[parseInt(swatch.dataset.index, 10)];
+    populateEditGradientPanel(Object.assign({ animated: false, speed: 10 }, preset));
+    triggerEditImmediateSave();
+    updateEditGradientPreview();
+  });
+
+  document.getElementById('edit-gradient-generate-btn').addEventListener('click', () => {
+    const seed = editColorPicker.value;
+    const stops = window.PageDyeGradient.clampStops(normalizeEditStopObjects(window.PageDyeGradient.generateTonalPalette(seed)));
+    renderEditGradientStops(stops);
+    triggerEditImmediateSave();
+    updateEditGradientPreview();
+  });
+
+  document.getElementById('edit-gradient-extract-btn').addEventListener('click', async () => {
+    const imgSrc = editCurrentImageBase64 || document.getElementById('edit-image-url').value;
+    if (!imgSrc) return;
+    const extractBtn = document.getElementById('edit-gradient-extract-btn');
+    extractBtn.disabled = true;
+    const result = await window.PageDyeGradient.extractPaletteFromImage(imgSrc, 5);
+    updateEditGradientExtractButtonState();
+    if (!result.ok) {
+      els.editStatusText.textContent = t('gradientExtractFailed');
+      setTimeout(setEditSyncedState, 1800);
+      return;
+    }
+    const stops = window.PageDyeGradient.clampStops(normalizeEditStopObjects(result.colors));
+    renderEditGradientStops(stops);
+    triggerEditImmediateSave();
+    updateEditGradientPreview();
   });
 
 

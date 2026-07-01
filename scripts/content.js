@@ -236,6 +236,14 @@
 
       // Use Shadow DOM to isolate styles
       const shadow = root.attachShadow({ mode: 'open' });
+
+      // A shadow tree doesn't inherit @keyframes declared in the outer
+      // document's stylesheets, so the animated-gradient flow needs its own
+      // copy of the keyframes rule here.
+      const keyframesStyle = document.createElement('style');
+      keyframesStyle.textContent = window.PageDyeGradient.GRADIENT_KEYFRAMES_CSS;
+      shadow.appendChild(keyframesStyle);
+
       layer = document.createElement('div');
       layer.id = 'pagedye-layer';
       shadow.appendChild(layer);
@@ -252,15 +260,36 @@
     };
 
     if (settings.type === 'color') {
-      style.backgroundColor = settings.value;
-      style.backgroundImage = 'none';
-      style.filter = 'none';
-      style.transform = 'none';
+      if (settings.colorMode === 'gradient' && settings.gradient) {
+        const gradient = settings.gradient;
+        style.backgroundColor = 'transparent';
+        style.backgroundImage = window.PageDyeGradient.buildGradientCss(gradient);
+        style.filter = 'none';
+        style.transform = 'none';
+        if (gradient.animated) {
+          style.backgroundSize = gradient.kind === 'radial' ? '200% 200%' : '300% 300%';
+          style.animation = `pagedye-gradient-flow ${gradient.speed || 10}s ease infinite`;
+        } else {
+          // Explicitly reset both: layer is a persistent element reused
+          // across re-applies, so a previous animated-gradient state would
+          // otherwise stick around.
+          style.backgroundSize = 'auto';
+          style.animation = 'none';
+        }
+      } else {
+        style.backgroundColor = settings.value;
+        style.backgroundImage = 'none';
+        style.filter = 'none';
+        style.transform = 'none';
+        style.backgroundSize = 'auto';
+        style.animation = 'none';
+      }
     } else if (settings.type === 'image') {
       style.backgroundColor = 'transparent';
       style.backgroundImage = `url("${settings.value}")`;
       style.filter = buildFilterString(settings);
       style.transform = (settings.blur || 0) > 0 ? 'scale(1.05)' : 'none'; // Prevent blur edge artifacts
+      style.animation = 'none';
 
       if (settings.style) {
         style.backgroundPosition = 'center center';
@@ -294,26 +323,26 @@
     // specificity above the site's same-selector rule, so we win regardless of
     // order — no dependence on injection timing.
     const sel = scopeSelector(selector);
+    const isGradient = settings.type === 'color' && settings.colorMode === 'gradient' && settings.gradient;
 
     let css = '';
-    if (settings.type === 'color') {
+    if (settings.type === 'color' && !isGradient) {
       const alpha = (typeof settings.opacity === 'number' ? settings.opacity : 100) / 100;
       css =
         `${sel} {` +
           'background-image: none !important;' +
           `background-color: ${hexToRgba(settings.value, alpha)} !important;` +
         '}';
-    } else if (settings.type === 'image') {
+    } else if (settings.type === 'image' || isGradient) {
       const st = settings.style || {};
       const opacity = (typeof settings.opacity === 'number' ? settings.opacity : 100) / 100;
-      const filterStr = buildFilterString(settings);
 
       // We can't put opacity/blur on the element itself — that would also dim
-      // and blur its text/children. Instead we paint the image on a ::before
-      // layer sitting *behind* the element's content (z-index:-1), and clear
-      // the element's own background so the layer shows through. This lets
-      // opacity, blur, fixed-attachment and tiling all work without touching
-      // the readability of the element's content.
+      // and blur its text/children. Instead we paint the image/gradient on a
+      // ::before layer sitting *behind* the element's content (z-index:-1),
+      // and clear the element's own background so the layer shows through.
+      // This lets opacity, blur, fixed-attachment and tiling all work
+      // without touching the readability of the element's content.
       //
       // `isolation: isolate` confines the negative-z-index layer to the
       // element's own stacking context so it can't slip behind ancestors.
@@ -321,6 +350,33 @@
         ? 'position: fixed !important; top: 0 !important; left: 0 !important;' +
           'width: 100vw !important; height: 100vh !important;'
         : 'position: absolute !important; inset: 0 !important;';
+
+      let bgImageCss, filterStr, sizeCss, repeatCss, animationCss, positionCss;
+      if (isGradient) {
+        const gradient = settings.gradient;
+        bgImageCss = window.PageDyeGradient.buildGradientCss(gradient);
+        filterStr = 'none';
+        repeatCss = 'no-repeat';
+        if (gradient.animated) {
+          sizeCss = gradient.kind === 'radial' ? '200% 200%' : '300% 300%';
+          animationCss = `pagedye-gradient-flow ${gradient.speed || 10}s ease infinite`;
+          // Omit a static background-position here: an !important author
+          // declaration outranks a CSS animation's per-frame values for the
+          // same property in the cascade, which would freeze the motion.
+          positionCss = '';
+        } else {
+          sizeCss = 'auto';
+          animationCss = 'none';
+          positionCss = 'background-position: center center !important;';
+        }
+      } else {
+        bgImageCss = `url("${settings.value}")`;
+        filterStr = buildFilterString(settings);
+        sizeCss = st.size || 'cover';
+        repeatCss = st.repeat ? 'repeat' : 'no-repeat';
+        animationCss = 'none';
+        positionCss = 'background-position: center center !important;';
+      }
 
       css =
         `${sel} {` +
@@ -334,18 +390,23 @@
           layerPos +
           'z-index: -1 !important;' +
           'pointer-events: none !important;' +
-          `background-image: url("${settings.value}") !important;` +
-          'background-position: center center !important;' +
-          `background-size: ${st.size || 'cover'} !important;` +
-          `background-repeat: ${st.repeat ? 'repeat' : 'no-repeat'} !important;` +
+          `background-image: ${bgImageCss} !important;` +
+          positionCss +
+          `background-size: ${sizeCss} !important;` +
+          `background-repeat: ${repeatCss} !important;` +
           `filter: ${filterStr} !important;` +
           `opacity: ${opacity} !important;` +
+          `animation: ${animationCss} !important;` +
         '}';
     }
 
     const style = document.createElement('style');
     style.id = TARGET_STYLE_ID;
-    style.textContent = css;
+    // Gradients animate via a shared keyframes name; this stylesheet is
+    // self-contained (own copy of the rule) since removeBackdrop() tears
+    // down the full-page-overlay path's own style tag whenever selector
+    // mode is active, so that tag can't be relied on as a shared vehicle.
+    style.textContent = window.PageDyeGradient.GRADIENT_KEYFRAMES_CSS + css;
     (document.head || document.documentElement).appendChild(style);
   }
 
