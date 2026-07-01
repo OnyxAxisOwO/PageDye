@@ -283,6 +283,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     bgTypes: document.getElementsByName('bgType'),
     sectionColor: document.getElementById('section-color'),
     sectionImage: document.getElementById('section-image'),
+    sectionStyles: document.getElementById('section-styles'),
     colorPicker: document.getElementById('color-picker'),
     colorText: document.getElementById('color-text'),
     imageUrl: document.getElementById('image-url'),
@@ -1161,16 +1162,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateUI(type) {
     els.sectionColor.classList.add('hidden');
     els.sectionImage.classList.add('hidden');
+    els.sectionStyles.classList.add('hidden');
     els.blurControl.classList.add('hidden');
     const advFilters = document.getElementById('advanced-filters');
     if (advFilters) advFilters.classList.add('hidden');
 
     if (type === 'color') {
       els.sectionColor.classList.remove('hidden');
+      els.sectionStyles.classList.remove('hidden');
       const checkedColorMode = document.querySelector('input[name="colorMode"]:checked');
       updateColorModeUI(checkedColorMode ? checkedColorMode.value : 'solid');
     } else if (type === 'image') {
       els.sectionImage.classList.remove('hidden');
+      els.sectionStyles.classList.remove('hidden');
       els.blurControl.classList.remove('hidden');
       if (advFilters) advFilters.classList.remove('hidden');
       updatePreview();
