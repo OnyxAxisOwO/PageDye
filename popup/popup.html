@@ -184,6 +184,51 @@
               <input type="range" id="blur" min="0" max="20" value="0">
             </div>
 
+            <!-- Advanced Image Filters (image type only) -->
+            <div id="advanced-filters" class="hidden">
+              <div class="filters-header">
+                <span class="filters-title" data-i18n="advancedFilters">Advanced Filters</span>
+                <button type="button" id="filters-reset" class="filters-reset-btn" data-i18n="filtersReset">Reset</button>
+              </div>
+              <div class="filter-sliders-grid">
+                <div class="filter-slider-item">
+                  <div class="label-row">
+                    <label for="filter-brightness" data-i18n="filterBrightness">Brightness</label>
+                    <span id="filter-brightness-val" class="val-badge">100%</span>
+                  </div>
+                  <input type="range" id="filter-brightness" min="0" max="200" value="100" step="1">
+                </div>
+                <div class="filter-slider-item">
+                  <div class="label-row">
+                    <label for="filter-contrast" data-i18n="filterContrast">Contrast</label>
+                    <span id="filter-contrast-val" class="val-badge">100%</span>
+                  </div>
+                  <input type="range" id="filter-contrast" min="0" max="200" value="100" step="1">
+                </div>
+                <div class="filter-slider-item">
+                  <div class="label-row">
+                    <label for="filter-grayscale" data-i18n="filterGrayscale">Grayscale</label>
+                    <span id="filter-grayscale-val" class="val-badge">0%</span>
+                  </div>
+                  <input type="range" id="filter-grayscale" min="0" max="100" value="0" step="1">
+                </div>
+                <div class="filter-slider-item">
+                  <div class="label-row">
+                    <label for="filter-hue" data-i18n="filterHue">Hue Rotate</label>
+                    <span id="filter-hue-val" class="val-badge">0deg</span>
+                  </div>
+                  <input type="range" id="filter-hue" min="0" max="360" value="0" step="1">
+                </div>
+                <div class="filter-slider-item">
+                  <div class="label-row">
+                    <label for="filter-invert" data-i18n="filterInvert">Invert</label>
+                    <span id="filter-invert-val" class="val-badge">0%</span>
+                  </div>
+                  <input type="range" id="filter-invert" min="0" max="100" value="0" step="1">
+                </div>
+              </div>
+            </div>
+
             <div id="image-options" class="hidden">
                <div class="control-group row">
                  <label class="checkbox-label">
@@ -207,6 +252,7 @@
           </div>
         </div>
       </details>
+
 
       <!-- Advanced Settings Accordion -->
       <details class="accordion" id="accordion-advanced">

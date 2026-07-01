@@ -357,7 +357,79 @@ input[type="range"]::-webkit-slider-thumb {
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-/* Accordion */
+/* Advanced Filters */
+#advanced-filters {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-color);
+}
+
+.filters-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.filters-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.filters-reset-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  line-height: 1.6;
+}
+
+.filters-reset-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.filter-sliders-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+}
+
+.filter-slider-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.filter-slider-item .label-row label {
+  font-size: 11px;
+}
+
+.filter-slider-item .val-badge {
+  font-size: 9px;
+  min-width: 32px;
+  text-align: center;
+}
+
+.filter-slider-item input[type="range"] {
+  margin-top: 3px;
+  height: 4px;
+}
+
+.filter-slider-item input[type="range"]::-webkit-slider-thumb {
+  width: 13px;
+  height: 13px;
+}
+
+
 .accordion {
   border: 1px solid var(--border-color);
   border-radius: 8px;

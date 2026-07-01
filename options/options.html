@@ -339,6 +339,61 @@
                   <input type="range" id="edit-blur" min="0" max="20" value="0">
                 </div>
 
+                <!-- Advanced Image Filters (image type only) -->
+                <div id="edit-advanced-filters" class="hidden">
+                  <div class="filters-header">
+                    <span class="filters-title" data-i18n="advancedFilters">Advanced Filters</span>
+                    <button type="button" id="edit-filters-reset" class="filters-reset-btn" data-i18n="filtersReset">Reset</button>
+                  </div>
+
+                  <div class="filter-sliders-grid">
+                    <!-- Brightness -->
+                    <div class="filter-slider-item">
+                      <div class="label-row">
+                        <label for="edit-filter-brightness" data-i18n="filterBrightness">Brightness</label>
+                        <span id="edit-filter-brightness-val" class="val-badge">100%</span>
+                      </div>
+                      <input type="range" id="edit-filter-brightness" min="0" max="200" value="100" step="1">
+                    </div>
+
+                    <!-- Contrast -->
+                    <div class="filter-slider-item">
+                      <div class="label-row">
+                        <label for="edit-filter-contrast" data-i18n="filterContrast">Contrast</label>
+                        <span id="edit-filter-contrast-val" class="val-badge">100%</span>
+                      </div>
+                      <input type="range" id="edit-filter-contrast" min="0" max="200" value="100" step="1">
+                    </div>
+
+                    <!-- Grayscale -->
+                    <div class="filter-slider-item">
+                      <div class="label-row">
+                        <label for="edit-filter-grayscale" data-i18n="filterGrayscale">Grayscale</label>
+                        <span id="edit-filter-grayscale-val" class="val-badge">0%</span>
+                      </div>
+                      <input type="range" id="edit-filter-grayscale" min="0" max="100" value="0" step="1">
+                    </div>
+
+                    <!-- Hue Rotate -->
+                    <div class="filter-slider-item">
+                      <div class="label-row">
+                        <label for="edit-filter-hue" data-i18n="filterHue">Hue Rotate</label>
+                        <span id="edit-filter-hue-val" class="val-badge">0deg</span>
+                      </div>
+                      <input type="range" id="edit-filter-hue" min="0" max="360" value="0" step="1">
+                    </div>
+
+                    <!-- Invert -->
+                    <div class="filter-slider-item">
+                      <div class="label-row">
+                        <label for="edit-filter-invert" data-i18n="filterInvert">Invert</label>
+                        <span id="edit-filter-invert-val" class="val-badge">0%</span>
+                      </div>
+                      <input type="range" id="edit-filter-invert" min="0" max="100" value="0" step="1">
+                    </div>
+                  </div>
+                </div>
+
                 <div id="edit-image-options" class="hidden">
                    <div class="control-group row">
                      <label class="checkbox-label">

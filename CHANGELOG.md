@@ -2,10 +2,18 @@
 
 All notable changes to PageDye are documented here.
 
-## [0.3.0]
+## [0.3.0] - 2026-07-01
 
 ### Added
-- **Auto Light/Dark Wallpapers (昼夜双态联动)**: Allows users to configure separate backgrounds for Light and Dark modes. The extension will automatically read system preferences (`prefers-color-scheme`) and dynamically update the background when the system theme changes.
+- **Slideshow / Wallpaper Rotation (幻灯轮换)**: Configure multiple wallpapers that rotate automatically. Supports per-open, 15-minute, 30-minute, 1-hour and 1-day intervals, with optional random order.
+- **Auto Light/Dark Wallpapers (昼夜双态联动)**: Configure separate backgrounds for Light and Dark modes. The extension automatically reads `prefers-color-scheme` and switches wallpapers when the system theme changes.
+- **Advanced Image Filters (高级图片滤镜)**: Full CSS filter chain for image backgrounds — Brightness, Contrast, Grayscale, Hue-Rotate and Invert. Available in both the popup and the options dashboard. Each filter has a live-preview slider and a one-click Reset button.
+
+### Fixed
+- **Image Lost After Type Switch**: Switching background type Image → Color → Image no longer loses the previously uploaded image. The base64 data is now correctly restored from the in-memory settings when returning to the Image type.
+- **Save Failure After Type Switch**: The auto-save triggered after switching back to Image type no longer overwrites the stored image with an empty value.
+- **Popup / Options Data Sync**: `popup.js` now writes and reads the same `filters` sub-object structure as `options.js`, preventing mismatched storage data between the two interfaces.
+
 
 ## [0.2.7]
 

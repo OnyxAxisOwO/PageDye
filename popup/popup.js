@@ -172,7 +172,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       orPasteUrl: "Or paste image URL",
       adjustStyles: "Adjust Styles",
       activeImage: "Wallpaper Image",
-      savedImage: "Saved Image"
+      savedImage: "Saved Image",
+      advancedFilters: "Advanced Filters",
+      filtersReset: "Reset",
+      filterBrightness: "Brightness",
+      filterContrast: "Contrast",
+      filterGrayscale: "Grayscale",
+      filterHue: "Hue Rotate",
+      filterInvert: "Invert"
     },
     zh: {
       title: "PageDye 设置",
@@ -223,7 +230,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       orPasteUrl: "或输入图片链接",
       adjustStyles: "调整壁纸样式",
       activeImage: "当前图片",
-      savedImage: "已保存的壁纸"
+      savedImage: "已保存的壁纸",
+      advancedFilters: "高级滤镜",
+      filtersReset: "重置",
+      filterBrightness: "亮度",
+      filterContrast: "对比度",
+      filterGrayscale: "灰度",
+      filterHue: "色相旋转",
+      filterInvert: "反色"
     }
   };
 
@@ -376,7 +390,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     queueAutoSave();
   });
 
-  // URL Preview
+  // Advanced filter sliders (popup)
+  const popupFilterDefs = [
+    { id: 'filter-brightness', valId: 'filter-brightness-val', unit: '%' },
+    { id: 'filter-contrast',   valId: 'filter-contrast-val',   unit: '%' },
+    { id: 'filter-grayscale',  valId: 'filter-grayscale-val',  unit: '%' },
+    { id: 'filter-hue',        valId: 'filter-hue-val',        unit: 'deg' },
+    { id: 'filter-invert',     valId: 'filter-invert-val',     unit: '%' }
+  ];
+  popupFilterDefs.forEach(({ id, valId, unit }) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', (e) => {
+        document.getElementById(valId).textContent = `${e.target.value}${unit}`;
+        updatePreview();
+        queueAutoSave();
+      });
+    }
+  });
+
+  const popupFiltersResetBtn = document.getElementById('filters-reset');
+  if (popupFiltersResetBtn) {
+    popupFiltersResetBtn.addEventListener('click', () => {
+      document.getElementById('filter-brightness').value = 100;
+      document.getElementById('filter-brightness-val').textContent = '100%';
+      document.getElementById('filter-contrast').value = 100;
+      document.getElementById('filter-contrast-val').textContent = '100%';
+      document.getElementById('filter-grayscale').value = 0;
+      document.getElementById('filter-grayscale-val').textContent = '0%';
+      document.getElementById('filter-hue').value = 0;
+      document.getElementById('filter-hue-val').textContent = '0deg';
+      document.getElementById('filter-invert').value = 0;
+      document.getElementById('filter-invert-val').textContent = '0%';
+      updatePreview();
+      triggerImmediateSave();
+    });
+  }
+
+
   els.imageUrl.addEventListener('input', (e) => {
     // If user enters a URL, clear local file state
     if (e.target.value) {
@@ -586,9 +637,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     els.imagePreviewBg.style.backgroundImage = imageUrl;
 
-    const blur = els.blur.value;
-    els.imagePreviewBg.style.filter = `blur(${blur}px)`;
-    els.imagePreviewBg.style.transform = 'scale(1.08)';
+    const blur       = parseInt(els.blur.value, 10) || 0;
+    const brightness = parseInt(document.getElementById('filter-brightness').value, 10);
+    const contrast   = parseInt(document.getElementById('filter-contrast').value,   10);
+    const grayscale  = parseInt(document.getElementById('filter-grayscale').value,  10);
+    const hue        = parseInt(document.getElementById('filter-hue').value,         10);
+    const invert     = parseInt(document.getElementById('filter-invert').value,      10);
+
+    const filterStr = [
+      blur        > 0    ? `blur(${blur}px)`             : '',
+      brightness !== 100 ? `brightness(${brightness}%)`  : '',
+      contrast   !== 100 ? `contrast(${contrast}%)`      : '',
+      grayscale  > 0     ? `grayscale(${grayscale}%)`    : '',
+      hue        > 0     ? `hue-rotate(${hue}deg)`       : '',
+      invert     > 0     ? `invert(${invert}%)`          : ''
+    ].filter(Boolean).join(' ') || 'none';
+
+    els.imagePreviewBg.style.filter = filterStr;
+    els.imagePreviewBg.style.transform = blur > 0 ? 'scale(1.08)' : 'none';
 
     const opacity = els.opacity.value;
     els.imagePreviewBg.style.opacity = opacity / 100;
@@ -622,6 +688,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.opacityVal.textContent = `${els.opacity.value}%`;
     els.blur.value = subSettings.blur !== undefined ? subSettings.blur : 0;
     els.blurVal.textContent = `${els.blur.value}px`;
+
+    // Populate advanced filters
+    const f = subSettings.filters || {};
+    const bri = f.brightness !== undefined ? f.brightness : 100;
+    const con = f.contrast   !== undefined ? f.contrast   : 100;
+    const gry = f.grayscale  !== undefined ? f.grayscale  : 0;
+    const hue = f.hue        !== undefined ? f.hue        : 0;
+    const inv = f.invert     !== undefined ? f.invert     : 0;
+    document.getElementById('filter-brightness').value = bri;
+    document.getElementById('filter-brightness-val').textContent = `${bri}%`;
+    document.getElementById('filter-contrast').value = con;
+    document.getElementById('filter-contrast-val').textContent = `${con}%`;
+    document.getElementById('filter-grayscale').value = gry;
+    document.getElementById('filter-grayscale-val').textContent = `${gry}%`;
+    document.getElementById('filter-hue').value = hue;
+    document.getElementById('filter-hue-val').textContent = `${hue}deg`;
+    document.getElementById('filter-invert').value = inv;
+    document.getElementById('filter-invert-val').textContent = `${inv}%`;
     
     if (subSettings.style) {
       els.bgFixed.checked = subSettings.style.fixed !== false;
@@ -646,6 +730,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     dest.value = value;
     dest.opacity = parseInt(els.opacity.value, 10);
     dest.blur = parseInt(els.blur.value, 10);
+    dest.filters = {
+      brightness: parseInt(document.getElementById('filter-brightness').value, 10),
+      contrast:   parseInt(document.getElementById('filter-contrast').value,   10),
+      grayscale:  parseInt(document.getElementById('filter-grayscale').value,  10),
+      hue:        parseInt(document.getElementById('filter-hue').value,         10),
+      invert:     parseInt(document.getElementById('filter-invert').value,      10)
+    };
     dest.style = {
       fixed: els.bgFixed.checked,
       size: els.bgSize.value,
@@ -868,14 +959,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateUI(type) {
     els.sectionColor.classList.add('hidden');
     els.sectionImage.classList.add('hidden');
-    els.blurControl.classList.add('hidden'); 
+    els.blurControl.classList.add('hidden');
+    const advFilters = document.getElementById('advanced-filters');
+    if (advFilters) advFilters.classList.add('hidden');
 
     if (type === 'color') {
       els.sectionColor.classList.remove('hidden');
     } else if (type === 'image') {
       els.sectionImage.classList.remove('hidden');
-      els.blurControl.classList.remove('hidden'); 
-      updatePreview(); 
+      els.blurControl.classList.remove('hidden');
+      if (advFilters) advFilters.classList.remove('hidden');
+      updatePreview();
     }
     
     // Toggle image position options if image is active

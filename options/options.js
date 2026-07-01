@@ -85,7 +85,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       interval1h: "1 Hour",
       interval24h: "1 Day",
       randomOrder: "Random Order",
-      wallpapersList: "Wallpapers"
+      wallpapersList: "Wallpapers",
+      advancedFilters: "Advanced Filters",
+      filtersReset: "Reset",
+      filterBrightness: "Brightness",
+      filterContrast: "Contrast",
+      filterGrayscale: "Grayscale",
+      filterHue: "Hue Rotate",
+      filterInvert: "Invert"
     },
     zh: {
       title: "PageDye 控制面板",
@@ -172,7 +179,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       interval1h: "1小时",
       interval24h: "1天",
       randomOrder: "随机顺序",
-      wallpapersList: "壁纸列表"
+      wallpapersList: "壁纸列表",
+      advancedFilters: "高级滤镜",
+      filtersReset: "重置",
+      filterBrightness: "亮度",
+      filterContrast: "对比度",
+      filterGrayscale: "灰度",
+      filterHue: "色相旋转",
+      filterInvert: "反色"
     }
   };
 
@@ -587,6 +601,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-blur').value = subSettings.blur !== undefined ? subSettings.blur : 0;
     document.getElementById('edit-blur-val').textContent = `${document.getElementById('edit-blur').value}px`;
 
+    // Populate advanced filters
+    const f = subSettings.filters || {};
+    const bri = f.brightness !== undefined ? f.brightness : 100;
+    const con = f.contrast !== undefined ? f.contrast : 100;
+    const gry = f.grayscale !== undefined ? f.grayscale : 0;
+    const hue = f.hue !== undefined ? f.hue : 0;
+    const inv = f.invert !== undefined ? f.invert : 0;
+    document.getElementById('edit-filter-brightness').value = bri;
+    document.getElementById('edit-filter-brightness-val').textContent = `${bri}%`;
+    document.getElementById('edit-filter-contrast').value = con;
+    document.getElementById('edit-filter-contrast-val').textContent = `${con}%`;
+    document.getElementById('edit-filter-grayscale').value = gry;
+    document.getElementById('edit-filter-grayscale-val').textContent = `${gry}%`;
+    document.getElementById('edit-filter-hue').value = hue;
+    document.getElementById('edit-filter-hue-val').textContent = `${hue}deg`;
+    document.getElementById('edit-filter-invert').value = inv;
+    document.getElementById('edit-filter-invert-val').textContent = `${inv}%`;
+
     if (subSettings.style) {
       document.getElementById('edit-bg-fixed').checked = subSettings.style.fixed !== false;
       document.getElementById('edit-bg-size').value = subSettings.style.size || 'cover';
@@ -610,6 +642,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     dest.value = value;
     dest.opacity = parseInt(document.getElementById('edit-opacity').value, 10);
     dest.blur = parseInt(document.getElementById('edit-blur').value, 10);
+    dest.filters = {
+      brightness: parseInt(document.getElementById('edit-filter-brightness').value, 10),
+      contrast:   parseInt(document.getElementById('edit-filter-contrast').value,   10),
+      grayscale:  parseInt(document.getElementById('edit-filter-grayscale').value,  10),
+      hue:        parseInt(document.getElementById('edit-filter-hue').value,        10),
+      invert:     parseInt(document.getElementById('edit-filter-invert').value,     10)
+    };
     dest.style = {
       fixed: document.getElementById('edit-bg-fixed').checked,
       size: document.getElementById('edit-bg-size').value,
@@ -864,6 +903,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-section-styles').classList.add('hidden');
     document.getElementById('edit-image-options').classList.add('hidden');
     document.getElementById('edit-blur-control').classList.add('hidden');
+    document.getElementById('edit-advanced-filters').classList.add('hidden');
 
     if (type === 'color') {
       document.getElementById('edit-section-color').classList.remove('hidden');
@@ -873,6 +913,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('edit-section-styles').classList.remove('hidden');
       document.getElementById('edit-image-options').classList.remove('hidden');
       document.getElementById('edit-blur-control').classList.remove('hidden');
+      document.getElementById('edit-advanced-filters').classList.remove('hidden');
       updateEditPreview();
     }
   }
@@ -890,9 +931,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bgPreview = document.getElementById('edit-image-preview-bg');
     bgPreview.style.backgroundImage = imageUrl;
 
-    const blur = document.getElementById('edit-blur').value;
-    bgPreview.style.filter = `blur(${blur}px)`;
-    bgPreview.style.transform = 'scale(1.08)';
+    const blur       = parseInt(document.getElementById('edit-blur').value, 10) || 0;
+    const brightness = parseInt(document.getElementById('edit-filter-brightness').value, 10);
+    const contrast   = parseInt(document.getElementById('edit-filter-contrast').value, 10);
+    const grayscale  = parseInt(document.getElementById('edit-filter-grayscale').value, 10);
+    const hue        = parseInt(document.getElementById('edit-filter-hue').value, 10);
+    const invert     = parseInt(document.getElementById('edit-filter-invert').value, 10);
+
+    const filterStr = [
+      blur        > 0                ? `blur(${blur}px)`              : '',
+      brightness !== 100             ? `brightness(${brightness}%)`   : '',
+      contrast   !== 100             ? `contrast(${contrast}%)`       : '',
+      grayscale  > 0                 ? `grayscale(${grayscale}%)`     : '',
+      hue        > 0                 ? `hue-rotate(${hue}deg)`        : '',
+      invert     > 0                 ? `invert(${invert}%)`           : ''
+    ].filter(Boolean).join(' ') || 'none';
+
+    bgPreview.style.filter = filterStr;
+    bgPreview.style.transform = blur > 0 ? 'scale(1.08)' : 'none';
 
     const opacity = document.getElementById('edit-opacity').value;
     bgPreview.style.opacity = opacity / 100;
@@ -1007,6 +1063,37 @@ document.addEventListener('DOMContentLoaded', async () => {
   const editTypeRadios = document.getElementsByName('edit-bgType');
   editTypeRadios.forEach(radio => {
     radio.addEventListener('change', () => {
+      // When switching to image type, restore the previously saved image value
+      // so that editCurrentImageBase64 is not lost when cycling through types.
+      if (radio.value === 'image') {
+        // Determine which settings object is currently active
+        let activeSettings = currentEditSettings;
+        const mode = currentEditSettings ? (currentEditSettings.mode || 'single') : 'single';
+        if (mode === 'auto') {
+          activeSettings = currentEditSettings[editActiveScheme];
+        } else if (mode === 'slideshow') {
+          activeSettings = currentEditSettings.slideshow.items[editActiveSlideshowIndex];
+        }
+        // Restore base64 image if the saved value is a data URI, otherwise clear
+        if (activeSettings && activeSettings.value && activeSettings.value.startsWith('data:')) {
+          editCurrentImageBase64 = activeSettings.value;
+        } else {
+          editCurrentImageBase64 = null;
+        }
+        // Sync the file-info UI to match the restored state
+        if (editCurrentImageBase64) {
+          document.getElementById('edit-drop-area').classList.add('hidden');
+          document.getElementById('edit-file-info').classList.remove('hidden');
+          document.getElementById('edit-filename').textContent = t('savedImage') || 'Saved image';
+        } else {
+          document.getElementById('edit-drop-area').classList.remove('hidden');
+          document.getElementById('edit-file-info').classList.add('hidden');
+          // Restore URL value if applicable
+          if (activeSettings && activeSettings.value && !activeSettings.value.startsWith('data:')) {
+            document.getElementById('edit-image-url').value = activeSettings.value;
+          }
+        }
+      }
       updateEditUI(radio.value);
       updateEditInteractivePreviews();
       triggerEditImmediateSave();
@@ -1102,6 +1189,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateEditInteractivePreviews();
     queueEditAutoSave();
   });
+
+  // Advanced filter sliders
+  const filterDefs = [
+    { id: 'edit-filter-brightness', valId: 'edit-filter-brightness-val', unit: '%' },
+    { id: 'edit-filter-contrast',   valId: 'edit-filter-contrast-val',   unit: '%' },
+    { id: 'edit-filter-grayscale',  valId: 'edit-filter-grayscale-val',  unit: '%' },
+    { id: 'edit-filter-hue',        valId: 'edit-filter-hue-val',        unit: 'deg' },
+    { id: 'edit-filter-invert',     valId: 'edit-filter-invert-val',     unit: '%' }
+  ];
+  filterDefs.forEach(({ id, valId, unit }) => {
+    document.getElementById(id).addEventListener('input', (e) => {
+      document.getElementById(valId).textContent = `${e.target.value}${unit}`;
+      updateEditPreview();
+      queueEditAutoSave();
+    });
+  });
+
+  document.getElementById('edit-filters-reset').addEventListener('click', () => {
+    document.getElementById('edit-filter-brightness').value = 100;
+    document.getElementById('edit-filter-brightness-val').textContent = '100%';
+    document.getElementById('edit-filter-contrast').value = 100;
+    document.getElementById('edit-filter-contrast-val').textContent = '100%';
+    document.getElementById('edit-filter-grayscale').value = 0;
+    document.getElementById('edit-filter-grayscale-val').textContent = '0%';
+    document.getElementById('edit-filter-hue').value = 0;
+    document.getElementById('edit-filter-hue-val').textContent = '0deg';
+    document.getElementById('edit-filter-invert').value = 0;
+    document.getElementById('edit-filter-invert-val').textContent = '0%';
+    updateEditPreview();
+    triggerEditImmediateSave();
+  });
+
+
 
   // Toggles and inputs on edit view
   document.getElementById('edit-bg-fixed').addEventListener('change', () => triggerEditImmediateSave());

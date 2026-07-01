@@ -259,8 +259,8 @@
     } else if (settings.type === 'image') {
       style.backgroundColor = 'transparent';
       style.backgroundImage = `url("${settings.value}")`;
-      style.filter = `blur(${settings.blur}px)`;
-      style.transform = 'scale(1.05)'; // Prevent blur edge artifacts
+      style.filter = buildFilterString(settings);
+      style.transform = (settings.blur || 0) > 0 ? 'scale(1.05)' : 'none'; // Prevent blur edge artifacts
 
       if (settings.style) {
         style.backgroundPosition = 'center center';
@@ -306,7 +306,7 @@
     } else if (settings.type === 'image') {
       const st = settings.style || {};
       const opacity = (typeof settings.opacity === 'number' ? settings.opacity : 100) / 100;
-      const blur = settings.blur || 0;
+      const filterStr = buildFilterString(settings);
 
       // We can't put opacity/blur on the element itself — that would also dim
       // and blur its text/children. Instead we paint the image on a ::before
@@ -338,7 +338,7 @@
           'background-position: center center !important;' +
           `background-size: ${st.size || 'cover'} !important;` +
           `background-repeat: ${st.repeat ? 'repeat' : 'no-repeat'} !important;` +
-          `filter: blur(${blur}px) !important;` +
+          `filter: ${filterStr} !important;` +
           `opacity: ${opacity} !important;` +
         '}';
     }
@@ -413,6 +413,30 @@
     const b = parseInt(hex.slice(4, 6), 16) || 0;
     const a = (typeof alpha === 'number' && !isNaN(alpha)) ? alpha : 1;
     return `rgba(${r}, ${g}, ${b}, ${a})`;
+  }
+
+  // Builds a CSS filter string from a settings object.
+  // Blur, brightness, contrast, grayscale, hue-rotate and invert are combined
+  // into a single filter chain. Neutral values (blur=0, brightness=100,
+  // contrast=100, others=0) are omitted to keep the string clean.
+  function buildFilterString(settings) {
+    const blur       = settings.blur || 0;
+    const f          = settings.filters || {};
+    const brightness = f.brightness !== undefined ? f.brightness : 100;
+    const contrast   = f.contrast   !== undefined ? f.contrast   : 100;
+    const grayscale  = f.grayscale  !== undefined ? f.grayscale  : 0;
+    const hue        = f.hue        !== undefined ? f.hue        : 0;
+    const invert     = f.invert     !== undefined ? f.invert     : 0;
+
+    const parts = [];
+    if (blur        > 0)   parts.push(`blur(${blur}px)`);
+    if (brightness !== 100) parts.push(`brightness(${brightness}%)`);
+    if (contrast   !== 100) parts.push(`contrast(${contrast}%)`);
+    if (grayscale  > 0)    parts.push(`grayscale(${grayscale}%)`);
+    if (hue        > 0)    parts.push(`hue-rotate(${hue}deg)`);
+    if (invert     > 0)    parts.push(`invert(${invert}%)`);
+
+    return parts.length ? parts.join(' ') : 'none';
   }
 
 })();
