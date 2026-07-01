@@ -3,6 +3,8 @@
   const STYLE_ID = 'pagedye-extension-style-override';
   const TARGET_STYLE_ID = 'pagedye-target-style';
   const CUSTOM_STYLE_ID = 'pagedye-custom-css';
+  let currentSettings = null;
+  let slideshowTimer = null;
 
   // Initialize
   init();
@@ -23,16 +25,68 @@
     window.__pagedyeStorageListener = onStorageChanged;
     chrome.storage.onChanged.addListener(onStorageChanged);
 
+    // Listen to prefers-color-scheme change
+    if (window.__pagedyeMediaListener) {
+      window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', window.__pagedyeMediaListener);
+    }
+    window.__pagedyeMediaListener = onMediaSchemeChanged;
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onMediaSchemeChanged);
+
     // Load initial settings
     const domain = window.location.hostname;
     chrome.storage.local.get(domain, (data) => {
       const settings = data[domain];
-      if (settings) applyBackground(settings);
+      if (settings) {
+        currentSettings = settings;
+        if (settings.mode === 'slideshow' && settings.slideshow && settings.slideshow.items && settings.slideshow.items.length > 1) {
+          const sh = settings.slideshow;
+          let needRotate = false;
+          if (sh.interval === 'open') {
+            needRotate = true;
+          } else {
+            let intervalMs = 15 * 60 * 1000;
+            if (sh.interval === '30m') intervalMs = 30 * 60 * 1000;
+            if (sh.interval === '1h') intervalMs = 60 * 60 * 1000;
+            if (sh.interval === '24h') intervalMs = 24 * 60 * 60 * 1000;
+            if (Date.now() - (sh.lastRotationTime || 0) >= intervalMs) {
+              needRotate = true;
+            }
+          }
+          
+          if (needRotate) {
+            let nextIndex = sh.currentIndex || 0;
+            if (sh.order === 'random') {
+              let rand = nextIndex;
+              while (rand === nextIndex) {
+                rand = Math.floor(Math.random() * sh.items.length);
+              }
+              nextIndex = rand;
+            } else {
+              nextIndex = (nextIndex + 1) % sh.items.length;
+            }
+            
+            sh.currentIndex = nextIndex;
+            sh.lastRotationTime = Date.now();
+            chrome.storage.local.set({ [domain]: settings }, () => {
+              applyBackground(settings);
+            });
+            return;
+          }
+        }
+        applyBackground(settings);
+      }
     });
+  }
+
+  function onMediaSchemeChanged() {
+    if (currentSettings && currentSettings.mode === 'auto') {
+      applyBackground(currentSettings);
+    }
   }
 
   function onMessage(message, sender, sendResponse) {
     if (message.action === 'updateBackground') {
+      currentSettings = message.settings;
       applyBackground(message.settings);
     }
     // Reply so the sender's awaited sendMessage resolves cleanly.
@@ -47,18 +101,45 @@
     if (area !== 'local') return;
     const domain = window.location.hostname;
     if (Object.prototype.hasOwnProperty.call(changes, domain)) {
-      applyBackground(changes[domain].newValue || { type: 'none' });
+      const settings = changes[domain].newValue || { type: 'none' };
+      currentSettings = settings;
+      applyBackground(settings);
     }
   }
 
   function applyBackground(settings) {
     settings = settings || { type: 'none' };
 
-    // Custom CSS is applied independently of the background type.
-    applyCustomCss(settings.customCss);
+    if (slideshowTimer) {
+      clearTimeout(slideshowTimer);
+      slideshowTimer = null;
+    }
 
-    const hasBackground = settings.type === 'color' || settings.type === 'image';
-    const selector = settings.targetSelector && settings.targetSelector.trim();
+    let activeSettings = settings;
+    if (settings.mode === 'auto') {
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const subSettings = isDark ? settings.dark : settings.light;
+      activeSettings = Object.assign({}, subSettings || { type: 'none' }, {
+        targetSelector: settings.targetSelector,
+        customCss: settings.customCss
+      });
+    } else if (settings.mode === 'slideshow' && settings.slideshow && settings.slideshow.items && settings.slideshow.items.length > 0) {
+      const sh = settings.slideshow;
+      let index = sh.currentIndex || 0;
+      if (index >= sh.items.length) index = 0;
+      const subSettings = sh.items[index];
+      activeSettings = Object.assign({}, subSettings || { type: 'none' }, {
+        targetSelector: settings.targetSelector,
+        customCss: settings.customCss
+      });
+      setupSlideshowTimer(settings);
+    }
+
+    // Custom CSS is applied independently of the background type.
+    applyCustomCss(activeSettings.customCss);
+
+    const hasBackground = activeSettings.type === 'color' || activeSettings.type === 'image';
+    const selector = activeSettings.targetSelector && activeSettings.targetSelector.trim();
 
     if (!hasBackground) {
       removeBackdrop();
@@ -70,12 +151,61 @@
       // Selector mode: paint the chosen element(s) directly via their own CSS
       // background. No full-page overlay; the rest of the page is untouched.
       removeBackdrop();
-      applyTargetBackground(selector, settings);
+      applyTargetBackground(selector, activeSettings);
     } else {
       // Overlay mode: paint a full-page layer behind everything.
       removeTargetStyle();
-      applyOverlay(settings);
+      applyOverlay(activeSettings);
     }
+  }
+
+  function setupSlideshowTimer(settings) {
+    const sh = settings.slideshow;
+    if (sh.interval === 'open') return;
+
+    let intervalMs = 15 * 60 * 1000;
+    if (sh.interval === '30m') intervalMs = 30 * 60 * 1000;
+    if (sh.interval === '1h') intervalMs = 60 * 60 * 1000;
+    if (sh.interval === '24h') intervalMs = 24 * 60 * 60 * 1000;
+
+    const now = Date.now();
+    const last = sh.lastRotationTime || 0;
+    const timePassed = now - last;
+    const timeRemaining = Math.max(0, intervalMs - timePassed);
+
+    if (timeRemaining === 0) {
+      rotateSlideshow(settings);
+    } else {
+      slideshowTimer = setTimeout(() => {
+        rotateSlideshow(settings);
+      }, timeRemaining);
+    }
+  }
+
+  function rotateSlideshow(settings) {
+    const sh = settings.slideshow;
+    if (!sh || !sh.items || sh.items.length <= 1) return;
+
+    let nextIndex = sh.currentIndex || 0;
+    if (sh.order === 'random') {
+      let rand = nextIndex;
+      while (rand === nextIndex) {
+        rand = Math.floor(Math.random() * sh.items.length);
+      }
+      nextIndex = rand;
+    } else {
+      nextIndex = (nextIndex + 1) % sh.items.length;
+    }
+
+    const domain = window.location.hostname;
+    chrome.storage.local.get(domain, (data) => {
+      const stored = data[domain];
+      if (stored && stored.mode === 'slideshow' && stored.slideshow) {
+        stored.slideshow.currentIndex = nextIndex;
+        stored.slideshow.lastRotationTime = Date.now();
+        chrome.storage.local.set({ [domain]: stored });
+      }
+    });
   }
 
   // Full-page background: a fixed layer behind everything, with html/body

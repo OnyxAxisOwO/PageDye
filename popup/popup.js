@@ -131,9 +131,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       typeColor: "Color",
       typeImage: "Image",
       color: "Color",
-      tabLocal: "Local File",
-      tabUrl: "URL",
-      dropText: "Click or Drop image here",
       opacity: "Opacity",
       blur: "Blur",
       fixed: "Fixed Position",
@@ -154,7 +151,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       pickElement: "Pick",
       customCss: "Custom CSS",
       customCssHint: "Injected into this site. Use !important to override stubborn styles.",
-      pickerFailed: "Can't pick on this page"
+      pickerFailed: "Can't pick on this page",
+      wallpaperMode: "Wallpaper Mode",
+      modeSingle: "Single",
+      modeAuto: "Light/Dark",
+      modeSlideshow: "Slideshow",
+      rotationInterval: "Interval",
+      intervalOpen: "Each Open",
+      interval15m: "15 Mins",
+      interval30m: "30 Mins",
+      interval1h: "1 Hour",
+      interval24h: "1 Day",
+      randomOrder: "Random Order",
+      wallpapersList: "Wallpapers",
+      selectSchemeToEdit: "Select background to edit",
+      statusSynced: "Synced",
+      statusSaving: "Saving...",
+      dragOrClick: "Drag image here, or",
+      chooseFile: "choose file",
+      orPasteUrl: "Or paste image URL",
+      adjustStyles: "Adjust Styles",
+      activeImage: "Wallpaper Image",
+      savedImage: "Saved Image"
     },
     zh: {
       title: "PageDye 设置",
@@ -164,9 +182,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       typeColor: "纯色",
       typeImage: "图片",
       color: "颜色",
-      tabLocal: "本地文件",
-      tabUrl: "链接",
-      dropText: "点击或拖拽图片到此处",
       opacity: "不透明度",
       blur: "模糊度",
       fixed: "固定背景",
@@ -187,7 +202,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       pickElement: "拾取",
       customCss: "自定义 CSS",
       customCssHint: "将注入到本网站。可用 !important 覆盖顽固样式。",
-      pickerFailed: "此页面无法拾取"
+      pickerFailed: "此页面无法拾取",
+      wallpaperMode: "壁纸模式",
+      modeSingle: "单一壁纸",
+      modeAuto: "昼夜联动",
+      modeSlideshow: "幻灯轮换",
+      rotationInterval: "轮换间隔",
+      intervalOpen: "每次打开",
+      interval15m: "15分钟",
+      interval30m: "30分钟",
+      interval1h: "1小时",
+      interval24h: "1天",
+      randomOrder: "随机顺序",
+      wallpapersList: "壁纸列表",
+      selectSchemeToEdit: "选择要编辑的背景",
+      statusSynced: "配置已同步",
+      statusSaving: "正在保存...",
+      dragOrClick: "拖拽图片至此，或",
+      chooseFile: "选择文件",
+      orPasteUrl: "或输入图片链接",
+      adjustStyles: "调整壁纸样式",
+      activeImage: "当前图片",
+      savedImage: "已保存的壁纸"
     }
   };
 
@@ -197,11 +233,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     bgTypes: document.getElementsByName('bgType'),
     sectionColor: document.getElementById('section-color'),
     sectionImage: document.getElementById('section-image'),
-    sectionStyles: document.getElementById('section-styles'),
     colorPicker: document.getElementById('color-picker'),
     colorText: document.getElementById('color-text'),
-    tabBtns: document.querySelectorAll('.tab-btn'),
-    tabContents: document.querySelectorAll('.tab-content'),
     imageUrl: document.getElementById('image-url'),
     dropArea: document.getElementById('drop-area'),
     fileInput: document.getElementById('image-file'),
@@ -224,31 +257,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     imageOptions: document.getElementById('image-options'),
 
     // Advanced
-    advancedToggle: document.getElementById('advanced-toggle'),
-    advancedBody: document.getElementById('advanced-body'),
     targetSelector: document.getElementById('target-selector'),
     pickBtn: document.getElementById('pick-btn'),
     customCss: document.getElementById('custom-css'),
     settingsBtn: document.getElementById('settings-btn'),
 
-    saveBtn: document.getElementById('save-btn'),
     resetBtn: document.getElementById('reset-btn'),
-    statusMsg: document.getElementById('status-msg')
+
+    // Modes & Schemes
+    wpModes: document.getElementsByName('wpMode'),
+    schemeCardsContainer: document.getElementById('scheme-cards-container'),
+    cardSchemeLight: document.getElementById('card-scheme-light'),
+    cardSchemeDark: document.getElementById('card-scheme-dark'),
+    previewCardLight: document.getElementById('preview-card-light'),
+    previewCardDark: document.getElementById('preview-card-dark'),
+    
+    slideshowConfigPanel: document.getElementById('slideshow-config-panel'),
+    slideshowInterval: document.getElementById('slideshow-interval'),
+    slideshowRandom: document.getElementById('slideshow-random'),
+    wallpapersGrid: document.getElementById('wallpapers-grid'),
+    statusDot: document.getElementById('status-dot'),
+    statusText: document.getElementById('status-text')
   };
 
   // Sends a message to the tab's content script, injecting it first if it is
   // not reachable (page predates the extension, or the extension was reloaded
   // while the tab stayed open). Requires the "scripting" permission.
   async function sendToTab(tabId, message) {
-    // Always (re)inject the latest content script first. An already-open tab may
-    // still be running an older version from before the extension was reloaded;
-    // messaging that stale instance would run outdated logic (e.g. the
-    // pre-:root selector background code), so saving wouldn't reflect the fix.
     try {
       await chrome.scripting.executeScript({ target: { tabId }, files: ['scripts/content.js'] });
     } catch (e) {
       // Injection can fail on restricted pages (chrome://, Web Store, etc.).
-      // Fall through and message whatever content script is already present.
     }
     return await chrome.tabs.sendMessage(tabId, message);
   }
@@ -257,6 +296,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentDomain = '';
   let currentImageBase64 = null;
   let lang = 'en';
+  let activeScheme = 'light';
+  let activeSlideshowIndex = 0;
+  let currentSettings = null;
+  let saveDebounceTimer = null;
 
   // Init
   initI18n();
@@ -283,22 +326,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Background Type Switch
   els.bgTypes.forEach(radio => {
-    radio.addEventListener('change', () => updateUI(radio.value));
+    radio.addEventListener('change', () => {
+      updateUI(radio.value);
+      updateInteractivePreviews();
+      triggerImmediateSave();
+    });
   });
 
   // Color Picker Sync
-  els.colorPicker.addEventListener('input', (e) => els.colorText.value = e.target.value);
-  els.colorText.addEventListener('input', (e) => els.colorPicker.value = e.target.value);
-
-  // Tabs
-  els.tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      els.tabBtns.forEach(b => b.classList.remove('active'));
-      els.tabContents.forEach(c => c.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
-      updatePreview();
-    });
+  els.colorPicker.addEventListener('input', (e) => {
+    els.colorText.value = e.target.value;
+    updateInteractivePreviews();
+    queueAutoSave();
+  });
+  els.colorText.addEventListener('input', (e) => {
+    els.colorPicker.value = e.target.value;
+    updateInteractivePreviews();
+    queueAutoSave();
   });
 
   // File Upload
@@ -321,27 +365,155 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Sliders
   els.opacity.addEventListener('input', (e) => {
     els.opacityVal.textContent = `${e.target.value}%`;
-    updatePreview(); // Opacity affects container or overlay? For now preview just shows image.
-    // Actually opacity is for the whole layer.
+    updatePreview();
+    updateInteractivePreviews();
+    queueAutoSave();
   });
   els.blur.addEventListener('input', (e) => {
     els.blurVal.textContent = `${e.target.value}px`;
     updatePreview();
+    updateInteractivePreviews();
+    queueAutoSave();
   });
 
   // URL Preview
   els.imageUrl.addEventListener('input', (e) => {
+    // If user enters a URL, clear local file state
+    if (e.target.value) {
+      currentImageBase64 = null;
+      els.fileInput.value = '';
+      els.dropArea.classList.remove('hidden');
+      els.fileInfo.classList.add('hidden');
+    }
     updatePreview();
+    updateInteractivePreviews();
+    queueAutoSave();
   });
 
-  // Advanced: collapsible toggle
-  els.advancedToggle.addEventListener('click', () => {
-    const open = els.advancedBody.classList.toggle('hidden') === false;
-    els.advancedToggle.setAttribute('aria-expanded', String(open));
-  });
+  // Style Toggles
+  els.bgFixed.addEventListener('change', () => triggerImmediateSave());
+  els.bgSize.addEventListener('change', () => triggerImmediateSave());
+  els.bgRepeat.addEventListener('change', () => triggerImmediateSave());
+
+  // Advanced inputs
+  els.targetSelector.addEventListener('input', () => queueAutoSave());
+  els.customCss.addEventListener('input', () => queueAutoSave());
 
   // Advanced: element picker
   els.pickBtn.addEventListener('click', startPicker);
+
+  // Wallpaper Mode Switch
+  els.wpModes.forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (!currentSettings) return;
+      
+      const prevMode = currentSettings.mode || 'single';
+      if (prevMode === 'single') {
+        collectFormTo(currentSettings);
+      } else if (prevMode === 'auto') {
+        collectFormTo(currentSettings[activeScheme]);
+      } else if (prevMode === 'slideshow') {
+        collectFormTo(currentSettings.slideshow.items[activeSlideshowIndex]);
+        currentSettings.slideshow.interval = els.slideshowInterval.value;
+        currentSettings.slideshow.order = els.slideshowRandom.checked ? 'random' : 'sequential';
+      }
+      
+      currentSettings.mode = radio.value;
+      updateModeUI(radio.value);
+      triggerImmediateSave();
+    });
+  });
+
+  // Auto Mode side-by-side cards selection listeners
+  els.cardSchemeLight.addEventListener('click', () => {
+    if (!currentSettings || activeScheme === 'light') return;
+    collectFormTo(currentSettings[activeScheme]);
+    activeScheme = 'light';
+    els.cardSchemeDark.classList.remove('active');
+    els.cardSchemeLight.classList.add('active');
+    populateForm(currentSettings[activeScheme]);
+  });
+
+  els.cardSchemeDark.addEventListener('click', () => {
+    if (!currentSettings || activeScheme === 'dark') return;
+    collectFormTo(currentSettings[activeScheme]);
+    activeScheme = 'dark';
+    els.cardSchemeLight.classList.remove('active');
+    els.cardSchemeDark.classList.add('active');
+    populateForm(currentSettings[activeScheme]);
+  });
+
+  // Slideshow Grid interactions using delegation
+  els.wallpapersGrid.addEventListener('click', (e) => {
+    if (!currentSettings || !currentSettings.slideshow) return;
+
+    // 1. Add Card Click
+    const addCard = e.target.closest('.add-grid-card');
+    if (addCard) {
+      collectFormTo(currentSettings.slideshow.items[activeSlideshowIndex]);
+      const newItem = {
+        type: 'none',
+        value: '',
+        opacity: 100,
+        blur: 0,
+        style: { fixed: true, size: 'cover', repeat: false }
+      };
+      currentSettings.slideshow.items.push(newItem);
+      activeSlideshowIndex = currentSettings.slideshow.items.length - 1;
+      renderWallpapersGrid();
+      populateForm(currentSettings.slideshow.items[activeSlideshowIndex]);
+      triggerImmediateSave();
+      return;
+    }
+
+    // 2. Delete Card Click
+    const deleteBtn = e.target.closest('.delete-grid-btn');
+    if (deleteBtn) {
+      e.stopPropagation();
+      const card = deleteBtn.closest('.wallpaper-grid-card');
+      const idx = parseInt(card.dataset.index, 10);
+      currentSettings.slideshow.items.splice(idx, 1);
+      
+      if (activeSlideshowIndex >= currentSettings.slideshow.items.length) {
+        activeSlideshowIndex = currentSettings.slideshow.items.length - 1;
+      }
+      
+      renderWallpapersGrid();
+      populateForm(currentSettings.slideshow.items[activeSlideshowIndex]);
+      triggerImmediateSave();
+      return;
+    }
+
+    // 3. Select Card Click
+    const card = e.target.closest('.wallpaper-grid-card');
+    if (card) {
+      const idx = parseInt(card.dataset.index, 10);
+      if (activeSlideshowIndex === idx) return;
+      collectFormTo(currentSettings.slideshow.items[activeSlideshowIndex]);
+      activeSlideshowIndex = idx;
+      
+      // Update selected state border
+      els.wallpapersGrid.querySelectorAll('.wallpaper-grid-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      
+      populateForm(currentSettings.slideshow.items[activeSlideshowIndex]);
+    }
+  });
+
+  // Slideshow config inputs save triggers
+  els.slideshowInterval.addEventListener('change', () => {
+    if (currentSettings && currentSettings.slideshow) {
+      currentSettings.slideshow.interval = els.slideshowInterval.value;
+      triggerImmediateSave();
+    }
+  });
+
+  els.slideshowRandom.addEventListener('change', () => {
+    if (currentSettings && currentSettings.slideshow) {
+      currentSettings.slideshow.order = els.slideshowRandom.checked ? 'random' : 'sequential';
+      triggerImmediateSave();
+    }
+  });
 
   // Advanced: open settings dashboard with robust fallback
   els.settingsBtn.addEventListener('click', () => {
@@ -357,15 +529,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Actions
-  els.saveBtn.addEventListener('click', () => saveSettings());
   els.resetBtn.addEventListener('click', resetSettings);
+  
   // Copy domain hostname
   els.domainBadge.addEventListener('click', async () => {
     const text = els.domainBadge.textContent;
     if (!text || text === '...' || text === t('invalidUrl') || text === t('noTab')) return;
     try {
       await navigator.clipboard.writeText(text);
-      showStatus(lang === 'zh' ? '已复制域名!' : 'Domain copied!');
+      setSavingState();
+      setTimeout(setSyncedState, 1000);
     } catch (err) {
       console.error('Failed to copy domain name:', err);
     }
@@ -397,110 +570,322 @@ document.addEventListener('DOMContentLoaded', async () => {
     return i18n[lang][key] || key;
   }
 
+  // Disable UI when no tab found
   function disableAll() {
     document.querySelector('main').style.opacity = '0.5';
     document.querySelector('main').style.pointerEvents = 'none';
-    els.saveBtn.disabled = true;
     els.resetBtn.disabled = true;
   }
 
   function updatePreview() {
-    // 1. Image
     let imageUrl = '';
-    const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
-    
-    if (activeTab === 'url') {
-       if (els.imageUrl.value) {
-         imageUrl = `url('${els.imageUrl.value}')`;
-       }
-    } else {
-       if (currentImageBase64) {
-         imageUrl = `url('${currentImageBase64}')`;
-       }
+    if (currentImageBase64) {
+      imageUrl = `url('${currentImageBase64}')`;
+    } else if (els.imageUrl.value) {
+      imageUrl = `url('${els.imageUrl.value}')`;
     }
     els.imagePreviewBg.style.backgroundImage = imageUrl;
 
-    // 2. Blur
     const blur = els.blur.value;
     els.imagePreviewBg.style.filter = `blur(${blur}px)`;
     els.imagePreviewBg.style.transform = 'scale(1.08)';
 
-    // 3. Opacity (Fix bug: opacity preview was missing)
     const opacity = els.opacity.value;
     els.imagePreviewBg.style.opacity = opacity / 100;
   }
 
-  async function loadSettings(domain) {
-    const data = await chrome.storage.local.get(domain);
-    const settings = data[domain] || { type: 'none', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } };
+  function populateForm(subSettings) {
+    document.querySelector(`input[name="bgType"][value="${subSettings.type || 'none'}"]`).checked = true;
+    updateUI(subSettings.type || 'none');
 
-    // Set Type
-    document.querySelector(`input[name="bgType"][value="${settings.type}"]`).checked = true;
-    updateUI(settings.type);
+    currentImageBase64 = null;
+    els.imageUrl.value = '';
+    els.fileInput.value = '';
+    els.dropArea.classList.remove('hidden');
+    els.fileInfo.classList.add('hidden');
 
-    // Set Values based on type
-    if (settings.type === 'color') {
-      els.colorPicker.value = settings.value || '#ffffff';
-      els.colorText.value = settings.value || '#ffffff';
-    } else if (settings.type === 'image') {
-      // Check if it's base64 or url
-      if (settings.value && settings.value.startsWith('data:')) {
-        // Local file
-        currentImageBase64 = settings.value;
-        // Update UI state for local file
-        els.tabBtns[0].click(); 
+    if (subSettings.type === 'color') {
+      els.colorPicker.value = subSettings.value || '#ffffff';
+      els.colorText.value = subSettings.value || '#ffffff';
+    } else if (subSettings.type === 'image') {
+      if (subSettings.value && subSettings.value.startsWith('data:')) {
+        currentImageBase64 = subSettings.value;
         els.dropArea.classList.add('hidden');
         els.fileInfo.classList.remove('hidden');
-        els.fileName.textContent = t('saved'); 
+        els.fileName.textContent = t('savedImage'); 
       } else {
-        // URL
-        els.imageUrl.value = settings.value || '';
-        els.tabBtns[1].click(); 
+        els.imageUrl.value = subSettings.value || '';
       }
     }
 
-    // Common Styles
-    els.opacity.value = settings.opacity;
-    els.opacityVal.textContent = `${settings.opacity}%`;
-    els.blur.value = settings.blur;
-    els.blurVal.textContent = `${settings.blur}px`;
+    els.opacity.value = subSettings.opacity !== undefined ? subSettings.opacity : 100;
+    els.opacityVal.textContent = `${els.opacity.value}%`;
+    els.blur.value = subSettings.blur !== undefined ? subSettings.blur : 0;
+    els.blurVal.textContent = `${els.blur.value}px`;
     
-    if (settings.style) {
-      els.bgFixed.checked = settings.style.fixed;
-      els.bgSize.value = settings.style.size || 'cover';
-      els.bgRepeat.checked = settings.style.repeat;
+    if (subSettings.style) {
+      els.bgFixed.checked = subSettings.style.fixed !== false;
+      els.bgSize.value = subSettings.style.size || 'cover';
+      els.bgRepeat.checked = !!subSettings.style.repeat;
     }
 
-    // Advanced fields
-    els.targetSelector.value = settings.targetSelector || '';
-    els.customCss.value = settings.customCss || '';
-    // Auto-expand advanced section if it holds any settings
-    if (els.targetSelector.value || els.customCss.value) {
-      els.advancedBody.classList.remove('hidden');
-      els.advancedToggle.setAttribute('aria-expanded', 'true');
-    }
-
-    // Trigger preview update
     updatePreview();
+  }
+
+  function collectFormTo(dest) {
+    const type = document.querySelector('input[name="bgType"]:checked').value;
+    let value = '';
+
+    if (type === 'color') {
+      value = els.colorPicker.value;
+    } else if (type === 'image') {
+      value = currentImageBase64 || els.imageUrl.value;
+    }
+
+    dest.type = type;
+    dest.value = value;
+    dest.opacity = parseInt(els.opacity.value, 10);
+    dest.blur = parseInt(els.blur.value, 10);
+    dest.style = {
+      fixed: els.bgFixed.checked,
+      size: els.bgSize.value,
+      repeat: els.bgRepeat.checked
+    };
+  }
+
+  async function loadSettings(domain) {
+    const data = await chrome.storage.local.get(domain);
+    currentSettings = data[domain] || {
+      mode: 'single',
+      type: 'none',
+      value: '',
+      opacity: 100,
+      blur: 0,
+      style: { fixed: true, size: 'cover', repeat: false }
+    };
+
+    if (!currentSettings.mode) {
+      currentSettings.mode = 'single';
+    }
+
+    if (!currentSettings.light) {
+      currentSettings.light = {
+        type: currentSettings.type && currentSettings.type !== 'none' ? currentSettings.type : 'none',
+        value: currentSettings.value || '',
+        opacity: currentSettings.opacity !== undefined ? currentSettings.opacity : 100,
+        blur: currentSettings.blur !== undefined ? currentSettings.blur : 0,
+        style: Object.assign({ fixed: true, size: 'cover', repeat: false }, currentSettings.style || {})
+      };
+    }
+    if (!currentSettings.dark) {
+      currentSettings.dark = {
+        type: currentSettings.type && currentSettings.type !== 'none' ? currentSettings.type : 'none',
+        value: currentSettings.value || '',
+        opacity: currentSettings.opacity !== undefined ? currentSettings.opacity : 100,
+        blur: currentSettings.blur !== undefined ? currentSettings.blur : 0,
+        style: Object.assign({ fixed: true, size: 'cover', repeat: false }, currentSettings.style || {})
+      };
+    }
+
+    if (!currentSettings.slideshow) {
+      currentSettings.slideshow = {
+        interval: 'open',
+        order: 'sequential',
+        currentIndex: 0,
+        lastRotationTime: Date.now(),
+        items: [
+          {
+            type: currentSettings.type || 'none',
+            value: currentSettings.value || '',
+            opacity: currentSettings.opacity !== undefined ? currentSettings.opacity : 100,
+            blur: currentSettings.blur !== undefined ? currentSettings.blur : 0,
+            style: Object.assign({ fixed: true, size: 'cover', repeat: false }, currentSettings.style || {})
+          }
+        ]
+      };
+    }
+
+    const mode = currentSettings.mode || 'single';
+    const radio = document.querySelector(`input[name="wpMode"][value="${mode}"]`);
+    if (radio) radio.checked = true;
+    updateModeUI(mode);
+
+    els.targetSelector.value = currentSettings.targetSelector || '';
+    els.customCss.value = currentSettings.customCss || '';
+    
+    // Auto expand accordion if target selector or custom css has values
+    const accordionAdvanced = document.getElementById('accordion-advanced');
+    if (els.targetSelector.value || els.customCss.value) {
+      if (accordionAdvanced) accordionAdvanced.open = true;
+    } else {
+      if (accordionAdvanced) accordionAdvanced.open = false;
+    }
+    
+    updateInteractivePreviews();
+  }
+
+  function updateModeUI(mode) {
+    els.schemeCardsContainer.classList.add('hidden');
+    els.slideshowConfigPanel.classList.add('hidden');
+
+    const activeModeBadge = document.getElementById('active-mode-badge');
+    if (activeModeBadge) {
+      if (mode === 'single') {
+        activeModeBadge.textContent = t('modeSingle');
+      } else if (mode === 'auto') {
+        activeModeBadge.textContent = t('modeAuto');
+      } else if (mode === 'slideshow') {
+        activeModeBadge.textContent = t('modeSlideshow');
+      }
+    }
+
+    if (mode === 'single') {
+      populateForm(currentSettings);
+    } else if (mode === 'auto') {
+      els.schemeCardsContainer.classList.remove('hidden');
+      els.cardSchemeLight.classList.remove('active');
+      els.cardSchemeDark.classList.remove('active');
+      if (activeScheme === 'dark') {
+        els.cardSchemeDark.classList.add('active');
+      } else {
+        activeScheme = 'light';
+        els.cardSchemeLight.classList.add('active');
+      }
+      populateForm(currentSettings[activeScheme]);
+    } else if (mode === 'slideshow') {
+      els.slideshowConfigPanel.classList.remove('hidden');
+      els.slideshowInterval.value = currentSettings.slideshow.interval || 'open';
+      els.slideshowRandom.checked = currentSettings.slideshow.order === 'random';
+      
+      activeSlideshowIndex = currentSettings.slideshow.currentIndex || 0;
+      if (activeSlideshowIndex >= currentSettings.slideshow.items.length) {
+        activeSlideshowIndex = 0;
+      }
+      renderWallpapersGrid();
+      populateForm(currentSettings.slideshow.items[activeSlideshowIndex]);
+    }
+    updateInteractivePreviews();
+  }
+
+  function renderWallpapersGrid() {
+    els.wallpapersGrid.innerHTML = '';
+    const items = currentSettings.slideshow.items || [];
+    
+    items.forEach((item, idx) => {
+      const card = document.createElement('div');
+      card.className = 'wallpaper-grid-card';
+      if (idx === activeSlideshowIndex) card.classList.add('active');
+      
+      if (item.type === 'color') {
+        card.style.backgroundColor = item.value || '#ffffff';
+        card.style.backgroundImage = 'none';
+      } else if (item.type === 'image' && item.value) {
+        card.style.backgroundImage = `url('${item.value}')`;
+      } else {
+        card.classList.add('type-none');
+        card.textContent = 'None';
+      }
+      card.dataset.index = idx;
+      
+      if (items.length > 1) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-grid-btn';
+        deleteBtn.textContent = '×';
+        deleteBtn.type = 'button';
+        deleteBtn.title = lang === 'zh' ? '删除此壁纸' : 'Delete wallpaper';
+        card.appendChild(deleteBtn);
+      }
+      els.wallpapersGrid.appendChild(card);
+    });
+
+    const addCard = document.createElement('div');
+    addCard.className = 'add-grid-card';
+    addCard.textContent = '+';
+    els.wallpapersGrid.appendChild(addCard);
+  }
+
+  function updateInteractivePreviews() {
+    if (!currentSettings) return;
+    
+    const mode = currentSettings.mode || 'single';
+    if (mode === 'auto') {
+      const light = currentSettings.light;
+      if (light.type === 'color') {
+        els.previewCardLight.style.backgroundColor = light.value || '#ffffff';
+        els.previewCardLight.style.backgroundImage = 'none';
+      } else if (light.type === 'image' && light.value) {
+        els.previewCardLight.style.backgroundImage = `url('${light.value}')`;
+      } else {
+        els.previewCardLight.style.backgroundColor = 'var(--surface-bg)';
+        els.previewCardLight.style.backgroundImage = 'none';
+      }
+      els.previewCardLight.style.opacity = (light.opacity !== undefined ? light.opacity : 100) / 100;
+      
+      const dark = currentSettings.dark;
+      if (dark.type === 'color') {
+        els.previewCardDark.style.backgroundColor = dark.value || '#ffffff';
+        els.previewCardDark.style.backgroundImage = 'none';
+      } else if (dark.type === 'image' && dark.value) {
+        els.previewCardDark.style.backgroundImage = `url('${dark.value}')`;
+      } else {
+        els.previewCardDark.style.backgroundColor = 'var(--surface-bg)';
+        els.previewCardDark.style.backgroundImage = 'none';
+      }
+      els.previewCardDark.style.opacity = (dark.opacity !== undefined ? dark.opacity : 100) / 100;
+    } else if (mode === 'slideshow') {
+      const activeCard = els.wallpapersGrid.querySelector(`.wallpaper-grid-card.active`);
+      if (activeCard) {
+        const item = currentSettings.slideshow.items[activeSlideshowIndex];
+        if (item) {
+          activeCard.textContent = '';
+          activeCard.style.backgroundColor = '';
+          activeCard.style.backgroundImage = '';
+          if (item.type === 'color') {
+            activeCard.style.backgroundColor = item.value || '#ffffff';
+            activeCard.className = 'wallpaper-grid-card active';
+          } else if (item.type === 'image' && item.value) {
+            activeCard.style.backgroundImage = `url('${item.value}')`;
+            activeCard.className = 'wallpaper-grid-card active';
+          } else {
+            activeCard.className = 'wallpaper-grid-card active type-none';
+            activeCard.textContent = 'None';
+          }
+          
+          const count = currentSettings.slideshow.items.length;
+          if (count > 1 && !activeCard.querySelector('.delete-grid-btn')) {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-grid-btn';
+            deleteBtn.textContent = '×';
+            deleteBtn.type = 'button';
+            deleteBtn.title = lang === 'zh' ? '删除此壁纸' : 'Delete wallpaper';
+            activeCard.appendChild(deleteBtn);
+          }
+        }
+      }
+    }
   }
 
   function updateUI(type) {
     els.sectionColor.classList.add('hidden');
     els.sectionImage.classList.add('hidden');
-    els.sectionStyles.classList.add('hidden');
-    els.imageOptions.classList.add('hidden');
-    els.blurControl.classList.add('hidden'); // Hide blur by default
+    els.blurControl.classList.add('hidden'); 
 
     if (type === 'color') {
       els.sectionColor.classList.remove('hidden');
-      els.sectionStyles.classList.remove('hidden');
-      // Blur hidden for color
     } else if (type === 'image') {
       els.sectionImage.classList.remove('hidden');
-      els.sectionStyles.classList.remove('hidden');
-      els.imageOptions.classList.remove('hidden');
-      els.blurControl.classList.remove('hidden'); // Show blur for image
-      updatePreview(); // Update preview when showing image section
+      els.blurControl.classList.remove('hidden'); 
+      updatePreview(); 
+    }
+    
+    // Toggle image position options if image is active
+    const imgOptions = document.getElementById('image-options');
+    if (imgOptions) {
+      if (type === 'image') {
+        imgOptions.classList.remove('hidden');
+      } else {
+        imgOptions.classList.add('hidden');
+      }
     }
   }
 
@@ -516,10 +901,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       currentImageBase64 = e.target.result;
+      els.imageUrl.value = ''; // Clear URL if choosing file
       els.dropArea.classList.add('hidden');
       els.fileInfo.classList.remove('hidden');
       els.fileName.textContent = file.name;
       updatePreview();
+      updateInteractivePreviews();
+      triggerImmediateSave();
     };
     reader.readAsDataURL(file);
   }
@@ -530,43 +918,61 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.dropArea.classList.remove('hidden');
     els.fileInfo.classList.add('hidden');
     updatePreview();
+    updateInteractivePreviews();
+    triggerImmediateSave();
   }
 
-  // Reads the current form into a settings object (no side effects).
   function collectSettings() {
-    const type = document.querySelector('input[name="bgType"]:checked').value;
-    let value = '';
+    const mode = document.querySelector('input[name="wpMode"]:checked').value;
+    currentSettings.mode = mode;
 
-    if (type === 'color') {
-      value = els.colorPicker.value;
-    } else if (type === 'image') {
-      const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
-      value = activeTab === 'url' ? els.imageUrl.value : currentImageBase64;
+    if (mode === 'single') {
+      collectFormTo(currentSettings);
+    } else if (mode === 'auto') {
+      collectFormTo(currentSettings[activeScheme]);
+    } else if (mode === 'slideshow') {
+      collectFormTo(currentSettings.slideshow.items[activeSlideshowIndex]);
+      currentSettings.slideshow.interval = els.slideshowInterval.value;
+      currentSettings.slideshow.order = els.slideshowRandom.checked ? 'random' : 'sequential';
     }
 
-    return {
-      type,
-      value,
-      opacity: parseInt(els.opacity.value, 10),
-      blur: parseInt(els.blur.value, 10),
-      style: {
-        fixed: els.bgFixed.checked,
-        size: els.bgSize.value,
-        repeat: els.bgRepeat.checked
-      },
-      targetSelector: els.targetSelector.value.trim(),
-      customCss: els.customCss.value,
-      timestamp: Date.now()
-    };
+    currentSettings.targetSelector = els.targetSelector.value.trim();
+    currentSettings.customCss = els.customCss.value;
+    currentSettings.timestamp = Date.now();
+
+    return currentSettings;
   }
 
-  async function saveSettings(silent = false) {
+  function queueAutoSave() {
+    setSavingState();
+    if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
+    saveDebounceTimer = setTimeout(() => {
+      saveSettings(true);
+    }, 400);
+  }
+
+  function triggerImmediateSave() {
+    setSavingState();
+    if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
+    saveSettings(true);
+  }
+
+  function setSavingState() {
+    els.statusDot.classList.add('saving');
+    els.statusText.textContent = t('statusSaving');
+  }
+
+  function setSyncedState() {
+    els.statusDot.classList.remove('saving');
+    els.statusText.textContent = t('statusSynced');
+  }
+
+  async function saveSettings(silent = true) {
     const settings = collectSettings();
 
     try {
       await chrome.storage.local.set({ [currentDomain]: settings });
 
-      // Notify Content Script
       try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (tab) {
@@ -576,16 +982,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Content script might not be ready', err);
       }
 
-      if (!silent) showStatus(t('saved'));
+      setSyncedState();
     } catch (err) {
-      showStatus(t('error'));
+      els.statusText.textContent = t('error');
       console.error(err);
     }
   }
 
   async function resetSettings() {
+    setSavingState();
     await chrome.storage.local.remove(currentDomain);
-    // Reset UI
+    
+    currentSettings = {
+      mode: 'single',
+      type: 'none',
+      value: '',
+      opacity: 100,
+      blur: 0,
+      style: { fixed: true, size: 'cover', repeat: false },
+      light: { type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+      dark: { type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+      slideshow: {
+        interval: 'open',
+        order: 'sequential',
+        currentIndex: 0,
+        lastRotationTime: Date.now(),
+        items: [
+          { type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } }
+        ]
+      },
+      targetSelector: '',
+      customCss: ''
+    };
+    activeScheme = 'light';
+    activeSlideshowIndex = 0;
+    
+    const radio = document.querySelector('input[name="wpMode"][value="single"]');
+    if (radio) radio.checked = true;
+    updateModeUI('single');
+
     document.querySelector('input[value="none"]').click();
     els.opacity.value = 100;
     els.blur.value = 0;
@@ -594,12 +1029,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.targetSelector.value = '';
     els.customCss.value = '';
 
-    // Notify Content Script
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab) {
       chrome.tabs.sendMessage(tab.id, { action: 'updateBackground', settings: { type: 'none' } });
     }
-    showStatus(t('resetMsg'));
+    setSyncedState();
   }
 
   // Inject the element picker directly into the page, passing the current form
@@ -612,10 +1046,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
     try {
-      // Force the LATEST content script onto the page first. An already-open
-      // tab may still be running an old version (e.g. the overlay-based one);
-      // re-injecting guarantees the current storage listener / direct-paint
-      // logic is what reacts to the picked selector.
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         files: ['scripts/content.js']
@@ -628,15 +1058,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.close();
     } catch (err) {
       console.log('Cannot start picker on this page', err);
-      showStatus(t('pickerFailed'));
+      setSavingState();
+      els.statusText.textContent = t('pickerFailed');
     }
-  }
-
-
-
-  function showStatus(msg) {
-    els.statusMsg.textContent = msg;
-    els.statusMsg.classList.remove('hidden');
-    setTimeout(() => els.statusMsg.classList.add('hidden'), 2000);
   }
 });

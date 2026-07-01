@@ -2,6 +2,11 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.3.0]
+
+### Added
+- **Auto Light/Dark Wallpapers (昼夜双态联动)**: Allows users to configure separate backgrounds for Light and Dark modes. The extension will automatically read system preferences (`prefers-color-scheme`) and dynamically update the background when the system theme changes.
+
 ## [0.2.7]
 
 ### Added

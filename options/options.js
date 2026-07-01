@@ -70,7 +70,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetSelector: "Background Selector",
       targetSelectorHint: "Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.",
       customCss: "Custom CSS",
-      customCssHint: "Injected into this site. Use !important to override stubborn styles."
+      customCssHint: "Injected into this site. Use !important to override stubborn styles.",
+      autoScheme: "Auto Light/Dark",
+      schemeLight: "Light Version",
+      schemeDark: "Dark Version",
+      wallpaperMode: "Wallpaper Mode",
+      modeSingle: "Single",
+      modeAuto: "Light/Dark",
+      modeSlideshow: "Slideshow",
+      rotationInterval: "Interval",
+      intervalOpen: "Each Open",
+      interval15m: "15 Mins",
+      interval30m: "30 Mins",
+      interval1h: "1 Hour",
+      interval24h: "1 Day",
+      randomOrder: "Random Order",
+      wallpapersList: "Wallpapers"
     },
     zh: {
       title: "PageDye 控制面板",
@@ -142,7 +157,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetSelector: "背景选择器",
       targetSelectorHint: "拾取一个元素（或手动输入 CSS 选择器），PageDye 会把颜色/图片直接应用到该元素，而不是整页。留空则为整页背景。",
       customCss: "自定义 CSS",
-      customCssHint: "将注入到本网站。可用 !important 覆盖顽固样式。"
+      customCssHint: "将注入到本网站。可用 !important 覆盖顽固样式。",
+      autoScheme: "昼夜双态联动",
+      schemeLight: "日光版",
+      schemeDark: "夜间版",
+      wallpaperMode: "壁纸模式",
+      modeSingle: "单一壁纸",
+      modeAuto: "昼夜联动",
+      modeSlideshow: "幻灯轮换",
+      rotationInterval: "轮换间隔",
+      intervalOpen: "每次打开",
+      interval15m: "15分钟",
+      interval30m: "30分钟",
+      interval1h: "1小时",
+      interval24h: "1天",
+      randomOrder: "随机顺序",
+      wallpapersList: "壁纸列表"
     }
   };
 
@@ -161,7 +191,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     importBtn: document.getElementById('import-btn'),
     importFile: document.getElementById('import-file'),
     clearAllBtn: document.getElementById('clear-all-btn'),
-    statusMsg: document.getElementById('status-msg')
+
+    // Edit site controls
+    editWpModes: document.getElementsByName('edit-wpMode'),
+    editSchemeCardsContainer: document.getElementById('edit-scheme-cards-container'),
+    editCardSchemeLight: document.getElementById('edit-card-scheme-light'),
+    editCardSchemeDark: document.getElementById('edit-card-scheme-dark'),
+    editPreviewCardLight: document.getElementById('edit-preview-card-light'),
+    editPreviewCardDark: document.getElementById('edit-preview-card-dark'),
+    
+    editSlideshowConfigPanel: document.getElementById('edit-slideshow-config-panel'),
+    editSlideshowInterval: document.getElementById('edit-slideshow-interval'),
+    editSlideshowRandom: document.getElementById('edit-slideshow-random'),
+    editWallpapersGrid: document.getElementById('edit-wallpapers-grid'),
+    editStatusDot: document.getElementById('edit-status-dot'),
+    editStatusText: document.getElementById('edit-status-text')
   };
 
   // Init translations & versions
@@ -273,11 +317,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       // 2. Background Type badge column
       const tdBgType = document.createElement('td');
       const badge = document.createElement('span');
-      badge.className = `bg-type-badge ${settings.type}`;
       
       let typeText = t('bgTypeNone');
-      if (settings.type === 'color') typeText = t('bgTypeColor');
-      if (settings.type === 'image') typeText = t('bgTypeImage');
+      if (settings.mode === 'auto') {
+        badge.className = 'bg-type-badge auto';
+        typeText = t('autoScheme');
+      } else if (settings.mode === 'slideshow') {
+        badge.className = 'bg-type-badge slideshow';
+        const count = settings.slideshow && settings.slideshow.items ? settings.slideshow.items.length : 0;
+        typeText = `${t('modeSlideshow')} (${count})`;
+      } else {
+        badge.className = `bg-type-badge ${settings.type}`;
+        if (settings.type === 'color') typeText = t('bgTypeColor');
+        if (settings.type === 'image') typeText = t('bgTypeImage');
+      }
       
       badge.textContent = typeText;
       tdBgType.appendChild(badge);
@@ -285,16 +338,61 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // 3. Preview Swatch column (supports settings opacity)
       const tdPreview = document.createElement('td');
-      const swatch = document.createElement('div');
-      swatch.className = 'preview-swatch';
-      if (settings.type === 'color') {
-        swatch.style.backgroundColor = settings.value;
-      } else if (settings.type === 'image' && settings.value) {
-        swatch.style.backgroundImage = `url('${settings.value}')`;
+      
+      if (settings.mode === 'auto') {
+        const swatch = document.createElement('div');
+        swatch.className = 'preview-swatch preview-swatch-auto';
+        
+        const lightSwatch = document.createElement('div');
+        lightSwatch.className = 'swatch-half light-half';
+        if (settings.light.type === 'color') {
+          lightSwatch.style.backgroundColor = settings.light.value;
+        } else if (settings.light.type === 'image' && settings.light.value) {
+          lightSwatch.style.backgroundImage = `url('${settings.light.value}')`;
+        }
+        lightSwatch.style.opacity = (settings.light.opacity !== undefined ? settings.light.opacity : 100) / 100;
+        
+        const darkSwatch = document.createElement('div');
+        darkSwatch.className = 'swatch-half dark-half';
+        if (settings.dark.type === 'color') {
+          darkSwatch.style.backgroundColor = settings.dark.value;
+        } else if (settings.dark.type === 'image' && settings.dark.value) {
+          darkSwatch.style.backgroundImage = `url('${settings.dark.value}')`;
+        }
+        darkSwatch.style.opacity = (settings.dark.opacity !== undefined ? settings.dark.opacity : 100) / 100;
+        
+        swatch.appendChild(lightSwatch);
+        swatch.appendChild(darkSwatch);
+        tdPreview.appendChild(swatch);
+      } else if (settings.mode === 'slideshow' && settings.slideshow && settings.slideshow.items) {
+        const stack = document.createElement('div');
+        stack.className = 'preview-swatch-stack';
+        
+        const items = settings.slideshow.items.slice(0, 3);
+        items.forEach((item) => {
+          const itemEl = document.createElement('div');
+          itemEl.className = 'stack-item';
+          if (item.type === 'color') {
+            itemEl.style.backgroundColor = item.value;
+          } else if (item.type === 'image' && item.value) {
+            itemEl.style.backgroundImage = `url('${item.value}')`;
+          }
+          itemEl.style.opacity = (item.opacity !== undefined ? item.opacity : 100) / 100;
+          stack.appendChild(itemEl);
+        });
+        tdPreview.appendChild(stack);
+      } else {
+        const swatch = document.createElement('div');
+        swatch.className = 'preview-swatch';
+        if (settings.type === 'color') {
+          swatch.style.backgroundColor = settings.value;
+        } else if (settings.type === 'image' && settings.value) {
+          swatch.style.backgroundImage = `url('${settings.value}')`;
+        }
+        const opVal = settings.opacity !== undefined ? settings.opacity : 100;
+        swatch.style.opacity = opVal / 100;
+        tdPreview.appendChild(swatch);
       }
-      const opVal = settings.opacity !== undefined ? settings.opacity : 100;
-      swatch.style.opacity = opVal / 100;
-      tdPreview.appendChild(swatch);
       tr.appendChild(tdPreview);
 
       // 4. Actions column (Delete button)
@@ -456,64 +554,308 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Edit Site Feature Implementation
   let currentEditingDomain = '';
   let editCurrentImageBase64 = null;
+  let editActiveScheme = 'light';
+  let editActiveSlideshowIndex = 0;
+  let currentEditSettings = null;
+
+  function populateEditForm(subSettings) {
+    document.querySelector(`input[name="edit-bgType"][value="${subSettings.type || 'none'}"]`).checked = true;
+    updateEditUI(subSettings.type || 'none');
+
+    editCurrentImageBase64 = null;
+    document.getElementById('edit-image-url').value = '';
+    document.getElementById('edit-image-file').value = '';
+    document.getElementById('edit-drop-area').classList.remove('hidden');
+    document.getElementById('edit-file-info').classList.add('hidden');
+
+    if (subSettings.type === 'color') {
+      document.getElementById('edit-color-picker').value = subSettings.value || '#ffffff';
+      document.getElementById('edit-color-text').value = subSettings.value || '#ffffff';
+    } else if (subSettings.type === 'image') {
+      if (subSettings.value && subSettings.value.startsWith('data:')) {
+        editCurrentImageBase64 = subSettings.value;
+        document.getElementById('edit-drop-area').classList.add('hidden');
+        document.getElementById('edit-file-info').classList.remove('hidden');
+        document.getElementById('edit-filename').textContent = t('savedImage');
+      } else {
+        document.getElementById('edit-image-url').value = subSettings.value || '';
+      }
+    }
+
+    document.getElementById('edit-opacity').value = subSettings.opacity !== undefined ? subSettings.opacity : 100;
+    document.getElementById('edit-opacity-val').textContent = `${document.getElementById('edit-opacity').value}%`;
+    document.getElementById('edit-blur').value = subSettings.blur !== undefined ? subSettings.blur : 0;
+    document.getElementById('edit-blur-val').textContent = `${document.getElementById('edit-blur').value}px`;
+
+    if (subSettings.style) {
+      document.getElementById('edit-bg-fixed').checked = subSettings.style.fixed !== false;
+      document.getElementById('edit-bg-size').value = subSettings.style.size || 'cover';
+      document.getElementById('edit-bg-repeat').checked = !!subSettings.style.repeat;
+    }
+
+    updateEditPreview();
+  }
+
+  function collectEditFormTo(dest) {
+    const type = document.querySelector('input[name="edit-bgType"]:checked').value;
+    let value = '';
+
+    if (type === 'color') {
+      value = document.getElementById('edit-color-picker').value;
+    } else if (type === 'image') {
+      value = editCurrentImageBase64 || document.getElementById('edit-image-url').value;
+    }
+
+    dest.type = type;
+    dest.value = value;
+    dest.opacity = parseInt(document.getElementById('edit-opacity').value, 10);
+    dest.blur = parseInt(document.getElementById('edit-blur').value, 10);
+    dest.style = {
+      fixed: document.getElementById('edit-bg-fixed').checked,
+      size: document.getElementById('edit-bg-size').value,
+      repeat: document.getElementById('edit-bg-repeat').checked
+    };
+  }
+
+  let editSaveDebounceTimer = null;
+  function queueEditAutoSave() {
+    setEditSavingState();
+    if (editSaveDebounceTimer) clearTimeout(editSaveDebounceTimer);
+    editSaveDebounceTimer = setTimeout(() => {
+      saveEditSettings(true);
+    }, 400);
+  }
+
+  function triggerEditImmediateSave() {
+    setEditSavingState();
+    if (editSaveDebounceTimer) clearTimeout(editSaveDebounceTimer);
+    saveEditSettings(true);
+  }
+
+  function setEditSavingState() {
+    els.editStatusDot.classList.add('saving');
+    els.editStatusText.textContent = t('statusSaving') || 'Saving...';
+  }
+
+  function setEditSyncedState() {
+    els.editStatusDot.classList.remove('saving');
+    els.editStatusText.textContent = t('statusSynced') || 'Synced';
+  }
 
   async function openEditSite(domain) {
     currentEditingDomain = domain;
     document.getElementById('edit-domain-name').textContent = domain;
 
-    // Hide other sections, show edit section
     els.sections.forEach(s => s.classList.remove('active'));
     document.getElementById('section-edit-site').classList.add('active');
 
-    // Load settings
     const data = await chrome.storage.local.get(domain);
-    const settings = data[domain] || { type: 'none', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } };
+    currentEditSettings = data[domain] || {
+      mode: 'single',
+      type: 'none',
+      value: '',
+      opacity: 100,
+      blur: 0,
+      style: { fixed: true, size: 'cover', repeat: false }
+    };
 
-    // Populate fields
-    document.querySelector(`input[name="edit-bgType"][value="${settings.type}"]`).checked = true;
-    updateEditUI(settings.type);
-
-    if (settings.type === 'color') {
-      document.getElementById('edit-color-picker').value = settings.value || '#ffffff';
-      document.getElementById('edit-color-text').value = settings.value || '#ffffff';
-    } else if (settings.type === 'image') {
-      if (settings.value && settings.value.startsWith('data:')) {
-        editCurrentImageBase64 = settings.value;
-        const localBtn = document.querySelector('.edit-site-header + .card .tab-btn[data-tab="edit-local"]');
-        localBtn.click();
-        document.getElementById('edit-drop-area').classList.add('hidden');
-        document.getElementById('edit-file-info').classList.remove('hidden');
-        document.getElementById('edit-filename').textContent = t('saved');
-      } else {
-        document.getElementById('edit-image-url').value = settings.value || '';
-        const urlBtn = document.querySelector('.edit-site-header + .card .tab-btn[data-tab="edit-url"]');
-        urlBtn.click();
-      }
+    if (!currentEditSettings.mode) {
+      currentEditSettings.mode = 'single';
     }
 
-    document.getElementById('edit-opacity').value = settings.opacity !== undefined ? settings.opacity : 100;
-    document.getElementById('edit-opacity-val').textContent = `${settings.opacity !== undefined ? settings.opacity : 100}%`;
-    document.getElementById('edit-blur').value = settings.blur !== undefined ? settings.blur : 0;
-    document.getElementById('edit-blur-val').textContent = `${settings.blur !== undefined ? settings.blur : 0}px`;
-
-    if (settings.style) {
-      document.getElementById('edit-bg-fixed').checked = settings.style.fixed;
-      document.getElementById('edit-bg-size').value = settings.style.size || 'cover';
-      document.getElementById('edit-bg-repeat').checked = settings.style.repeat;
+    if (!currentEditSettings.light) {
+      currentEditSettings.light = {
+        type: currentEditSettings.type && currentEditSettings.type !== 'none' ? currentEditSettings.type : 'none',
+        value: currentEditSettings.value || '',
+        opacity: currentEditSettings.opacity !== undefined ? currentEditSettings.opacity : 100,
+        blur: currentEditSettings.blur !== undefined ? currentEditSettings.blur : 0,
+        style: Object.assign({ fixed: true, size: 'cover', repeat: false }, currentEditSettings.style || {})
+      };
+    }
+    if (!currentEditSettings.dark) {
+      currentEditSettings.dark = {
+        type: currentEditSettings.type && currentEditSettings.type !== 'none' ? currentEditSettings.type : 'none',
+        value: currentEditSettings.value || '',
+        opacity: currentEditSettings.opacity !== undefined ? currentEditSettings.opacity : 100,
+        blur: currentEditSettings.blur !== undefined ? currentEditSettings.blur : 0,
+        style: Object.assign({ fixed: true, size: 'cover', repeat: false }, currentEditSettings.style || {})
+      };
     }
 
-    document.getElementById('edit-target-selector').value = settings.targetSelector || '';
-    document.getElementById('edit-custom-css').value = settings.customCss || '';
+    if (!currentEditSettings.slideshow) {
+      currentEditSettings.slideshow = {
+        interval: 'open',
+        order: 'sequential',
+        currentIndex: 0,
+        lastRotationTime: Date.now(),
+        items: [
+          {
+            type: currentEditSettings.type || 'none',
+            value: currentEditSettings.value || '',
+            opacity: currentEditSettings.opacity !== undefined ? currentEditSettings.opacity : 100,
+            blur: currentEditSettings.blur !== undefined ? currentEditSettings.blur : 0,
+            style: Object.assign({ fixed: true, size: 'cover', repeat: false }, currentEditSettings.style || {})
+          }
+        ]
+      };
+    }
 
-    if (settings.targetSelector || settings.customCss) {
+    const mode = currentEditSettings.mode || 'single';
+    const radio = document.querySelector(`input[name="edit-wpMode"][value="${mode}"]`);
+    if (radio) radio.checked = true;
+    updateEditModeUI(mode);
+
+    document.getElementById('edit-target-selector').value = currentEditSettings.targetSelector || '';
+    document.getElementById('edit-custom-css').value = currentEditSettings.customCss || '';
+
+    if (currentEditSettings.targetSelector || currentEditSettings.customCss) {
       document.getElementById('edit-advanced-body').classList.remove('hidden');
       document.getElementById('edit-advanced-toggle').setAttribute('aria-expanded', 'true');
     } else {
       document.getElementById('edit-advanced-body').classList.add('hidden');
       document.getElementById('edit-advanced-toggle').setAttribute('aria-expanded', 'false');
     }
+  }
 
-    updateEditPreview();
+  function updateEditModeUI(mode) {
+    els.editSchemeCardsContainer.classList.add('hidden');
+    els.editSlideshowConfigPanel.classList.add('hidden');
+
+    const activeModeBadge = document.getElementById('edit-active-mode-badge');
+    if (activeModeBadge) {
+      if (mode === 'single') {
+        activeModeBadge.textContent = t('modeSingle');
+      } else if (mode === 'auto') {
+        activeModeBadge.textContent = t('modeAuto');
+      } else if (mode === 'slideshow') {
+        activeModeBadge.textContent = t('modeSlideshow');
+      }
+    }
+
+    if (mode === 'single') {
+      populateEditForm(currentEditSettings);
+    } else if (mode === 'auto') {
+      els.editSchemeCardsContainer.classList.remove('hidden');
+      els.editCardSchemeLight.classList.remove('active');
+      els.editCardSchemeDark.classList.remove('active');
+      if (editActiveScheme === 'dark') {
+        els.editCardSchemeDark.classList.add('active');
+      } else {
+        editActiveScheme = 'light';
+        els.editCardSchemeLight.classList.add('active');
+      }
+      populateEditForm(currentEditSettings[editActiveScheme]);
+    } else if (mode === 'slideshow') {
+      els.editSlideshowConfigPanel.classList.remove('hidden');
+      els.editSlideshowInterval.value = currentEditSettings.slideshow.interval || 'open';
+      els.editSlideshowRandom.checked = currentEditSettings.slideshow.order === 'random';
+      
+      editActiveSlideshowIndex = currentEditSettings.slideshow.currentIndex || 0;
+      if (editActiveSlideshowIndex >= currentEditSettings.slideshow.items.length) {
+        editActiveSlideshowIndex = 0;
+      }
+      renderEditWallpapersGrid();
+      populateEditForm(currentEditSettings.slideshow.items[editActiveSlideshowIndex]);
+    }
+    updateEditInteractivePreviews();
+  }
+
+  function renderEditWallpapersGrid() {
+    els.editWallpapersGrid.innerHTML = '';
+    const items = currentEditSettings.slideshow.items || [];
+    
+    items.forEach((item, idx) => {
+      const card = document.createElement('div');
+      card.className = 'wallpaper-grid-card';
+      if (idx === editActiveSlideshowIndex) card.classList.add('active');
+      
+      if (item.type === 'color') {
+        card.style.backgroundColor = item.value || '#ffffff';
+        card.style.backgroundImage = 'none';
+      } else if (item.type === 'image' && item.value) {
+        card.style.backgroundImage = `url('${item.value}')`;
+      } else {
+        card.classList.add('type-none');
+        card.textContent = 'None';
+      }
+      card.dataset.index = idx;
+      
+      if (items.length > 1) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-grid-btn';
+        deleteBtn.textContent = '×';
+        deleteBtn.type = 'button';
+        deleteBtn.title = lang === 'zh' ? '删除此壁纸' : 'Delete wallpaper';
+        card.appendChild(deleteBtn);
+      }
+      els.editWallpapersGrid.appendChild(card);
+    });
+
+    const addCard = document.createElement('div');
+    addCard.className = 'add-grid-card';
+    addCard.textContent = '+';
+    els.editWallpapersGrid.appendChild(addCard);
+  }
+
+  function updateEditInteractivePreviews() {
+    if (!currentEditSettings) return;
+    
+    const mode = currentEditSettings.mode || 'single';
+    if (mode === 'auto') {
+      const light = currentEditSettings.light;
+      if (light.type === 'color') {
+        els.editPreviewCardLight.style.backgroundColor = light.value || '#ffffff';
+        els.editPreviewCardLight.style.backgroundImage = 'none';
+      } else if (light.type === 'image' && light.value) {
+        els.editPreviewCardLight.style.backgroundImage = `url('${light.value}')`;
+      } else {
+        els.editPreviewCardLight.style.backgroundColor = 'var(--surface-bg)';
+        els.editPreviewCardLight.style.backgroundImage = 'none';
+      }
+      els.editPreviewCardLight.style.opacity = (light.opacity !== undefined ? light.opacity : 100) / 100;
+      
+      const dark = currentEditSettings.dark;
+      if (dark.type === 'color') {
+        els.editPreviewCardDark.style.backgroundColor = dark.value || '#ffffff';
+        els.editPreviewCardDark.style.backgroundImage = 'none';
+      } else if (dark.type === 'image' && dark.value) {
+        els.editPreviewCardDark.style.backgroundImage = `url('${dark.value}')`;
+      } else {
+        els.editPreviewCardDark.style.backgroundColor = 'var(--surface-bg)';
+        els.editPreviewCardDark.style.backgroundImage = 'none';
+      }
+      els.editPreviewCardDark.style.opacity = (dark.opacity !== undefined ? dark.opacity : 100) / 100;
+    } else if (mode === 'slideshow') {
+      const activeCard = els.editWallpapersGrid.querySelector(`.wallpaper-grid-card.active`);
+      if (activeCard) {
+        const item = currentEditSettings.slideshow.items[editActiveSlideshowIndex];
+        if (item) {
+          activeCard.textContent = '';
+          activeCard.style.backgroundColor = '';
+          activeCard.style.backgroundImage = '';
+          if (item.type === 'color') {
+            activeCard.style.backgroundColor = item.value || '#ffffff';
+            activeCard.className = 'wallpaper-grid-card active';
+          } else if (item.type === 'image' && item.value) {
+            activeCard.style.backgroundImage = `url('${item.value}')`;
+            activeCard.className = 'wallpaper-grid-card active';
+          } else {
+            activeCard.className = 'wallpaper-grid-card active type-none';
+            activeCard.textContent = 'None';
+          }
+          
+          const count = currentEditSettings.slideshow.items.length;
+          if (count > 1 && !activeCard.querySelector('.delete-grid-btn')) {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-grid-btn';
+            deleteBtn.textContent = '×';
+            deleteBtn.type = 'button';
+            deleteBtn.title = lang === 'zh' ? '删除此壁纸' : 'Delete wallpaper';
+            activeCard.appendChild(deleteBtn);
+          }
+        }
+      }
+    }
   }
 
   function updateEditUI(type) {
@@ -537,17 +879,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function updateEditPreview() {
     let imageUrl = '';
-    const activeTab = document.querySelector('.edit-site-header + .card .tab-btn.active').dataset.tab;
-    
-    if (activeTab === 'edit-url') {
-       const urlVal = document.getElementById('edit-image-url').value;
-       if (urlVal) {
-         imageUrl = `url('${urlVal}')`;
-       }
+    if (editCurrentImageBase64) {
+      imageUrl = `url('${editCurrentImageBase64}')`;
     } else {
-       if (editCurrentImageBase64) {
-         imageUrl = `url('${editCurrentImageBase64}')`;
-       }
+      const urlVal = document.getElementById('edit-image-url').value;
+      if (urlVal) {
+        imageUrl = `url('${urlVal}')`;
+      }
     }
     const bgPreview = document.getElementById('edit-image-preview-bg');
     bgPreview.style.backgroundImage = imageUrl;
@@ -560,46 +898,72 @@ document.addEventListener('DOMContentLoaded', async () => {
     bgPreview.style.opacity = opacity / 100;
   }
 
-  async function saveEditSettings() {
-    const type = document.querySelector('input[name="edit-bgType"]:checked').value;
-    let value = '';
+  function collectEditSettings() {
+    const mode = document.querySelector('input[name="edit-wpMode"]:checked').value;
+    currentEditSettings.mode = mode;
 
-    if (type === 'color') {
-      value = document.getElementById('edit-color-picker').value;
-    } else if (type === 'image') {
-      const activeTab = document.querySelector('.edit-site-header + .card .tab-btn.active').dataset.tab;
-      value = activeTab === 'edit-url' ? document.getElementById('edit-image-url').value : editCurrentImageBase64;
+    if (mode === 'single') {
+      collectEditFormTo(currentEditSettings);
+    } else if (mode === 'auto') {
+      collectEditFormTo(currentEditSettings[editActiveScheme]);
+    } else if (mode === 'slideshow') {
+      collectEditFormTo(currentEditSettings.slideshow.items[editActiveSlideshowIndex]);
+      currentEditSettings.slideshow.interval = els.editSlideshowInterval.value;
+      currentEditSettings.slideshow.order = els.editSlideshowRandom.checked ? 'random' : 'sequential';
     }
 
-    const settings = {
-      type,
-      value,
-      opacity: parseInt(document.getElementById('edit-opacity').value, 10),
-      blur: parseInt(document.getElementById('edit-blur').value, 10),
-      style: {
-        fixed: document.getElementById('edit-bg-fixed').checked,
-        size: document.getElementById('edit-bg-size').value,
-        repeat: document.getElementById('edit-bg-repeat').checked
-      },
-      targetSelector: document.getElementById('edit-target-selector').value.trim(),
-      customCss: document.getElementById('edit-custom-css').value,
-      timestamp: Date.now()
-    };
+    currentEditSettings.targetSelector = document.getElementById('edit-target-selector').value.trim();
+    currentEditSettings.customCss = document.getElementById('edit-custom-css').value;
+    currentEditSettings.timestamp = Date.now();
+  }
+
+  async function saveEditSettings(silent = true) {
+    if (!currentEditSettings) return;
+    collectEditSettings();
 
     try {
-      await chrome.storage.local.set({ [currentEditingDomain]: settings });
-      showStatus(t('saved'));
-      notifyTabsOfDomain(currentEditingDomain, settings);
+      await chrome.storage.local.set({ [currentEditingDomain]: currentEditSettings });
+      setEditSyncedState();
+      notifyTabsOfDomain(currentEditingDomain, currentEditSettings);
     } catch (err) {
-      showStatus(t('error'));
+      els.editStatusText.textContent = t('error');
       console.error(err);
     }
   }
 
   async function resetEditSettings() {
     if (!(await showConfirm(t('confirmDelete').replace('{domain}', currentEditingDomain)))) return;
+    setEditSavingState();
     await chrome.storage.local.remove(currentEditingDomain);
     
+    currentEditSettings = {
+      mode: 'single',
+      type: 'none',
+      value: '',
+      opacity: 100,
+      blur: 0,
+      style: { fixed: true, size: 'cover', repeat: false },
+      light: { type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+      dark: { type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+      slideshow: {
+        interval: 'open',
+        order: 'sequential',
+        currentIndex: 0,
+        lastRotationTime: Date.now(),
+        items: [
+          { type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } }
+        ]
+      },
+      targetSelector: '',
+      customCss: ''
+    };
+    editActiveScheme = 'light';
+    editActiveSlideshowIndex = 0;
+    
+    const radio = document.querySelector('input[name="edit-wpMode"][value="single"]');
+    if (radio) radio.checked = true;
+    updateEditModeUI('single');
+
     document.getElementById('edit-type-none').checked = true;
     updateEditUI('none');
     document.getElementById('edit-opacity').value = 100;
@@ -615,7 +979,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-custom-css').value = '';
 
     notifyTabsOfDomain(currentEditingDomain, { type: 'none' });
-    showStatus(t('resetMsg'));
+    setEditSyncedState();
   }
 
   async function notifyTabsOfDomain(domain, settings) {
@@ -642,25 +1006,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Edit Site Event Listeners Setup
   const editTypeRadios = document.getElementsByName('edit-bgType');
   editTypeRadios.forEach(radio => {
-    radio.addEventListener('change', () => updateEditUI(radio.value));
+    radio.addEventListener('change', () => {
+      updateEditUI(radio.value);
+      updateEditInteractivePreviews();
+      triggerEditImmediateSave();
+    });
   });
 
   const editColorPicker = document.getElementById('edit-color-picker');
   const editColorText = document.getElementById('edit-color-text');
-  editColorPicker.addEventListener('input', (e) => editColorText.value = e.target.value);
-  editColorText.addEventListener('input', (e) => editColorPicker.value = e.target.value);
-
-  const editTabBtns = document.querySelectorAll('.edit-site-header + .card .tab-btn');
-  const editTabContents = document.querySelectorAll('.edit-site-header + .card .tab-content');
-  editTabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      editTabBtns.forEach(b => b.classList.remove('active'));
-      editTabContents.forEach(c => c.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
-      updateEditPreview();
-    });
+  editColorPicker.addEventListener('input', (e) => {
+    editColorText.value = e.target.value;
+    updateEditInteractivePreviews();
+    queueEditAutoSave();
   });
+  editColorText.addEventListener('input', (e) => {
+    editColorPicker.value = e.target.value;
+    updateEditInteractivePreviews();
+    queueEditAutoSave();
+  });
+
+
 
   const editDropArea = document.getElementById('edit-drop-area');
   const editFileInput = document.getElementById('edit-image-file');
@@ -686,10 +1052,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       editCurrentImageBase64 = e.target.result;
+      document.getElementById('edit-image-url').value = '';
       editDropArea.classList.add('hidden');
       document.getElementById('edit-file-info').classList.remove('hidden');
       document.getElementById('edit-filename').textContent = file.name;
       updateEditPreview();
+      updateEditInteractivePreviews();
+      triggerEditImmediateSave();
     };
     reader.readAsDataURL(file);
   }
@@ -700,6 +1069,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     editDropArea.classList.remove('hidden');
     document.getElementById('edit-file-info').classList.add('hidden');
     updateEditPreview();
+    updateEditInteractivePreviews();
+    triggerEditImmediateSave();
   });
 
   const editOpacity = document.getElementById('edit-opacity');
@@ -707,6 +1078,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   editOpacity.addEventListener('input', (e) => {
     editOpacityVal.textContent = `${e.target.value}%`;
     updateEditPreview();
+    updateEditInteractivePreviews();
+    queueEditAutoSave();
   });
 
   const editBlur = document.getElementById('edit-blur');
@@ -714,14 +1087,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   editBlur.addEventListener('input', (e) => {
     editBlurVal.textContent = `${e.target.value}px`;
     updateEditPreview();
+    updateEditInteractivePreviews();
+    queueEditAutoSave();
   });
 
-  document.getElementById('edit-image-url').addEventListener('input', updateEditPreview);
-
-  document.getElementById('edit-advanced-toggle').addEventListener('click', () => {
-    const open = document.getElementById('edit-advanced-body').classList.toggle('hidden') === false;
-    document.getElementById('edit-advanced-toggle').setAttribute('aria-expanded', String(open));
+  document.getElementById('edit-image-url').addEventListener('input', (e) => {
+    if (e.target.value) {
+      editCurrentImageBase64 = null;
+      editFileInput.value = '';
+      editDropArea.classList.remove('hidden');
+      document.getElementById('edit-file-info').classList.add('hidden');
+    }
+    updateEditPreview();
+    updateEditInteractivePreviews();
+    queueEditAutoSave();
   });
+
+  // Toggles and inputs on edit view
+  document.getElementById('edit-bg-fixed').addEventListener('change', () => triggerEditImmediateSave());
+  document.getElementById('edit-bg-size').addEventListener('change', () => triggerEditImmediateSave());
+  document.getElementById('edit-bg-repeat').addEventListener('change', () => triggerEditImmediateSave());
+  document.getElementById('edit-target-selector').addEventListener('input', () => queueEditAutoSave());
+  document.getElementById('edit-custom-css').addEventListener('input', () => queueEditAutoSave());
 
   document.getElementById('edit-back-btn').addEventListener('click', () => {
     els.sections.forEach(s => s.classList.remove('active'));
@@ -729,6 +1116,118 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadSitesList();
   });
 
-  document.getElementById('edit-save-btn').addEventListener('click', saveEditSettings);
-  document.getElementById('edit-reset-btn').addEventListener('click', resetEditSettings);
+  // Edit Wallpaper Mode Switch
+  els.editWpModes.forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (!currentEditSettings) return;
+      
+      const prevMode = currentEditSettings.mode || 'single';
+      if (prevMode === 'single') {
+        collectEditFormTo(currentEditSettings);
+      } else if (prevMode === 'auto') {
+        collectEditFormTo(currentEditSettings[editActiveScheme]);
+      } else if (prevMode === 'slideshow') {
+        collectEditFormTo(currentEditSettings.slideshow.items[editActiveSlideshowIndex]);
+        currentEditSettings.slideshow.interval = els.editSlideshowInterval.value;
+        currentEditSettings.slideshow.order = els.editSlideshowRandom.checked ? 'random' : 'sequential';
+      }
+      
+      currentEditSettings.mode = radio.value;
+      updateEditModeUI(radio.value);
+      triggerEditImmediateSave();
+    });
+  });
+
+  // Auto Mode cards click handlers inside Edit Panel
+  els.editCardSchemeLight.addEventListener('click', () => {
+    if (!currentEditSettings || editActiveScheme === 'light') return;
+    collectEditFormTo(currentEditSettings[editActiveScheme]);
+    editActiveScheme = 'light';
+    els.editCardSchemeDark.classList.remove('active');
+    els.editCardSchemeLight.classList.add('active');
+    populateEditForm(currentEditSettings[editActiveScheme]);
+  });
+
+  els.editCardSchemeDark.addEventListener('click', () => {
+    if (!currentEditSettings || editActiveScheme === 'dark') return;
+    collectEditFormTo(currentEditSettings[editActiveScheme]);
+    editActiveScheme = 'dark';
+    els.editCardSchemeLight.classList.remove('active');
+    els.editCardSchemeDark.classList.add('active');
+    populateEditForm(currentEditSettings[editActiveScheme]);
+  });
+
+  // Slideshow visual grid clicks using delegation inside Edit Panel
+  els.editWallpapersGrid.addEventListener('click', (e) => {
+    if (!currentEditSettings || !currentEditSettings.slideshow) return;
+
+    // 1. Add Card Click
+    const addCard = e.target.closest('.add-grid-card');
+    if (addCard) {
+      collectEditFormTo(currentEditSettings.slideshow.items[editActiveSlideshowIndex]);
+      const newItem = {
+        type: 'none',
+        value: '',
+        opacity: 100,
+        blur: 0,
+        style: { fixed: true, size: 'cover', repeat: false }
+      };
+      currentEditSettings.slideshow.items.push(newItem);
+      editActiveSlideshowIndex = currentEditSettings.slideshow.items.length - 1;
+      renderEditWallpapersGrid();
+      populateEditForm(currentEditSettings.slideshow.items[editActiveSlideshowIndex]);
+      triggerEditImmediateSave();
+      return;
+    }
+
+    // 2. Delete Card Click
+    const deleteBtn = e.target.closest('.delete-grid-btn');
+    if (deleteBtn) {
+      e.stopPropagation();
+      const card = deleteBtn.closest('.wallpaper-grid-card');
+      const idx = parseInt(card.dataset.index, 10);
+      currentEditSettings.slideshow.items.splice(idx, 1);
+      
+      if (editActiveSlideshowIndex >= currentEditSettings.slideshow.items.length) {
+        editActiveSlideshowIndex = currentEditSettings.slideshow.items.length - 1;
+      }
+      
+      renderEditWallpapersGrid();
+      populateEditForm(currentEditSettings.slideshow.items[editActiveSlideshowIndex]);
+      triggerEditImmediateSave();
+      return;
+    }
+
+    // 3. Select Card Click
+    const card = e.target.closest('.wallpaper-grid-card');
+    if (card) {
+      const idx = parseInt(card.dataset.index, 10);
+      if (editActiveSlideshowIndex === idx) return;
+      collectEditFormTo(currentEditSettings.slideshow.items[editActiveSlideshowIndex]);
+      editActiveSlideshowIndex = idx;
+      
+      // Update selected border
+      els.editWallpapersGrid.querySelectorAll('.wallpaper-grid-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      
+      populateEditForm(currentEditSettings.slideshow.items[editActiveSlideshowIndex]);
+    }
+  });
+
+  // Edit Slideshow inputs listeners
+  els.editSlideshowInterval.addEventListener('change', () => {
+    if (currentEditSettings && currentEditSettings.slideshow) {
+      currentEditSettings.slideshow.interval = els.editSlideshowInterval.value;
+      triggerEditImmediateSave();
+    }
+  });
+
+  els.editSlideshowRandom.addEventListener('change', () => {
+    if (currentEditSettings && currentEditSettings.slideshow) {
+      currentEditSettings.slideshow.order = els.editSlideshowRandom.checked ? 'random' : 'sequential';
+      triggerEditImmediateSave();
+    }
+  });
+
+  els.editResetBtn.addEventListener('click', resetEditSettings);
 });

@@ -22,112 +22,199 @@
     </header>
 
     <main>
-      <div class="control-group">
-        <label data-i18n="bgType">Background Type</label>
-        <div class="segmented-control">
-          <input type="radio" name="bgType" value="none" id="type-none" checked>
-          <label for="type-none" data-i18n="typeNone">None</label>
-          
-          <input type="radio" name="bgType" value="color" id="type-color">
-          <label for="type-color" data-i18n="typeColor">Color</label>
-          
-          <input type="radio" name="bgType" value="image" id="type-image">
-          <label for="type-image" data-i18n="typeImage">Image</label>
-        </div>
-      </div>
-
-      <!-- Color Section -->
-      <div id="section-color" class="section hidden">
-        <div class="control-group">
-          <label for="color-picker" data-i18n="color">Color</label>
-          <div class="color-input-wrapper">
-            <input type="color" id="color-picker" value="#ffffff">
-            <input type="text" id="color-text" value="#ffffff">
-          </div>
-        </div>
-      </div>
-
-      <!-- Image Section -->
-      <div id="section-image" class="section hidden">
-        <div class="tabs">
-          <button class="tab-btn active" data-tab="local" data-i18n="tabLocal">Local File</button>
-          <button class="tab-btn" data-tab="url" data-i18n="tabUrl">URL</button>
-        </div>
-
-        <div class="tab-content active" id="tab-local">
+      <!-- Details 1: Wallpaper Mode & Rotation -->
+      <details class="accordion" id="accordion-mode" open>
+        <summary class="accordion-summary">
+          <span data-i18n="wallpaperMode">Wallpaper Mode</span>
+          <span class="active-mode-badge" id="active-mode-badge" data-i18n="modeSingle">Single</span>
+          <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="accordion-content">
           <div class="control-group">
-            <div class="file-drop-area" id="drop-area">
-              <p data-i18n="dropText">Click or Drop image here</p>
-              <input type="file" id="image-file" accept="image/*" hidden>
-            </div>
-            <div id="file-info" class="hidden">
-              <span class="filename"></span>
-              <button id="remove-file" class="icon-btn">×</button>
+            <div class="segmented-control" id="wallpaper-mode" style="margin-bottom: 0;">
+              <input type="radio" name="wpMode" value="single" id="mode-single" checked>
+              <label for="mode-single" data-i18n="modeSingle">Single</label>
+              
+              <input type="radio" name="wpMode" value="auto" id="mode-auto">
+              <label for="mode-auto" data-i18n="modeAuto">Light/Dark</label>
+              
+              <input type="radio" name="wpMode" value="slideshow" id="mode-slideshow">
+              <label for="mode-slideshow" data-i18n="modeSlideshow">Slideshow</label>
             </div>
           </div>
-        </div>
 
-        <div class="tab-content" id="tab-url">
+          <!-- Auto Mode Cards inside Mode Accordion -->
+          <div id="scheme-cards-container" class="control-group hidden" style="margin-top: 12px; margin-bottom: 0;">
+            <label data-i18n="selectSchemeToEdit" style="margin-bottom: 8px; display: block; font-size: 13px; font-weight: 500; color: var(--text-color);">Select background to edit</label>
+            <div class="scheme-cards-grid">
+              <div class="scheme-card active" id="card-scheme-light" data-scheme="light">
+                <div class="scheme-card-preview" id="preview-card-light"></div>
+                <div class="scheme-card-info">
+                  <svg class="scheme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                  <span data-i18n="schemeLight">Light Version</span>
+                </div>
+              </div>
+              
+              <div class="scheme-card" id="card-scheme-dark" data-scheme="dark">
+                <div class="scheme-card-preview" id="preview-card-dark"></div>
+                <div class="scheme-card-info">
+                  <svg class="scheme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                  <span data-i18n="schemeDark">Dark Version</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Slideshow Config Panel inside Mode Accordion -->
+          <div id="slideshow-config-panel" class="section hidden" style="margin-top: 12px; margin-bottom: 0;">
+            <div class="control-group row" style="margin-bottom: 8px;">
+              <label for="slideshow-interval" data-i18n="rotationInterval">Interval</label>
+              <select id="slideshow-interval">
+                <option value="open" data-i18n="intervalOpen">Each Open</option>
+                <option value="15m" data-i18n="interval15m">15 Mins</option>
+                <option value="30m" data-i18n="interval30m">30 Mins</option>
+                <option value="1h" data-i18n="interval1h">1 Hour</option>
+                <option value="24h" data-i18n="interval24h">1 Day</option>
+              </select>
+            </div>
+
+            <div class="control-group row" style="margin-bottom: 12px;">
+              <label class="checkbox-label">
+                <input type="checkbox" id="slideshow-random">
+                <span data-i18n="randomOrder">Random Order</span>
+              </label>
+            </div>
+
+            <div class="control-group" style="margin-bottom: 0;">
+              <label data-i18n="wallpapersList">Wallpapers</label>
+              <div class="wallpapers-grid-container">
+                <div class="wallpapers-grid" id="wallpapers-grid">
+                  <!-- Dynamically populated -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- Details 2: Wallpaper Background Type & Config -->
+      <details class="accordion" id="accordion-bg" open>
+        <summary class="accordion-summary">
+          <span data-i18n="bgType">Background Settings</span>
+          <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="accordion-content">
           <div class="control-group">
-            <input type="url" id="image-url" placeholder="https://example.com/image.jpg">
+            <div class="segmented-control">
+              <input type="radio" name="bgType" value="none" id="type-none" checked>
+              <label for="type-none" data-i18n="typeNone">None</label>
+              
+              <input type="radio" name="bgType" value="color" id="type-color">
+              <label for="type-color" data-i18n="typeColor">Color</label>
+              
+              <input type="radio" name="bgType" value="image" id="type-image">
+              <label for="type-image" data-i18n="typeImage">Image</label>
+            </div>
+          </div>
+
+          <!-- Color Section -->
+          <div id="section-color" class="section hidden">
+            <div class="control-group" style="margin-bottom: 0;">
+              <label for="color-picker" data-i18n="color">Color</label>
+              <div class="color-input-wrapper">
+                <input type="color" id="color-picker" value="#ffffff">
+                <input type="text" id="color-text" value="#ffffff">
+              </div>
+            </div>
+          </div>
+
+          <!-- Image Section -->
+          <div id="section-image" class="section hidden">
+            <div class="control-group">
+              <div class="file-drop-area" id="drop-area">
+                <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px; margin-bottom: 8px; color: var(--text-secondary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <p style="margin: 0; font-size: 13px;"><span data-i18n="dragOrClick">Drag image here, or</span> <span class="upload-link" data-i18n="chooseFile" style="color: var(--primary-color); text-decoration: underline; font-weight: 500;">choose file</span></p>
+                <input type="file" id="image-file" accept="image/*" hidden>
+              </div>
+              <div id="file-info" class="file-info-badge hidden" style="margin-top: 8px;">
+                <div class="file-info-content">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; color: var(--text-secondary);"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <span class="filename" style="font-size: 12px; font-weight: 500;"></span>
+                </div>
+                <button id="remove-file" class="remove-file-btn" type="button" title="Clear Image">×</button>
+              </div>
+            </div>
+
+            <div class="control-group" style="margin-bottom: 0;">
+              <label for="image-url" data-i18n="orPasteUrl">Or paste image URL</label>
+              <input type="url" id="image-url" placeholder="https://example.com/image.jpg">
+            </div>
+            
+            <div class="control-group preview-group" style="margin-top: 12px; margin-bottom: 0;">
+               <div id="image-preview" class="image-preview" style="margin-top: 0;">
+                 <div id="image-preview-bg" class="image-preview-bg"></div>
+               </div>
+            </div>
           </div>
         </div>
-        
-        <div class="control-group preview-group">
-           <div id="image-preview" class="image-preview">
-             <div id="image-preview-bg" class="image-preview-bg"></div>
-           </div>
-        </div>
-      </div>
+      </details>
 
-      <!-- Common Styles -->
-      <div id="section-styles" class="section hidden">
-        <div class="control-group">
-          <div class="label-row">
-            <label for="opacity" data-i18n="opacity">Opacity</label>
-            <span id="opacity-val" class="val-badge">100%</span>
+      <!-- Styles Accordion -->
+      <details class="accordion" id="accordion-styles">
+        <summary class="accordion-summary">
+          <span data-i18n="adjustStyles">Adjust Styles</span>
+          <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="accordion-content">
+          <!-- Common Styles -->
+          <div id="section-styles" class="section">
+            <div class="control-group">
+              <div class="label-row">
+                <label for="opacity" data-i18n="opacity">Opacity</label>
+                <span id="opacity-val" class="val-badge">100%</span>
+              </div>
+              <input type="range" id="opacity" min="0" max="100" value="100">
+            </div>
+
+            <div class="control-group" id="blur-control">
+              <div class="label-row">
+                <label for="blur" data-i18n="blur">Blur</label>
+                <span id="blur-val" class="val-badge">0px</span>
+              </div>
+              <input type="range" id="blur" min="0" max="20" value="0">
+            </div>
+
+            <div id="image-options" class="hidden">
+               <div class="control-group row">
+                 <label class="checkbox-label">
+                   <input type="checkbox" id="bg-fixed" checked>
+                   <span data-i18n="fixed">Fixed Position</span>
+                 </label>
+                 <select id="bg-size">
+                   <option value="cover" data-i18n="sizeCover">Cover</option>
+                   <option value="contain" data-i18n="sizeContain">Contain</option>
+                   <option value="auto" data-i18n="sizeAuto">Auto</option>
+                 </select>
+               </div>
+               
+               <div class="control-group row" style="margin-bottom: 0;">
+                 <label class="checkbox-label">
+                   <input type="checkbox" id="bg-repeat">
+                   <span data-i18n="repeat">Repeat</span>
+                 </label>
+               </div>
+            </div>
           </div>
-          <input type="range" id="opacity" min="0" max="100" value="100">
         </div>
+      </details>
 
-        <div class="control-group" id="blur-control">
-          <div class="label-row">
-            <label for="blur" data-i18n="blur">Blur</label>
-            <span id="blur-val" class="val-badge">0px</span>
-          </div>
-          <input type="range" id="blur" min="0" max="20" value="0">
-        </div>
-
-        <div id="image-options" class="hidden">
-           <div class="control-group row">
-             <label class="checkbox-label">
-               <input type="checkbox" id="bg-fixed" checked>
-               <span data-i18n="fixed">Fixed Position</span>
-             </label>
-             <select id="bg-size">
-               <option value="cover" data-i18n="sizeCover">Cover</option>
-               <option value="contain" data-i18n="sizeContain">Contain</option>
-               <option value="auto" data-i18n="sizeAuto">Auto</option>
-             </select>
-           </div>
-           
-           <div class="control-group row">
-             <label class="checkbox-label">
-               <input type="checkbox" id="bg-repeat">
-               <span data-i18n="repeat">Repeat</span>
-             </label>
-           </div>
-        </div>
-      </div>
-
-      <!-- Advanced Settings (collapsible, not a tab) -->
-      <div id="section-advanced" class="advanced">
-        <button type="button" id="advanced-toggle" class="advanced-toggle" aria-expanded="false">
-          <span data-i18n="advanced">Advanced</span>
-          <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </button>
-
-        <div id="advanced-body" class="advanced-body hidden">
+      <!-- Advanced Settings Accordion -->
+      <details class="accordion" id="accordion-advanced">
+        <summary class="accordion-summary">
+          <span data-i18n="advanced">Advanced Settings</span>
+          <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="accordion-content">
           <div class="control-group">
             <label for="target-selector" data-i18n="targetSelector">Background Selector</label>
             <p class="hint" data-i18n="targetSelectorHint">Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.</p>
@@ -137,32 +224,30 @@
             </div>
           </div>
 
-          <div class="control-group">
+          <div class="control-group" style="margin-bottom: 0;">
             <label for="custom-css" data-i18n="customCss">Custom CSS</label>
             <p class="hint" data-i18n="customCssHint">Injected into this site. Use !important to override stubborn styles.</p>
             <textarea id="custom-css" rows="4" spellcheck="false" placeholder="body { color: #fff !important; }"></textarea>
           </div>
         </div>
-      </div>
+      </details>
     </main>
 
     <footer>
-      <div class="buttons">
-        <button id="reset-btn" class="secondary" data-i18n="reset">Reset</button>
-        <button id="save-btn" class="primary" data-i18n="save">Save</button>
+      <div class="status-bar">
+        <span class="status-dot" id="status-dot"></span>
+        <span class="status-text" id="status-text" data-i18n="statusSynced">Synced</span>
       </div>
-      <div class="footer-meta">
-        <span id="version" class="version">v0.2.0</span>
-        <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-link">
-          <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
-          </svg>
-          GitHub
+      <div class="footer-actions">
+        <button id="reset-btn" class="ghost-link-btn" data-i18n="reset">Reset</button>
+        <span class="divider">|</span>
+        <span id="version" class="version-text">v0.3.0</span>
+        <span class="divider">|</span>
+        <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 13px; height: 13px; display: block;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
         </a>
       </div>
     </footer>
-    
-    <div id="status-msg" class="status-msg hidden">Saved!</div>
   </div>
   <script src="popup.js"></script>
 </body>

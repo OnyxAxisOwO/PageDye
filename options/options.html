@@ -178,119 +178,198 @@
         </div>
 
         <div class="card">
-          <!-- Background Type -->
-          <div class="control-group">
-            <label class="control-label" data-i18n="bgType">Background Type</label>
-            <div class="segmented-control">
-              <input type="radio" name="edit-bgType" value="none" id="edit-type-none" checked>
-              <label for="edit-type-none" data-i18n="typeNone">None</label>
-              
-              <input type="radio" name="edit-bgType" value="color" id="edit-type-color">
-              <label for="edit-type-color" data-i18n="typeColor">Color</label>
-              
-              <input type="radio" name="edit-bgType" value="image" id="edit-type-image">
-              <label for="edit-type-image" data-i18n="typeImage">Image</label>
-            </div>
-          </div>
-
-          <!-- Color Section -->
-          <div id="edit-section-color" class="section hidden">
-            <div class="control-group">
-              <label for="edit-color-picker" data-i18n="color">Color</label>
-              <div class="color-input-wrapper">
-                <input type="color" id="edit-color-picker" value="#ffffff">
-                <input type="text" id="edit-color-text" value="#ffffff">
-              </div>
-            </div>
-          </div>
-
-          <!-- Image Section -->
-          <div id="edit-section-image" class="section hidden">
-            <div class="tabs">
-              <button class="tab-btn active" data-tab="edit-local" data-i18n="tabLocal">Local File</button>
-              <button class="tab-btn" data-tab="edit-url" data-i18n="tabUrl">URL</button>
-            </div>
-
-            <div class="tab-content active" id="tab-edit-local">
+          <!-- Details 1: Wallpaper Mode & Rotation -->
+          <details class="accordion" id="edit-accordion-mode" open>
+            <summary class="accordion-summary">
+              <span data-i18n="wallpaperMode">Wallpaper Mode</span>
+              <span class="active-mode-badge" id="edit-active-mode-badge" data-i18n="modeSingle">Single</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </summary>
+            <div class="accordion-content">
               <div class="control-group">
-                <div class="file-drop-area" id="edit-drop-area">
-                  <p data-i18n="dropText">Click or Drop image here</p>
-                  <input type="file" id="edit-image-file" accept="image/*" hidden>
+                <div class="segmented-control" id="edit-wallpaper-mode" style="margin-bottom: 0;">
+                  <input type="radio" name="edit-wpMode" value="single" id="edit-mode-single" checked>
+                  <label for="edit-mode-single" data-i18n="modeSingle">Single</label>
+                  
+                  <input type="radio" name="edit-wpMode" value="auto" id="edit-mode-auto">
+                  <label for="edit-mode-auto" data-i18n="modeAuto">Light/Dark</label>
+                  
+                  <input type="radio" name="edit-wpMode" value="slideshow" id="edit-mode-slideshow">
+                  <label for="edit-mode-slideshow" data-i18n="modeSlideshow">Slideshow</label>
                 </div>
-                <div id="edit-file-info" class="hidden">
-                  <div class="file-info-left">
-                    <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-                      <polyline points="13 2 13 9 20 9"></polyline>
-                    </svg>
-                    <span class="filename" id="edit-filename"></span>
+              </div>
+
+              <!-- Scheme Cards (Auto Mode) -->
+              <div id="edit-scheme-cards-container" class="control-group hidden" style="margin-top: 12px; margin-bottom: 0;">
+                <label data-i18n="selectSchemeToEdit" style="margin-bottom: 8px; display: block; font-size: 13px; font-weight: 500; color: var(--text-color);">Select background to edit</label>
+                <div class="scheme-cards-grid">
+                  <div class="scheme-card active" id="edit-card-scheme-light" data-scheme="light">
+                    <div class="scheme-card-preview" id="edit-preview-card-light"></div>
+                    <div class="scheme-card-info">
+                      <svg class="scheme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                      <span data-i18n="schemeLight">Light Version</span>
+                    </div>
                   </div>
-                  <button type="button" id="edit-remove-file" class="icon-btn">×</button>
+                  
+                  <div class="scheme-card" id="edit-card-scheme-dark" data-scheme="dark">
+                    <div class="scheme-card-preview" id="edit-preview-card-dark"></div>
+                    <div class="scheme-card-info">
+                      <svg class="scheme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                      <span data-i18n="schemeDark">Dark Version</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Slideshow Config Panel -->
+              <div id="edit-slideshow-config-panel" class="section hidden" style="margin-top: 12px; margin-bottom: 0;">
+                <div class="control-group row" style="margin-bottom: 8px;">
+                  <label for="edit-slideshow-interval" data-i18n="rotationInterval">Interval</label>
+                  <select id="edit-slideshow-interval">
+                    <option value="open" data-i18n="intervalOpen">Each Open</option>
+                    <option value="15m" data-i18n="interval15m">15 Mins</option>
+                    <option value="30m" data-i18n="interval30m">30 Mins</option>
+                    <option value="1h" data-i18n="interval1h">1 Hour</option>
+                    <option value="24h" data-i18n="interval24h">1 Day</option>
+                  </select>
+                </div>
+
+                <div class="control-group row" style="margin-bottom: 12px;">
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="edit-slideshow-random">
+                    <span data-i18n="randomOrder">Random Order</span>
+                  </label>
+                </div>
+
+                <div class="control-group" style="margin-bottom: 0;">
+                  <label class="control-label" data-i18n="wallpapersList">Wallpapers</label>
+                  <div class="wallpapers-grid-container">
+                    <div class="wallpapers-grid" id="edit-wallpapers-grid">
+                      <!-- Dynamically populated -->
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
+          </details>
 
-            <div class="tab-content" id="tab-edit-url">
+          <!-- Details 2: Wallpaper Background Type & Config -->
+          <details class="accordion" id="edit-accordion-bg" open>
+            <summary class="accordion-summary">
+              <span data-i18n="bgType">Background Settings</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </summary>
+            <div class="accordion-content">
               <div class="control-group">
-                <input type="url" id="edit-image-url" placeholder="https://example.com/image.jpg">
+                <div class="segmented-control">
+                  <input type="radio" name="edit-bgType" value="none" id="edit-type-none" checked>
+                  <label for="edit-type-none" data-i18n="typeNone">None</label>
+                  
+                  <input type="radio" name="edit-bgType" value="color" id="edit-type-color">
+                  <label for="edit-type-color" data-i18n="typeColor">Color</label>
+                  
+                  <input type="radio" name="edit-bgType" value="image" id="edit-type-image">
+                  <label for="edit-type-image" data-i18n="typeImage">Image</label>
+                </div>
+              </div>
+
+              <!-- Color Section -->
+              <div id="edit-section-color" class="section hidden">
+                <div class="control-group" style="margin-bottom: 0;">
+                  <label for="edit-color-picker" data-i18n="color">Color</label>
+                  <div class="color-input-wrapper">
+                    <input type="color" id="edit-color-picker" value="#ffffff">
+                    <input type="text" id="edit-color-text" value="#ffffff">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Image Section -->
+              <div id="edit-section-image" class="section hidden">
+                <div class="control-group">
+                  <div class="file-drop-area" id="edit-drop-area">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px; margin-bottom: 8px; color: var(--text-secondary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <p style="margin: 0; font-size: 13px;"><span data-i18n="dragOrClick">Drag image here, or</span> <span class="upload-link" data-i18n="chooseFile" style="color: var(--primary-color); text-decoration: underline; font-weight: 500;">choose file</span></p>
+                    <input type="file" id="edit-image-file" accept="image/*" hidden>
+                  </div>
+                  <div id="edit-file-info" class="file-info-badge hidden" style="margin-top: 8px;">
+                    <div class="file-info-content">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; color: var(--text-secondary);"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                      <span class="filename" id="edit-filename" style="font-size: 12px; font-weight: 500;"></span>
+                    </div>
+                    <button type="button" id="edit-remove-file" class="remove-file-btn" title="Clear Image">×</button>
+                  </div>
+                </div>
+
+                <div class="control-group">
+                  <label for="edit-image-url" data-i18n="orPasteUrl">Or paste image URL</label>
+                  <input type="url" id="edit-image-url" placeholder="https://example.com/image.jpg">
+                </div>
+                
+                <div class="control-group preview-group" style="margin-top: 12px; margin-bottom: 0;">
+                   <div id="edit-image-preview" class="image-preview" style="margin-top: 0;">
+                     <div id="edit-image-preview-bg" class="image-preview-bg"></div>
+                   </div>
+                </div>
               </div>
             </div>
-            
-            <div class="control-group preview-group">
-               <div id="edit-image-preview" class="image-preview">
-                 <div id="edit-image-preview-bg" class="image-preview-bg"></div>
-               </div>
-            </div>
-          </div>
+          </details>
 
-          <!-- Common Styles -->
-          <div id="edit-section-styles" class="section hidden">
-            <div class="control-group">
-              <div class="label-row">
-                <label for="edit-opacity" data-i18n="opacity">Opacity</label>
-                <span id="edit-opacity-val" class="val-badge">100%</span>
+          <!-- Styles Accordion -->
+          <details class="accordion" id="edit-accordion-styles">
+            <summary class="accordion-summary">
+              <span data-i18n="adjustStyles">Adjust Styles</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </summary>
+            <div class="accordion-content">
+              <div id="edit-section-styles" class="section">
+                <div class="control-group">
+                  <div class="label-row">
+                    <label for="edit-opacity" data-i18n="opacity">Opacity</label>
+                    <span id="edit-opacity-val" class="val-badge">100%</span>
+                  </div>
+                  <input type="range" id="edit-opacity" min="0" max="100" value="100">
+                </div>
+
+                <div class="control-group" id="edit-blur-control">
+                  <div class="label-row">
+                    <label for="edit-blur" data-i18n="blur">Blur</label>
+                    <span id="edit-blur-val" class="val-badge">0px</span>
+                  </div>
+                  <input type="range" id="edit-blur" min="0" max="20" value="0">
+                </div>
+
+                <div id="edit-image-options" class="hidden">
+                   <div class="control-group row">
+                     <label class="checkbox-label">
+                       <input type="checkbox" id="edit-bg-fixed" checked>
+                       <span data-i18n="fixed">Fixed Position</span>
+                     </label>
+                     <select id="edit-bg-size">
+                       <option value="cover" data-i18n="sizeCover">Cover</option>
+                       <option value="contain" data-i18n="sizeContain">Contain</option>
+                       <option value="auto" data-i18n="sizeAuto">Auto</option>
+                     </select>
+                   </div>
+                   
+                   <div class="control-group row" style="margin-bottom: 0;">
+                     <label class="checkbox-label">
+                       <input type="checkbox" id="edit-bg-repeat">
+                       <span data-i18n="repeat">Repeat</span>
+                     </label>
+                   </div>
+                </div>
               </div>
-              <input type="range" id="edit-opacity" min="0" max="100" value="100">
             </div>
+          </details>
 
-            <div class="control-group" id="edit-blur-control">
-              <div class="label-row">
-                <label for="edit-blur" data-i18n="blur">Blur</label>
-                <span id="edit-blur-val" class="val-badge">0px</span>
-              </div>
-              <input type="range" id="edit-blur" min="0" max="20" value="0">
-            </div>
-
-            <div id="edit-image-options" class="hidden">
-               <div class="control-group row">
-                 <label class="checkbox-label">
-                   <input type="checkbox" id="edit-bg-fixed" checked>
-                   <span data-i18n="fixed">Fixed Position</span>
-                 </label>
-                 <select id="edit-bg-size">
-                   <option value="cover" data-i18n="sizeCover">Cover</option>
-                   <option value="contain" data-i18n="sizeContain">Contain</option>
-                   <option value="auto" data-i18n="sizeAuto">Auto</option>
-                 </select>
-               </div>
-               
-               <div class="control-group row">
-                 <label class="checkbox-label">
-                   <input type="checkbox" id="edit-bg-repeat">
-                   <span data-i18n="repeat">Repeat</span>
-                 </label>
-               </div>
-            </div>
-          </div>
-
-          <!-- Advanced Settings -->
-          <div id="edit-section-advanced" class="advanced">
-            <button type="button" id="edit-advanced-toggle" class="advanced-toggle" aria-expanded="false">
-              <span data-i18n="advanced">Advanced</span>
-              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            </button>
-
-            <div id="edit-advanced-body" class="advanced-body hidden">
+          <!-- Advanced Settings Accordion -->
+          <details class="accordion" id="edit-accordion-advanced">
+            <summary class="accordion-summary">
+              <span data-i18n="advanced">Advanced Settings</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </summary>
+            <div class="accordion-content">
               <div class="control-group">
                 <label for="edit-target-selector" data-i18n="targetSelector">Background Selector</label>
                 <p class="hint" data-i18n="targetSelectorHint">Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.</p>
@@ -299,22 +378,31 @@
                 </div>
               </div>
 
-              <div class="control-group">
+              <div class="control-group" style="margin-bottom: 0;">
                 <label for="edit-custom-css" data-i18n="customCss">Custom CSS</label>
                 <p class="hint" data-i18n="customCssHint">Injected into this site. Use !important to override stubborn styles.</p>
                 <textarea id="edit-custom-css" rows="4" spellcheck="false" placeholder="body { color: #fff !important; }"></textarea>
               </div>
             </div>
-          </div>
+          </details>
         </div>
 
         <div class="edit-actions-card">
-          <button id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
-          <button id="edit-save-btn" class="btn primary-btn" data-i18n="save">Save</button>
+          <div class="status-bar">
+            <span class="status-dot" id="edit-status-dot"></span>
+            <span class="status-text" id="edit-status-text" data-i18n="statusSynced">Synced</span>
+          </div>
+          <div class="edit-actions-right">
+            <button id="edit-reset-btn" class="ghost-link-btn" data-i18n="reset">Reset</button>
+            <span class="divider">|</span>
+            <span class="version-text">v0.3.0</span>
+            <span class="divider">|</span>
+            <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; display: block;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+            </a>
+          </div>
         </div>
     </main>
-    
-    <div id="status-msg" class="status-msg hidden">Saved!</div>
 
     <!-- Custom Confirm Modal -->
     <div id="confirm-modal" class="modal-backdrop hidden">
