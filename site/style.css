@@ -89,7 +89,9 @@ h1, h2, h3 { line-height: 1.3; }
 section { padding: 56px 0; border-bottom: 1px solid var(--border); }
 section:last-of-type { border-bottom: none; }
 
-.features { background: var(--bg-alt); }
+/* No section sets its own opaque background — html/body is the only
+   background layer, so a full-page PageDye/Lite background applied to
+   this site itself shows through everywhere, not just some sections. */
 
 .grid {
   display: grid;
