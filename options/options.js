@@ -275,6 +275,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     importBtn: document.getElementById('import-btn'),
     importFile: document.getElementById('import-file'),
     clearAllBtn: document.getElementById('clear-all-btn'),
+    statusMsg: document.getElementById('status-msg'),
 
     // Edit site controls
     editWpModes: document.getElementsByName('edit-wpMode'),
@@ -289,12 +290,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     editSlideshowRandom: document.getElementById('edit-slideshow-random'),
     editWallpapersGrid: document.getElementById('edit-wallpapers-grid'),
     editStatusDot: document.getElementById('edit-status-dot'),
-    editStatusText: document.getElementById('edit-status-text')
+    editStatusText: document.getElementById('edit-status-text'),
+    editResetBtn: document.getElementById('edit-reset-btn')
   };
 
   // Init translations & versions
   initI18n();
-  editCssEditorController = initCustomCssEditor('edit-custom-css', 'edit-custom-css-editor');
+  let editCssEditorController = initCustomCssEditor('edit-custom-css', 'edit-custom-css-editor');
   const editGradientKeyframesStyle = document.createElement('style');
   editGradientKeyframesStyle.textContent = window.PageDyeGradient.GRADIENT_KEYFRAMES_CSS;
   document.head.appendChild(editGradientKeyframesStyle);
@@ -302,6 +304,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const extensionVersion = 'v' + chrome.runtime.getManifest().version;
   if (els.versionLabel) els.versionLabel.textContent = extensionVersion;
   if (els.aboutVersion) els.aboutVersion.textContent = extensionVersion;
+  const editVersionEl = document.getElementById('edit-version');
+  if (editVersionEl) editVersionEl.textContent = extensionVersion;
 
   // Load configured sites
   await loadSitesList();
@@ -655,7 +659,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   let editActiveSlideshowIndex = 0;
   let currentEditSettings = null;
   let editGradientStopsState = [];
-  let editCssEditorController = null;
 
   function populateEditForm(subSettings) {
     document.querySelector(`input[name="edit-bgType"][value="${subSettings.type || 'none'}"]`).checked = true;
@@ -859,12 +862,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-frosted-opacity').value = editFrostedGlass.opacity !== undefined ? editFrostedGlass.opacity : 55;
     document.getElementById('edit-frosted-opacity-val').textContent = `${document.getElementById('edit-frosted-opacity').value}%`;
 
-    if (currentEditSettings.targetSelector || currentEditSettings.customCss) {
-      document.getElementById('edit-advanced-body').classList.remove('hidden');
-      document.getElementById('edit-advanced-toggle').setAttribute('aria-expanded', 'true');
-    } else {
-      document.getElementById('edit-advanced-body').classList.add('hidden');
-      document.getElementById('edit-advanced-toggle').setAttribute('aria-expanded', 'false');
+    const editAccordionAdvanced = document.getElementById('edit-accordion-advanced');
+    if (editAccordionAdvanced) {
+      editAccordionAdvanced.open = !!(currentEditSettings.targetSelector || currentEditSettings.customCss);
     }
   }
 

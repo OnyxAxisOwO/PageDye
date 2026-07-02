@@ -2,6 +2,11 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.5.1] - 2026-07-02
+
+### Fixed
+- **Settings Dashboard Unresponsive**: The full-page options dashboard ("PageDye 控制面板") was completely non-interactive — sidebar navigation, search, export/import, delete, and site editing all silently failed. Root cause: a variable was used before its `let` declaration in the same scope, throwing a `ReferenceError` during setup that aborted nearly all event listener registration. Also fixed several dangling references uncovered alongside it (missing Reset button listener, a status toast element that was never added to the page, and stale element IDs from the advanced-settings auto-expand logic).
+
 ## [0.5.0] - 2026-07-01
 
 ### Added
