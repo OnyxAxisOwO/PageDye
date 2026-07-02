@@ -1550,7 +1550,11 @@
         box-shadow: 0 12px 40px rgba(0,0,0,0.45); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
         padding: 14px;
       }
-      .pd-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+      .pd-tabs {
+        display: flex; gap: 6px; margin: -14px -14px 10px; padding: 12px 14px 8px;
+        position: sticky; top: -14px; z-index: 2;
+        background: rgba(24,24,27,0.97); border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
       .pd-tabs button, .pd-mode-switch button {
         flex: 1; min-height: 38px; padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
         background: transparent; color: #d4d4d8; font-size: 13px; cursor: pointer;
