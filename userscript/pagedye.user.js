@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PageDye Lite
 // @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.5.4
+// @version      0.5.5
 // @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
 // @author       PageDye
 // @match        *://*/*
@@ -40,7 +40,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.5.4';
+  const VERSION = '0.5.5';
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
@@ -263,7 +263,7 @@
       style: { fixed: true, size: 'cover', repeat: false },
       filters: { brightness: 100, contrast: 100, grayscale: 0, hue: 0, invert: 0 },
       gradient: Gradient.defaultGradient('#6366f1'),
-      effect: 'waves', effectColor: '#ffffff', effectDensity: 50, effectSpeed: 50
+      effect: 'waves', effectColor: '#ffffff', effectBgColor: '#000000', effectDensity: 50, effectSpeed: 50
     };
   }
 
@@ -487,7 +487,7 @@
       root.style.height = '100vh';
       layer.style.backgroundImage = 'none';
       layer.style.backgroundColor = 'transparent';
-      startEffect(canvas, s.effect || 'waves', s.opacity, { color: s.effectColor, density: s.effectDensity, speed: s.effectSpeed });
+      startEffect(canvas, s.effect || 'waves', s.opacity, { color: s.effectColor, bgColor: s.effectBgColor, density: s.effectDensity, speed: s.effectSpeed });
       return;
     }
 
@@ -624,6 +624,7 @@
   function normalizeEffectConfig(cfg) {
     return {
       color: (cfg && cfg.color) || '#ffffff',
+      bgColor: (cfg && cfg.bgColor) || '#000000',
       density: clampPercent(cfg && cfg.density, 50),
       speed: clampPercent(cfg && cfg.speed, 50)
     };
@@ -647,7 +648,7 @@
         const { width, height, fontSize, columns, cfg } = state;
         if (!width || !height) return;
         const speedMul = effectSpeedMultiplier(cfg.speed);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+        ctx.fillStyle = hexToRgba(cfg.bgColor, 0.12);
         ctx.fillRect(0, 0, width, height);
         ctx.font = `${fontSize}px monospace`;
         ctx.textBaseline = 'top';
@@ -679,7 +680,7 @@
       draw(ctx, canvas, state, dt) {
         const { width, height, particles, mouse, cfg } = state;
         if (!width || !height) return;
-        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = cfg.bgColor; ctx.fillRect(0, 0, width, height);
         const dtSec = dt / 1000, repelRadius = 90, speedMul = effectSpeedMultiplier(cfg.speed);
         particles.forEach((p) => {
           const dx = p.x - mouse.x, dy = p.y - mouse.y;
@@ -721,7 +722,7 @@
         const { width, height, lineCount, cfg } = state;
         if (!width || !height) return;
         state.phase += dt * 0.0006 * effectSpeedMultiplier(cfg.speed);
-        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = cfg.bgColor; ctx.fillRect(0, 0, width, height);
         for (let i = 0; i < lineCount; i++) {
           const t = i / (lineCount - 1 || 1);
           const baseY = height * (0.3 + t * 0.5);
@@ -750,7 +751,7 @@
         if (!width || !height || !maxR) return;
         const speedMul = effectSpeedMultiplier(cfg.speed);
         const cx = width / 2, cy = height / 2, dtSec = dt / 1000;
-        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = cfg.bgColor; ctx.fillRect(0, 0, width, height);
         ctx.fillStyle = cfg.color;
         stars.forEach((s) => {
           s.r += (40 + s.r * 0.6) * speedMul * dtSec;
@@ -772,7 +773,7 @@
         const speedMul = effectSpeedMultiplier(cfg.speed);
         const spawnInterval = 1400 - (cfg.density / 100) * 1150;
         const maxRadius = Math.max(width, height) * 0.5;
-        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = cfg.bgColor; ctx.fillRect(0, 0, width, height);
         state.spawnTimer -= dt;
         if (state.spawnTimer <= 0) {
           state.spawnTimer = spawnInterval;
@@ -1136,6 +1137,7 @@
         ['starfield', '星空 Starfield'], ['ripple', '涟漪 Ripple']
       ], e.effect || 'waves');
       body += colorRow('颜色', 'effectColor', e.effectColor || '#ffffff');
+      body += colorRow('背景颜色', 'effectBgColor', e.effectBgColor || '#000000');
       body += rangeRow('密度', 'effectDensity', 0, 100, e.effectDensity != null ? e.effectDensity : 50, '%');
       body += rangeRow('速度', 'effectSpeed', 0, 100, e.effectSpeed != null ? e.effectSpeed : 50, '%');
       body += rangeRow('不透明度', 'opacity', 0, 100, e.opacity, '%');
@@ -1340,8 +1342,17 @@
     }
     if (action === 'remove-slide') {
       const idx = Number(btn.dataset.index);
-      settings.slideshow.items.splice(idx, 1);
-      if (ui.slideIndex >= settings.slideshow.items.length) ui.slideIndex = settings.slideshow.items.length - 1;
+      const sh = settings.slideshow;
+      sh.items.splice(idx, 1);
+      // Keep the "currently displayed" pointer meaningful too, not just the
+      // panel's edit cursor — otherwise deleting an earlier frame silently
+      // swaps the live wallpaper to whatever the stale index now lands on.
+      if (idx < sh.currentIndex) {
+        sh.currentIndex -= 1;
+      } else if (sh.currentIndex >= sh.items.length) {
+        sh.currentIndex = sh.items.length - 1;
+      }
+      if (ui.slideIndex >= sh.items.length) ui.slideIndex = sh.items.length - 1;
       liveApply(); scheduleSave(); renderPanel();
       return;
     }
@@ -1531,6 +1542,21 @@
     scheduleHide();
   }
 
+  // Keep the widget genuinely on top of the page. A max z-index alone isn't
+  // enough: any site element tied at the same z-index wins if it's later in
+  // DOM order, and native fullscreen content renders in the browser's "top
+  // layer" above all regular stacking contexts regardless of z-index. So we
+  // (a) keep panelHost as the last child of its container whenever the page
+  // mutates, and (b) move it inside the fullscreen element while one is active.
+  function bumpToTop() {
+    if (!panelHost) return;
+    const fsEl = document.fullscreenElement || document.webkitFullscreenElement || null;
+    const target = fsEl || document.documentElement;
+    if (panelHost.parentNode !== target || target.lastElementChild !== panelHost) {
+      target.appendChild(panelHost);
+    }
+  }
+
   function buildUI() {
     panelHost = document.createElement('div');
     panelHost.id = 'pagedye-lite-panel-host';
@@ -1538,66 +1564,87 @@
     document.documentElement.appendChild(panelHost);
     shadow = panelHost.attachShadow({ mode: 'open' });
 
+    const bumpObserver = new MutationObserver(bumpToTop);
+    bumpObserver.observe(document.documentElement, { childList: true });
+    if (document.body) bumpObserver.observe(document.body, { childList: true });
+    document.addEventListener('fullscreenchange', bumpToTop);
+    document.addEventListener('webkitfullscreenchange', bumpToTop);
+
     const style = document.createElement('style');
     style.textContent = `
-      * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color-scheme: dark; }
+      :host {
+        color-scheme: light dark;
+        --pd-text: #18181b; --pd-text-secondary: #6b7280; --pd-border: rgba(0,0,0,0.14);
+        --pd-panel-bg: rgba(255,255,255,0.92); --pd-gear-bg: rgba(255,255,255,0.88);
+        --pd-input-bg: rgba(0,0,0,0.045); --pd-btn-bg: rgba(0,0,0,0.05);
+        --pd-accent-bg: #18181b; --pd-accent-text: #fff; --pd-shadow: rgba(0,0,0,0.18); --pd-option-bg: #fff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :host {
+          --pd-text: #f4f4f5; --pd-text-secondary: #a1a1aa; --pd-border: rgba(255,255,255,0.15);
+          --pd-panel-bg: rgba(24,24,27,0.92); --pd-gear-bg: rgba(20,20,20,0.85);
+          --pd-input-bg: rgba(255,255,255,0.05); --pd-btn-bg: rgba(255,255,255,0.06);
+          --pd-accent-bg: #fff; --pd-accent-text: #000; --pd-shadow: rgba(0,0,0,0.35); --pd-option-bg: #1c1c1e;
+        }
+      }
+      * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
       .pd-gear {
         position: fixed; bottom: 18px; right: 18px; width: 50px; height: 50px; border-radius: 50%;
-        background: rgba(20,20,20,0.85); color: #fff; border: 1px solid rgba(255,255,255,0.15);
+        background: var(--pd-gear-bg); color: var(--pd-text); border: 1px solid var(--pd-border);
         font-size: 21px; display: flex; align-items: center; justify-content: center; cursor: pointer;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        box-shadow: 0 4px 16px var(--pd-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
         overflow: hidden; touch-action: none; user-select: none;
         transition: left 0.25s ease, right 0.25s ease, top 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
       }
       .pd-gear.pd-dragging { transition: none; }
-      .pd-gear.pd-open { box-shadow: 0 0 0 3px rgba(255,255,255,0.55), 0 4px 16px rgba(0,0,0,0.35); }
+      .pd-gear.pd-open { box-shadow: 0 0 0 3px var(--pd-shadow), 0 4px 16px var(--pd-shadow); }
       .pd-gear.pd-peek { opacity: 0.5; }
       .pd-panel {
         display: none; flex-direction: column; position: fixed; bottom: 74px; right: 18px;
         width: 340px; max-width: calc(100vw - 24px); max-height: 58vh; overflow-y: auto; border-radius: 14px;
-        background: rgba(24,24,27,0.92); color: #f4f4f5; border: 1px solid rgba(255,255,255,0.1);
-        box-shadow: 0 12px 40px rgba(0,0,0,0.45); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        background: var(--pd-panel-bg); color: var(--pd-text); border: 1px solid var(--pd-border);
+        box-shadow: 0 12px 40px var(--pd-shadow); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
         padding: 14px;
       }
       .pd-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
       .pd-tabs button, .pd-mode-switch button {
-        flex: 1; min-height: 38px; padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
-        background: transparent; color: #d4d4d8; font-size: 13px; cursor: pointer;
+        flex: 1; min-height: 38px; padding: 8px; border-radius: 8px; border: 1px solid var(--pd-border);
+        background: transparent; color: var(--pd-text-secondary); font-size: 13px; cursor: pointer;
       }
-      .pd-tabs button.active, .pd-mode-switch button.active { background: #fff; color: #000; border-color: #fff; }
+      .pd-tabs button.active, .pd-mode-switch button.active { background: var(--pd-accent-bg); color: var(--pd-accent-text); border-color: var(--pd-accent-bg); }
       .pd-mode-switch { display: flex; gap: 6px; margin-bottom: 10px; }
-      .pd-subhead { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #a1a1aa; margin: 12px 0 6px; }
-      .pd-hint { font-size: 11px; line-height: 1.5; color: #a1a1aa; margin: 4px 0 8px; }
+      .pd-subhead { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--pd-text-secondary); margin: 12px 0 6px; }
+      .pd-hint { font-size: 11px; line-height: 1.5; color: var(--pd-text-secondary); margin: 4px 0 8px; }
       .pd-row { margin-bottom: 10px; }
-      .pd-row-head { display: flex; justify-content: space-between; font-size: 12px; color: #d4d4d8; margin-bottom: 4px; }
-      .pd-row-inline { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #d4d4d8; margin-bottom: 8px; cursor: pointer; min-height: 36px; }
+      .pd-row-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--pd-text); margin-bottom: 4px; }
+      .pd-row-inline { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--pd-text); margin-bottom: 8px; cursor: pointer; min-height: 36px; }
       .pd-row input[type="text"], .pd-row select, textarea {
-        width: 100%; padding: 9px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);
-        background: rgba(255,255,255,0.05); color: #fff; font-size: 13px;
+        width: 100%; padding: 9px 10px; border-radius: 6px; border: 1px solid var(--pd-border);
+        background: var(--pd-input-bg); color: var(--pd-text); font-size: 13px;
       }
-      select option { background-color: #1c1c1e; color: #f4f4f5; }
+      select option { background-color: var(--pd-option-bg); color: var(--pd-text); }
       textarea { min-height: 70px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace; }
       input[type="range"] { width: 100%; height: 32px; }
-      input[type="file"] { font-size: 12px; color: #d4d4d8; width: 100%; }
+      input[type="file"] { font-size: 12px; color: var(--pd-text-secondary); width: 100%; }
       .pd-swatch-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 8px; }
-      .pd-swatch { height: 28px; border-radius: 6px; cursor: pointer; border: 1px solid rgba(255,255,255,0.15); }
+      .pd-swatch { height: 28px; border-radius: 6px; cursor: pointer; border: 1px solid var(--pd-border); }
       .pd-stop-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-      .pd-stop-row button { border: none; background: rgba(255,255,255,0.1); color: #fff; border-radius: 4px; cursor: pointer; padding: 6px 10px; }
+      .pd-stop-row button { border: none; background: var(--pd-btn-bg); color: var(--pd-text); border-radius: 4px; cursor: pointer; padding: 6px 10px; }
       .pd-slides { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
       .pd-slide-item {
-        padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);
-        background: transparent; color: #d4d4d8; font-size: 12px; cursor: pointer;
+        padding: 8px 10px; border-radius: 6px; border: 1px solid var(--pd-border);
+        background: transparent; color: var(--pd-text-secondary); font-size: 12px; cursor: pointer;
       }
-      .pd-slide-item.active { background: #fff; color: #000; border-color: #fff; }
+      .pd-slide-item.active { background: var(--pd-accent-bg); color: var(--pd-accent-text); border-color: var(--pd-accent-bg); }
       .pd-btn-secondary {
-        width: 100%; min-height: 38px; padding: 8px; margin: 4px 0 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
-        background: rgba(255,255,255,0.06); color: #fff; font-size: 13px; cursor: pointer;
+        width: 100%; min-height: 38px; padding: 8px; margin: 4px 0 8px; border-radius: 8px; border: 1px solid var(--pd-border);
+        background: var(--pd-btn-bg); color: var(--pd-text); font-size: 13px; cursor: pointer;
       }
-      .pd-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; color: #a1a1aa; }
+      .pd-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--pd-border); font-size: 11px; color: var(--pd-text-secondary); }
       .pd-footer-btns { display: flex; gap: 6px; margin: 6px 0; }
       .pd-footer-btns button {
-        flex: 1; min-height: 34px; padding: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);
-        background: transparent; color: #d4d4d8; font-size: 12px; cursor: pointer;
+        flex: 1; min-height: 34px; padding: 6px; border-radius: 6px; border: 1px solid var(--pd-border);
+        background: transparent; color: var(--pd-text-secondary); font-size: 12px; cursor: pointer;
       }
       .pd-version { opacity: 0.6; }
     `;

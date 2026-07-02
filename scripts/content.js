@@ -281,6 +281,7 @@
       layer.style.backgroundColor = 'transparent';
       startEffect(canvas, settings.effect || 'waves', settings.opacity, {
         color: settings.effectColor,
+        bgColor: settings.effectBgColor,
         density: settings.effectDensity,
         speed: settings.effectSpeed
       });
@@ -569,6 +570,7 @@
   function normalizeEffectConfig(cfg) {
     return {
       color: (cfg && cfg.color) || '#ffffff',
+      bgColor: (cfg && cfg.bgColor) || '#000000',
       density: clampPercent(cfg && cfg.density, 50),
       speed: clampPercent(cfg && cfg.speed, 50)
     };
@@ -606,7 +608,7 @@
         const { width, height, fontSize, columns, cfg } = state;
         if (!width || !height) return;
         const speedMul = effectSpeedMultiplier(cfg.speed);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+        ctx.fillStyle = hexToRgba(cfg.bgColor, 0.12);
         ctx.fillRect(0, 0, width, height);
         ctx.font = `${fontSize}px monospace`;
         ctx.textBaseline = 'top';
@@ -649,7 +651,7 @@
       draw(ctx, canvas, state, dt) {
         const { width, height, particles, mouse, cfg } = state;
         if (!width || !height) return;
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = cfg.bgColor;
         ctx.fillRect(0, 0, width, height);
 
         const dtSec = dt / 1000;
@@ -721,7 +723,7 @@
         if (!width || !height) return;
         state.phase += dt * 0.0006 * effectSpeedMultiplier(cfg.speed);
 
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = cfg.bgColor;
         ctx.fillRect(0, 0, width, height);
 
         for (let i = 0; i < lineCount; i++) {
@@ -770,7 +772,7 @@
         const cy = height / 2;
         const dtSec = dt / 1000;
 
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = cfg.bgColor;
         ctx.fillRect(0, 0, width, height);
         ctx.fillStyle = cfg.color;
 
@@ -814,7 +816,7 @@
         const spawnInterval = 1400 - (cfg.density / 100) * 1150;
         const maxRadius = Math.max(width, height) * 0.5;
 
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = cfg.bgColor;
         ctx.fillRect(0, 0, width, height);
 
         state.spawnTimer -= dt;

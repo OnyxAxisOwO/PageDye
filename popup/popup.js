@@ -146,6 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       effectStarfield: "Starfield",
       effectRipple: "Ripple",
       effectColor: "Color",
+      effectBgColor: "Background Color",
       effectDensity: "Density",
       effectSpeed: "Speed",
       color: "Color",
@@ -239,6 +240,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       effectStarfield: "星空穿梭",
       effectRipple: "水波纹",
       effectColor: "颜色",
+      effectBgColor: "背景颜色",
       effectDensity: "密度",
       effectSpeed: "速度",
       color: "颜色",
@@ -328,6 +330,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     effectKind: document.getElementById('effect-kind'),
     effectColor: document.getElementById('effect-color'),
     effectColorText: document.getElementById('effect-color-text'),
+    effectBgColor: document.getElementById('effect-bg-color'),
+    effectBgColorText: document.getElementById('effect-bg-color-text'),
     effectDensity: document.getElementById('effect-density'),
     effectDensityVal: document.getElementById('effect-density-val'),
     effectSpeed: document.getElementById('effect-speed'),
@@ -475,6 +479,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   els.effectColorText.addEventListener('input', (e) => {
     els.effectColor.value = e.target.value;
+    queueAutoSave();
+  });
+  els.effectBgColor.addEventListener('input', (e) => {
+    els.effectBgColorText.value = e.target.value;
+    queueAutoSave();
+  });
+  els.effectBgColorText.addEventListener('input', (e) => {
+    els.effectBgColor.value = e.target.value;
     queueAutoSave();
   });
   els.effectDensity.addEventListener('input', (e) => {
@@ -973,6 +985,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       els.effectKind.value = subSettings.effect || 'waves';
       els.effectColor.value = subSettings.effectColor || '#ffffff';
       els.effectColorText.value = subSettings.effectColor || '#ffffff';
+      els.effectBgColor.value = subSettings.effectBgColor || '#000000';
+      els.effectBgColorText.value = subSettings.effectBgColor || '#000000';
       els.effectDensity.value = subSettings.effectDensity !== undefined ? subSettings.effectDensity : 50;
       els.effectDensityVal.textContent = `${els.effectDensity.value}%`;
       els.effectSpeed.value = subSettings.effectSpeed !== undefined ? subSettings.effectSpeed : 50;
@@ -1024,6 +1038,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else if (type === 'effect') {
       dest.effect = els.effectKind.value;
       dest.effectColor = els.effectColor.value;
+      dest.effectBgColor = els.effectBgColor.value;
       dest.effectDensity = parseInt(els.effectDensity.value, 10);
       dest.effectSpeed = parseInt(els.effectSpeed.value, 10);
     }
@@ -1613,6 +1628,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.effectKind.value = 'waves';
     els.effectColor.value = '#ffffff';
     els.effectColorText.value = '#ffffff';
+    els.effectBgColor.value = '#000000';
+    els.effectBgColorText.value = '#000000';
     els.effectDensity.value = 50;
     els.effectDensityVal.textContent = '50%';
     els.effectSpeed.value = 50;

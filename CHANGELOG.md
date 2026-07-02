@@ -2,6 +2,18 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.5.5] - 2026-07-02
+
+### Fixed
+- **PageDye Lite floating panel got covered by page content**: the gear button/panel now re-parents itself to stay the last element in the DOM (winning z-index ties against page overlays added afterward) and moves into the active fullscreen element when one is present, instead of relying solely on a static max z-index.
+- **PageDye Lite settings panel was always dark**: the panel now follows `prefers-color-scheme` with light/dark CSS variables, matching the popup/options theming, instead of being hardcoded to a dark palette.
+- **PageDye Lite: deleting an earlier slideshow frame could silently swap the live wallpaper**: removing a slide now shifts the "currently displayed" pointer along with the panel's edit cursor, instead of only adjusting the latter.
+- **Wallpaper grid delete button unreachable on touch devices**: it only appeared on `:hover`, which touchscreens don't have; now also shown unconditionally on hover-incapable devices.
+- **Settings import could wipe existing config on partial failure**: import now writes the new config and only then removes keys the backup doesn't mention, instead of clearing storage before validating the write succeeded.
+
+### Added
+- **Background color for animated effects**: Matrix/Particles/Waves/Starfield/Ripple effects had a hardcoded black canvas background regardless of the configured line/particle color. Added an independent "Background Color" control (extension popup, options page, and PageDye Lite) so these effects can be styled for light backgrounds too.
+
 ## [0.5.4] - 2026-07-02
 
 ### Fixed

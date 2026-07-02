@@ -1666,6 +1666,15 @@ input:checked + .slider.round:before {
   display: block;
 }
 
+/* Touchscreens have no persistent :hover, so the button above would never
+   become reachable there — show it unconditionally on hover-incapable
+   (touch-primary) devices instead. */
+@media (hover: none) {
+  .wallpaper-grid-card .delete-grid-btn {
+    display: block;
+  }
+}
+
 .add-grid-card {
   aspect-ratio: 1;
   border-radius: 10px;

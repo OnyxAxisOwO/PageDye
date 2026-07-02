@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       effectStarfield: "Starfield",
       effectRipple: "Ripple",
       effectColor: "Color",
+      effectBgColor: "Background Color",
       effectDensity: "Density",
       effectSpeed: "Speed",
       color: "Color",
@@ -188,6 +189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       effectStarfield: "星空穿梭",
       effectRipple: "水波纹",
       effectColor: "颜色",
+      effectBgColor: "背景颜色",
       effectDensity: "密度",
       effectSpeed: "速度",
       color: "颜色",
@@ -582,8 +584,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!(await showConfirm(t('confirmImport')))) return;
 
-        await chrome.storage.local.clear();
+        // Write the backup first, then drop only the keys it doesn't
+        // mention — if set() fails partway (quota, disk, browser crash),
+        // the existing config is left intact instead of already being
+        // wiped by an unconditional clear() with nothing to replace it.
+        const existing = await chrome.storage.local.get(null);
         await chrome.storage.local.set(importedData);
+        const staleKeys = Object.keys(existing).filter((key) => !(key in importedData));
+        if (staleKeys.length) await chrome.storage.local.remove(staleKeys);
 
         await loadSitesList();
         showStatus(t('importSuccess'));
@@ -690,6 +698,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('edit-effect-kind').value = subSettings.effect || 'waves';
       document.getElementById('edit-effect-color').value = subSettings.effectColor || '#ffffff';
       document.getElementById('edit-effect-color-text').value = subSettings.effectColor || '#ffffff';
+      document.getElementById('edit-effect-bg-color').value = subSettings.effectBgColor || '#000000';
+      document.getElementById('edit-effect-bg-color-text').value = subSettings.effectBgColor || '#000000';
       document.getElementById('edit-effect-density').value = subSettings.effectDensity !== undefined ? subSettings.effectDensity : 50;
       document.getElementById('edit-effect-density-val').textContent = `${document.getElementById('edit-effect-density').value}%`;
       document.getElementById('edit-effect-speed').value = subSettings.effectSpeed !== undefined ? subSettings.effectSpeed : 50;
@@ -741,6 +751,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else if (type === 'effect') {
       dest.effect = document.getElementById('edit-effect-kind').value;
       dest.effectColor = document.getElementById('edit-effect-color').value;
+      dest.effectBgColor = document.getElementById('edit-effect-bg-color').value;
       dest.effectDensity = parseInt(document.getElementById('edit-effect-density').value, 10);
       dest.effectSpeed = parseInt(document.getElementById('edit-effect-speed').value, 10);
     }
@@ -1317,6 +1328,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-effect-kind').value = 'waves';
     document.getElementById('edit-effect-color').value = '#ffffff';
     document.getElementById('edit-effect-color-text').value = '#ffffff';
+    document.getElementById('edit-effect-bg-color').value = '#000000';
+    document.getElementById('edit-effect-bg-color-text').value = '#000000';
     document.getElementById('edit-effect-density').value = 50;
     document.getElementById('edit-effect-density-val').textContent = '50%';
     document.getElementById('edit-effect-speed').value = 50;
@@ -1411,6 +1424,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   editEffectColorText.addEventListener('input', (e) => {
     editEffectColor.value = e.target.value;
+    queueEditAutoSave();
+  });
+  const editEffectBgColor = document.getElementById('edit-effect-bg-color');
+  const editEffectBgColorText = document.getElementById('edit-effect-bg-color-text');
+  editEffectBgColor.addEventListener('input', (e) => {
+    editEffectBgColorText.value = e.target.value;
+    queueEditAutoSave();
+  });
+  editEffectBgColorText.addEventListener('input', (e) => {
+    editEffectBgColor.value = e.target.value;
     queueEditAutoSave();
   });
   const editEffectDensity = document.getElementById('edit-effect-density');
