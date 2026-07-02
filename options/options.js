@@ -4,8 +4,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       title: "PageDye Dashboard",
       appName: "PageDye",
       navSites: "Configured Sites",
+      navCustomEffects: "Custom Effects",
+      navAppearance: "Appearance",
       navBackup: "Backup & Restore",
       navAbout: "About",
+      appearanceTitle: "Appearance",
+      appearanceHint: "Customize the colors of this dashboard itself (not your websites' backgrounds).",
+      pageBackground: "Page Background",
+      pageBackgroundHint: "The outer area surrounding the dashboard panel. Pick a color, or upload an image.",
+      containerBackground: "Container Background",
+      containerBackgroundHint: "The sidebar and main panel background. Pick a color, or upload an image.",
+      appearanceReset: "Reset to Default",
+      appearanceSaved: "Appearance updated!",
+      appearanceResetDone: "Appearance reset!",
+      dragOrClick: "Drag image here, or",
+      chooseFile: "choose file",
+      savedImage: "Saved image",
       sitesTitle: "Configured Sites",
       sitesHint: "Manage settings for specific websites. You can remove configurations individually.",
       searchPlaceholder: "Search domains...",
@@ -58,6 +72,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       effectWaves: "Waves",
       effectStarfield: "Starfield",
       effectRipple: "Ripple",
+      effectAurora: "Aurora",
+      effectSnow: "Snow",
+      effectBubbles: "Bubbles",
+      effectConstellation: "Constellation",
+      effectFireflies: "Fireflies",
+      effectGridPulse: "Grid Pulse",
+      effectRain: "Rain",
+      effectConfetti: "Confetti",
+      effectPlasma: "Plasma",
+      effectVortex: "Vortex",
+      effectTypewriter: "Typewriter",
+      effectText: "Text",
+      effectColorScheme: "Color Preset",
+      effectColorSchemeHint: "Auto follows your system's light/dark setting live.",
+      effectSchemeAuto: "Auto",
+      effectSchemeLight: "Light",
+      effectSchemeDark: "Dark",
+      effectSchemeCustom: "Custom",
       effectColor: "Color",
       effectBgColor: "Background Color",
       effectDensity: "Density",
@@ -89,6 +121,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedOpacity: "Tint",
       customCss: "Custom CSS",
       customCssHint: "Injected into this site. Use !important to override stubborn styles.",
+      customEffectsTitle: "Custom Effects",
+      customEffectsHint: "Write your own animated Canvas wallpaper and use it on any site, just like the built-in effects. Extension only — not available in PageDye Lite or the site widget.",
+      newCustomEffect: "New Custom Effect",
+      importEffectBtn: "Import",
+      thEffectName: "Name",
+      thEffectUpdated: "Updated",
+      noCustomEffects: "No custom effects yet.",
+      backToCustomEffects: "Back to Custom Effects",
+      effectNameLabel: "Name",
+      startFromTemplate: "Start from template",
+      templateBlank: "Blank skeleton",
+      templateWaves: "Waves source",
+      templateParticles: "Particles source",
+      effectCode: "Code",
+      effectCodeHint: "Must evaluate to an object with init(cfg), resize(state, width, height) and draw(ctx, canvas, state, dt) — the same shape as PageDye's built-in effects. cfg has color/bgColor/density/speed/text. Helpers: window.PageDyeEffects.helpers.{hexToRgba, effectSpeedMultiplier, clampPercent}.",
+      effectPreviewLabel: "Live Preview",
+      exportEffectBtn: "Export",
+      untitledEffect: "Untitled Effect",
+      editBtn: "Edit",
+      confirmDeleteEffect: "Delete custom effect \"{name}\"? Any site using it will fall back to Waves.",
+      customEffectsOptgroup: "Custom",
+      manageCustomEffects: "Manage custom effects…",
       autoScheme: "Auto Light/Dark",
       schemeLight: "Light Version",
       schemeDark: "Dark Version",
@@ -134,8 +188,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       title: "PageDye 控制面板",
       appName: "PageDye",
       navSites: "已配置网站",
+      navCustomEffects: "自定义动效",
+      navAppearance: "外观",
       navBackup: "备份与恢复",
       navAbout: "关于 PageDye",
+      appearanceTitle: "外观",
+      appearanceHint: "自定义控制面板本身的配色（不影响您各个网站的背景设置）。",
+      pageBackground: "页面背景",
+      pageBackgroundHint: "控制面板外层的背景区域。可选择颜色，或上传一张背景图片。",
+      containerBackground: "容器背景",
+      containerBackgroundHint: "侧边栏与主面板的背景。可选择颜色，或上传一张背景图片。",
+      appearanceReset: "恢复默认",
+      appearanceSaved: "外观已更新!",
+      appearanceResetDone: "外观已重置!",
+      dragOrClick: "拖拽图片至此，或",
+      chooseFile: "选择文件",
+      savedImage: "已保存的图片",
       sitesTitle: "已配置网站列表",
       sitesHint: "管理各个网站的背景配置。您可以单独删除某个网站的配置。",
       searchPlaceholder: "搜索域名...",
@@ -188,6 +256,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       effectWaves: "波浪",
       effectStarfield: "星空穿梭",
       effectRipple: "水波纹",
+      effectAurora: "极光",
+      effectSnow: "雪花",
+      effectBubbles: "气泡",
+      effectConstellation: "星座",
+      effectFireflies: "萤火虫",
+      effectGridPulse: "网格脉冲",
+      effectRain: "雨丝",
+      effectConfetti: "彩纸",
+      effectPlasma: "流光",
+      effectVortex: "漩涡",
+      effectTypewriter: "打字机",
+      effectText: "文字内容",
+      effectColorScheme: "颜色预置",
+      effectColorSchemeHint: "自动会实时跟随系统的浅色/深色设置。",
+      effectSchemeAuto: "自动",
+      effectSchemeLight: "浅色",
+      effectSchemeDark: "深色",
+      effectSchemeCustom: "自定义",
       effectColor: "颜色",
       effectBgColor: "背景颜色",
       effectDensity: "密度",
@@ -219,6 +305,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedOpacity: "透明度",
       customCss: "自定义 CSS",
       customCssHint: "将注入到本网站。可用 !important 覆盖顽固样式。",
+      customEffectsTitle: "自定义动效",
+      customEffectsHint: "编写你自己的 Canvas 动态壁纸，像内置动效一样在任意网站使用。仅浏览器扩展版支持——PageDye Lite 和网页体验版暂不支持。",
+      newCustomEffect: "新建自定义动效",
+      importEffectBtn: "导入",
+      thEffectName: "名称",
+      thEffectUpdated: "更新时间",
+      noCustomEffects: "还没有自定义动效。",
+      backToCustomEffects: "返回自定义动效",
+      effectNameLabel: "名称",
+      startFromTemplate: "起始模板",
+      templateBlank: "空白骨架",
+      templateWaves: "Waves 源码",
+      templateParticles: "Particles 源码",
+      effectCode: "代码",
+      effectCodeHint: "代码需要返回一个包含 init(cfg)、resize(state, width, height)、draw(ctx, canvas, state, dt) 的对象——和 PageDye 内置动效的形状完全一致。cfg 里有 color/bgColor/density/speed/text。可用的辅助函数：window.PageDyeEffects.helpers.{hexToRgba, effectSpeedMultiplier, clampPercent}。",
+      effectPreviewLabel: "实时预览",
+      exportEffectBtn: "导出",
+      untitledEffect: "未命名动效",
+      editBtn: "编辑",
+      confirmDeleteEffect: "删除自定义动效“{name}”？正在使用它的站点会回退到 Waves。",
+      customEffectsOptgroup: "自定义",
+      manageCustomEffects: "管理自定义动效…",
       autoScheme: "昼夜双态联动",
       schemeLight: "日光版",
       schemeDark: "夜间版",
@@ -264,6 +372,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let lang = 'en';
 
+  const UI_THEME_KEY = '__pagedye_ui_theme__';
+  const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
+  const UI_THEME_DEFAULTS = { pageBg: '#f1f5f9', containerBg: '#ffffff', pageBgImage: null, containerBgImage: null };
+  let currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS);
+
   // Elements
   const els = {
     navItems: document.querySelectorAll('.nav-item'),
@@ -278,6 +391,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     importFile: document.getElementById('import-file'),
     clearAllBtn: document.getElementById('clear-all-btn'),
     statusMsg: document.getElementById('status-msg'),
+    themePageBg: document.getElementById('theme-page-bg'),
+    themePageBgText: document.getElementById('theme-page-bg-text'),
+    themeContainerBg: document.getElementById('theme-container-bg'),
+    themeContainerBgText: document.getElementById('theme-container-bg-text'),
+    themeResetBtn: document.getElementById('theme-reset-btn'),
+    themePageBgDrop: document.getElementById('theme-page-bg-drop'),
+    themePageBgFile: document.getElementById('theme-page-bg-file'),
+    themePageBgFileInfo: document.getElementById('theme-page-bg-file-info'),
+    themePageBgFilename: document.getElementById('theme-page-bg-filename'),
+    themePageBgRemove: document.getElementById('theme-page-bg-remove'),
+    themeContainerBgDrop: document.getElementById('theme-container-bg-drop'),
+    themeContainerBgFile: document.getElementById('theme-container-bg-file'),
+    themeContainerBgFileInfo: document.getElementById('theme-container-bg-file-info'),
+    themeContainerBgFilename: document.getElementById('theme-container-bg-filename'),
+    themeContainerBgRemove: document.getElementById('theme-container-bg-remove'),
 
     // Edit site controls
     editWpModes: document.getElementsByName('edit-wpMode'),
@@ -293,12 +421,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     editWallpapersGrid: document.getElementById('edit-wallpapers-grid'),
     editStatusDot: document.getElementById('edit-status-dot'),
     editStatusText: document.getElementById('edit-status-text'),
-    editResetBtn: document.getElementById('edit-reset-btn')
+    editResetBtn: document.getElementById('edit-reset-btn'),
+
+    // Custom effects
+    customEffectsListBody: document.getElementById('custom-effects-list-body'),
+    noCustomEffectsMsg: document.getElementById('no-custom-effects-msg'),
+    newCustomEffectBtn: document.getElementById('new-custom-effect-btn'),
+    importCustomEffectBtn: document.getElementById('import-custom-effect-btn'),
+    importEffectFile: document.getElementById('import-effect-file'),
+    editCustomEffectBackBtn: document.getElementById('edit-effect-back-btn'),
+    editCustomEffectHeading: document.getElementById('edit-custom-effect-heading'),
+    editCustomEffectName: document.getElementById('edit-custom-effect-name'),
+    editCustomEffectTemplate: document.getElementById('edit-custom-effect-template'),
+    editCustomEffectTemplateControl: document.getElementById('edit-custom-effect-template-control'),
+    editCustomEffectCode: document.getElementById('edit-custom-effect-code'),
+    editCustomEffectError: document.getElementById('edit-custom-effect-error'),
+    editCustomEffectPreviewCanvas: document.getElementById('edit-custom-effect-preview-canvas'),
+    editCustomEffectExportBtn: document.getElementById('edit-custom-effect-export-btn'),
+    editCustomEffectExportDivider: document.getElementById('edit-custom-effect-export-divider'),
+    editCustomEffectDeleteBtn: document.getElementById('edit-custom-effect-delete-btn'),
+    editCustomEffectSaveBtn: document.getElementById('edit-custom-effect-save-btn')
   };
 
   // Init translations & versions
   initI18n();
-  let editCssEditorController = initCustomCssEditor('edit-custom-css', 'edit-custom-css-editor');
+  let editCssEditorController = initCodeEditor('edit-custom-css', 'edit-custom-css-editor', 'css');
+  let editCustomEffectCodeController = initCodeEditor('edit-custom-effect-code', 'edit-custom-effect-code-editor', 'javascript');
   const editGradientKeyframesStyle = document.createElement('style');
   editGradientKeyframesStyle.textContent = window.PageDyeGradient.GRADIENT_KEYFRAMES_CSS;
   document.head.appendChild(editGradientKeyframesStyle);
@@ -311,13 +459,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load configured sites
   await loadSitesList();
+  await loadCustomEffectsList();
+  await populateCustomEffectOptions(document.getElementById('edit-effect-kind'));
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !Object.prototype.hasOwnProperty.call(changes, CUSTOM_EFFECTS_KEY)) return;
+    populateCustomEffectOptions(document.getElementById('edit-effect-kind'));
+    if (document.getElementById('section-custom-effects').classList.contains('active')) {
+      loadCustomEffectsList();
+    }
+  });
+
+  // Opened from the popup's "manage custom effects" link.
+  if (location.hash === '#section-custom-effects') {
+    const navBtn = document.querySelector('.nav-item[data-target="section-custom-effects"]');
+    if (navBtn) navBtn.click();
+  }
+
+  // Load & wire up dashboard appearance (page/container background colors)
+  await initUiTheme();
 
   // Sidebar navigation switching
   els.navItems.forEach(item => {
     item.addEventListener('click', () => {
+      // Leaving the custom-effect editor (or any section) shouldn't leave
+      // its live-preview rAF loop running in the background.
+      window.PageDyeEffects.stopEffect();
       els.navItems.forEach(i => i.classList.remove('active'));
       els.sections.forEach(s => s.classList.remove('active'));
-      
+
       item.classList.add('active');
       const targetId = item.dataset.target;
       document.getElementById(targetId).classList.add('active');
@@ -550,9 +720,419 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // ---- Custom Effects -------------------------------------------------
+
+  let currentEditingEffectId = null;
+  let effectPreviewDebounceTimer = null;
+
+  function generateEffectId() {
+    return 'ce_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  // Starter code offered when creating a new custom effect. "waves" and
+  // "particles" are real ports of the built-in engines (scripts/effects.js)
+  // so users can study/tweak working code instead of an API doc + a blank
+  // page — the color/speed helpers those engines reach via closure are
+  // called through window.PageDyeEffects.helpers here since compiled custom
+  // code runs in the global scope, not inside that module's closure.
+  const CUSTOM_EFFECT_TEMPLATES = {
+    blank:
+`return {
+  init(cfg) {
+    return { width: 0, height: 0, t: 0, cfg };
+  },
+  resize(state, width, height) {
+    state.width = width;
+    state.height = height;
+  },
+  draw(ctx, canvas, state, dt) {
+    const { width, height, cfg } = state;
+    if (!width || !height) return;
+    state.t += dt;
+
+    ctx.fillStyle = cfg.bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    const helpers = window.PageDyeEffects.helpers;
+    const speedMul = helpers.effectSpeedMultiplier(cfg.speed);
+    const r = 20 + (cfg.density / 100) * 40 + 10 * Math.sin(state.t * 0.003 * speedMul);
+    ctx.fillStyle = cfg.color;
+    ctx.beginPath();
+    ctx.arc(width / 2, height / 2, Math.max(4, r), 0, Math.PI * 2);
+    ctx.fill();
+  }
+};`,
+    waves:
+`return {
+  init(cfg) {
+    return { width: 0, height: 0, phase: 0, lineCount: 6, cfg };
+  },
+  resize(state, width, height) {
+    state.width = width;
+    state.height = height;
+    // density 0-100 maps to 3-14 stacked wave lines.
+    state.lineCount = Math.max(2, Math.round(3 + (state.cfg.density / 100) * 11));
+  },
+  draw(ctx, canvas, state, dt) {
+    const { width, height, lineCount, cfg } = state;
+    if (!width || !height) return;
+    const helpers = window.PageDyeEffects.helpers;
+    state.phase += dt * 0.0006 * helpers.effectSpeedMultiplier(cfg.speed);
+
+    ctx.fillStyle = cfg.bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    for (let i = 0; i < lineCount; i++) {
+      const t = i / (lineCount - 1 || 1);
+      const baseY = height * (0.3 + t * 0.5);
+      const amplitude = 24 + t * 40;
+      const freq = 0.006 + t * 0.002;
+      const speed = 1 + t * 0.6;
+      const opacity = 0.12 + (1 - t) * 0.25;
+
+      ctx.beginPath();
+      ctx.strokeStyle = helpers.hexToRgba(cfg.color, opacity);
+      ctx.lineWidth = 1.5;
+      for (let x = 0; x <= width; x += 4) {
+        const y = baseY + Math.sin(x * freq + state.phase * speed) * amplitude;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  }
+};`,
+    particles:
+`return {
+  init(cfg) {
+    return { width: 0, height: 0, particles: [], mouse: { x: -9999, y: -9999 }, cfg };
+  },
+  resize(state, width, height) {
+    state.width = width;
+    state.height = height;
+    const helpers = window.PageDyeEffects.helpers;
+    // density 0-100 maps to particle count ~20-220.
+    const target = Math.round(20 + (state.cfg.density / 100) * 200);
+    const count = Math.min(240, Math.max(10, target));
+    const speedMul = helpers.effectSpeedMultiplier(state.cfg.speed);
+    state.particles = new Array(count).fill(0).map(() => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * 24 * speedMul,
+      vy: (Math.random() - 0.5) * 24 * speedMul
+    }));
+  },
+  onMouseMove(state, e, canvas) {
+    const rect = canvas.getBoundingClientRect();
+    state.mouse.x = e.clientX - rect.left;
+    state.mouse.y = e.clientY - rect.top;
+  },
+  draw(ctx, canvas, state, dt) {
+    const { width, height, particles, mouse, cfg } = state;
+    if (!width || !height) return;
+    const helpers = window.PageDyeEffects.helpers;
+    ctx.fillStyle = cfg.bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    const dtSec = dt / 1000;
+    const repelRadius = 90;
+    const speedMul = helpers.effectSpeedMultiplier(cfg.speed);
+
+    particles.forEach((p) => {
+      const dx = p.x - mouse.x;
+      const dy = p.y - mouse.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      if (dist < repelRadius) {
+        const force = (1 - dist / repelRadius) * 260 * speedMul;
+        p.vx += (dx / dist) * force * dtSec;
+        p.vy += (dy / dist) * force * dtSec;
+      }
+      p.x += p.vx * dtSec;
+      p.y += p.vy * dtSec;
+      p.vx *= 0.98;
+      p.vy *= 0.98;
+      if (p.x < 0 || p.x > width) p.vx *= -1;
+      if (p.y < 0 || p.y > height) p.vy *= -1;
+      p.x = Math.max(0, Math.min(width, p.x));
+      p.y = Math.max(0, Math.min(height, p.y));
+    });
+
+    ctx.strokeStyle = helpers.hexToRgba(cfg.color, 0.15);
+    ctx.lineWidth = 1;
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const a = particles[i];
+        const b = particles[j];
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 120) {
+          ctx.globalAlpha = 1 - dist / 120;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = cfg.color;
+    particles.forEach((p) => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+};`
+  };
+
+  async function loadCustomEffectsList() {
+    els.customEffectsListBody.innerHTML = '';
+    const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
+    const list = (data[CUSTOM_EFFECTS_KEY] || []).slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+    if (list.length === 0) {
+      els.noCustomEffectsMsg.classList.remove('hidden');
+      document.querySelector('.effects-table').classList.add('hidden');
+      return;
+    }
+
+    els.noCustomEffectsMsg.classList.add('hidden');
+    document.querySelector('.effects-table').classList.remove('hidden');
+
+    list.forEach((entry) => {
+      const tr = document.createElement('tr');
+
+      const tdName = document.createElement('td');
+      tdName.textContent = entry.name || t('untitledEffect');
+      tr.appendChild(tdName);
+
+      const tdUpdated = document.createElement('td');
+      tdUpdated.textContent = entry.updatedAt ? new Date(entry.updatedAt).toLocaleDateString() : '';
+      tr.appendChild(tdUpdated);
+
+      const tdActions = document.createElement('td');
+      const actionsWrap = document.createElement('div');
+      actionsWrap.className = 'effect-actions-cell';
+      tdActions.appendChild(actionsWrap);
+
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'ghost-link-btn';
+      editBtn.textContent = t('editBtn');
+      editBtn.addEventListener('click', () => openEditCustomEffect(entry.id));
+      actionsWrap.appendChild(editBtn);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'icon-btn-danger';
+      deleteBtn.title = t('deleteBtn');
+      deleteBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+      `;
+      deleteBtn.addEventListener('click', async () => {
+        if (!(await showConfirm(t('confirmDeleteEffect').replace('{name}', entry.name || t('untitledEffect'))))) return;
+        const freshData = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
+        const freshList = (freshData[CUSTOM_EFFECTS_KEY] || []).filter((e) => e.id !== entry.id);
+        await chrome.storage.local.set({ [CUSTOM_EFFECTS_KEY]: freshList });
+        await loadCustomEffectsList();
+      });
+      actionsWrap.appendChild(deleteBtn);
+
+      tr.appendChild(tdActions);
+      els.customEffectsListBody.appendChild(tr);
+    });
+  }
+
+  // Compiles the in-progress code and, only if it's valid, runs it live on
+  // the small preview canvas — a syntax/runtime error shows the red banner
+  // instead of silently falling back to a built-in effect the way the
+  // production startEffect() path does (that fallback is right for a real
+  // site background, but would be confusing here: "why does my broken code
+  // look fine?").
+  function updateCustomEffectPreview() {
+    clearTimeout(effectPreviewDebounceTimer);
+    effectPreviewDebounceTimer = setTimeout(() => {
+      window.PageDyeEffects.stopEffect();
+      const canvas = els.editCustomEffectPreviewCanvas;
+      const code = els.editCustomEffectCode.value;
+
+      if (!code.trim()) {
+        els.editCustomEffectError.classList.add('hidden');
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+
+      const compiled = window.PageDyeEffects.compileCustomEffect(code);
+      if (!compiled.ok) {
+        els.editCustomEffectError.textContent = compiled.error;
+        els.editCustomEffectError.classList.remove('hidden');
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+
+      els.editCustomEffectError.classList.add('hidden');
+      window.PageDyeEffects.startEffect(
+        canvas,
+        'custom:__preview__',
+        100,
+        { color: '#ffffff', bgColor: '#000000', density: 50, speed: 50, text: 'PageDye' },
+        [{ id: '__preview__', code }],
+        (err) => {
+          els.editCustomEffectError.textContent = (err && err.message) ? err.message : String(err);
+          els.editCustomEffectError.classList.remove('hidden');
+        }
+      );
+    }, 350);
+  }
+
+  function openNewCustomEffect() {
+    currentEditingEffectId = null;
+    els.editCustomEffectHeading.textContent = t('newCustomEffect');
+    els.editCustomEffectName.value = '';
+    els.editCustomEffectTemplateControl.classList.remove('hidden');
+    els.editCustomEffectTemplate.value = 'blank';
+    els.editCustomEffectCode.value = CUSTOM_EFFECT_TEMPLATES.blank;
+    editCustomEffectCodeController.update();
+    els.editCustomEffectError.classList.add('hidden');
+    els.editCustomEffectDeleteBtn.classList.add('hidden');
+    els.editCustomEffectExportBtn.classList.add('hidden');
+    els.editCustomEffectExportDivider.classList.add('hidden');
+
+    els.sections.forEach((s) => s.classList.remove('active'));
+    document.getElementById('section-edit-custom-effect').classList.add('active');
+    updateCustomEffectPreview();
+  }
+
+  async function openEditCustomEffect(id) {
+    const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
+    const entry = (data[CUSTOM_EFFECTS_KEY] || []).find((e) => e.id === id);
+    if (!entry) return;
+
+    currentEditingEffectId = id;
+    els.editCustomEffectHeading.textContent = entry.name || t('untitledEffect');
+    els.editCustomEffectName.value = entry.name || '';
+    // Editing existing code — the template picker would silently overwrite
+    // it, so it's only offered when creating a new effect.
+    els.editCustomEffectTemplateControl.classList.add('hidden');
+    els.editCustomEffectCode.value = entry.code;
+    editCustomEffectCodeController.update();
+    els.editCustomEffectError.classList.add('hidden');
+    els.editCustomEffectDeleteBtn.classList.remove('hidden');
+    els.editCustomEffectExportBtn.classList.remove('hidden');
+    els.editCustomEffectExportDivider.classList.remove('hidden');
+
+    els.sections.forEach((s) => s.classList.remove('active'));
+    document.getElementById('section-edit-custom-effect').classList.add('active');
+    updateCustomEffectPreview();
+  }
+
+  function closeCustomEffectEditor() {
+    window.PageDyeEffects.stopEffect();
+    els.sections.forEach((s) => s.classList.remove('active'));
+    document.getElementById('section-custom-effects').classList.add('active');
+    loadCustomEffectsList();
+  }
+
+  async function saveCustomEffect() {
+    const name = els.editCustomEffectName.value.trim() || t('untitledEffect');
+    const code = els.editCustomEffectCode.value;
+
+    const compiled = window.PageDyeEffects.compileCustomEffect(code);
+    if (!compiled.ok) {
+      els.editCustomEffectError.textContent = compiled.error;
+      els.editCustomEffectError.classList.remove('hidden');
+      return;
+    }
+
+    const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
+    const list = data[CUSTOM_EFFECTS_KEY] || [];
+    const id = currentEditingEffectId || generateEffectId();
+    const entry = { id, name, code, updatedAt: Date.now() };
+    const idx = list.findIndex((e) => e.id === id);
+    if (idx >= 0) list[idx] = entry; else list.push(entry);
+    await chrome.storage.local.set({ [CUSTOM_EFFECTS_KEY]: list });
+
+    showStatus(t('saved'));
+    closeCustomEffectEditor();
+  }
+
+  function exportCustomEffectEntry(entry) {
+    const payload = { pagedyeCustomEffect: true, name: entry.name, code: entry.code };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pagedye-effect-${(entry.name || 'effect').replace(/[^a-z0-9-_]+/gi, '_')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function importCustomEffectFile(file) {
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const parsed = JSON.parse(event.target.result);
+        if (!parsed || typeof parsed.code !== 'string') {
+          showStatus(t('importError'));
+          return;
+        }
+        const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
+        const list = data[CUSTOM_EFFECTS_KEY] || [];
+        list.push({ id: generateEffectId(), name: parsed.name || t('untitledEffect'), code: parsed.code, updatedAt: Date.now() });
+        await chrome.storage.local.set({ [CUSTOM_EFFECTS_KEY]: list });
+        await loadCustomEffectsList();
+        showStatus(t('importSuccess'));
+      } catch (err) {
+        console.error(err);
+        showStatus(t('importError'));
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // Appends the user's custom effects as an <optgroup> after the built-in
+  // <option>s of a per-site "Effect" <select> (edit-effect-kind here,
+  // popup.js's #effect-kind mirrors this). Re-run on every load and again
+  // whenever the custom-effect library changes so an edit/delete/rename
+  // shows up without reopening the page.
+  async function populateCustomEffectOptions(selectEl) {
+    if (!selectEl) return;
+    const previousValue = selectEl.value;
+    const existingGroup = selectEl.querySelector('optgroup[data-custom-effects]');
+    if (existingGroup) existingGroup.remove();
+
+    const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
+    const list = data[CUSTOM_EFFECTS_KEY] || [];
+    if (list.length > 0) {
+      const group = document.createElement('optgroup');
+      group.setAttribute('data-custom-effects', '');
+      group.label = t('customEffectsOptgroup');
+      list.forEach((entry) => {
+        const opt = document.createElement('option');
+        opt.value = 'custom:' + entry.id;
+        opt.textContent = entry.name || t('untitledEffect');
+        group.appendChild(opt);
+      });
+      selectEl.appendChild(group);
+    }
+
+    if (previousValue && Array.from(selectEl.options).some((o) => o.value === previousValue)) {
+      selectEl.value = previousValue;
+    }
+  }
+
   async function exportConfigs() {
     try {
       const data = await chrome.storage.local.get(null);
+      delete data[UI_THEME_KEY];
       const jsonString = JSON.stringify(data, null, 2);
       const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -590,7 +1170,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // wiped by an unconditional clear() with nothing to replace it.
         const existing = await chrome.storage.local.get(null);
         await chrome.storage.local.set(importedData);
-        const staleKeys = Object.keys(existing).filter((key) => !(key in importedData));
+        const staleKeys = Object.keys(existing).filter((key) => key !== UI_THEME_KEY && !(key in importedData));
         if (staleKeys.length) await chrome.storage.local.remove(staleKeys);
 
         await loadSitesList();
@@ -607,9 +1187,151 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function clearAllSites() {
     if (!(await showConfirm(t('clearAllConfirm')))) return;
+    const themeData = await chrome.storage.local.get(UI_THEME_KEY);
     await chrome.storage.local.clear();
+    if (themeData[UI_THEME_KEY]) {
+      await chrome.storage.local.set({ [UI_THEME_KEY]: themeData[UI_THEME_KEY] });
+    }
     await loadSitesList();
     showStatus(t('clearAllDone'));
+  }
+
+  // Dashboard Appearance (page/container background colors & images)
+  async function initUiTheme() {
+    const data = await chrome.storage.local.get(UI_THEME_KEY);
+    currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS, data[UI_THEME_KEY] || {});
+    applyUiTheme(currentUiTheme);
+    syncUiThemeInputs(currentUiTheme);
+
+    const onPageBgChange = (value) => {
+      els.themePageBg.value = value;
+      els.themePageBgText.value = value;
+      saveUiTheme({ pageBg: value });
+    };
+    const onContainerBgChange = (value) => {
+      els.themeContainerBg.value = value;
+      els.themeContainerBgText.value = value;
+      saveUiTheme({ containerBg: value });
+    };
+
+    els.themePageBg.addEventListener('input', (e) => onPageBgChange(e.target.value));
+    els.themePageBgText.addEventListener('change', (e) => {
+      if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onPageBgChange(e.target.value);
+    });
+    els.themeContainerBg.addEventListener('input', (e) => onContainerBgChange(e.target.value));
+    els.themeContainerBgText.addEventListener('change', (e) => {
+      if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onContainerBgChange(e.target.value);
+    });
+
+    setupThemeImageUpload('page', els.themePageBgDrop, els.themePageBgFile, els.themePageBgFileInfo, els.themePageBgFilename, els.themePageBgRemove);
+    setupThemeImageUpload('container', els.themeContainerBgDrop, els.themeContainerBgFile, els.themeContainerBgFileInfo, els.themeContainerBgFilename, els.themeContainerBgRemove);
+
+    els.themeResetBtn.addEventListener('click', async () => {
+      await chrome.storage.local.remove(UI_THEME_KEY);
+      currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS);
+      applyUiTheme(currentUiTheme);
+      syncUiThemeInputs(currentUiTheme);
+      showStatus(t('appearanceResetDone'));
+    });
+  }
+
+  function setupThemeImageUpload(field, dropEl, fileEl, fileInfoEl, filenameEl, removeEl) {
+    const imageKey = field === 'page' ? 'pageBgImage' : 'containerBgImage';
+
+    dropEl.addEventListener('click', () => fileEl.click());
+    dropEl.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropEl.classList.add('dragover');
+    });
+    dropEl.addEventListener('dragleave', () => dropEl.classList.remove('dragover'));
+    dropEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropEl.classList.remove('dragover');
+      if (e.dataTransfer.files.length) handleThemeImageFile(e.dataTransfer.files[0]);
+    });
+    fileEl.addEventListener('change', (e) => {
+      if (e.target.files.length) handleThemeImageFile(e.target.files[0]);
+    });
+
+    function handleThemeImageFile(file) {
+      if (!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const image = { data: e.target.result, name: file.name };
+        dropEl.classList.add('hidden');
+        fileInfoEl.classList.remove('hidden');
+        filenameEl.textContent = file.name;
+        saveUiTheme({ [imageKey]: image });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    removeEl.addEventListener('click', () => {
+      fileEl.value = '';
+      dropEl.classList.remove('hidden');
+      fileInfoEl.classList.add('hidden');
+      saveUiTheme({ [imageKey]: null });
+    });
+  }
+
+  function syncUiThemeInputs(theme) {
+    els.themePageBg.value = theme.pageBg;
+    els.themePageBgText.value = theme.pageBg;
+    els.themeContainerBg.value = theme.containerBg;
+    els.themeContainerBgText.value = theme.containerBg;
+
+    syncThemeImageUi(theme.pageBgImage, els.themePageBgDrop, els.themePageBgFileInfo, els.themePageBgFilename);
+    syncThemeImageUi(theme.containerBgImage, els.themeContainerBgDrop, els.themeContainerBgFileInfo, els.themeContainerBgFilename);
+  }
+
+  function syncThemeImageUi(image, dropEl, fileInfoEl, filenameEl) {
+    if (image && image.data) {
+      dropEl.classList.add('hidden');
+      fileInfoEl.classList.remove('hidden');
+      filenameEl.textContent = image.name || t('savedImage');
+    } else {
+      dropEl.classList.remove('hidden');
+      fileInfoEl.classList.add('hidden');
+    }
+  }
+
+  function applyUiTheme(theme) {
+    const root = document.documentElement.style;
+    root.setProperty('--bg-outer', theme.pageBg);
+    root.setProperty('--bg-color', theme.pageBg);
+    root.setProperty('--surface-card', theme.containerBg);
+    root.setProperty('--sidebar-bg', theme.containerBg);
+
+    applyThemeBgImage(document.body, theme.pageBgImage);
+    applyThemeBgImage(document.querySelector('.dashboard-container'), theme.containerBgImage);
+    applyThemeBgImage(document.querySelector('.sidebar'), theme.containerBgImage);
+  }
+
+  function applyThemeBgImage(el, image) {
+    if (!el) return;
+    if (image && image.data) {
+      el.style.backgroundImage = `url('${image.data}')`;
+      el.style.backgroundSize = 'cover';
+      el.style.backgroundPosition = 'center';
+      el.style.backgroundRepeat = 'no-repeat';
+    } else {
+      el.style.backgroundImage = '';
+      el.style.backgroundSize = '';
+      el.style.backgroundPosition = '';
+      el.style.backgroundRepeat = '';
+    }
+  }
+
+  let themeSaveDebounceTimer = null;
+  function saveUiTheme(partial) {
+    currentUiTheme = Object.assign({}, currentUiTheme, partial);
+    applyUiTheme(currentUiTheme);
+
+    if (themeSaveDebounceTimer) clearTimeout(themeSaveDebounceTimer);
+    themeSaveDebounceTimer = setTimeout(async () => {
+      await chrome.storage.local.set({ [UI_THEME_KEY]: currentUiTheme });
+      showStatus(t('appearanceSaved'));
+    }, 300);
   }
 
   function showStatus(msg) {
@@ -696,6 +1418,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     } else if (subSettings.type === 'effect') {
       document.getElementById('edit-effect-kind').value = subSettings.effect || 'waves';
+      document.getElementById('edit-effect-text').value = subSettings.effectText || 'PageDye';
+      document.getElementById('edit-effect-text-control').classList.toggle('hidden', document.getElementById('edit-effect-kind').value !== 'typewriter');
+      document.getElementById('edit-effect-color-scheme').value = subSettings.effectColorScheme || 'auto';
+      document.getElementById('edit-effect-color-custom-control').classList.toggle('hidden', document.getElementById('edit-effect-color-scheme').value !== 'custom');
       document.getElementById('edit-effect-color').value = subSettings.effectColor || '#ffffff';
       document.getElementById('edit-effect-color-text').value = subSettings.effectColor || '#ffffff';
       document.getElementById('edit-effect-bg-color').value = subSettings.effectBgColor || '#000000';
@@ -750,6 +1476,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       value = editCurrentImageBase64 || document.getElementById('edit-image-url').value;
     } else if (type === 'effect') {
       dest.effect = document.getElementById('edit-effect-kind').value;
+      dest.effectText = document.getElementById('edit-effect-text').value || 'PageDye';
+      dest.effectColorScheme = document.getElementById('edit-effect-color-scheme').value;
       dest.effectColor = document.getElementById('edit-effect-color').value;
       dest.effectBgColor = document.getElementById('edit-effect-bg-color').value;
       dest.effectDensity = parseInt(document.getElementById('edit-effect-density').value, 10);
@@ -1326,6 +2054,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-blur').value = 0;
     document.getElementById('edit-blur-val').textContent = '0px';
     document.getElementById('edit-effect-kind').value = 'waves';
+    document.getElementById('edit-effect-text').value = 'PageDye';
+    document.getElementById('edit-effect-text-control').classList.add('hidden');
+    document.getElementById('edit-effect-color-scheme').value = 'auto';
+    document.getElementById('edit-effect-color-custom-control').classList.add('hidden');
     document.getElementById('edit-effect-color').value = '#ffffff';
     document.getElementById('edit-effect-color-text').value = '#ffffff';
     document.getElementById('edit-effect-bg-color').value = '#000000';
@@ -1361,7 +2093,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const url = new URL(tab.url);
             if (url.hostname.toLowerCase() === domain.toLowerCase()) {
               try {
-                await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['scripts/gradient.js', 'scripts/content.js'] });
+                await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/content.js'] });
               } catch (e) {}
               chrome.tabs.sendMessage(tab.id, { action: 'updateBackground', settings });
             }
@@ -1408,6 +2140,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
         }
       }
+      // Full opacity makes an effect's flat bgColor look harsh; nudge a
+      // still-untouched (100%) slider down when switching into this type.
+      if (radio.value === 'effect' && document.getElementById('edit-opacity').value === '100') {
+        document.getElementById('edit-opacity').value = 85;
+        document.getElementById('edit-opacity-val').textContent = '85%';
+      }
       updateEditUI(radio.value);
       updateEditInteractivePreviews();
       triggerEditImmediateSave();
@@ -1415,7 +2153,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Effect kind / color / density / speed
-  document.getElementById('edit-effect-kind').addEventListener('change', () => triggerEditImmediateSave());
+  document.getElementById('edit-effect-kind').addEventListener('change', () => {
+    document.getElementById('edit-effect-text-control').classList.toggle(
+      'hidden', document.getElementById('edit-effect-kind').value !== 'typewriter'
+    );
+    triggerEditImmediateSave();
+  });
+  document.getElementById('edit-effect-text').addEventListener('input', () => queueEditAutoSave());
+  document.getElementById('edit-effect-color-scheme').addEventListener('change', () => {
+    document.getElementById('edit-effect-color-custom-control').classList.toggle(
+      'hidden', document.getElementById('edit-effect-color-scheme').value !== 'custom'
+    );
+    triggerEditImmediateSave();
+  });
   const editEffectColor = document.getElementById('edit-effect-color');
   const editEffectColorText = document.getElementById('edit-effect-color-text');
   editEffectColor.addEventListener('input', (e) => {
@@ -1849,9 +2599,54 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   els.editResetBtn.addEventListener('click', resetEditSettings);
+
+  // Custom Effects
+  els.newCustomEffectBtn.addEventListener('click', openNewCustomEffect);
+  els.editCustomEffectBackBtn.addEventListener('click', closeCustomEffectEditor);
+  els.editCustomEffectSaveBtn.addEventListener('click', saveCustomEffect);
+
+  els.editCustomEffectTemplate.addEventListener('change', () => {
+    const tpl = CUSTOM_EFFECT_TEMPLATES[els.editCustomEffectTemplate.value];
+    if (tpl === undefined) return;
+    els.editCustomEffectCode.value = tpl;
+    editCustomEffectCodeController.update();
+    updateCustomEffectPreview();
+  });
+
+  els.editCustomEffectCode.addEventListener('input', updateCustomEffectPreview);
+
+  els.editCustomEffectDeleteBtn.addEventListener('click', async () => {
+    if (!currentEditingEffectId) return;
+    const name = els.editCustomEffectName.value.trim() || t('untitledEffect');
+    if (!(await showConfirm(t('confirmDeleteEffect').replace('{name}', name)))) return;
+    const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
+    const list = (data[CUSTOM_EFFECTS_KEY] || []).filter((e) => e.id !== currentEditingEffectId);
+    await chrome.storage.local.set({ [CUSTOM_EFFECTS_KEY]: list });
+    closeCustomEffectEditor();
+  });
+
+  els.editCustomEffectExportBtn.addEventListener('click', async () => {
+    if (!currentEditingEffectId) return;
+    const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
+    const entry = (data[CUSTOM_EFFECTS_KEY] || []).find((e) => e.id === currentEditingEffectId);
+    if (entry) exportCustomEffectEntry(entry);
+  });
+
+  els.importCustomEffectBtn.addEventListener('click', () => els.importEffectFile.click());
+  els.importEffectFile.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) importCustomEffectFile(file);
+    e.target.value = '';
+  });
 });
 
-function initCustomCssEditor(textareaId, containerId) {
+// language defaults to 'css'. When Prism doesn't have a grammar for the
+// requested language loaded (lib/prism.js only bundles core+css — no
+// javascript/clike component), falls back to plain escaped text so the
+// gutter/tab/bracket-autocomplete behavior below still works without color
+// highlighting, rather than throwing on Prism.highlight(code, undefined, ...).
+function initCodeEditor(textareaId, containerId, language) {
+  language = language || 'css';
   const textarea = document.getElementById(textareaId);
   const container = document.getElementById(containerId);
   if (!textarea || !container) return null;
@@ -1859,11 +2654,16 @@ function initCustomCssEditor(textareaId, containerId) {
   const gutter = container.querySelector('.editor-gutter');
   const codeBlock = container.querySelector('.editor-highlight code');
   const preBlock = container.querySelector('.editor-highlight');
+  const grammar = window.Prism && Prism.languages[language];
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
 
   function updateEditor() {
     let code = textarea.value;
     const isPlaceholder = !code;
-    
+
     if (isPlaceholder) {
       code = textarea.getAttribute('placeholder') || '';
       container.classList.add('placeholder-active');
@@ -1871,7 +2671,7 @@ function initCustomCssEditor(textareaId, containerId) {
       container.classList.remove('placeholder-active');
     }
 
-    const highlighted = Prism.highlight(code, Prism.languages.css, 'css');
+    const highlighted = grammar ? Prism.highlight(code, grammar, language) : escapeHtml(code);
     codeBlock.innerHTML = code.endsWith('\n') ? highlighted + ' ' : highlighted;
 
     const lineCount = code.split('\n').length;

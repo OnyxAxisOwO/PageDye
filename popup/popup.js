@@ -140,11 +140,32 @@ document.addEventListener('DOMContentLoaded', async () => {
       typeEffect: "Effects",
       effectKind: "Effect",
       effectKindHint: "A minimalist black & white animated wallpaper, rendered locally with Canvas — no external assets.",
+      customEffectsOptgroup: "Custom",
+      untitledEffect: "Untitled Effect",
+      manageCustomEffects: "Manage custom effects…",
       effectMatrix: "Matrix",
       effectParticles: "Particles",
       effectWaves: "Waves",
       effectStarfield: "Starfield",
       effectRipple: "Ripple",
+      effectAurora: "Aurora",
+      effectSnow: "Snow",
+      effectBubbles: "Bubbles",
+      effectConstellation: "Constellation",
+      effectFireflies: "Fireflies",
+      effectGridPulse: "Grid Pulse",
+      effectRain: "Rain",
+      effectConfetti: "Confetti",
+      effectPlasma: "Plasma",
+      effectVortex: "Vortex",
+      effectTypewriter: "Typewriter",
+      effectText: "Text",
+      effectColorScheme: "Color Preset",
+      effectColorSchemeHint: "Auto follows your system's light/dark setting live.",
+      effectSchemeAuto: "Auto",
+      effectSchemeLight: "Light",
+      effectSchemeDark: "Dark",
+      effectSchemeCustom: "Custom",
       effectColor: "Color",
       effectBgColor: "Background Color",
       effectDensity: "Density",
@@ -234,11 +255,32 @@ document.addEventListener('DOMContentLoaded', async () => {
       typeEffect: "动效",
       effectKind: "特效",
       effectKindHint: "极简黑白动态壁纸，完全通过 Canvas 本地渲染，不依赖任何外部资源。",
+      customEffectsOptgroup: "自定义",
+      untitledEffect: "未命名动效",
+      manageCustomEffects: "管理自定义动效…",
       effectMatrix: "代码雨",
       effectParticles: "粒子",
       effectWaves: "波浪",
       effectStarfield: "星空穿梭",
       effectRipple: "水波纹",
+      effectAurora: "极光",
+      effectSnow: "雪花",
+      effectBubbles: "气泡",
+      effectConstellation: "星座",
+      effectFireflies: "萤火虫",
+      effectGridPulse: "网格脉冲",
+      effectRain: "雨丝",
+      effectConfetti: "彩纸",
+      effectPlasma: "流光",
+      effectVortex: "漩涡",
+      effectTypewriter: "打字机",
+      effectText: "文字内容",
+      effectColorScheme: "颜色预置",
+      effectColorSchemeHint: "自动会实时跟随系统的浅色/深色设置。",
+      effectSchemeAuto: "自动",
+      effectSchemeLight: "浅色",
+      effectSchemeDark: "深色",
+      effectSchemeCustom: "自定义",
       effectColor: "颜色",
       effectBgColor: "背景颜色",
       effectDensity: "密度",
@@ -328,6 +370,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     sectionImage: document.getElementById('section-image'),
     sectionEffects: document.getElementById('section-effects'),
     effectKind: document.getElementById('effect-kind'),
+    manageCustomEffectsLink: document.getElementById('manage-custom-effects-link'),
+    effectTextControl: document.getElementById('effect-text-control'),
+    effectText: document.getElementById('effect-text'),
+    effectColorScheme: document.getElementById('effect-color-scheme'),
+    effectColorCustomControl: document.getElementById('effect-color-custom-control'),
     effectColor: document.getElementById('effect-color'),
     effectColorText: document.getElementById('effect-color-text'),
     effectBgColor: document.getElementById('effect-bg-color'),
@@ -416,12 +463,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // while the tab stayed open). Requires the "scripting" permission.
   async function sendToTab(tabId, message) {
     try {
-      await chrome.scripting.executeScript({ target: { tabId }, files: ['scripts/gradient.js', 'scripts/content.js'] });
+      await chrome.scripting.executeScript({ target: { tabId }, files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/content.js'] });
     } catch (e) {
       // Injection can fail on restricted pages (chrome://, Web Store, etc.).
     }
     return await chrome.tabs.sendMessage(tabId, message);
   }
+
+  const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
 
   // State
   let currentDomain = '';
@@ -443,6 +492,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderGradientPresetsGrid();
   const versionEl = document.getElementById('version');
   if (versionEl) versionEl.textContent = 'v' + chrome.runtime.getManifest().version;
+  await populateCustomEffectOptions(els.effectKind);
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && Object.prototype.hasOwnProperty.call(changes, CUSTOM_EFFECTS_KEY)) {
+      populateCustomEffectOptions(els.effectKind);
+    }
+  });
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab && tab.url) {
     try {
@@ -465,6 +520,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Background Type Switch
   els.bgTypes.forEach(radio => {
     radio.addEventListener('change', () => {
+      // Full opacity makes an effect's flat bgColor look harsh; nudge a
+      // still-untouched (100%) slider down when switching into this type.
+      if (radio.value === 'effect' && els.opacity.value === '100') {
+        els.opacity.value = 85;
+        els.opacityVal.textContent = '85%';
+      }
       updateUI(radio.value);
       updateInteractivePreviews();
       triggerImmediateSave();
@@ -472,7 +533,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Effect kind / color / density / speed
-  els.effectKind.addEventListener('change', () => triggerImmediateSave());
+  els.effectKind.addEventListener('change', () => {
+    els.effectTextControl.classList.toggle('hidden', els.effectKind.value !== 'typewriter');
+    triggerImmediateSave();
+  });
+  if (els.manageCustomEffectsLink) {
+    els.manageCustomEffectsLink.addEventListener('click', () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL('options/options.html') + '#section-custom-effects' });
+      window.close();
+    });
+  }
+  els.effectText.addEventListener('input', () => queueAutoSave());
+  els.effectColorScheme.addEventListener('change', () => {
+    els.effectColorCustomControl.classList.toggle('hidden', els.effectColorScheme.value !== 'custom');
+    triggerImmediateSave();
+  });
   els.effectColor.addEventListener('input', (e) => {
     els.effectColorText.value = e.target.value;
     queueAutoSave();
@@ -916,6 +991,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     return i18n[lang][key] || key;
   }
 
+  // Appends the user's custom effects as an <optgroup> after the built-in
+  // <option>s — mirrors options.js's copy of the same logic (no shared
+  // module between popup/options for this small a helper, consistent with
+  // this file already keeping its own copy of initCustomCssEditor).
+  async function populateCustomEffectOptions(selectEl) {
+    if (!selectEl) return;
+    const previousValue = selectEl.value;
+    const existingGroup = selectEl.querySelector('optgroup[data-custom-effects]');
+    if (existingGroup) existingGroup.remove();
+
+    const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
+    const list = data[CUSTOM_EFFECTS_KEY] || [];
+    if (list.length > 0) {
+      const group = document.createElement('optgroup');
+      group.setAttribute('data-custom-effects', '');
+      group.label = t('customEffectsOptgroup');
+      list.forEach((entry) => {
+        const opt = document.createElement('option');
+        opt.value = 'custom:' + entry.id;
+        opt.textContent = entry.name || t('untitledEffect');
+        group.appendChild(opt);
+      });
+      selectEl.appendChild(group);
+    }
+
+    if (previousValue && Array.from(selectEl.options).some((o) => o.value === previousValue)) {
+      selectEl.value = previousValue;
+    }
+  }
+
   // Disable UI when no tab found
   function disableAll() {
     document.querySelector('main').style.opacity = '0.5';
@@ -983,6 +1088,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     } else if (subSettings.type === 'effect') {
       els.effectKind.value = subSettings.effect || 'waves';
+      els.effectText.value = subSettings.effectText || 'PageDye';
+      els.effectTextControl.classList.toggle('hidden', els.effectKind.value !== 'typewriter');
+      els.effectColorScheme.value = subSettings.effectColorScheme || 'auto';
+      els.effectColorCustomControl.classList.toggle('hidden', els.effectColorScheme.value !== 'custom');
       els.effectColor.value = subSettings.effectColor || '#ffffff';
       els.effectColorText.value = subSettings.effectColor || '#ffffff';
       els.effectBgColor.value = subSettings.effectBgColor || '#000000';
@@ -1037,6 +1146,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       value = currentImageBase64 || els.imageUrl.value;
     } else if (type === 'effect') {
       dest.effect = els.effectKind.value;
+      dest.effectText = els.effectText.value || 'PageDye';
+      dest.effectColorScheme = els.effectColorScheme.value;
       dest.effectColor = els.effectColor.value;
       dest.effectBgColor = els.effectBgColor.value;
       dest.effectDensity = parseInt(els.effectDensity.value, 10);
@@ -1626,6 +1737,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.opacity.value = 100;
     els.blur.value = 0;
     els.effectKind.value = 'waves';
+    els.effectText.value = 'PageDye';
+    els.effectTextControl.classList.add('hidden');
+    els.effectColorScheme.value = 'auto';
+    els.effectColorCustomControl.classList.add('hidden');
     els.effectColor.value = '#ffffff';
     els.effectColorText.value = '#ffffff';
     els.effectBgColor.value = '#000000';
@@ -1666,7 +1781,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ['scripts/gradient.js', 'scripts/content.js']
+        files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/content.js']
       });
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
@@ -1690,7 +1805,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ['scripts/gradient.js', 'scripts/content.js']
+        files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/content.js']
       });
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },

@@ -1,49 +1,26 @@
-// ==UserScript==
-// @name         PageDye Lite
-// @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.6.0
-// @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
-// @author       PageDye
-// @match        *://*/*
-// @run-at       document-start
-// @noframes
-// @grant        GM.setValue
-// @grant        GM.getValue
-// @grant        GM.deleteValue
-// @grant        GM_setValue
-// @grant        GM_getValue
-// @grant        GM_deleteValue
-// ==/UserScript==
-
 /*
- * PageDye Lite —— PageDye 浏览器扩展的精简 UserScript 版本。
+ * PageDye — 官网内置版。
  *
- * 安装:
- *   - 桌面 Chrome/Firefox/Edge: 装 Tampermonkey 或 Violentmonkey,新建脚本粘贴本文件全部内容。
- *   - iPad / iPhone: App Store 搜索并安装 "Userscripts"(作者 Quoid,免费开源),
- *     在 Safari 扩展设置里启用它并允许在所有网站上运行,然后把本文件导入进去。
+ * 不依赖任何浏览器扩展 API 或用户脚本管理器,直接以普通 <script> 标签跑在
+ * 页面里,访客免安装即可体验完整的背景编辑与实时预览。
  *
- * 使用: 打开任意网页后,页面右下角会出现一个悬浮的齿轮按钮,点击它展开设置面板。
- * 设置只针对"当前这个网站"(按域名区分),改动会实时预览并在 400ms 后自动保存。
- *
- * 相比完整 Chrome 扩展版,这个精简版有意砍掉了以下内容(详见项目内讨论):
- *   - 多站点管理仪表盘 —— 这里只管理当前网站一个站点,没有"查看/编辑其它已配置网站"的列表。
- *   - 已打开的其它标签页设置实时联动 —— 因为 iOS 的 Userscripts 引擎不支持
- *     GM_addValueChangeListener,所以在别的标签页改了设置后,这个标签页要刷新才能看到变化。
- *   - 浏览器右键菜单快捷入口 —— 因为 iOS 的 Userscripts 引擎不支持
- *     GM_registerMenuCommand,唯一入口就是页面上的悬浮齿轮按钮。
- *   - 从图片提取主题色生成渐变(Monet 取色)—— 保留了"从纯色生成渐变"的简化版。
- *
- * 渲染核心(渐变计算 / 动效动画 / 磨砂玻璃 / 滤镜拼接)与扩展版共享同一套算法,
- * 每个网站的配置 JSON 结构也和扩展版的单站点备份文件保持兼容,可以互相导入导出。
+ * 渲染核心(渐变计算 / 动效动画 / 磨砂玻璃 / 滤镜拼接 / 目标元素选择器)与
+ * scripts/content.js、scripts/gradient.js 共享同一套算法,直接从
+ * userscript/pagedye.user.js 移植——那份文件已经证明这套引擎可以在没有
+ * chrome.* API 的环境下独立运行。相对 Lite 版本改动了两处:
+ *   - 存储层从 GM.* / GM_* 换成 localStorage(本来就跑在普通网页里,不需要
+ *     再探测脚本管理器)。
+ *   - 设置面板的界面重做,视觉上对齐 popup/popup.css 里完整扩展版的折叠区块
+ *     + 分段控件 + 线性图标设计语言,而不是 Lite 那套纯功能性的平铺面板。
+ * 设置 JSON 结构与 Lite、扩展版保持一致,三者的备份文件可以互相导入导出。
  */
 (function () {
   'use strict';
 
   const VERSION = '0.6.0';
   const domain = window.location.hostname;
-  const STORAGE_KEY = domain;
-  const GLOBAL_KEY = 'pagedye-lite:global-ui';
+  const STORAGE_KEY = 'pagedye-embed:' + domain;
+  const GLOBAL_KEY = 'pagedye-embed:global-ui';
 
   function defaultGlobalConfig() {
     return { buttonColor: '#000000', buttonSize: 50, buttonImage: '', draggable: false, edgeSnap: false, side: 'right', topPercent: 88 };
@@ -52,41 +29,30 @@
   let globalSaveTimer = null;
   function scheduleSaveGlobal() {
     clearTimeout(globalSaveTimer);
-    globalSaveTimer = setTimeout(() => GMBridge.set(GLOBAL_KEY, globalConfig), 400);
+    globalSaveTimer = setTimeout(() => Store.set(GLOBAL_KEY, globalConfig), 400);
   }
 
   // --------------------------------------------------------------------
-  // Storage bridge: prefers the promise-based GM.* API (Safari/iOS
-  // Userscripts, modern Tampermonkey/Violentmonkey), falls back to the
-  // legacy synchronous GM_* API (older Greasemonkey-style managers).
-  // Values are JSON-stringified manually so this works even on managers
-  // that only reliably persist strings.
+  // Storage: plain localStorage, JSON-encoded. No extension/userscript
+  // manager to bridge to — this runs as a normal page script.
   // --------------------------------------------------------------------
-  const GMBridge = (() => {
-    const hasPromiseApi = typeof GM !== 'undefined' && GM.setValue && GM.getValue;
-    return {
-      async set(key, value) {
-        const json = JSON.stringify(value);
-        if (hasPromiseApi) return GM.setValue(key, json);
-        return GM_setValue(key, json);
-      },
-      async get(key) {
-        let raw;
-        if (hasPromiseApi) raw = await GM.getValue(key, null);
-        else raw = typeof GM_getValue === 'function' ? GM_getValue(key, null) : null;
-        if (!raw) return null;
-        try { return JSON.parse(raw); } catch (err) { return null; }
-      },
-      async remove(key) {
-        if (hasPromiseApi && GM.deleteValue) return GM.deleteValue(key);
-        if (typeof GM_deleteValue === 'function') return GM_deleteValue(key);
-      }
-    };
-  })();
+  const Store = {
+    set(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (err) {}
+    },
+    get(key) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : null;
+      } catch (err) { return null; }
+    },
+    remove(key) {
+      try { localStorage.removeItem(key); } catch (err) {}
+    }
+  };
 
   // --------------------------------------------------------------------
-  // Gradient utilities — ported unchanged from scripts/gradient.js (it was
-  // already framework-agnostic, no chrome.* dependency).
+  // Gradient utilities — ported unchanged from scripts/gradient.js.
   // --------------------------------------------------------------------
   const Gradient = (() => {
     const MIN_STOPS = 2;
@@ -120,7 +86,7 @@
     ];
 
     const GRADIENT_KEYFRAMES_CSS =
-      '@keyframes pagedye-lite-gradient-flow {' +
+      '@keyframes pagedye-embed-gradient-flow {' +
         '0% { background-position: 0% 50%; }' +
         '50% { background-position: 100% 50%; }' +
         '100% { background-position: 0% 50%; }' +
@@ -220,7 +186,6 @@
       return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
     }
 
-    // Given ONE seed color, derives a harmonious multi-stop tonal palette.
     function generateTonalPalette(seedHex, count = 5) {
       const n = Math.max(3, Math.min(6, count | 0 || 5));
       const { r, g, b } = hexToRgb(seedHex);
@@ -253,8 +218,8 @@
   })();
 
   // --------------------------------------------------------------------
-  // Settings schema (kept identical to the Chrome extension's per-site
-  // shape, so backup JSON files are interchangeable between the two).
+  // Settings schema (identical shape to the extension / Lite, so backup
+  // JSON files are interchangeable between all three).
   // --------------------------------------------------------------------
   function emptyEditable() {
     return {
@@ -263,7 +228,7 @@
       style: { fixed: true, size: 'cover', repeat: false },
       filters: { brightness: 100, contrast: 100, grayscale: 0, hue: 0, invert: 0 },
       gradient: Gradient.defaultGradient('#6366f1'),
-      effect: 'waves', effectColorScheme: 'auto', effectColor: '#ffffff', effectBgColor: '#000000', effectDensity: 50, effectSpeed: 50
+      effect: 'waves', effectText: 'PageDye', effectColorScheme: 'auto', effectColor: '#ffffff', effectBgColor: '#000000', effectDensity: 50, effectSpeed: 50
     };
   }
 
@@ -282,18 +247,13 @@
   let settings = null;
 
   // --------------------------------------------------------------------
-  // Render engine — ported from scripts/content.js. Same DOM strategy
-  // (fixed shadow-DOM layer painted behind the page, or a scoped
-  // per-element ::before layer in "selector mode"), same effect canvases,
-  // same frosted-glass / custom-CSS injection. Only the storage/messaging
-  // plumbing changed: no chrome.runtime/chrome.storage, just direct calls
-  // since the settings panel lives in the same page context.
+  // Render engine — ported unchanged from scripts/content.js / Lite.
   // --------------------------------------------------------------------
-  const ROOT_ID = 'pagedye-lite-root';
-  const STYLE_ID = 'pagedye-lite-style-override';
-  const TARGET_STYLE_ID = 'pagedye-lite-target-style';
-  const CUSTOM_STYLE_ID = 'pagedye-lite-custom-css';
-  const FROSTED_STYLE_ID = 'pagedye-lite-frosted-glass';
+  const ROOT_ID = 'pagedye-embed-root';
+  const STYLE_ID = 'pagedye-embed-style-override';
+  const TARGET_STYLE_ID = 'pagedye-embed-target-style';
+  const CUSTOM_STYLE_ID = 'pagedye-embed-custom-css';
+  const FROSTED_STYLE_ID = 'pagedye-embed-frosted-glass';
   let slideshowTimer = null;
   let effectCleanup = null;
 
@@ -417,7 +377,7 @@
         repeatCss = 'no-repeat';
         if (gradient.animated) {
           sizeCss = gradient.kind === 'radial' ? '200% 200%' : '300% 300%';
-          animationCss = `pagedye-lite-gradient-flow ${gradient.speed || 10}s ease infinite`;
+          animationCss = `pagedye-embed-gradient-flow ${gradient.speed || 10}s ease infinite`;
           positionCss = '';
         } else {
           sizeCss = 'auto';
@@ -468,18 +428,18 @@
       keyframesStyle.textContent = Gradient.GRADIENT_KEYFRAMES_CSS;
       shadow.appendChild(keyframesStyle);
       layer = document.createElement('div');
-      layer.id = 'pagedye-lite-layer';
+      layer.id = 'pagedye-embed-layer';
       shadow.appendChild(layer);
       canvas = document.createElement('canvas');
-      canvas.id = 'pagedye-lite-effect-canvas';
+      canvas.id = 'pagedye-embed-effect-canvas';
       Object.assign(canvas.style, {
         position: 'absolute', top: '0', left: '0', width: '100%', height: '100%',
         display: 'none', transition: 'opacity 0.3s ease'
       });
       shadow.appendChild(canvas);
     } else {
-      layer = root.shadowRoot.getElementById('pagedye-lite-layer');
-      canvas = root.shadowRoot.getElementById('pagedye-lite-effect-canvas');
+      layer = root.shadowRoot.getElementById('pagedye-embed-layer');
+      canvas = root.shadowRoot.getElementById('pagedye-embed-effect-canvas');
     }
 
     if (s.type === 'effect') {
@@ -509,7 +469,7 @@
         style.filter = 'none'; style.transform = 'none';
         if (gradient.animated) {
           style.backgroundSize = gradient.kind === 'radial' ? '200% 200%' : '300% 300%';
-          style.animation = `pagedye-lite-gradient-flow ${gradient.speed || 10}s ease infinite`;
+          style.animation = `pagedye-embed-gradient-flow ${gradient.speed || 10}s ease infinite`;
         } else {
           style.backgroundSize = 'auto'; style.animation = 'none';
         }
@@ -588,7 +548,7 @@
     else slideshowTimer = setTimeout(() => rotateSlideshow(s), timeRemaining);
   }
 
-  async function rotateSlideshow(s) {
+  function rotateSlideshow(s) {
     const sh = s.slideshow;
     if (!sh || !sh.items || sh.items.length <= 1) return;
     let nextIndex = sh.currentIndex || 0;
@@ -601,11 +561,11 @@
     }
     sh.currentIndex = nextIndex;
     sh.lastRotationTime = Date.now();
-    await GMBridge.set(STORAGE_KEY, s);
+    Store.set(STORAGE_KEY, s);
     applyBackground(s);
   }
 
-  async function maybeCatchUpSlideshow(s) {
+  function maybeCatchUpSlideshow(s) {
     if (s.mode !== 'slideshow' || !s.slideshow || !s.slideshow.items || s.slideshow.items.length <= 1) return;
     const sh = s.slideshow;
     let needRotate = false;
@@ -628,7 +588,7 @@
     }
     sh.currentIndex = nextIndex;
     sh.lastRotationTime = Date.now();
-    await GMBridge.set(STORAGE_KEY, s);
+    Store.set(STORAGE_KEY, s);
   }
 
   // --- Effects (animated Canvas 2D wallpapers) — ported unchanged --------
@@ -1230,10 +1190,7 @@
   }
 
   // --------------------------------------------------------------------
-  // Element picker — same AdGuard-style highlight-and-click UX as the
-  // extension's popup.js, but simplified: no cross-context injection is
-  // needed since the picker runs in the very same script instance that
-  // owns `settings`, so it can write the result directly and re-render.
+  // Element picker — ported unchanged.
   // --------------------------------------------------------------------
   function cssEscape(s) {
     if (window.CSS && CSS.escape) return CSS.escape(s);
@@ -1263,8 +1220,8 @@
   }
 
   function startPicker(onPicked) {
-    if (window.__pagedyeLitePicking) return;
-    window.__pagedyeLitePicking = true;
+    if (window.__pagedyeEmbedPicking) return;
+    window.__pagedyeEmbedPicking = true;
     setPanelVisible(false);
 
     const box = document.createElement('div');
@@ -1283,7 +1240,7 @@
       boxShadow: '0 2px 8px rgba(0,0,0,0.3)', display: 'none'
     });
     const tip = document.createElement('div');
-    tip.textContent = 'PageDye Lite:点击一个元素应用背景 · Esc 取消';
+    tip.textContent = 'PageDye:点击一个元素应用背景 · Esc 取消';
     Object.assign(tip.style, {
       position: 'fixed', zIndex: '2147483647', pointerEvents: 'none',
       top: '12px', left: '50%', transform: 'translateX(-50%)',
@@ -1313,7 +1270,7 @@
       document.removeEventListener('click', onClick, true);
       document.removeEventListener('keydown', onKey, true);
       box.remove(); label.remove(); tip.remove();
-      window.__pagedyeLitePicking = false;
+      window.__pagedyeEmbedPicking = false;
       setPanelVisible(true);
     }
     function onClick(e) {
@@ -1332,12 +1289,44 @@
   }
 
   // --------------------------------------------------------------------
-  // Settings panel UI — floating gear button + slide-up panel, built once
+  // Icons — inline Feather-style SVGs, matching the outline icon set
+  // used by popup/popup.html (stroke=currentColor, round joins).
+  // --------------------------------------------------------------------
+  function svgIcon(paths, size) {
+    size = size || 14;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+  }
+  const ICON = {
+    gear: '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>',
+    close: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+    chevron: '<polyline points="6 9 12 15 18 9"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+    moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+    upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+    image: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+    target: '<circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/>',
+    trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+    plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+    droplet: '<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>',
+    download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+    refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+    xCircle: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+    layers: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>'
+  };
+
+  // --------------------------------------------------------------------
+  // Settings panel UI — floating button + slide-up panel, built once
   // inside its own shadow root (isolated from the host page's CSS).
+  // Visually rebuilt to match popup/popup.css's design language:
+  // accordion sections with rotating chevrons, pill segmented controls
+  // and outline icons instead of Lite's flat tabs / emoji.
   // --------------------------------------------------------------------
   let saveTimer = null;
   let panelHost = null, shadow = null, panelEl = null, gearEl = null;
-  const ui = { open: false, tab: 'wallpaper', scheme: 'light', slideIndex: 0 };
+  const ui = {
+    open: false, tab: 'wallpaper', scheme: 'light', slideIndex: 0,
+    accordions: { mode: true, bg: true, target: false, frosted: true, buttonAppearance: true, movement: false, backup: false }
+  };
 
   function getEditable() {
     if (settings.mode === 'auto') return settings[ui.scheme];
@@ -1364,9 +1353,9 @@
     clearTimeout(saveTimer);
     saveTimer = setTimeout(persist, 400);
   }
-  async function persist() {
+  function persist() {
     settings.timestamp = Date.now();
-    await GMBridge.set(STORAGE_KEY, settings);
+    Store.set(STORAGE_KEY, settings);
     setStatus('已同步');
   }
   function setStatus(text) {
@@ -1377,7 +1366,7 @@
 
   function resetCurrentSite() {
     clearTimeout(saveTimer);
-    GMBridge.remove(STORAGE_KEY);
+    Store.remove(STORAGE_KEY);
     settings = defaultSettings();
     ui.tab = 'wallpaper'; ui.scheme = 'light'; ui.slideIndex = 0;
     liveApply();
@@ -1427,7 +1416,7 @@
   function rangeRow(label, path, min, max, value, suffix, opts) {
     opts = opts || {};
     return `<div class="pd-row">
-      <div class="pd-row-head"><span>${label}</span><span data-echo="${path}">${value}${suffix || ''}</span></div>
+      <div class="pd-row-head"><span>${label}</span><span class="pd-val-badge" data-echo="${path}">${value}${suffix || ''}</span></div>
       <input type="range" min="${min}" max="${max}" value="${value}" data-path="${path}" data-scope="${opts.scope || 'edit'}"
         data-numeric="1" data-suffix="${suffix || ''}" />
     </div>`;
@@ -1463,6 +1452,20 @@
   }
   function escapeAttr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
+  function accordion(id, title, bodyHtml, opts) {
+    opts = opts || {};
+    const open = ui.accordions[id] !== false;
+    const badge = opts.badge ? `<span class="pd-acc-badge">${opts.badge}</span>` : '';
+    return `<details class="pd-accordion" data-acc-id="${id}" ${open ? 'open' : ''}>
+      <summary class="pd-accordion-summary">
+        <span class="pd-acc-title">${title}</span>
+        ${badge}
+        <span class="pd-chevron">${svgIcon(ICON.chevron)}</span>
+      </summary>
+      <div class="pd-accordion-content">${bodyHtml}</div>
+    </details>`;
+  }
+
   function renderGradientEditor(e) {
     const g = e.gradient;
     const presetsHtml = Gradient.GRADIENT_PRESETS.map((p, i) =>
@@ -1472,20 +1475,20 @@
       <div class="pd-stop-row">
         <input type="color" value="${s.color}" data-path="gradient.stops.${i}.color" data-scope="edit" />
         <input type="number" min="0" max="100" value="${s.position}" data-path="gradient.stops.${i}.position" data-scope="edit" data-numeric="1" style="width:52px" />
-        ${g.stops.length > 2 ? `<button data-action="remove-stop" data-index="${i}">✕</button>` : ''}
+        ${g.stops.length > 2 ? `<button data-action="remove-stop" data-index="${i}" title="删除色标">${svgIcon(ICON.trash, 13)}</button>` : ''}
       </div>`).join('');
 
     return `
       <div class="pd-subhead">渐变预设</div>
       <div class="pd-swatch-grid">${presetsHtml}</div>
-      <button class="pd-btn-secondary" data-action="gradient-generate">🎨 从主色生成色阶</button>
+      <button class="pd-btn-secondary" data-action="gradient-generate">${svgIcon(ICON.droplet, 14)}<span>从主色生成色阶</span></button>
       ${selectRow('类型', 'gradient.kind', [['linear', '线性'], ['radial', '放射']], g.kind, { structural: true })}
       ${g.kind === 'radial'
         ? selectRow('形状', 'gradient.shape', [['circle', '圆形'], ['ellipse', '椭圆']], g.shape || 'circle', { structural: true })
         : rangeRow('角度', 'gradient.angle', 0, 360, g.angle || 90, '°')}
       <div class="pd-subhead">色标(${g.stops.length}/${Gradient.MAX_STOPS})</div>
       <div class="pd-stops">${stopsHtml}</div>
-      ${g.stops.length < Gradient.MAX_STOPS ? `<button class="pd-btn-secondary" data-action="add-stop">+ 添加色标</button>` : ''}
+      ${g.stops.length < Gradient.MAX_STOPS ? `<button class="pd-btn-secondary" data-action="add-stop">${svgIcon(ICON.plus, 14)}<span>添加色标</span></button>` : ''}
       ${checkboxRow('动态流动', 'gradient.animated', !!g.animated, { structural: true })}
       ${g.animated ? rangeRow('流动速度', 'gradient.speed', 2, 30, g.speed || 10, 's') : ''}
     `;
@@ -1503,8 +1506,12 @@
       body += rangeRow('不透明度', 'opacity', 0, 100, e.opacity, '%');
     } else if (e.type === 'image') {
       body += textRow('图片 URL', 'value', e.value && e.value.startsWith('http') ? e.value : '', 'https://...');
-      body += `<div class="pd-row"><div class="pd-row-head"><span>或上传本地图片</span></div><input type="file" accept="image/*" data-file="1" /></div>`;
-      if (e.value) body += `<button class="pd-btn-secondary" data-action="clear-image">✕ 删除当前图片</button>`;
+      body += `<div class="pd-file-drop">
+        <input type="file" accept="image/*" data-file="1" />
+        ${svgIcon(ICON.upload, 22)}
+        <p>拖拽图片到此处,或点击选择文件</p>
+      </div>`;
+      if (e.value) body += `<button class="pd-btn-secondary" data-action="clear-image">${svgIcon(ICON.xCircle, 14)}<span>删除当前图片</span></button>`;
       body += selectRow('尺寸', 'style.size', [['cover', '铺满(cover)'], ['contain', '完整显示(contain)'], ['auto', '原始大小']], (e.style && e.style.size) || 'cover');
       body += checkboxRow('平铺重复', 'style.repeat', !!(e.style && e.style.repeat));
       body += checkboxRow('固定不随页面滚动', 'style.fixed', !!(e.style && e.style.fixed));
@@ -1543,17 +1550,19 @@
     return body;
   }
 
+  const MODE_LABEL = { single: '单一', auto: '昼夜自动', slideshow: '幻灯轮播' };
+
   function renderModeControls() {
-    let html = `<div class="pd-mode-switch">
+    let html = `<div class="pd-seg">
       <button class="${settings.mode === 'single' ? 'active' : ''}" data-action="set-mode" data-value="single">单一</button>
       <button class="${settings.mode === 'auto' ? 'active' : ''}" data-action="set-mode" data-value="auto">昼夜自动</button>
       <button class="${settings.mode === 'slideshow' ? 'active' : ''}" data-action="set-mode" data-value="slideshow">幻灯轮播</button>
     </div>`;
 
     if (settings.mode === 'auto') {
-      html += `<div class="pd-mode-switch">
-        <button class="${ui.scheme === 'light' ? 'active' : ''}" data-action="set-scheme" data-value="light">☀️ 浅色</button>
-        <button class="${ui.scheme === 'dark' ? 'active' : ''}" data-action="set-scheme" data-value="dark">🌙 深色</button>
+      html += `<div class="pd-scheme-switch">
+        <button class="${ui.scheme === 'light' ? 'active' : ''}" data-action="set-scheme" data-value="light">${svgIcon(ICON.sun, 14)}<span>浅色</span></button>
+        <button class="${ui.scheme === 'dark' ? 'active' : ''}" data-action="set-scheme" data-value="dark">${svgIcon(ICON.moon, 14)}<span>深色</span></button>
       </div>`;
     }
 
@@ -1564,10 +1573,10 @@
           #${i + 1} ${item.type === 'none' ? '空' : item.type}
         </button>`).join('');
       html += `<div class="pd-slides">${itemsHtml}
-        <button class="pd-slide-item" data-action="add-slide">+ 新增</button>
+        <button class="pd-slide-item" data-action="add-slide">${svgIcon(ICON.plus, 12)} 新增</button>
       </div>`;
       if (sh.items.length > 1) {
-        html += `<button class="pd-btn-secondary" data-action="remove-slide" data-index="${ui.slideIndex}">删除当前这一帧</button>`;
+        html += `<button class="pd-btn-secondary" data-action="remove-slide" data-index="${ui.slideIndex}">${svgIcon(ICON.trash, 14)}<span>删除当前这一帧</span></button>`;
       }
       html += selectRow('轮播间隔', 'interval', [
         ['open', '每次打开页面'], ['15m', '每 15 分钟'], ['30m', '每 30 分钟'], ['1h', '每 1 小时'], ['24h', '每 24 小时']
@@ -1581,24 +1590,34 @@
 
   function renderAdvancedSection() {
     const g = globalConfig;
-    let html = `<div class="pd-subhead">悬浮按钮外观</div>`;
-    html += colorRow('按钮颜色', 'buttonColor', g.buttonColor, { scope: 'global' });
-    html += rangeRow('按钮大小', 'buttonSize', 36, 72, g.buttonSize, 'px', { scope: 'global' });
-    html += `<div class="pd-row"><div class="pd-row-head"><span>自定义图标图片</span></div><input type="file" accept="image/*" data-file="button-image" /></div>`;
-    if (g.buttonImage) html += `<button class="pd-btn-secondary" data-action="clear-button-image">清除自定义图标,恢复默认齿轮</button>`;
-    html += `<div class="pd-subhead">移动与贴边隐藏</div>`;
-    html += checkboxRow('允许拖动移动按钮位置', 'draggable', !!g.draggable, { scope: 'global' });
-    html += `<div class="pd-hint">开启后可以直接拖动悬浮按钮,松手会自动吸附到屏幕左侧或右侧最近的边。</div>`;
-    html += checkboxRow('贴边隐藏(像悬浮球一样)', 'edgeSnap', !!g.edgeSnap, { scope: 'global', structural: true });
-    html += `<div class="pd-hint">开启后,面板关闭且按钮静止 ${Math.round(HIDE_DELAY_MS / 1000)} 秒会自动滑出屏幕边缘只留一条边,轻触即可弹回并展开面板。和"允许拖动"是两个独立开关——不开拖动也能用默认位置贴边隐藏。</div>`;
-    html += `<div class="pd-subhead">备份(当前网站)</div>`;
-    html += `<div class="pd-footer-btns">
-      <button data-action="export">导出</button>
-      <button data-action="import">导入</button>
-      <button data-action="reset">重置</button>
+    let appearance = '';
+    appearance += colorRow('按钮颜色', 'buttonColor', g.buttonColor, { scope: 'global' });
+    appearance += rangeRow('按钮大小', 'buttonSize', 36, 72, g.buttonSize, 'px', { scope: 'global' });
+    appearance += `<div class="pd-file-drop pd-file-drop-compact">
+      <input type="file" accept="image/*" data-file="button-image" />
+      ${svgIcon(ICON.image, 18)}
+      <p>自定义图标图片</p>
     </div>`;
-    html += `<div class="pd-subhead">关于</div>`;
-    html += `<div class="pd-hint pd-version">PageDye Lite v${VERSION} · ${domain}</div>`;
+    if (g.buttonImage) appearance += `<button class="pd-btn-secondary" data-action="clear-button-image">${svgIcon(ICON.xCircle, 14)}<span>清除自定义图标</span></button>`;
+
+    let movement = '';
+    movement += checkboxRow('允许拖动移动按钮位置', 'draggable', !!g.draggable, { scope: 'global' });
+    movement += `<div class="pd-hint">开启后可以直接拖动悬浮按钮,松手会自动吸附到屏幕左侧或右侧最近的边。</div>`;
+    movement += checkboxRow('贴边隐藏(像悬浮球一样)', 'edgeSnap', !!g.edgeSnap, { scope: 'global', structural: true });
+    movement += `<div class="pd-hint">开启后,面板关闭且按钮静止 ${Math.round(HIDE_DELAY_MS / 1000)} 秒会自动滑出屏幕边缘只留一条边,轻触即可弹回并展开面板。和"允许拖动"是两个独立开关。</div>`;
+
+    let backup = '';
+    backup += `<div class="pd-footer-btns">
+      <button data-action="export">${svgIcon(ICON.download, 14)}<span>导出</span></button>
+      <button data-action="import">${svgIcon(ICON.upload, 14)}<span>导入</span></button>
+      <button data-action="reset" class="pd-danger">${svgIcon(ICON.refresh, 14)}<span>重置</span></button>
+    </div>`;
+
+    let html = '';
+    html += accordion('buttonAppearance', '悬浮按钮外观', appearance);
+    html += accordion('movement', '移动与贴边隐藏', movement);
+    html += accordion('backup', '备份(当前网站)', backup);
+    html += `<div class="pd-hint pd-version">PageDye 体验版 v${VERSION} · ${domain}</div>`;
     return html;
   }
 
@@ -1607,33 +1626,28 @@
     const body = shadow.getElementById('pd-body');
     if (!body) return;
 
-    let html = `
-      <div class="pd-panel-title">
-        <span>PageDye Lite</span>
-        <span class="pd-domain-badge" title="${domain}">${domain}</span>
-      </div>
-      <div class="pd-tabs">
-        <button class="${ui.tab === 'wallpaper' ? 'active' : ''}" data-action="set-tab" data-value="wallpaper">壁纸</button>
-        <button class="${ui.tab === 'frosted' ? 'active' : ''}" data-action="set-tab" data-value="frosted">磨砂玻璃</button>
-        <button class="${ui.tab === 'advanced' ? 'active' : ''}" data-action="set-tab" data-value="advanced">高级设置</button>
-      </div>
-    `;
+    let html = `<div class="pd-seg pd-seg-main">
+      <button class="${ui.tab === 'wallpaper' ? 'active' : ''}" data-action="set-tab" data-value="wallpaper">${svgIcon(ICON.layers, 13)}<span>壁纸</span></button>
+      <button class="${ui.tab === 'frosted' ? 'active' : ''}" data-action="set-tab" data-value="frosted">磨砂玻璃</button>
+      <button class="${ui.tab === 'advanced' ? 'active' : ''}" data-action="set-tab" data-value="advanced">高级设置</button>
+    </div>`;
 
     if (ui.tab === 'wallpaper') {
-      html += renderModeControls();
-      html += `<div class="pd-subhead">编辑内容</div>`;
-      html += renderEditableSection(getEditable());
-      html += `<div class="pd-subhead">目标元素(可选)</div>`;
-      html += textRow('CSS 选择器', 'targetSelector', settings.targetSelector, '留空 = 整页背景', { scope: 'root' });
-      html += `<button class="pd-btn-secondary" data-action="pick-target">🎯 拾取页面元素</button>`;
-      html += `<div class="pd-subhead">自定义 CSS</div>`;
-      html += `<textarea data-path="customCss" data-scope="root" placeholder="/* 任意 CSS,注入到当前网站 */">${escapeAttr(settings.customCss || '')}</textarea>`;
+      html += accordion('mode', '模式与轮播', renderModeControls(), { badge: MODE_LABEL[settings.mode] });
+      html += accordion('bg', '背景设置', renderEditableSection(getEditable()));
+      const targetBody =
+        textRow('CSS 选择器', 'targetSelector', settings.targetSelector, '留空 = 整页背景', { scope: 'root' }) +
+        `<button class="pd-btn-secondary" data-action="pick-target">${svgIcon(ICON.target, 14)}<span>拾取页面元素</span></button>` +
+        `<div class="pd-subhead">自定义 CSS</div>` +
+        `<textarea data-path="customCss" data-scope="root" placeholder="/* 任意 CSS,注入到当前网站 */">${escapeAttr(settings.customCss || '')}</textarea>`;
+      html += accordion('target', '目标元素与自定义 CSS(可选)', targetBody);
     } else if (ui.tab === 'frosted') {
-      html += `<div class="pd-subhead">磨砂玻璃容器</div>`;
-      html += textRow('CSS 选择器', 'frostedGlass.selector', settings.frostedGlass.selector, '例如 .card, main', { scope: 'root' });
-      html += `<button class="pd-btn-secondary" data-action="pick-frosted">🎯 拾取页面元素</button>`;
-      html += rangeRow('模糊强度', 'frostedGlass.blur', 0, 30, settings.frostedGlass.blur, 'px', { scope: 'root' });
-      html += rangeRow('底色不透明度', 'frostedGlass.opacity', 0, 100, settings.frostedGlass.opacity, '%', { scope: 'root' });
+      const frostedBody =
+        textRow('CSS 选择器', 'frostedGlass.selector', settings.frostedGlass.selector, '例如 .card, main', { scope: 'root' }) +
+        `<button class="pd-btn-secondary" data-action="pick-frosted">${svgIcon(ICON.target, 14)}<span>拾取页面元素</span></button>` +
+        rangeRow('模糊强度', 'frostedGlass.blur', 0, 30, settings.frostedGlass.blur, 'px', { scope: 'root' }) +
+        rangeRow('底色不透明度', 'frostedGlass.opacity', 0, 100, settings.frostedGlass.opacity, '%', { scope: 'root' });
+      html += accordion('frosted', '磨砂玻璃容器', frostedBody);
     } else {
       html += renderAdvancedSection();
     }
@@ -1718,7 +1732,50 @@
     }
   }
 
+  function handleToggle(e) {
+    const details = e.target;
+    if (!details || !details.dataset || !details.dataset.accId) return;
+    ui.accordions[details.dataset.accId] = details.open;
+  }
+
+  // Animated accordion expand/collapse. Native <details> toggling is
+  // instant (display block/none), so the click is intercepted and the
+  // open/close is driven manually via WAAPI height keyframes, with the
+  // `open` attribute flipped at the point that keeps native semantics
+  // (keyboard, find-in-page auto-expand) intact: immediately when
+  // opening, only once the collapse animation finishes when closing.
+  function toggleAccordion(details) {
+    const content = details.querySelector(':scope > .pd-accordion-content');
+    const chevron = details.querySelector('.pd-chevron');
+    if (!content) return;
+    const opening = !details.open;
+    if (chevron) chevron.style.transform = opening ? 'rotate(180deg)' : 'rotate(0deg)';
+    ui.accordions[details.dataset.accId] = opening;
+    if (!content.animate) { details.open = opening; return; }
+    if (opening) {
+      content.style.height = '0px';
+      content.style.overflow = 'hidden';
+      details.open = true;
+      const target = content.scrollHeight;
+      content.animate(
+        [{ height: '0px', opacity: 0.4 }, { height: target + 'px', opacity: 1 }],
+        { duration: 200, easing: 'cubic-bezier(.22,1,.36,1)' }
+      ).onfinish = () => { content.style.height = ''; content.style.overflow = ''; };
+    } else {
+      const start = content.scrollHeight;
+      content.style.height = start + 'px';
+      content.style.overflow = 'hidden';
+      content.animate(
+        [{ height: start + 'px', opacity: 1 }, { height: '0px', opacity: 0.4 }],
+        { duration: 160, easing: 'ease' }
+      ).onfinish = () => { details.open = false; content.style.height = ''; content.style.overflow = ''; };
+    }
+  }
+
   function handleClick(e) {
+    const summary = e.target.closest('.pd-accordion-summary');
+    if (summary) { e.preventDefault(); toggleAccordion(summary.parentElement); return; }
+
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     const action = btn.dataset.action;
@@ -1727,6 +1784,7 @@
       if (suppressNextGearClick) { suppressNextGearClick = false; return; }
       ui.open = !ui.open; applyOpenState(); return;
     }
+    if (action === 'close-panel') { ui.open = false; applyOpenState(); return; }
     if (action === 'clear-button-image') {
       globalConfig.buttonImage = '';
       applyGearStyle();
@@ -1758,9 +1816,6 @@
       const idx = Number(btn.dataset.index);
       const sh = settings.slideshow;
       sh.items.splice(idx, 1);
-      // Keep the "currently displayed" pointer meaningful too, not just the
-      // panel's edit cursor — otherwise deleting an earlier frame silently
-      // swaps the live wallpaper to whatever the stale index now lands on.
       if (idx < sh.currentIndex) {
         sh.currentIndex -= 1;
       } else if (sh.currentIndex >= sh.items.length) {
@@ -1826,7 +1881,7 @@
 
   function swapGearIcon() {
     if (!gearEl || globalConfig.buttonImage) return;
-    gearEl.textContent = ui.open ? '✕' : '⚙️';
+    gearEl.innerHTML = svgIcon(ui.open ? ICON.close : ICON.gear, Math.round((globalConfig.buttonSize || 50) * 0.42));
     if (gearEl.animate) {
       gearEl.animate(
         [{ transform: 'scale(0.6) rotate(-40deg)', opacity: 0.3 }, { transform: 'scale(1) rotate(0)', opacity: 1 }],
@@ -1836,9 +1891,8 @@
   }
 
   // --------------------------------------------------------------------
-  // Floating button appearance, position and "assistive-touch"-style
-  // edge-snap + auto-hide behaviour — all global (cross-site) preferences,
-  // since the button is chrome for the tool itself, not per-site content.
+  // Floating button appearance, position and edge-snap / auto-hide
+  // behaviour — all global (cross-site) preferences.
   // --------------------------------------------------------------------
   const HIDE_DELAY_MS = 4000;
   const PEEK_VISIBLE_PX = 14;
@@ -1863,9 +1917,6 @@
     }
   }
 
-  // Docks the button flush against the real screen edge, leaving only a
-  // small sliver on-screen, instead of a percentage transform — a fixed
-  // sliver width reads as unmistakably "hidden" no matter the button size.
   function applyEdgeOffset() {
     if (!gearEl) return;
     const size = globalConfig.buttonSize || 50;
@@ -1881,7 +1932,6 @@
     const size = g.buttonSize || 50;
     gearEl.style.width = size + 'px';
     gearEl.style.height = size + 'px';
-    gearEl.style.fontSize = Math.round(size * 0.42) + 'px';
     gearEl.style.background = g.buttonImage ? 'transparent' : (g.buttonColor || '#000000');
     gearEl.innerHTML = '';
     if (g.buttonImage) {
@@ -1890,7 +1940,7 @@
       Object.assign(img.style, { width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' });
       gearEl.appendChild(img);
     } else {
-      gearEl.textContent = ui.open ? '✕' : '⚙️';
+      gearEl.innerHTML = svgIcon(ui.open ? ICON.close : ICON.gear, Math.round(size * 0.42));
     }
     applyGearPosition();
   }
@@ -1906,7 +1956,7 @@
     if (ui.open) positionPanel();
   }
 
-  const PANEL_MAX_HEIGHT_PX = 440;
+  const PANEL_MAX_HEIGHT_PX = 480;
 
   function positionPanel() {
     if (!gearEl || !panelEl) return;
@@ -1917,7 +1967,7 @@
     } else {
       panelEl.style.right = (window.innerWidth - rect.right) + 'px'; panelEl.style.left = 'auto';
     }
-    const cap = Math.min(PANEL_MAX_HEIGHT_PX, window.innerHeight * 0.62);
+    const cap = Math.min(PANEL_MAX_HEIGHT_PX, window.innerHeight * 0.66);
     const spaceAbove = rect.top;
     const spaceBelow = window.innerHeight - rect.bottom;
     if (spaceAbove >= spaceBelow) {
@@ -1967,12 +2017,6 @@
     scheduleHide();
   }
 
-  // Keep the widget genuinely on top of the page. A max z-index alone isn't
-  // enough: any site element tied at the same z-index wins if it's later in
-  // DOM order, and native fullscreen content renders in the browser's "top
-  // layer" above all regular stacking contexts regardless of z-index. So we
-  // (a) keep panelHost as the last child of its container whenever the page
-  // mutates, and (b) move it inside the fullscreen element while one is active.
   function bumpToTop() {
     if (!panelHost) return;
     const fsEl = document.fullscreenElement || document.webkitFullscreenElement || null;
@@ -1984,7 +2028,7 @@
 
   function buildUI() {
     panelHost = document.createElement('div');
-    panelHost.id = 'pagedye-lite-panel-host';
+    panelHost.id = 'pagedye-embed-panel-host';
     Object.assign(panelHost.style, { position: 'fixed', zIndex: '2147483647', bottom: '0', right: '0', all: 'initial' });
     document.documentElement.appendChild(panelHost);
     shadow = panelHost.attachShadow({ mode: 'open' });
@@ -1999,26 +2043,35 @@
     style.textContent = `
       :host {
         color-scheme: light dark;
-        --pd-text: #18181b; --pd-text-secondary: #6b7280; --pd-border: rgba(0,0,0,0.14);
-        --pd-panel-bg: rgba(255,255,255,0.92); --pd-gear-bg: rgba(255,255,255,0.88);
+        --pd-radius-lg: 18px; --pd-radius-md: 10px; --pd-radius-sm: 7px;
+        --pd-text: #18181b; --pd-text-secondary: #71717a; --pd-border: rgba(0,0,0,0.12);
+        --pd-panel-bg: rgba(255,255,255,0.97); --pd-gear-bg: #18181b; --pd-gear-text: #fff;
+        --pd-surface: rgba(0,0,0,0.035); --pd-card: #ffffff;
         --pd-input-bg: rgba(0,0,0,0.045); --pd-btn-bg: rgba(0,0,0,0.05);
-        --pd-accent-bg: #18181b; --pd-accent-text: #fff; --pd-shadow: rgba(0,0,0,0.18); --pd-option-bg: #fff;
+        --pd-accent-bg: #18181b; --pd-accent-text: #fff;
+        --pd-shadow: rgba(0,0,0,0.16); --pd-focus: rgba(24,24,27,0.14); --pd-option-bg: #fff;
+        --pd-danger: #dc2626;
       }
       @media (prefers-color-scheme: dark) {
         :host {
-          --pd-text: #f4f4f5; --pd-text-secondary: #a1a1aa; --pd-border: rgba(255,255,255,0.15);
-          --pd-panel-bg: rgba(24,24,27,0.92); --pd-gear-bg: rgba(20,20,20,0.85);
-          --pd-input-bg: rgba(255,255,255,0.05); --pd-btn-bg: rgba(255,255,255,0.06);
-          --pd-accent-bg: #fff; --pd-accent-text: #000; --pd-shadow: rgba(0,0,0,0.35); --pd-option-bg: #1c1c1e;
+          --pd-text: #f4f4f5; --pd-text-secondary: #a1a1aa; --pd-border: rgba(255,255,255,0.14);
+          --pd-panel-bg: rgba(20,20,22,0.97); --pd-gear-bg: #fff; --pd-gear-text: #000;
+          --pd-surface: rgba(255,255,255,0.045); --pd-card: #1c1c1e;
+          --pd-input-bg: rgba(255,255,255,0.06); --pd-btn-bg: rgba(255,255,255,0.07);
+          --pd-accent-bg: #fff; --pd-accent-text: #000;
+          --pd-shadow: rgba(0,0,0,0.4); --pd-focus: rgba(255,255,255,0.16); --pd-option-bg: #1c1c1e;
+          --pd-danger: #f87171;
         }
       }
-      * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
       @keyframes pd-pop-in { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+
       .pd-gear {
         position: fixed; bottom: 18px; right: 18px; width: 50px; height: 50px; border-radius: 50%;
-        background: var(--pd-gear-bg); color: var(--pd-text); border: 1px solid var(--pd-border);
-        font-size: 21px; display: flex; align-items: center; justify-content: center; cursor: pointer;
-        box-shadow: 0 4px 16px var(--pd-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        background: var(--pd-gear-bg); color: var(--pd-gear-text); border: 1px solid var(--pd-border);
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+        box-shadow: 0 4px 16px var(--pd-shadow);
         overflow: hidden; touch-action: none; user-select: none;
         animation: pd-pop-in 0.35s cubic-bezier(.34,1.56,.64,1);
         transition: left 0.25s ease, right 0.25s ease, top 0.25s ease, opacity 0.25s ease, transform 0.15s ease, box-shadow 0.15s ease;
@@ -2026,14 +2079,15 @@
       .pd-gear:hover { transform: scale(1.06); }
       .pd-gear:active { transform: scale(0.92); }
       .pd-gear.pd-dragging { transition: none; transform: scale(1.04); }
-      .pd-gear.pd-open { box-shadow: 0 0 0 3px var(--pd-shadow), 0 4px 16px var(--pd-shadow); }
+      .pd-gear.pd-open { box-shadow: 0 0 0 3px var(--pd-focus), 0 4px 16px var(--pd-shadow); }
       .pd-gear.pd-peek { opacity: 0.5; }
+
       .pd-panel {
         display: flex; flex-direction: column; position: fixed; bottom: 74px; right: 18px;
-        width: 340px; max-width: calc(100vw - 24px); max-height: 58vh; overflow-y: auto; border-radius: 14px;
+        width: 384px; max-width: calc(100vw - 24px); max-height: 66vh; border-radius: var(--pd-radius-lg);
         background: var(--pd-panel-bg); color: var(--pd-text); border: 1px solid var(--pd-border);
-        box-shadow: 0 12px 40px var(--pd-shadow); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-        padding: 14px;
+        box-shadow: 0 20px 60px var(--pd-shadow); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        overflow: hidden;
         opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(8px) scale(0.97);
         transform-origin: bottom right;
         transition: opacity 0.18s ease, transform 0.18s cubic-bezier(.22,1,.36,1), visibility 0s linear 0.18s;
@@ -2042,55 +2096,166 @@
         opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0) scale(1);
         transition: opacity 0.18s ease, transform 0.18s cubic-bezier(.22,1,.36,1), visibility 0s linear 0s;
       }
-      .pd-panel-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; font-size: 14px; font-weight: 600; color: var(--pd-text); }
-      .pd-domain-badge { font-size: 11px; font-weight: 400; color: var(--pd-text-secondary); background: var(--pd-input-bg); border-radius: 999px; padding: 3px 9px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .pd-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
-      .pd-tabs button, .pd-mode-switch button {
-        flex: 1; min-height: 38px; padding: 8px; border-radius: 8px; border: 1px solid var(--pd-border);
-        background: transparent; color: var(--pd-text-secondary); font-size: 13px; cursor: pointer;
+      .pd-panel-header {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        padding: 14px 16px; border-bottom: 1px solid var(--pd-border); flex: none;
       }
-      .pd-tabs button.active, .pd-mode-switch button.active { background: var(--pd-accent-bg); color: var(--pd-accent-text); border-color: var(--pd-accent-bg); }
-      .pd-mode-switch { display: flex; gap: 6px; margin-bottom: 10px; }
+      .pd-brand { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
+      .pd-domain-badge {
+        font-size: 11.5px; color: var(--pd-text-secondary); background: var(--pd-surface);
+        padding: 3px 9px; border-radius: 999px; max-width: 150px; overflow: hidden;
+        white-space: nowrap; text-overflow: ellipsis;
+      }
+      .pd-header-actions { display: flex; align-items: center; gap: 4px; }
+      .pd-icon-btn {
+        display: flex; align-items: center; justify-content: center; width: 26px; height: 26px;
+        border: none; background: transparent; color: var(--pd-text-secondary); border-radius: 7px;
+        cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
+      }
+      .pd-icon-btn:hover { background: var(--pd-surface); color: var(--pd-text); }
+
+      .pd-panel-body { padding: 14px; overflow-y: auto; }
+      .pd-panel-body::-webkit-scrollbar { width: 6px; }
+      .pd-panel-body::-webkit-scrollbar-track { background: transparent; }
+      .pd-panel-body::-webkit-scrollbar-thumb { background: var(--pd-border); border-radius: 3px; }
+
+      .pd-seg {
+        display: flex; gap: 2px; background: var(--pd-surface); padding: 3px;
+        border-radius: var(--pd-radius-md); margin-bottom: 12px;
+      }
+      .pd-seg button {
+        flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+        min-height: 32px; padding: 6px 8px; border-radius: calc(var(--pd-radius-md) - 3px); border: none;
+        background: transparent; color: var(--pd-text-secondary); font-size: 12.5px; cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .pd-seg button.active { background: var(--pd-card); color: var(--pd-text); box-shadow: 0 1px 3px var(--pd-shadow); font-weight: 600; }
+      .pd-seg-main { margin-bottom: 14px; }
+
+      .pd-scheme-switch { display: flex; gap: 8px; margin-bottom: 10px; }
+      .pd-scheme-switch button {
+        flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+        min-height: 36px; padding: 8px; border-radius: var(--pd-radius-md); border: 1px solid var(--pd-border);
+        background: var(--pd-card); color: var(--pd-text-secondary); font-size: 12.5px; cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .pd-scheme-switch button.active { background: var(--pd-accent-bg); color: var(--pd-accent-text); border-color: var(--pd-accent-bg); }
+
+      .pd-accordion {
+        border: 1px solid var(--pd-border); border-radius: var(--pd-radius-md); margin-bottom: 10px;
+        background: var(--pd-card); overflow: hidden;
+      }
+      .pd-accordion-summary {
+        display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-size: 13px; font-weight: 600;
+        cursor: pointer; list-style: none; user-select: none;
+      }
+      .pd-accordion-summary::-webkit-details-marker { display: none; }
+      .pd-acc-title { flex: 1; }
+      .pd-acc-badge {
+        font-size: 10.5px; font-weight: 500; color: var(--pd-text-secondary); background: var(--pd-btn-bg);
+        padding: 2px 8px; border-radius: 999px;
+      }
+      .pd-chevron { display: flex; color: var(--pd-text-secondary); transition: transform 0.2s ease; }
+      .pd-accordion[open] > .pd-accordion-summary .pd-chevron { transform: rotate(180deg); }
+      .pd-accordion-content { padding: 12px; border-top: 1px solid var(--pd-border); background: var(--pd-surface); }
+      .pd-accordion-content > *:last-child { margin-bottom: 0 !important; }
+
       .pd-subhead { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--pd-text-secondary); margin: 12px 0 6px; }
       .pd-hint { font-size: 11px; line-height: 1.5; color: var(--pd-text-secondary); margin: 4px 0 8px; }
       .pd-row { margin-bottom: 10px; }
-      .pd-row-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--pd-text); margin-bottom: 4px; }
-      .pd-row-inline { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--pd-text); margin-bottom: 8px; cursor: pointer; min-height: 36px; }
+      .pd-row-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--pd-text); margin-bottom: 5px; }
+      .pd-row-inline { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--pd-text); margin-bottom: 8px; cursor: pointer; min-height: 34px; }
+      .pd-val-badge { font-size: 11px; background: var(--pd-btn-bg); padding: 2px 7px; border-radius: 999px; color: var(--pd-text-secondary); }
+
       .pd-row input[type="text"], .pd-row select, textarea {
-        width: 100%; padding: 9px 10px; border-radius: 6px; border: 1px solid var(--pd-border);
-        background: var(--pd-input-bg); color: var(--pd-text); font-size: 13px;
+        width: 100%; padding: 9px 10px; border-radius: var(--pd-radius-sm); border: 1px solid var(--pd-border);
+        background: var(--pd-input-bg); color: var(--pd-text); font-size: 13px; transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .pd-row input[type="text"]:focus, .pd-row select:focus, textarea:focus {
+        outline: none; border-color: var(--pd-accent-bg); box-shadow: 0 0 0 2px var(--pd-focus);
       }
       select option { background-color: var(--pd-option-bg); color: var(--pd-text); }
       textarea { min-height: 70px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace; }
-      input[type="range"] { width: 100%; height: 32px; }
-      input[type="file"] { font-size: 12px; color: var(--pd-text-secondary); width: 100%; }
-      .pd-swatch-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 8px; }
-      .pd-swatch { height: 28px; border-radius: 6px; cursor: pointer; border: 1px solid var(--pd-border); }
+
+      input[type="range"] {
+        width: 100%; height: 5px; border-radius: 3px; background: var(--pd-border);
+        -webkit-appearance: none; appearance: none; margin: 8px 0;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+        background: var(--pd-accent-bg); cursor: pointer; box-shadow: 0 1px 4px var(--pd-shadow); margin-top: -5px;
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 15px; height: 15px; border-radius: 50%; border: none;
+        background: var(--pd-accent-bg); cursor: pointer; box-shadow: 0 1px 4px var(--pd-shadow);
+      }
+      input[type="range"]::-moz-range-track { height: 5px; border-radius: 3px; background: var(--pd-border); }
+
+      input[type="color"] {
+        -webkit-appearance: none; appearance: none; border: none; width: 30px; height: 30px; padding: 0;
+        background: none; cursor: pointer; border-radius: var(--pd-radius-sm); overflow: hidden;
+      }
+      input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+      input[type="color"]::-webkit-color-swatch { border: 1px solid var(--pd-border); border-radius: var(--pd-radius-sm); }
+
+      input[type="file"] { display: none; }
+      .pd-file-drop {
+        position: relative; border: 1.5px dashed var(--pd-border); border-radius: var(--pd-radius-md);
+        padding: 18px 12px; text-align: center; color: var(--pd-text-secondary); margin-bottom: 10px;
+        display: flex; flex-direction: column; align-items: center; gap: 6px; transition: all 0.15s ease;
+      }
+      .pd-file-drop:hover { border-color: var(--pd-accent-bg); color: var(--pd-text); background: var(--pd-surface); }
+      .pd-file-drop p { margin: 0; font-size: 12px; }
+      .pd-file-drop-compact { padding: 12px; }
+      .pd-file-drop input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; display: block; }
+
+      .pd-swatch-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 10px; }
+      .pd-swatch { height: 28px; border-radius: var(--pd-radius-sm); cursor: pointer; border: 1px solid var(--pd-border); transition: transform 0.12s ease; }
+      .pd-swatch:hover { transform: scale(1.08); }
+
       .pd-stop-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-      .pd-stop-row button { border: none; background: var(--pd-btn-bg); color: var(--pd-text); border-radius: 4px; cursor: pointer; padding: 6px 10px; }
+      .pd-stop-row button {
+        border: none; background: var(--pd-btn-bg); color: var(--pd-text-secondary); border-radius: var(--pd-radius-sm);
+        cursor: pointer; padding: 6px 8px; display: flex; align-items: center; transition: all 0.15s ease;
+      }
+      .pd-stop-row button:hover { background: var(--pd-focus); color: var(--pd-danger); }
+
       .pd-slides { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
       .pd-slide-item {
-        padding: 8px 10px; border-radius: 6px; border: 1px solid var(--pd-border);
-        background: transparent; color: var(--pd-text-secondary); font-size: 12px; cursor: pointer;
+        display: flex; align-items: center; gap: 4px; padding: 8px 10px; border-radius: var(--pd-radius-sm);
+        border: 1px solid var(--pd-border); background: var(--pd-card); color: var(--pd-text-secondary);
+        font-size: 12px; cursor: pointer; transition: all 0.15s ease;
       }
       .pd-slide-item.active { background: var(--pd-accent-bg); color: var(--pd-accent-text); border-color: var(--pd-accent-bg); }
+
       .pd-btn-secondary {
-        width: 100%; min-height: 38px; padding: 8px; margin: 4px 0 8px; border-radius: 8px; border: 1px solid var(--pd-border);
-        background: var(--pd-btn-bg); color: var(--pd-text); font-size: 13px; cursor: pointer;
+        width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
+        min-height: 38px; padding: 8px; margin: 4px 0 10px; border-radius: var(--pd-radius-md); border: 1px solid var(--pd-border);
+        background: var(--pd-btn-bg); color: var(--pd-text); font-size: 12.5px; cursor: pointer; transition: all 0.15s ease;
       }
-      .pd-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--pd-border); font-size: 11px; color: var(--pd-text-secondary); }
-      .pd-footer-btns { display: flex; gap: 6px; margin: 6px 0; }
+      .pd-btn-secondary:hover { background: var(--pd-focus); }
+
+      .pd-footer-btns { display: flex; gap: 6px; }
       .pd-footer-btns button {
-        flex: 1; min-height: 34px; padding: 6px; border-radius: 6px; border: 1px solid var(--pd-border);
-        background: transparent; color: var(--pd-text-secondary); font-size: 12px; cursor: pointer;
+        flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+        min-height: 36px; padding: 6px; border-radius: var(--pd-radius-sm); border: 1px solid var(--pd-border);
+        background: transparent; color: var(--pd-text-secondary); font-size: 12px; cursor: pointer; transition: all 0.15s ease;
       }
-      .pd-version { opacity: 0.6; }
+      .pd-footer-btns button:hover { background: var(--pd-surface); color: var(--pd-text); }
+      .pd-footer-btns button.pd-danger:hover { color: var(--pd-danger); border-color: var(--pd-danger); }
+
+      .pd-footer { margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--pd-border); font-size: 11px; color: var(--pd-text-secondary); }
+      .pd-version { opacity: 0.65; margin: 8px 0 0; }
+
+      button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+        outline: 2px solid var(--pd-accent-bg); outline-offset: 1px;
+      }
     `;
     shadow.appendChild(style);
 
     gearEl = document.createElement('div');
     gearEl.className = 'pd-gear';
-    gearEl.textContent = '⚙️';
+    gearEl.innerHTML = svgIcon(ICON.gear, 21);
     gearEl.setAttribute('data-action', 'toggle-panel');
     gearEl.addEventListener('pointerdown', onGearPointerDown);
     gearEl.addEventListener('pointermove', onGearPointerMove);
@@ -2100,12 +2265,24 @@
 
     panelEl = document.createElement('div');
     panelEl.className = 'pd-panel';
-    panelEl.innerHTML = '<div id="pd-body"></div>';
+    panelEl.innerHTML = `
+      <div class="pd-panel-header">
+        <div class="pd-brand">
+          <span>PageDye 体验版</span>
+          <span class="pd-domain-badge" title="${domain}">${domain}</span>
+        </div>
+        <div class="pd-header-actions">
+          <button type="button" class="pd-icon-btn" data-action="close-panel" title="关闭">${svgIcon(ICON.close, 15)}</button>
+        </div>
+      </div>
+      <div class="pd-panel-body"><div id="pd-body"></div></div>
+    `;
     shadow.appendChild(panelEl);
 
     shadow.addEventListener('input', handleFieldEvent);
     shadow.addEventListener('change', handleFieldEvent);
     shadow.addEventListener('click', handleClick);
+    shadow.addEventListener('toggle', handleToggle, true);
     window.addEventListener('resize', () => applyGearPosition());
 
     applyGearStyle();
@@ -2116,11 +2293,12 @@
   // --------------------------------------------------------------------
   // Boot
   // --------------------------------------------------------------------
-  async function boot() {
-    const [stored, storedGlobal] = await Promise.all([GMBridge.get(STORAGE_KEY), GMBridge.get(GLOBAL_KEY)]);
+  function boot() {
+    const stored = Store.get(STORAGE_KEY);
+    const storedGlobal = Store.get(GLOBAL_KEY);
     settings = stored ? Object.assign(defaultSettings(), stored) : defaultSettings();
     globalConfig = Object.assign(defaultGlobalConfig(), storedGlobal || {});
-    await maybeCatchUpSlideshow(settings);
+    maybeCatchUpSlideshow(settings);
     applyBackground(settings);
 
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {

@@ -26,6 +26,22 @@
           </svg>
           <span data-i18n="navSites">Configured Sites</span>
         </button>
+        <button type="button" class="nav-item" data-target="section-custom-effects">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          <span data-i18n="navCustomEffects">Custom Effects</span>
+        </button>
+        <button type="button" class="nav-item" data-target="section-appearance">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="13.5" cy="6.5" r=".5"></circle>
+            <circle cx="17.5" cy="10.5" r=".5"></circle>
+            <circle cx="8.5" cy="7.5" r=".5"></circle>
+            <circle cx="6.5" cy="12.5" r=".5"></circle>
+            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
+          </svg>
+          <span data-i18n="navAppearance">Appearance</span>
+        </button>
         <button type="button" class="nav-item" data-target="section-backup">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -87,7 +103,103 @@
           </div>
         </div>
       </section>
-      
+
+      <!-- Section 1.2: Custom Effects -->
+      <section id="section-custom-effects" class="content-section">
+        <div class="section-header">
+          <h2 data-i18n="customEffectsTitle">Custom Effects</h2>
+          <p class="section-subtitle" data-i18n="customEffectsHint">Write your own animated Canvas wallpaper and use it on any site, just like the built-in effects. Extension only — not available in PageDye Lite or the site widget.</p>
+        </div>
+
+        <div class="card custom-effects-toolbar">
+          <button type="button" id="new-custom-effect-btn" class="btn primary-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span data-i18n="newCustomEffect">New Custom Effect</span>
+          </button>
+          <button type="button" id="import-custom-effect-btn" class="btn secondary-btn" data-i18n="importEffectBtn">Import</button>
+          <input type="file" id="import-effect-file" accept="application/json" hidden>
+        </div>
+
+        <div class="card table-card">
+          <div class="table-responsive">
+            <table class="effects-table">
+              <thead>
+                <tr>
+                  <th data-i18n="thEffectName">Name</th>
+                  <th data-i18n="thEffectUpdated">Updated</th>
+                  <th data-i18n="thActions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="custom-effects-list-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+          <div id="no-custom-effects-msg" class="no-data hidden">
+            <svg class="no-data-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+            <p data-i18n="noCustomEffects">No custom effects yet.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 1.5: Appearance -->
+      <section id="section-appearance" class="content-section">
+        <div class="section-header">
+          <h2 data-i18n="appearanceTitle">Appearance</h2>
+          <p class="section-subtitle" data-i18n="appearanceHint">Customize the colors and background images of this dashboard itself (not your websites' backgrounds).</p>
+        </div>
+
+        <div class="card">
+          <div class="control-group">
+            <label data-i18n="pageBackground">Page Background</label>
+            <p class="hint" data-i18n="pageBackgroundHint">The outer area surrounding the dashboard panel.</p>
+            <div class="color-input-wrapper" style="margin-bottom: 10px;">
+              <input type="color" id="theme-page-bg" value="#f1f5f9">
+              <input type="text" id="theme-page-bg-text" value="#f1f5f9">
+            </div>
+
+            <div class="file-drop-area" id="theme-page-bg-drop">
+              <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px; margin-bottom: 8px; color: var(--text-secondary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <p style="margin: 0; font-size: 13px;"><span data-i18n="dragOrClick">Drag image here, or</span> <span class="upload-link" data-i18n="chooseFile" style="color: var(--primary-color); text-decoration: underline; font-weight: 500;">choose file</span></p>
+              <input type="file" id="theme-page-bg-file" accept="image/*" hidden>
+            </div>
+            <div id="theme-page-bg-file-info" class="file-info-badge hidden" style="margin-top: 8px;">
+              <div class="file-info-content">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; color: var(--text-secondary);"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <span class="filename" id="theme-page-bg-filename" style="font-size: 12px; font-weight: 500;"></span>
+              </div>
+              <button type="button" id="theme-page-bg-remove" class="remove-file-btn" title="Clear Image">×</button>
+            </div>
+          </div>
+
+          <div class="control-group" style="margin-bottom: 0;">
+            <label data-i18n="containerBackground">Container Background</label>
+            <p class="hint" data-i18n="containerBackgroundHint">The sidebar and main panel background.</p>
+            <div class="color-input-wrapper" style="margin-bottom: 10px;">
+              <input type="color" id="theme-container-bg" value="#ffffff">
+              <input type="text" id="theme-container-bg-text" value="#ffffff">
+            </div>
+
+            <div class="file-drop-area" id="theme-container-bg-drop">
+              <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px; margin-bottom: 8px; color: var(--text-secondary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <p style="margin: 0; font-size: 13px;"><span data-i18n="dragOrClick">Drag image here, or</span> <span class="upload-link" data-i18n="chooseFile" style="color: var(--primary-color); text-decoration: underline; font-weight: 500;">choose file</span></p>
+              <input type="file" id="theme-container-bg-file" accept="image/*" hidden>
+            </div>
+            <div id="theme-container-bg-file-info" class="file-info-badge hidden" style="margin-top: 8px;">
+              <div class="file-info-content">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; color: var(--text-secondary);"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <span class="filename" id="theme-container-bg-filename" style="font-size: 12px; font-weight: 500;"></span>
+              </div>
+              <button type="button" id="theme-container-bg-remove" class="remove-file-btn" title="Clear Image">×</button>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" id="theme-reset-btn" class="btn secondary-btn" style="width: auto;" data-i18n="appearanceReset">Reset to Default</button>
+      </section>
+
       <!-- Section 2: Backup & Restore -->
       <section id="section-backup" class="content-section">
         <div class="section-header">
@@ -414,22 +526,51 @@
                     <option value="waves" selected data-i18n="effectWaves">Waves</option>
                     <option value="starfield" data-i18n="effectStarfield">Starfield</option>
                     <option value="ripple" data-i18n="effectRipple">Ripple</option>
+                    <option value="aurora" data-i18n="effectAurora">Aurora</option>
+                    <option value="snow" data-i18n="effectSnow">Snow</option>
+                    <option value="bubbles" data-i18n="effectBubbles">Bubbles</option>
+                    <option value="constellation" data-i18n="effectConstellation">Constellation</option>
+                    <option value="fireflies" data-i18n="effectFireflies">Fireflies</option>
+                    <option value="gridpulse" data-i18n="effectGridPulse">Grid Pulse</option>
+                    <option value="rain" data-i18n="effectRain">Rain</option>
+                    <option value="confetti" data-i18n="effectConfetti">Confetti</option>
+                    <option value="plasma" data-i18n="effectPlasma">Plasma</option>
+                    <option value="vortex" data-i18n="effectVortex">Vortex</option>
+                    <option value="typewriter" data-i18n="effectTypewriter">Typewriter</option>
                   </select>
                 </div>
 
-                <div class="control-group">
-                  <label for="edit-effect-color" data-i18n="effectColor">Color</label>
-                  <div class="color-input-wrapper">
-                    <input type="color" id="edit-effect-color" value="#ffffff">
-                    <input type="text" id="edit-effect-color-text" value="#ffffff">
-                  </div>
+                <div class="control-group hidden" id="edit-effect-text-control">
+                  <label for="edit-effect-text" data-i18n="effectText">Text</label>
+                  <input type="text" id="edit-effect-text" value="PageDye" placeholder="PageDye">
                 </div>
 
                 <div class="control-group">
-                  <label for="edit-effect-bg-color" data-i18n="effectBgColor">Background Color</label>
-                  <div class="color-input-wrapper">
-                    <input type="color" id="edit-effect-bg-color" value="#000000">
-                    <input type="text" id="edit-effect-bg-color-text" value="#000000">
+                  <label for="edit-effect-color-scheme" data-i18n="effectColorScheme">Color Preset</label>
+                  <p class="hint" data-i18n="effectColorSchemeHint">Auto follows your system's light/dark setting live.</p>
+                  <select id="edit-effect-color-scheme">
+                    <option value="auto" selected data-i18n="effectSchemeAuto">Auto</option>
+                    <option value="light" data-i18n="effectSchemeLight">Light</option>
+                    <option value="dark" data-i18n="effectSchemeDark">Dark</option>
+                    <option value="custom" data-i18n="effectSchemeCustom">Custom</option>
+                  </select>
+                </div>
+
+                <div id="edit-effect-color-custom-control" class="hidden">
+                  <div class="control-group">
+                    <label for="edit-effect-color" data-i18n="effectColor">Color</label>
+                    <div class="color-input-wrapper">
+                      <input type="color" id="edit-effect-color" value="#ffffff">
+                      <input type="text" id="edit-effect-color-text" value="#ffffff">
+                    </div>
+                  </div>
+
+                  <div class="control-group">
+                    <label for="edit-effect-bg-color" data-i18n="effectBgColor">Background Color</label>
+                    <div class="color-input-wrapper">
+                      <input type="color" id="edit-effect-bg-color" value="#000000">
+                      <input type="text" id="edit-effect-bg-color-text" value="#000000">
+                    </div>
                   </div>
                 </div>
 
@@ -613,6 +754,68 @@
             </a>
           </div>
         </div>
+      </section>
+
+      <!-- Section 5: Edit Custom Effect -->
+      <section id="section-edit-custom-effect" class="content-section">
+        <div class="section-header edit-site-header">
+          <button type="button" id="edit-effect-back-btn" class="btn secondary-btn back-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span data-i18n="backToCustomEffects">Back to Custom Effects</span>
+          </button>
+          <h2 id="edit-custom-effect-heading" data-i18n="newCustomEffect">New Custom Effect</h2>
+        </div>
+
+        <div class="card">
+          <div class="control-group">
+            <label for="edit-custom-effect-name" data-i18n="effectNameLabel">Name</label>
+            <input type="text" id="edit-custom-effect-name" placeholder="Breathing Dot" maxlength="60">
+          </div>
+
+          <div class="control-group" id="edit-custom-effect-template-control">
+            <label for="edit-custom-effect-template" data-i18n="startFromTemplate">Start from template</label>
+            <select id="edit-custom-effect-template">
+              <option value="blank" data-i18n="templateBlank">Blank skeleton</option>
+              <option value="waves" data-i18n="templateWaves">Waves source</option>
+              <option value="particles" data-i18n="templateParticles">Particles source</option>
+            </select>
+          </div>
+
+          <div class="control-group" style="margin-bottom: 0;">
+            <label for="edit-custom-effect-code" data-i18n="effectCode">Code</label>
+            <p class="hint" data-i18n="effectCodeHint">Must evaluate to an object with init(cfg), resize(state, width, height) and draw(ctx, canvas, state, dt) — the same shape as PageDye's built-in effects. cfg has color/bgColor/density/speed/text. Helpers: window.PageDyeEffects.helpers.{hexToRgba, effectSpeedMultiplier, clampPercent}.</p>
+            <div class="pagedye-code-editor" id="edit-custom-effect-code-editor">
+              <div class="editor-gutter" aria-hidden="true"></div>
+              <div class="editor-textarea-wrapper">
+                <textarea id="edit-custom-effect-code" spellcheck="false"></textarea>
+                <pre class="editor-highlight" aria-hidden="true"><code class="language-javascript"></code></pre>
+              </div>
+            </div>
+            <p id="edit-custom-effect-error" class="effect-error-banner hidden"></p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="control-group" style="margin-bottom: 0;">
+            <label data-i18n="effectPreviewLabel">Live Preview</label>
+            <div class="effect-preview-box">
+              <canvas id="edit-custom-effect-preview-canvas" width="280" height="160"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-actions-card" style="justify-content: flex-end;">
+          <div class="edit-actions-right">
+            <button type="button" id="edit-custom-effect-export-btn" class="ghost-link-btn hidden" data-i18n="exportEffectBtn">Export</button>
+            <span class="divider hidden" id="edit-custom-effect-export-divider">|</span>
+            <button type="button" id="edit-custom-effect-delete-btn" class="btn danger-btn hidden" data-i18n="deleteBtn">Delete</button>
+            <button type="button" id="edit-custom-effect-save-btn" class="btn primary-btn" data-i18n="save">Save</button>
+          </div>
+        </div>
+      </section>
     </main>
 
     <!-- Status Toast -->
@@ -635,6 +838,7 @@
     </div>
   </div>
   <script src="../scripts/gradient.js"></script>
+  <script src="../scripts/effects.js"></script>
   <script src="../lib/prism.js"></script>
   <script src="options.js"></script>
 </body>

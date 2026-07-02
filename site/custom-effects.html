@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>自定义动效 API — PageDye</title>
+<meta name="description" content="PageDye 自定义动效 API 文档：如何在设置页里编写自己的 Canvas 动态壁纸，和内置的 16 种动效一样直接在任意站点使用。仅浏览器扩展版支持。">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="docs-header">
+  <div class="wrap">
+    <a class="docs-back" href="index.html">← 返回首页</a>
+  </div>
+</header>
+
+<header class="hero docs-hero">
+  <div class="wrap">
+    <div class="badge">v0.6 新增 · 仅扩展版</div>
+    <h1>自定义动效 API</h1>
+    <p class="tagline">在设置页里编写自己的 Canvas 动态壁纸，和内置的 16 种动效共用同一套密度/速度/配色控件，写完就能在任意站点直接选用。</p>
+  </div>
+</header>
+
+<section id="overview">
+  <div class="wrap">
+    <h2>它是什么</h2>
+    <p>PageDye 扩展内置了 16 种 Canvas 动效壁纸（Matrix 雨、粒子、极光、雪花、打字机等）。这些内置效果背后其实都是同一种形状的引擎对象——自定义动效 API 就是把这套形状开放出来：你在设置页的「自定义动效」里写一段代码，PageDye 在本地编译它，运行方式和内置效果完全一样，也能被同一套「密度 / 速度 / 配色预设」控件调节。</p>
+    <p class="hint">仅浏览器扩展版支持。PageDye Lite（用户脚本）和本站右下角的体验版 widget 目前还没有这个功能。</p>
+  </div>
+</section>
+
+<section id="shape">
+  <div class="wrap">
+    <h2>动效的形状</h2>
+    <p>代码需要返回一个对象，包含以下方法：</p>
+    <div class="grid api-grid">
+      <div class="card">
+        <h3><code>init(cfg)</code></h3>
+        <p>创建这个动效实例第一次运行时的状态，返回值会在后续每次调用里被传回来。<code>cfg</code> 是当前的密度/速度/配色设置（见下）。</p>
+      </div>
+      <div class="card">
+        <h3><code>resize(state, width, height)</code></h3>
+        <p>画布尺寸变化时调用（含首次绘制前），用来重新计算依赖尺寸的东西，比如粒子数量、网格列数。</p>
+      </div>
+      <div class="card">
+        <h3><code>draw(ctx, canvas, state, dt)</code></h3>
+        <p>每一帧调用一次，<code>dt</code> 是距上一帧的毫秒数。在这里往 <code>ctx</code>（Canvas 2D 上下文）上画东西。</p>
+      </div>
+      <div class="card">
+        <h3><code>onMouseMove(state, e, canvas)</code> <span class="hint">（可选）</span></h3>
+        <p>不写就没有鼠标交互。写了的话，鼠标在页面上移动时会被调用，可以用来做跟随光标的效果（内置的 Particles 效果就是这样用的）。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="cfg">
+  <div class="wrap">
+    <h2>cfg 字段</h2>
+    <p class="hint">这些都是设置页里对应控件的当前值，用户随时可以改，你的动效应该实时响应，不用自己另外做设置界面。</p>
+    <div class="grid api-grid">
+      <div class="card"><h3><code>color</code></h3><p>前景色（十六进制）</p></div>
+      <div class="card"><h3><code>bgColor</code></h3><p>背景色（十六进制）</p></div>
+      <div class="card"><h3><code>density</code></h3><p>密度，0-100，例如粒子/线条的数量</p></div>
+      <div class="card"><h3><code>speed</code></h3><p>速度，0-100，动画播放快慢</p></div>
+      <div class="card"><h3><code>text</code></h3><p>文本内容（打字机等效果会用到）</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="helpers">
+  <div class="wrap">
+    <h2>辅助函数</h2>
+    <p>代码是独立编译的，拿不到 PageDye 内部的私有函数，需要通过 <code>window.PageDyeEffects.helpers</code> 调用：</p>
+    <div class="grid api-grid">
+      <div class="card">
+        <h3><code>helpers.hexToRgba(hex, alpha)</code></h3>
+        <p>十六进制颜色转 <code>rgba(...)</code> 字符串，方便画半透明的线条/填充。</p>
+      </div>
+      <div class="card">
+        <h3><code>helpers.effectSpeedMultiplier(speed)</code></h3>
+        <p>把 0-100 的速度值映射成 0.4x-2x 的倍率，内置效果都用它来统一"慢/正常/快"的手感。</p>
+      </div>
+      <div class="card">
+        <h3><code>helpers.clampPercent(n, fallback)</code></h3>
+        <p>把一个数字夹到 0-100 范围，非法值时退回 <code>fallback</code>。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="example">
+  <div class="wrap">
+    <h2>完整示例</h2>
+    <p>一个跟随密度/速度呼吸的圆点——设置页新建动效时选「空白骨架」模板就是这段代码：</p>
+    <pre><code>return {
+  init(cfg) {
+    return { width: 0, height: 0, t: 0, cfg };
+  },
+  resize(state, width, height) {
+    state.width = width;
+    state.height = height;
+  },
+  draw(ctx, canvas, state, dt) {
+    const { width, height, cfg } = state;
+    if (!width || !height) return;
+    state.t += dt;
+
+    ctx.fillStyle = cfg.bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    const helpers = window.PageDyeEffects.helpers;
+    const speedMul = helpers.effectSpeedMultiplier(cfg.speed);
+    const r = 20 + (cfg.density / 100) * 40 + 10 * Math.sin(state.t * 0.003 * speedMul);
+    ctx.fillStyle = cfg.color;
+    ctx.beginPath();
+    ctx.arc(width / 2, height / 2, Math.max(4, r), 0, Math.PI * 2);
+    ctx.fill();
+  }
+};</code></pre>
+  </div>
+</section>
+
+<section id="how-to">
+  <div class="wrap">
+    <h2>怎么用</h2>
+    <ol>
+      <li>打开扩展的设置页，侧边栏「自定义动效」</li>
+      <li>点「新建自定义动效」，从空白骨架开始，或者选 Waves / Particles 源码模板直接改</li>
+      <li>右侧/下方的画布会实时预览；写错了会有报错提示，不会让预览崩掉</li>
+      <li>保存后，回到任意网站的编辑面板，「Effect」下拉里会多出这个动效，选中即可</li>
+      <li>想分享给别人？编辑页里有「导出」按钮，导出一个 JSON 文件，对方在自己的设置页「导入」就行</li>
+    </ol>
+  </div>
+</section>
+
+<section id="safety">
+  <div class="wrap">
+    <h2>安全说明</h2>
+    <p>代码在本地编译执行（<code>new Function</code>），从不上传、不联网获取——和已有的「自定义 CSS」注入是同一个信任边界：只在你自己选中该动效的网站上运行，不会被远程代码替换。但它没有沙箱隔离，写一个死循环的 <code>draw()</code> 会卡住那个标签页，这点和在浏览器控制台里直接跑代码是一样的风险，请只运行你自己写的或信任来源的代码。</p>
+    <p class="hint">动效运行时出错会被自动接住：画面定格在最后一帧并停止，不会刷屏报错或把整个页面弄崩，方便你在编辑器里一眼看出问题在哪。</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>MIT License · <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" rel="noopener">GitHub</a> · <a href="index.html">返回首页</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

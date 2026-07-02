@@ -11,15 +11,40 @@
 
 <header class="hero">
   <div class="wrap">
-    <div class="badge">v0.5.5</div>
+    <div class="badge">v0.6</div>
     <h1>PageDye</h1>
     <p class="tagline">给任意网站设置自定义背景——纯色、渐变、图片或动态特效壁纸。按站点独立保存，完全本地，无追踪、无网络请求。</p>
     <div class="cta-row">
       <a class="btn btn-primary" href="#desktop-install">下载扩展版</a>
       <a class="btn btn-outline" href="#lite-install">安装 PageDye Lite（手机 / 平板）</a>
     </div>
+    <p class="hint" style="margin-top:18px;">👉 不想安装？页面右下角就有一个可以直接试用的 PageDye，改的就是这个网站自己的背景。</p>
   </div>
 </header>
+
+<section id="editions" class="editions">
+  <div class="wrap">
+    <h2>三种使用方式</h2>
+    <p class="hint">核心渲染逻辑三者共享，设置也能互相导入备份，选一种最适合你的场景就行。</p>
+    <div class="grid">
+      <div class="card">
+        <h3>体验版<span class="edition-tag">网页里，即开即用</span></h3>
+        <p>基于 PageDye Lite 实现，嵌在这个网站里——右下角悬浮按钮点开就是完整设置面板，改的是本页面自己的背景，不用装任何东西。刷新页面后设置会还原，适合先看看效果长什么样。</p>
+        <a class="btn btn-outline" id="try-demo-btn" href="#">👉 现在就试试</a>
+      </div>
+      <div class="card">
+        <h3>PageDye Lite<span class="edition-tag">手机 / 平板 / Safari</span></h3>
+        <p>单文件用户脚本，通过 Tampermonkey 等脚本管理器安装，每个网站的设置都会独立保存下来，长期用、切网站都记得住。不含完整版的多站点管理页面和跨标签页实时同步。</p>
+        <a class="btn btn-outline" href="#lite-install">查看安装方式</a>
+      </div>
+      <div class="card">
+        <h3>完整版<span class="edition-tag">Chrome / Edge / Firefox 扩展</span></h3>
+        <p>浏览器扩展，功能最全：独立设置页面可以统一管理所有站点的壁纸，支持跨标签页实时同步和右键菜单快捷入口，适合桌面日常使用。</p>
+        <a class="btn btn-outline" href="#desktop-install">查看安装方式</a>
+      </div>
+    </div>
+  </div>
+</section>
 
 <section class="features">
   <div class="wrap">
@@ -27,7 +52,7 @@
     <div class="grid">
       <div class="card">
         <h3>多种背景类型</h3>
-        <p>纯色、线性/径向渐变、图片，或五种黑白动态特效壁纸（Matrix 雨、粒子、波浪、星空、水波纹）</p>
+        <p>纯色、线性/径向渐变、图片，或 16 种动态特效壁纸（Matrix 雨、粒子、极光、雪花、打字机等）</p>
       </div>
       <div class="card">
         <h3>磨砂玻璃</h3>
@@ -48,6 +73,11 @@
       <div class="card">
         <h3>完全本地</h3>
         <p>所有设置存储在浏览器本地，不联网、不追踪，支持导出/导入备份</p>
+      </div>
+      <div class="card">
+        <h3>自定义动效 API <span class="badge-new">v0.6</span></h3>
+        <p>在设置页里编写自己的 Canvas 动效，实时预览，和内置的 16 种一样直接在任意站点选用。仅扩展版支持。</p>
+        <a class="card-link" href="custom-effects.html">查看 API 文档 →</a>
       </div>
     </div>
   </div>
@@ -120,5 +150,18 @@
   </div>
 </footer>
 
+<script src="pagedye-widget.js" defer></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('try-demo-btn');
+    if (!btn) return;
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const host = document.getElementById('pagedye-embed-panel-host');
+      const gear = host && host.shadowRoot && host.shadowRoot.querySelector('[data-action="toggle-panel"]');
+      if (gear) gear.click();
+    });
+  });
+</script>
 </body>
 </html>

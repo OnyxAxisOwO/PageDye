@@ -1,38 +1,38 @@
 :root {
-  --primary-color: #2563eb;
+  --primary-color: #18181b;
   --primary-color-text: #ffffff;
-  --primary-hover: #1d4ed8;
-  --bg-color: #f8fafc;
-  --bg-outer: #f1f5f9;
-  --text-color: #0f172a;
-  --text-secondary: #475569;
-  --border-color: #e2e8f0;
+  --primary-hover: #3f3f46;
+  --bg-color: #fafafa;
+  --bg-outer: #f4f4f5;
+  --text-color: #18181b;
+  --text-secondary: #52525b;
+  --border-color: #e4e4e7;
   --radius: 12px;
   --spacing: 16px;
   --sidebar-width: 240px;
-  
-  --surface-bg: #f1f5f9;
+
+  --surface-bg: #f4f4f5;
   --surface-card: #ffffff;
   --sidebar-bg: #ffffff;
-  --input-focus-shadow: rgba(37, 99, 235, 0.1);
+  --input-focus-shadow: rgba(24, 24, 27, 0.1);
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
   --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
   --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.03);
-  
+
   --danger-bg: rgba(239, 68, 68, 0.08);
   --danger-text: #dc2626;
   --danger-border: #fecaca;
-  
-  --primary-gradient: linear-gradient(135deg, var(--primary-color) 0%, #a855f7 100%);
-  --accent-glow: 0 0 12px rgba(37, 99, 235, 0.3);
-  --accent-glow-large: 0 8px 24px rgba(37, 99, 235, 0.3);
-  --table-hover-bg: rgba(37, 99, 235, 0.02);
-  
-  --badge-color-bg: rgba(59, 130, 246, 0.15);
+
+  --primary-gradient: linear-gradient(135deg, #18181b 0%, #71717a 100%);
+  --accent-glow: 0 0 12px rgba(24, 24, 27, 0.25);
+  --accent-glow-large: 0 8px 24px rgba(24, 24, 27, 0.25);
+  --table-hover-bg: rgba(24, 24, 27, 0.03);
+
+  --badge-color-bg: rgba(24, 24, 27, 0.1);
   --badge-color-text: var(--primary-color);
-  --badge-image-bg: rgba(168, 85, 247, 0.15);
-  --badge-image-text: #a855f7;
-  
+  --badge-image-bg: rgba(113, 113, 122, 0.15);
+  --badge-image-text: #52525b;
+
   --toast-bg: rgba(15, 23, 42, 0.9);
   --toast-text: #ffffff;
 }
@@ -263,6 +263,52 @@ body {
   outline: none;
 }
 
+.custom-effects-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.custom-effects-toolbar .btn {
+  width: auto;
+  gap: 8px;
+}
+
+.effect-error-banner {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger-text);
+  font-size: 12.5px;
+  line-height: 1.5;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.effect-preview-box {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  background: #000;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.effect-preview-box canvas {
+  width: 280px;
+  height: 160px;
+  border-radius: 4px;
+}
+
+.effect-actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 /* Tables styling */
 .table-card {
   padding: 0;
@@ -273,13 +319,13 @@ body {
   overflow-x: auto;
 }
 
-.sites-table {
+.sites-table, .effects-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
 }
 
-.sites-table th {
+.sites-table th, .effects-table th {
   padding: 14px 20px;
   border-bottom: 1px solid var(--border-color);
   font-size: 12px;
@@ -289,18 +335,18 @@ body {
   background: var(--surface-bg);
 }
 
-.sites-table td {
+.sites-table td, .effects-table td {
   padding: 14px 20px;
   border-bottom: 1px solid var(--border-color);
   font-size: 14px;
   vertical-align: middle;
 }
 
-.sites-table tr:last-child td {
+.sites-table tr:last-child td, .effects-table tr:last-child td {
   border-bottom: none;
 }
 
-.sites-table tr:hover td {
+.sites-table tr:hover td, .effects-table tr:hover td {
   background: var(--table-hover-bg);
 }
 
@@ -748,8 +794,8 @@ body {
     font-size: 16px;
   }
 
-  .sites-table th, 
-  .sites-table td {
+  .sites-table th, .effects-table th,
+  .sites-table td, .effects-table td {
     padding: 10px 12px;
     white-space: nowrap;
   }
@@ -1877,6 +1923,11 @@ input:checked + .slider.round:before {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.edit-actions-right .btn {
+  width: auto;
+  min-width: 80px;
 }
 
 .ghost-link-btn {

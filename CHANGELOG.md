@@ -2,6 +2,19 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.6.0] - 2026-07-02
+
+### Added
+- **Custom Effects API (extension only)**: write your own animated Canvas wallpaper and use it on any site next to the 16 built-in effects. A new "Custom Effects" page in the dashboard gives you a code editor with a live preview, two starter templates ported from the real Waves/Particles engines, and per-effect JSON export/import for sharing. Effects are authored as a plain `{init, resize, draw, onMouseMove?}` object — the same shape and `cfg`/density/speed/color controls as the built-ins — compiled locally, never fetched remotely.
+- A broken custom effect fails safe: a runtime error freezes the wallpaper on its last good frame and stops instead of spamming errors or crashing the page.
+- Not available in PageDye Lite (userscript) or the site's demo widget in this release.
+
+## [0.5.6] - 2026-07-02
+
+### Added
+- **11 new animated wallpaper effects**: Aurora, Snow, Bubbles, Constellation, Fireflies, Grid Pulse, Rain, Confetti, Plasma, Vortex, and Typewriter (with a configurable text field) join the original five, across the extension, PageDye Lite, and the site's live demo widget — bringing the total to 16.
+- **Site "三种使用方式" section**: the marketing site now explains the differences between the live demo widget, PageDye Lite, and the full extension, with a direct link to try the demo widget in place.
+
 ## [0.5.5] - 2026-07-02
 
 ### Fixed

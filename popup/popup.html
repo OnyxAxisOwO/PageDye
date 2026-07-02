@@ -258,22 +258,52 @@
                 <option value="waves" selected data-i18n="effectWaves">Waves</option>
                 <option value="starfield" data-i18n="effectStarfield">Starfield</option>
                 <option value="ripple" data-i18n="effectRipple">Ripple</option>
+                <option value="aurora" data-i18n="effectAurora">Aurora</option>
+                <option value="snow" data-i18n="effectSnow">Snow</option>
+                <option value="bubbles" data-i18n="effectBubbles">Bubbles</option>
+                <option value="constellation" data-i18n="effectConstellation">Constellation</option>
+                <option value="fireflies" data-i18n="effectFireflies">Fireflies</option>
+                <option value="gridpulse" data-i18n="effectGridPulse">Grid Pulse</option>
+                <option value="rain" data-i18n="effectRain">Rain</option>
+                <option value="confetti" data-i18n="effectConfetti">Confetti</option>
+                <option value="plasma" data-i18n="effectPlasma">Plasma</option>
+                <option value="vortex" data-i18n="effectVortex">Vortex</option>
+                <option value="typewriter" data-i18n="effectTypewriter">Typewriter</option>
+              </select>
+              <button type="button" id="manage-custom-effects-link" class="ghost-link-btn" data-i18n="manageCustomEffects">Manage custom effects…</button>
+            </div>
+
+            <div class="control-group hidden" id="effect-text-control">
+              <label for="effect-text" data-i18n="effectText">Text</label>
+              <input type="text" id="effect-text" value="PageDye" placeholder="PageDye">
+            </div>
+
+            <div class="control-group">
+              <label for="effect-color-scheme" data-i18n="effectColorScheme">Color Preset</label>
+              <p class="hint" data-i18n="effectColorSchemeHint">Auto follows your system's light/dark setting live.</p>
+              <select id="effect-color-scheme">
+                <option value="auto" selected data-i18n="effectSchemeAuto">Auto</option>
+                <option value="light" data-i18n="effectSchemeLight">Light</option>
+                <option value="dark" data-i18n="effectSchemeDark">Dark</option>
+                <option value="custom" data-i18n="effectSchemeCustom">Custom</option>
               </select>
             </div>
 
-            <div class="control-group">
-              <label for="effect-color" data-i18n="effectColor">Color</label>
-              <div class="color-input-wrapper">
-                <input type="color" id="effect-color" value="#ffffff">
-                <input type="text" id="effect-color-text" value="#ffffff">
+            <div id="effect-color-custom-control" class="hidden">
+              <div class="control-group">
+                <label for="effect-color" data-i18n="effectColor">Color</label>
+                <div class="color-input-wrapper">
+                  <input type="color" id="effect-color" value="#ffffff">
+                  <input type="text" id="effect-color-text" value="#ffffff">
+                </div>
               </div>
-            </div>
 
-            <div class="control-group">
-              <label for="effect-bg-color" data-i18n="effectBgColor">Background Color</label>
-              <div class="color-input-wrapper">
-                <input type="color" id="effect-bg-color" value="#000000">
-                <input type="text" id="effect-bg-color-text" value="#000000">
+              <div class="control-group">
+                <label for="effect-bg-color" data-i18n="effectBgColor">Background Color</label>
+                <div class="color-input-wrapper">
+                  <input type="color" id="effect-bg-color" value="#000000">
+                  <input type="text" id="effect-bg-color-text" value="#000000">
+                </div>
               </div>
             </div>
 
