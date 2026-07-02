@@ -1,8 +1,20 @@
 {
   "manifest_version": 3,
   "name": "PageDye - Custom Website Backgrounds",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Customize the background of any website with images or colors.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "pagedye@onyxaxisowo.github.io",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  },
   "permissions": [
     "storage",
     "activeTab",

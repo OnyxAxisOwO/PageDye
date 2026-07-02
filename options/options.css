@@ -93,6 +93,11 @@
   background: var(--text-secondary);
 }
 
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -1023,6 +1028,16 @@ input[type="range"]::-webkit-slider-thumb {
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  border: none;
+}
+
 /* Advanced Filters Section */
 #edit-advanced-filters {
   margin-top: 4px;
@@ -1098,6 +1113,11 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .filter-slider-item input[type="range"]::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+}
+
+.filter-slider-item input[type="range"]::-moz-range-thumb {
   width: 14px;
   height: 14px;
 }

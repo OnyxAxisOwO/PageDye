@@ -2,6 +2,11 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.5.2] - 2026-07-02
+
+### Added
+- **Firefox Support**: PageDye now runs natively in Firefox 140+ and Firefox for Android 142+, alongside Chrome, Edge and other Chromium browsers. Added `browser_specific_settings.gecko` manifest keys, `::-moz-range-thumb` styling for range sliders, and standard `scrollbar-width`/`scrollbar-color` for cross-browser scrollbar styling.
+
 ## [0.5.1] - 2026-07-02
 
 ### Fixed
