@@ -1,5 +1,7 @@
 # PageDye
 
+官网：[pagedye.pages.dev](https://pagedye.pages.dev)
+
 给任意网站设置自定义背景——纯色、渐变、图片或动态特效壁纸，按站点独立保存，完全本地、无追踪、无网络请求。
 
 支持 **Chrome / Edge / Brave** 等 Chromium 内核浏览器，以及 **Firefox**（含 Firefox for Android）。手机 / 平板可以用精简的 **PageDye Lite** 用户脚本（Android 上的 Edge / Firefox、iOS/iPadOS 上的 Safari）。
@@ -16,6 +18,10 @@
 - **设置面板**：站点管理、备份/还原（含本地图片）、一键清空所有站点配置
 
 ## 安装
+
+最简单的方式是直接访问官网 **[pagedye.pages.dev](https://pagedye.pages.dev)**，桌面端下载扩展包、手机 / 平板端一键安装 PageDye Lite，页面上都有对应的按钮和分步说明。
+
+也可以按下面的方式手动安装。
 
 扩展尚未上架各浏览器商店，目前需要手动加载已解压的扩展包。
 
@@ -38,6 +44,8 @@
 ## 手机 / 平板安装（PageDye Lite）
 
 手机浏览器大多没有完整扩展开发者模式，PageDye 额外提供了一个精简的 [**PageDye Lite**](userscript/pagedye.user.js) 用户脚本（UserScript）版本，通过脚本管理器运行，核心渲染逻辑和正式扩展版共享，功能是完整版的子集（多站点仪表盘、跨标签页实时联动、右键菜单入口等在脚本内说明里列了取舍）。
+
+推荐直接在手机浏览器打开 **[pagedye.pages.dev](https://pagedye.pages.dev)**，点击**安装 PageDye Lite** 按钮一键安装（前提是已经装好脚本管理器，见下）；也可以按下面的步骤手动安装。
 
 ### Android — Edge / Firefox
 
