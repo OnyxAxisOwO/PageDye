@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PageDye Lite
 // @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.5.3
+// @version      0.5.4
 // @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
 // @author       PageDye
 // @match        *://*/*
@@ -40,7 +40,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.5.3';
+  const VERSION = '0.5.4';
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
@@ -1117,6 +1117,7 @@
     } else if (e.type === 'image') {
       body += textRow('图片 URL', 'value', e.value && e.value.startsWith('http') ? e.value : '', 'https://...');
       body += `<div class="pd-row"><div class="pd-row-head"><span>或上传本地图片</span></div><input type="file" accept="image/*" data-file="1" /></div>`;
+      if (e.value) body += `<button class="pd-btn-secondary" data-action="clear-image">✕ 删除当前图片</button>`;
       body += selectRow('尺寸', 'style.size', [['cover', '铺满(cover)'], ['contain', '完整显示(contain)'], ['auto', '原始大小']], (e.style && e.style.size) || 'cover');
       body += checkboxRow('平铺重复', 'style.repeat', !!(e.style && e.style.repeat));
       body += checkboxRow('固定不随页面滚动', 'style.fixed', !!(e.style && e.style.fixed));
@@ -1315,6 +1316,12 @@
       applyGearStyle();
       scheduleSaveGlobal();
       renderPanel();
+      return;
+    }
+    if (action === 'clear-image') {
+      const editable = getEditable();
+      editable.value = '';
+      liveApply(); scheduleSave(); renderPanel();
       return;
     }
     if (action === 'set-tab') { ui.tab = btn.dataset.value; renderPanel(); return; }

@@ -2,6 +2,11 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.5.4] - 2026-07-02
+
+### Fixed
+- **PageDye Lite: no way to remove an uploaded image**: On touch devices (iPad, etc.) there was no equivalent of the full extension's "remove image" button once a local image was uploaded. Added a "✕ 删除当前图片" button under the image type editor that clears the current image.
+
 ## [0.5.3] - 2026-07-02
 
 ### Added
