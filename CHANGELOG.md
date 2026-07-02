@@ -2,6 +2,14 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.5.3] - 2026-07-02
+
+### Added
+- **Mobile install docs**: README now covers installing PageDye Lite on Android (Edge / Firefox, both of which now support installing Tampermonkey from their extension stores) and iOS/iPadOS Safari (via the Userscripts app).
+
+### Changed
+- **PageDye Lite**: renamed the button-customization tab to "高级设置" (Advanced Settings) and moved backup export/import/reset and the about/version line into it; split "allow dragging" from "edge-snap hide" into independent toggles; fixed edge-snap hiding to dock flush against the screen edge instead of a barely-visible transform; capped the settings panel height so it stays a compact scrollable sheet on phones.
+
 ## [0.5.2] - 2026-07-02
 
 ### Added

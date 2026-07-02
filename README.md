@@ -2,7 +2,7 @@
 
 给任意网站设置自定义背景——纯色、渐变、图片或动态特效壁纸，按站点独立保存，完全本地、无追踪、无网络请求。
 
-支持 **Chrome / Edge / Brave** 等 Chromium 内核浏览器，以及 **Firefox**（含 Firefox for Android）。
+支持 **Chrome / Edge / Brave** 等 Chromium 内核浏览器，以及 **Firefox**（含 Firefox for Android）。手机 / 平板可以用精简的 **PageDye Lite** 用户脚本（Android 上的 Edge / Firefox、iOS/iPadOS 上的 Safari）。
 
 ## 功能特性
 
@@ -34,6 +34,26 @@
 1. 地址栏输入 `about:debugging#/runtime/this-firefox`。
 2. 点击**临时载入附加组件…**。
 3. 选择解压后文件夹内的 `manifest.json`。
+
+## 手机 / 平板安装（PageDye Lite）
+
+手机浏览器大多没有完整扩展开发者模式，PageDye 额外提供了一个精简的 [**PageDye Lite**](userscript/pagedye.user.js) 用户脚本（UserScript）版本，通过脚本管理器运行，核心渲染逻辑和正式扩展版共享，功能是完整版的子集（多站点仪表盘、跨标签页实时联动、右键菜单入口等在脚本内说明里列了取舍）。
+
+### Android — Edge / Firefox
+
+1. 安装脚本管理器 [Tampermonkey](https://www.tampermonkey.net/)：Edge、Firefox 移动版现在都已支持在扩展/附加组件商店里直接搜索安装 Tampermonkey。
+2. 打开 Tampermonkey，新建一个脚本。
+3. 打开 [`userscript/pagedye.user.js`](userscript/pagedye.user.js) 文件，全选复制其内容，粘贴进去覆盖默认模板，保存。
+
+> Chrome 移动版官方不支持任何扩展，无法安装 Tampermonkey；需要用 Chromium 内核浏览器的话可以换 Edge、Firefox，或 Kiwi Browser 等支持扩展的第三方分支。
+
+### iOS / iPadOS — Safari
+
+1. App Store 搜索安装 **Userscripts**（作者 Quoid，免费开源）。
+2. 设置 → Safari → 扩展 → 启用 **Userscripts**，并允许在所有网站上运行。
+3. 打开 [`userscript/pagedye.user.js`](userscript/pagedye.user.js) 复制内容，在 Userscripts App 里新建脚本并粘贴保存。
+
+安装完成后，打开任意网站，右下角会出现一个悬浮按钮，点开即为设置面板；按钮的颜色、大小、图标、拖动、贴边隐藏都可以在面板的**高级设置**标签页里自定义。
 
 ## 使用
 
