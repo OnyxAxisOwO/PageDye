@@ -1178,7 +1178,7 @@
     return html;
   }
 
-  function renderButtonSection() {
+  function renderAdvancedSection() {
     const g = globalConfig;
     let html = `<div class="pd-subhead">悬浮按钮外观</div>`;
     html += colorRow('按钮颜色', 'buttonColor', g.buttonColor, { scope: 'global' });
@@ -1190,6 +1190,14 @@
     html += `<div class="pd-hint">开启后可以直接拖动悬浮按钮,松手会自动吸附到屏幕左侧或右侧最近的边。</div>`;
     html += checkboxRow('贴边隐藏(像悬浮球一样)', 'edgeSnap', !!g.edgeSnap, { scope: 'global', structural: true });
     html += `<div class="pd-hint">开启后,面板关闭且按钮静止 ${Math.round(HIDE_DELAY_MS / 1000)} 秒会自动滑出屏幕边缘只留一条边,轻触即可弹回并展开面板。和"允许拖动"是两个独立开关——不开拖动也能用默认位置贴边隐藏。</div>`;
+    html += `<div class="pd-subhead">备份(当前网站)</div>`;
+    html += `<div class="pd-footer-btns">
+      <button data-action="export">导出</button>
+      <button data-action="import">导入</button>
+      <button data-action="reset">重置</button>
+    </div>`;
+    html += `<div class="pd-subhead">关于</div>`;
+    html += `<div class="pd-hint pd-version">PageDye Lite v${VERSION} · ${domain}</div>`;
     return html;
   }
 
@@ -1202,7 +1210,7 @@
       <div class="pd-tabs">
         <button class="${ui.tab === 'wallpaper' ? 'active' : ''}" data-action="set-tab" data-value="wallpaper">壁纸</button>
         <button class="${ui.tab === 'frosted' ? 'active' : ''}" data-action="set-tab" data-value="frosted">磨砂玻璃</button>
-        <button class="${ui.tab === 'button' ? 'active' : ''}" data-action="set-tab" data-value="button">按钮</button>
+        <button class="${ui.tab === 'advanced' ? 'active' : ''}" data-action="set-tab" data-value="advanced">高级设置</button>
       </div>
     `;
 
@@ -1222,18 +1230,12 @@
       html += rangeRow('模糊强度', 'frostedGlass.blur', 0, 30, settings.frostedGlass.blur, 'px', { scope: 'root' });
       html += rangeRow('底色不透明度', 'frostedGlass.opacity', 0, 100, settings.frostedGlass.opacity, '%', { scope: 'root' });
     } else {
-      html += renderButtonSection();
+      html += renderAdvancedSection();
     }
 
     html += `
       <div class="pd-footer">
         <div id="pd-status">已同步</div>
-        <div class="pd-footer-btns">
-          <button data-action="export">导出</button>
-          <button data-action="import">导入</button>
-          <button data-action="reset">重置</button>
-        </div>
-        <div class="pd-version">PageDye Lite v${VERSION} · ${domain}</div>
       </div>
     `;
 
