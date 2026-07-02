@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PageDye — 给任意网站换背景</title>
+<meta name="description" content="给任意网站设置自定义背景——纯色、渐变、图片或动态特效壁纸，按站点独立保存，完全本地、无追踪。支持 Chrome / Edge / Firefox 扩展版，以及 PageDye Lite 用户脚本（Safari / 手机 / 平板）。">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="badge">v0.5.3</div>
+    <h1>PageDye</h1>
+    <p class="tagline">给任意网站设置自定义背景——纯色、渐变、图片或动态特效壁纸。按站点独立保存，完全本地，无追踪、无网络请求。</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#desktop-install">下载扩展版</a>
+      <a class="btn btn-outline" href="#lite-install">安装 PageDye Lite（手机 / 平板）</a>
+    </div>
+  </div>
+</header>
+
+<section class="features">
+  <div class="wrap">
+    <h2>功能</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>多种背景类型</h3>
+        <p>纯色、线性/径向渐变、图片，或五种黑白动态特效壁纸（Matrix 雨、粒子、波浪、星空、水波纹）</p>
+      </div>
+      <div class="card">
+        <h3>磨砂玻璃</h3>
+        <p>为指定卡片/容器元素加毛玻璃背景，透出下层壁纸，模糊度与底色独立可调</p>
+      </div>
+      <div class="card">
+        <h3>昼夜双态联动</h3>
+        <p>跟随系统 <code>prefers-color-scheme</code> 自动切换浅色/深色壁纸</p>
+      </div>
+      <div class="card">
+        <h3>幻灯轮换</h3>
+        <p>多张壁纸按间隔自动轮换，支持随机顺序</p>
+      </div>
+      <div class="card">
+        <h3>背景选择器</h3>
+        <p>网站自身 CSS 遮挡整页背景时，直接把背景应用到任意元素</p>
+      </div>
+      <div class="card">
+        <h3>完全本地</h3>
+        <p>所有设置存储在浏览器本地，不联网、不追踪，支持导出/导入备份</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="desktop-install" class="install">
+  <div class="wrap">
+    <h2>桌面安装</h2>
+    <p class="hint">扩展尚未上架各浏览器商店，目前需要手动加载已解压的扩展包。</p>
+    <a class="btn btn-primary" href="https://github.com/OnyxAxisOwO/PageDye/releases/latest" target="_blank" rel="noopener">前往 GitHub Releases 下载最新版</a>
+
+    <div class="step-block">
+      <h3>Chrome / Edge / Brave 等 Chromium 内核浏览器</h3>
+      <ol>
+        <li>解压下载的压缩包</li>
+        <li>地址栏输入 <code>chrome://extensions</code>（Edge 为 <code>edge://extensions</code>）</li>
+        <li>打开右上角的<strong>开发者模式</strong></li>
+        <li>点击<strong>加载已解压的扩展程序</strong>，选择解压后的文件夹</li>
+      </ol>
+    </div>
+
+    <div class="step-block">
+      <h3>Firefox（需 140+；Firefox for Android 需 142+）</h3>
+      <ol>
+        <li>地址栏输入 <code>about:debugging#/runtime/this-firefox</code></li>
+        <li>点击<strong>临时载入附加组件…</strong></li>
+        <li>选择解压后文件夹内的 <code>manifest.json</code></li>
+      </ol>
+      <p class="hint">扩展未经 Mozilla 签名，只能以"临时扩展"方式加载，浏览器重启后需要重新加载一次。</p>
+    </div>
+  </div>
+</section>
+
+<section id="lite-install" class="install lite">
+  <div class="wrap">
+    <h2>手机 / 平板：PageDye Lite</h2>
+    <p class="hint">精简的用户脚本（UserScript）版本，核心渲染逻辑和扩展版共享，功能是完整版的子集，通过脚本管理器运行。</p>
+
+    <div class="install-primary">
+      <p>已经装好 Tampermonkey / Violentmonkey / Userscripts 的话，直接点这个：</p>
+      <a class="btn btn-primary btn-big" href="https://raw.githubusercontent.com/OnyxAxisOwO/PageDye/main/userscript/pagedye.user.js">一键安装 PageDye Lite</a>
+      <p class="hint">点击后脚本管理器会自动弹出安装确认页面，确认即可，不需要手动复制粘贴代码。</p>
+    </div>
+
+    <div class="step-block">
+      <h3>Android — Edge / Firefox</h3>
+      <ol>
+        <li>在浏览器的扩展 / 附加组件商店搜索并安装 <strong>Tampermonkey</strong></li>
+        <li>回到本页，点上面的<strong>一键安装</strong>按钮</li>
+      </ol>
+      <p class="hint">Chrome 移动版官方不支持任何扩展，装不了 Tampermonkey；可以换用 Edge、Firefox，或 Kiwi Browser 等支持扩展的第三方 Chromium 分支。</p>
+    </div>
+
+    <div class="step-block">
+      <h3>iOS / iPadOS — Safari</h3>
+      <ol>
+        <li>App Store 搜索安装 <strong>Userscripts</strong>（作者 Quoid，免费开源）</li>
+        <li>设置 → Safari → 扩展 → 启用 <strong>Userscripts</strong>，并允许在所有网站上运行</li>
+        <li>回到本页，点上面的<strong>一键安装</strong>按钮</li>
+      </ol>
+    </div>
+
+    <p class="hint">安装完成后，打开任意网站，右下角会出现一个悬浮按钮，点开即为设置面板；按钮的颜色、大小、图标、拖动、贴边隐藏都可以在面板的"高级设置"标签页里自定义。</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>MIT License · <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" rel="noopener">GitHub</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
