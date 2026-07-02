@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PageDye Lite
 // @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.5.0
+// @version      0.5.2
 // @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
 // @author       PageDye
 // @match        *://*/*
@@ -40,8 +40,20 @@
 (function () {
   'use strict';
 
+  const VERSION = '0.5.2';
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
+  const GLOBAL_KEY = 'pagedye-lite:global-ui';
+
+  function defaultGlobalConfig() {
+    return { buttonColor: '#000000', buttonSize: 50, buttonImage: '', edgeSnap: false, side: 'right', topPercent: 88 };
+  }
+  let globalConfig = null;
+  let globalSaveTimer = null;
+  function scheduleSaveGlobal() {
+    clearTimeout(globalSaveTimer);
+    globalSaveTimer = setTimeout(() => GMBridge.set(GLOBAL_KEY, globalConfig), 400);
+  }
 
   // --------------------------------------------------------------------
   // Storage bridge: prefers the promise-based GM.* API (Safari/iOS
@@ -871,7 +883,7 @@
     const box = document.createElement('div');
     Object.assign(box.style, {
       position: 'fixed', zIndex: '2147483647', pointerEvents: 'none',
-      border: '2px solid #4d7cfe', background: 'rgba(77,124,254,0.2)',
+      border: '2px solid #fff', background: 'rgba(255,255,255,0.25)',
       boxSizing: 'border-box', borderRadius: '2px', display: 'none', top: '0', left: '0'
     });
     const label = document.createElement('div');
@@ -888,7 +900,7 @@
     Object.assign(tip.style, {
       position: 'fixed', zIndex: '2147483647', pointerEvents: 'none',
       top: '12px', left: '50%', transform: 'translateX(-50%)',
-      background: '#4d7cfe', color: '#fff',
+      background: '#000', color: '#fff',
       font: '13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       padding: '6px 14px', borderRadius: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
     });
@@ -1166,16 +1178,29 @@
     return html;
   }
 
+  function renderButtonSection() {
+    const g = globalConfig;
+    let html = `<div class="pd-subhead">悬浮按钮外观</div>`;
+    html += colorRow('按钮颜色', 'buttonColor', g.buttonColor, { scope: 'global' });
+    html += rangeRow('按钮大小', 'buttonSize', 36, 72, g.buttonSize, 'px', { scope: 'global' });
+    html += `<div class="pd-row"><div class="pd-row-head"><span>自定义图标图片</span></div><input type="file" accept="image/*" data-file="button-image" /></div>`;
+    if (g.buttonImage) html += `<button class="pd-btn-secondary" data-action="clear-button-image">清除自定义图标,恢复默认齿轮</button>`;
+    html += `<div class="pd-subhead">贴边隐藏</div>`;
+    html += checkboxRow('像悬浮球一样贴边隐藏', 'edgeSnap', !!g.edgeSnap, { scope: 'global', structural: true });
+    html += `<div class="pd-hint">开启后可拖动悬浮按钮到屏幕左右两侧,静止几秒会自动缩到边缘外只留一条边,轻触即可展开,适合手机/平板使用。</div>`;
+    return html;
+  }
+
   function renderPanel() {
     if (!shadow) return;
     const body = shadow.getElementById('pd-body');
     if (!body) return;
 
-    const version = '0.5.0';
     let html = `
       <div class="pd-tabs">
         <button class="${ui.tab === 'wallpaper' ? 'active' : ''}" data-action="set-tab" data-value="wallpaper">壁纸</button>
         <button class="${ui.tab === 'frosted' ? 'active' : ''}" data-action="set-tab" data-value="frosted">磨砂玻璃</button>
+        <button class="${ui.tab === 'button' ? 'active' : ''}" data-action="set-tab" data-value="button">按钮</button>
       </div>
     `;
 
@@ -1188,12 +1213,14 @@
       html += `<button class="pd-btn-secondary" data-action="pick-target">🎯 拾取页面元素</button>`;
       html += `<div class="pd-subhead">自定义 CSS</div>`;
       html += `<textarea data-path="customCss" data-scope="root" placeholder="/* 任意 CSS,注入到当前网站 */">${escapeAttr(settings.customCss || '')}</textarea>`;
-    } else {
+    } else if (ui.tab === 'frosted') {
       html += `<div class="pd-subhead">磨砂玻璃容器</div>`;
       html += textRow('CSS 选择器', 'frostedGlass.selector', settings.frostedGlass.selector, '例如 .card, main', { scope: 'root' });
       html += `<button class="pd-btn-secondary" data-action="pick-frosted">🎯 拾取页面元素</button>`;
       html += rangeRow('模糊强度', 'frostedGlass.blur', 0, 30, settings.frostedGlass.blur, 'px', { scope: 'root' });
       html += rangeRow('底色不透明度', 'frostedGlass.opacity', 0, 100, settings.frostedGlass.opacity, '%', { scope: 'root' });
+    } else {
+      html += renderButtonSection();
     }
 
     html += `
@@ -1204,7 +1231,7 @@
           <button data-action="import">导入</button>
           <button data-action="reset">重置</button>
         </div>
-        <div class="pd-version">PageDye Lite v${version} · ${domain}</div>
+        <div class="pd-version">PageDye Lite v${VERSION} · ${domain}</div>
       </div>
     `;
 
@@ -1216,21 +1243,32 @@
     if (el.dataset && el.dataset.file) {
       if (e.type !== 'change') return;
       const file = el.files && el.files[0];
-      if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
+      if (!file || !file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      if (el.dataset.file === 'button-image') {
+        reader.onload = (ev) => {
+          globalConfig.buttonImage = ev.target.result;
+          applyGearStyle();
+          scheduleSaveGlobal();
+          renderPanel();
+        };
+      } else {
         reader.onload = (ev) => {
           const editable = getEditable();
           editable.value = ev.target.result;
           liveApply(); scheduleSave(); renderPanel();
         };
-        reader.readAsDataURL(file);
       }
+      reader.readAsDataURL(file);
       return;
     }
     if (!el.dataset || !el.dataset.path) return;
 
     const scope = el.dataset.scope || 'edit';
-    const target = scope === 'root' ? settings : scope === 'slideshow' ? settings.slideshow : getEditable();
+    const target = scope === 'root' ? settings
+      : scope === 'slideshow' ? settings.slideshow
+      : scope === 'global' ? globalConfig
+      : getEditable();
 
     let value;
     if (el.type === 'checkbox') {
@@ -1242,8 +1280,14 @@
       value = el.value;
     }
     setPath(target, el.dataset.path, value);
-    liveApply();
-    scheduleSave();
+
+    if (scope === 'global') {
+      applyGearStyle();
+      scheduleSaveGlobal();
+    } else {
+      liveApply();
+      scheduleSave();
+    }
 
     if (el.dataset.structural) {
       renderPanel();
@@ -1258,7 +1302,17 @@
     if (!btn) return;
     const action = btn.dataset.action;
 
-    if (action === 'toggle-panel') { ui.open = !ui.open; applyOpenState(); return; }
+    if (action === 'toggle-panel') {
+      if (suppressNextGearClick) { suppressNextGearClick = false; return; }
+      ui.open = !ui.open; applyOpenState(); return;
+    }
+    if (action === 'clear-button-image') {
+      globalConfig.buttonImage = '';
+      applyGearStyle();
+      scheduleSaveGlobal();
+      renderPanel();
+      return;
+    }
     if (action === 'set-tab') { ui.tab = btn.dataset.value; renderPanel(); return; }
     if (action === 'set-scheme') { ui.scheme = btn.dataset.value; renderPanel(); return; }
     if (action === 'set-mode') {
@@ -1328,7 +1382,127 @@
 
   function applyOpenState() {
     panelEl.style.display = ui.open ? 'flex' : 'none';
-    gearEl.textContent = ui.open ? '✕' : '⚙️';
+    gearEl.classList.toggle('pd-open', ui.open);
+    if (!globalConfig.buttonImage) gearEl.textContent = ui.open ? '✕' : '⚙️';
+    if (ui.open) { clearHideTimer(); unhide(); positionPanel(); }
+    else { scheduleHide(); }
+  }
+
+  // --------------------------------------------------------------------
+  // Floating button appearance, position and "assistive-touch"-style
+  // edge-snap + auto-hide behaviour — all global (cross-site) preferences,
+  // since the button is chrome for the tool itself, not per-site content.
+  // --------------------------------------------------------------------
+  const HIDE_DELAY_MS = 4000;
+  let hideTimer = null;
+  let dragState = null;
+  let suppressNextGearClick = false;
+
+  function clearHideTimer() {
+    if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+  }
+  function scheduleHide() {
+    clearHideTimer();
+    if (!globalConfig.edgeSnap || ui.open) return;
+    hideTimer = setTimeout(() => gearEl.classList.add('pd-peek'), HIDE_DELAY_MS);
+  }
+  function unhide() {
+    clearHideTimer();
+    gearEl.classList.remove('pd-peek');
+  }
+
+  function applyGearStyle() {
+    if (!gearEl) return;
+    const g = globalConfig;
+    const size = g.buttonSize || 50;
+    gearEl.style.width = size + 'px';
+    gearEl.style.height = size + 'px';
+    gearEl.style.fontSize = Math.round(size * 0.42) + 'px';
+    gearEl.style.background = g.buttonImage ? 'transparent' : (g.buttonColor || '#000000');
+    gearEl.innerHTML = '';
+    if (g.buttonImage) {
+      const img = document.createElement('img');
+      img.src = g.buttonImage;
+      Object.assign(img.style, { width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' });
+      gearEl.appendChild(img);
+    } else {
+      gearEl.textContent = ui.open ? '✕' : '⚙️';
+    }
+    applyGearPosition();
+  }
+
+  function applyGearPosition() {
+    if (!gearEl) return;
+    const size = globalConfig.buttonSize || 50;
+    const rawTop = (globalConfig.topPercent / 100) * window.innerHeight - size / 2;
+    const top = Math.max(6, Math.min(window.innerHeight - size - 6, rawTop));
+    gearEl.style.top = top + 'px';
+    gearEl.style.bottom = 'auto';
+    if (globalConfig.side === 'left') {
+      gearEl.style.left = '14px'; gearEl.style.right = 'auto';
+    } else {
+      gearEl.style.right = '14px'; gearEl.style.left = 'auto';
+    }
+    gearEl.dataset.side = globalConfig.side || 'right';
+    if (ui.open) positionPanel();
+  }
+
+  function positionPanel() {
+    if (!gearEl || !panelEl) return;
+    const rect = gearEl.getBoundingClientRect();
+    const margin = 10;
+    if (globalConfig.side === 'left') {
+      panelEl.style.left = rect.left + 'px'; panelEl.style.right = 'auto';
+    } else {
+      panelEl.style.right = (window.innerWidth - rect.right) + 'px'; panelEl.style.left = 'auto';
+    }
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceAbove >= spaceBelow) {
+      panelEl.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+      panelEl.style.top = 'auto';
+      panelEl.style.maxHeight = Math.max(160, spaceAbove - margin * 2) + 'px';
+    } else {
+      panelEl.style.top = (rect.bottom + 8) + 'px';
+      panelEl.style.bottom = 'auto';
+      panelEl.style.maxHeight = Math.max(160, spaceBelow - margin * 2) + 'px';
+    }
+  }
+
+  function onGearPointerDown(e) {
+    if (!globalConfig.edgeSnap) return;
+    unhide();
+    const rect = gearEl.getBoundingClientRect();
+    dragState = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, originLeft: rect.left, originTop: rect.top, moved: false };
+    if (gearEl.setPointerCapture) { try { gearEl.setPointerCapture(e.pointerId); } catch (err) {} }
+  }
+  function onGearPointerMove(e) {
+    if (!dragState || dragState.pointerId !== e.pointerId) return;
+    const dx = e.clientX - dragState.startX, dy = e.clientY - dragState.startY;
+    if (!dragState.moved && Math.hypot(dx, dy) < 6) return;
+    dragState.moved = true;
+    gearEl.classList.add('pd-dragging');
+    const size = globalConfig.buttonSize || 50;
+    const left = Math.max(4, Math.min(window.innerWidth - size - 4, dragState.originLeft + dx));
+    const top = Math.max(4, Math.min(window.innerHeight - size - 4, dragState.originTop + dy));
+    gearEl.style.left = left + 'px'; gearEl.style.right = 'auto';
+    gearEl.style.top = top + 'px'; gearEl.style.bottom = 'auto';
+  }
+  function onGearPointerUp(e) {
+    if (!dragState || dragState.pointerId !== e.pointerId) return;
+    const wasDrag = dragState.moved;
+    gearEl.classList.remove('pd-dragging');
+    if (wasDrag) {
+      suppressNextGearClick = true;
+      const rect = gearEl.getBoundingClientRect();
+      const size = globalConfig.buttonSize || 50;
+      globalConfig.side = (rect.left + size / 2) < window.innerWidth / 2 ? 'left' : 'right';
+      globalConfig.topPercent = Math.max(0, Math.min(100, ((rect.top + size / 2) / window.innerHeight) * 100));
+      scheduleSaveGlobal();
+      applyGearPosition();
+    }
+    dragState = null;
+    scheduleHide();
   }
 
   function buildUI() {
@@ -1340,57 +1514,66 @@
 
     const style = document.createElement('style');
     style.textContent = `
-      * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color-scheme: dark; }
       .pd-gear {
-        position: fixed; bottom: 18px; right: 18px; width: 46px; height: 46px; border-radius: 50%;
+        position: fixed; bottom: 18px; right: 18px; width: 50px; height: 50px; border-radius: 50%;
         background: rgba(20,20,20,0.85); color: #fff; border: 1px solid rgba(255,255,255,0.15);
-        font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+        font-size: 21px; display: flex; align-items: center; justify-content: center; cursor: pointer;
         box-shadow: 0 4px 16px rgba(0,0,0,0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        overflow: hidden; touch-action: none; user-select: none;
+        transition: left 0.25s ease, right 0.25s ease, top 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
       }
+      .pd-gear.pd-dragging { transition: none; }
+      .pd-gear.pd-open { box-shadow: 0 0 0 3px rgba(255,255,255,0.55), 0 4px 16px rgba(0,0,0,0.35); }
+      .pd-gear.pd-peek { opacity: 0.55; }
+      .pd-gear.pd-peek[data-side="right"] { transform: translateX(60%); }
+      .pd-gear.pd-peek[data-side="left"] { transform: translateX(-60%); }
       .pd-panel {
         display: none; flex-direction: column; position: fixed; bottom: 74px; right: 18px;
-        width: 340px; max-height: 76vh; overflow-y: auto; border-radius: 14px;
+        width: 340px; max-width: calc(100vw - 24px); max-height: 76vh; overflow-y: auto; border-radius: 14px;
         background: rgba(24,24,27,0.92); color: #f4f4f5; border: 1px solid rgba(255,255,255,0.1);
         box-shadow: 0 12px 40px rgba(0,0,0,0.45); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
         padding: 14px;
       }
       .pd-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
       .pd-tabs button, .pd-mode-switch button {
-        flex: 1; padding: 6px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
-        background: transparent; color: #d4d4d8; font-size: 12px; cursor: pointer;
+        flex: 1; min-height: 38px; padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
+        background: transparent; color: #d4d4d8; font-size: 13px; cursor: pointer;
       }
-      .pd-tabs button.active, .pd-mode-switch button.active { background: #4d7cfe; color: #fff; border-color: #4d7cfe; }
+      .pd-tabs button.active, .pd-mode-switch button.active { background: #fff; color: #000; border-color: #fff; }
       .pd-mode-switch { display: flex; gap: 6px; margin-bottom: 10px; }
       .pd-subhead { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #a1a1aa; margin: 12px 0 6px; }
-      .pd-row { margin-bottom: 8px; }
+      .pd-hint { font-size: 11px; line-height: 1.5; color: #a1a1aa; margin: 4px 0 8px; }
+      .pd-row { margin-bottom: 10px; }
       .pd-row-head { display: flex; justify-content: space-between; font-size: 12px; color: #d4d4d8; margin-bottom: 4px; }
-      .pd-row-inline { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #d4d4d8; margin-bottom: 8px; cursor: pointer; }
+      .pd-row-inline { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #d4d4d8; margin-bottom: 8px; cursor: pointer; min-height: 36px; }
       .pd-row input[type="text"], .pd-row select, textarea {
-        width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);
-        background: rgba(255,255,255,0.05); color: #fff; font-size: 12px;
+        width: 100%; padding: 9px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);
+        background: rgba(255,255,255,0.05); color: #fff; font-size: 13px;
       }
+      select option { background-color: #1c1c1e; color: #f4f4f5; }
       textarea { min-height: 70px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace; }
-      input[type="range"] { width: 100%; }
-      input[type="file"] { font-size: 11px; color: #d4d4d8; width: 100%; }
+      input[type="range"] { width: 100%; height: 32px; }
+      input[type="file"] { font-size: 12px; color: #d4d4d8; width: 100%; }
       .pd-swatch-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 8px; }
-      .pd-swatch { height: 26px; border-radius: 6px; cursor: pointer; border: 1px solid rgba(255,255,255,0.15); }
+      .pd-swatch { height: 28px; border-radius: 6px; cursor: pointer; border: 1px solid rgba(255,255,255,0.15); }
       .pd-stop-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-      .pd-stop-row button { border: none; background: rgba(255,255,255,0.1); color: #fff; border-radius: 4px; cursor: pointer; padding: 2px 6px; }
+      .pd-stop-row button { border: none; background: rgba(255,255,255,0.1); color: #fff; border-radius: 4px; cursor: pointer; padding: 6px 10px; }
       .pd-slides { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
       .pd-slide-item {
-        padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);
-        background: transparent; color: #d4d4d8; font-size: 11px; cursor: pointer;
+        padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);
+        background: transparent; color: #d4d4d8; font-size: 12px; cursor: pointer;
       }
-      .pd-slide-item.active { background: #4d7cfe; color: #fff; border-color: #4d7cfe; }
+      .pd-slide-item.active { background: #fff; color: #000; border-color: #fff; }
       .pd-btn-secondary {
-        width: 100%; padding: 7px; margin: 4px 0 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
-        background: rgba(255,255,255,0.06); color: #fff; font-size: 12px; cursor: pointer;
+        width: 100%; min-height: 38px; padding: 8px; margin: 4px 0 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
+        background: rgba(255,255,255,0.06); color: #fff; font-size: 13px; cursor: pointer;
       }
       .pd-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; color: #a1a1aa; }
       .pd-footer-btns { display: flex; gap: 6px; margin: 6px 0; }
       .pd-footer-btns button {
-        flex: 1; padding: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);
-        background: transparent; color: #d4d4d8; font-size: 11px; cursor: pointer;
+        flex: 1; min-height: 34px; padding: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);
+        background: transparent; color: #d4d4d8; font-size: 12px; cursor: pointer;
       }
       .pd-version { opacity: 0.6; }
     `;
@@ -1400,6 +1583,10 @@
     gearEl.className = 'pd-gear';
     gearEl.textContent = '⚙️';
     gearEl.setAttribute('data-action', 'toggle-panel');
+    gearEl.addEventListener('pointerdown', onGearPointerDown);
+    gearEl.addEventListener('pointermove', onGearPointerMove);
+    gearEl.addEventListener('pointerup', onGearPointerUp);
+    gearEl.addEventListener('pointercancel', onGearPointerUp);
     shadow.appendChild(gearEl);
 
     panelEl = document.createElement('div');
@@ -1410,16 +1597,20 @@
     shadow.addEventListener('input', handleFieldEvent);
     shadow.addEventListener('change', handleFieldEvent);
     shadow.addEventListener('click', handleClick);
+    window.addEventListener('resize', () => applyGearPosition());
 
+    applyGearStyle();
     renderPanel();
+    scheduleHide();
   }
 
   // --------------------------------------------------------------------
   // Boot
   // --------------------------------------------------------------------
   async function boot() {
-    const stored = await GMBridge.get(STORAGE_KEY);
+    const [stored, storedGlobal] = await Promise.all([GMBridge.get(STORAGE_KEY), GMBridge.get(GLOBAL_KEY)]);
     settings = stored ? Object.assign(defaultSettings(), stored) : defaultSettings();
+    globalConfig = Object.assign(defaultGlobalConfig(), storedGlobal || {});
     await maybeCatchUpSlideshow(settings);
     applyBackground(settings);
 
