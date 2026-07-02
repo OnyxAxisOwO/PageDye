@@ -17,7 +17,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.6.0';
+  const VERSION = '0.6.1';
   const domain = window.location.hostname;
   const STORAGE_KEY = 'pagedye-embed:' + domain;
   const GLOBAL_KEY = 'pagedye-embed:global-ui';
@@ -1926,6 +1926,21 @@
     else { gearEl.style.right = offset + 'px'; gearEl.style.left = 'auto'; }
   }
 
+  // Picks black or white for the gear icon based on the chosen button
+  // color's luminance, so a custom (or the default black) buttonColor
+  // never ends up icon-on-background-same-color invisible — the icon
+  // can't just follow the light/dark theme's --pd-gear-text, since the
+  // background here is the user's own color choice, not the theme's.
+  function contrastColor(hex) {
+    hex = String(hex || '#000000').replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+    const r = parseInt(hex.slice(0, 2), 16) || 0;
+    const g = parseInt(hex.slice(2, 4), 16) || 0;
+    const b = parseInt(hex.slice(4, 6), 16) || 0;
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.55 ? '#000000' : '#ffffff';
+  }
+
   function applyGearStyle() {
     if (!gearEl) return;
     const g = globalConfig;
@@ -1933,6 +1948,7 @@
     gearEl.style.width = size + 'px';
     gearEl.style.height = size + 'px';
     gearEl.style.background = g.buttonImage ? 'transparent' : (g.buttonColor || '#000000');
+    gearEl.style.color = g.buttonImage ? '' : contrastColor(g.buttonColor);
     gearEl.innerHTML = '';
     if (g.buttonImage) {
       const img = document.createElement('img');

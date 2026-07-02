@@ -2,6 +2,11 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.6.1] - 2026-07-02
+
+### Changed
+- **PageDye Lite's settings panel now matches the site demo widget's UI**: flat tabs and emoji icons are replaced with the same collapsible accordion sections, pill-style segmented controls, and outline SVG icons used by the widget — same panel header with a close button, same "start from a template" grouping (mode & slideshow / background / target element & custom CSS under the Wallpaper tab; frosted glass under its own tab; button appearance / drag & edge-snap / backup under Advanced). No settings, storage format, or feature was removed — this is a visual-only rebuild, and Lite's backup files remain interchangeable with the extension and the site widget's.
+
 ## [0.6.0] - 2026-07-02
 
 ### Added
