@@ -7,7 +7,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       navCustomEffects: "Custom Effects",
       navAppearance: "Appearance",
       navBackup: "Backup & Restore",
+      navAi: "AI Pick (Beta)",
       navAbout: "About",
+      aiTitle: "AI Pick (Beta)",
+      aiHint: "Configure an OpenAI-compatible endpoint so the popup's \"AI Pick\" button can suggest a background selector on tricky sites. Your key and page structure (tags/classes/computed styles, no page text) are sent directly to this endpoint from your browser — no PageDye server involved.",
+      aiBaseUrl: "Base URL",
+      aiBaseUrlHint: "The OpenAI-compatible API root, without a trailing /chat/completions.",
+      aiApiKey: "API Key",
+      aiModel: "Model",
+      aiSaveBtn: "Save AI Settings",
+      aiSaved: "AI settings saved",
       appearanceTitle: "Appearance",
       appearanceHint: "Customize the colors of this dashboard itself (not your websites' backgrounds).",
       pageBackground: "Page Background",
@@ -191,7 +200,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       navCustomEffects: "自定义动效",
       navAppearance: "外观",
       navBackup: "备份与恢复",
+      navAi: "AI 智能识别（测试）",
       navAbout: "关于 PageDye",
+      aiTitle: "AI 智能识别（测试）",
+      aiHint: "配置一个 OpenAI 兼容接口，弹窗里的「AI 智能识别」按钮就能在刁钻网站上自动推荐背景选择器。你的 key 和页面结构信息（标签/class/计算样式，不含正文文本）会直接从你的浏览器发给该接口，不经过任何 PageDye 服务器。",
+      aiBaseUrl: "接口地址",
+      aiBaseUrlHint: "OpenAI 兼容接口的根地址，不要带结尾的 /chat/completions。",
+      aiApiKey: "API Key",
+      aiModel: "模型",
+      aiSaveBtn: "保存 AI 设置",
+      aiSaved: "AI 设置已保存",
       appearanceTitle: "外观",
       appearanceHint: "自定义控制面板本身的配色（不影响您各个网站的背景设置）。",
       pageBackground: "页面背景",
@@ -374,6 +392,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const UI_THEME_KEY = '__pagedye_ui_theme__';
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
+  const AI_CONFIG_KEY = '__pagedye_ai_config__';
   const UI_THEME_DEFAULTS = { pageBg: '#f1f5f9', containerBg: '#ffffff', pageBgImage: null, containerBgImage: null };
   let currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS);
 
@@ -406,6 +425,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     themeContainerBgFileInfo: document.getElementById('theme-container-bg-file-info'),
     themeContainerBgFilename: document.getElementById('theme-container-bg-filename'),
     themeContainerBgRemove: document.getElementById('theme-container-bg-remove'),
+
+    aiBaseUrl: document.getElementById('ai-base-url'),
+    aiApiKey: document.getElementById('ai-api-key'),
+    aiModel: document.getElementById('ai-model'),
+    aiSaveBtn: document.getElementById('ai-save-btn'),
+    aiSaveStatus: document.getElementById('ai-save-status'),
 
     // Edit site controls
     editWpModes: document.getElementsByName('edit-wpMode'),
@@ -492,6 +517,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       const targetId = item.dataset.target;
       document.getElementById(targetId).classList.add('active');
     });
+  });
+
+  // AI Pick settings: load existing config into the form, save on click.
+  (async () => {
+    const data = await chrome.storage.local.get(AI_CONFIG_KEY);
+    const cfg = data[AI_CONFIG_KEY];
+    if (cfg) {
+      els.aiBaseUrl.value = cfg.baseUrl || '';
+      els.aiApiKey.value = cfg.apiKey || '';
+      els.aiModel.value = cfg.model || '';
+    }
+  })();
+
+  els.aiSaveBtn.addEventListener('click', async () => {
+    const cfg = {
+      baseUrl: els.aiBaseUrl.value.trim(),
+      apiKey: els.aiApiKey.value.trim(),
+      model: els.aiModel.value.trim()
+    };
+    await chrome.storage.local.set({ [AI_CONFIG_KEY]: cfg });
+    els.aiSaveStatus.textContent = t('aiSaved');
+    setTimeout(() => { els.aiSaveStatus.textContent = ''; }, 2000);
   });
 
   // Search input filter

@@ -2,6 +2,11 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.7.0] - 2026-07-03 - AI Pick (Beta)
+
+### Added
+- **AI Pick (Beta, extension only)**: an "AI Pick" button next to the manual background selector picker. It samples candidate elements from the page (tag/class/id, computed background, viewport coverage — no page text) and asks a user-configured OpenAI-compatible endpoint to pick the one actually blocking the page background, then applies it like a manual pick. Configure your endpoint's base URL, API key, and model under the new "AI Pick (Beta)" settings page. Off by default — nothing is sent anywhere until you configure it and click the button.
+
 ## [0.6.1] - 2026-07-02
 
 ### Changed

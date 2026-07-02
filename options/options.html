@@ -50,6 +50,13 @@
           </svg>
           <span data-i18n="navBackup">Backup & Restore</span>
         </button>
+        <button type="button" class="nav-item" data-target="section-ai">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a5 5 0 0 0-5 5v1.09A5 5 0 0 0 4 12.5a5 5 0 0 0 3 4.58V19a3 3 0 0 0 3 3h4a3 3 0 0 0 3-3v-1.92a5 5 0 0 0 3-4.58 5 5 0 0 0-3-4.41V7a5 5 0 0 0-5-5Z"></path>
+            <line x1="9" y1="21" x2="15" y2="21"></line>
+          </svg>
+          <span data-i18n="navAi">AI Pick (Beta)</span>
+        </button>
         <button type="button" class="nav-item" data-target="section-about">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
@@ -198,6 +205,35 @@
         </div>
 
         <button type="button" id="theme-reset-btn" class="btn secondary-btn" style="width: auto;" data-i18n="appearanceReset">Reset to Default</button>
+      </section>
+
+      <!-- Section 1.8: AI Pick -->
+      <section id="section-ai" class="content-section">
+        <div class="section-header">
+          <h2 data-i18n="aiTitle">AI Pick (Beta)</h2>
+          <p class="section-subtitle" data-i18n="aiHint">Configure an OpenAI-compatible endpoint so the popup's "AI Pick" button can suggest a background selector on tricky sites. Your key and page structure (tags/classes/computed styles, no page text) are sent directly to this endpoint from your browser — no PageDye server involved.</p>
+        </div>
+
+        <div class="card">
+          <div class="control-group">
+            <label for="ai-base-url" data-i18n="aiBaseUrl">Base URL</label>
+            <p class="hint" data-i18n="aiBaseUrlHint">The OpenAI-compatible API root, without a trailing /chat/completions.</p>
+            <input type="text" id="ai-base-url" placeholder="https://api.openai.com/v1">
+          </div>
+
+          <div class="control-group">
+            <label for="ai-api-key" data-i18n="aiApiKey">API Key</label>
+            <input type="password" id="ai-api-key" placeholder="sk-...">
+          </div>
+
+          <div class="control-group" style="margin-bottom: 0;">
+            <label for="ai-model" data-i18n="aiModel">Model</label>
+            <input type="text" id="ai-model" placeholder="gpt-4o-mini">
+          </div>
+        </div>
+
+        <button type="button" id="ai-save-btn" class="btn primary-btn" style="width: auto;" data-i18n="aiSaveBtn">Save AI Settings</button>
+        <span id="ai-save-status" class="status-text" style="margin-left: 12px;"></span>
       </section>
 
       <!-- Section 2: Backup & Restore -->

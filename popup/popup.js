@@ -127,6 +127,135 @@ function pagedyeElementPicker(settings, domain, fieldPath) {
   document.addEventListener('keydown', onKey, true);
 }
 
+// Self-contained candidate collector for the AI-assisted picker (same
+// injection constraints as pagedyeElementPicker above: no popup-scope
+// references, everything comes back via the return value). Samples a grid
+// of points across the viewport instead of scanning the whole DOM, so it
+// stays cheap even on huge pages, and keeps only elements with an opaque
+// background covering a meaningful chunk of the viewport — those are the
+// ones capable of blocking PageDye's full-page overlay.
+function pagedyeCollectBgCandidates() {
+  function cssEscape(s) {
+    if (window.CSS && CSS.escape) return CSS.escape(s);
+    return String(s).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+  }
+
+  function getSelector(el) {
+    if (!el || el.nodeType !== 1) return '';
+    if (el.id) return '#' + cssEscape(el.id);
+    const parts = [];
+    let node = el;
+    while (node && node.nodeType === 1 && node.tagName.toLowerCase() !== 'html') {
+      if (node.id) { parts.unshift('#' + cssEscape(node.id)); break; }
+      let part = node.tagName.toLowerCase();
+      const classes = Array.from(node.classList).filter((c) => c && !c.startsWith('pagedye'));
+      if (classes.length) {
+        part += '.' + classes.slice(0, 3).map(cssEscape).join('.');
+      } else if (node.parentElement) {
+        const sameTag = Array.from(node.parentElement.children).filter((c) => c.tagName === node.tagName);
+        if (sameTag.length > 1) part += ':nth-of-type(' + (sameTag.indexOf(node) + 1) + ')';
+      }
+      parts.unshift(part);
+      if (node.tagName.toLowerCase() === 'body') break;
+      node = node.parentElement;
+      if (parts.length >= 6) break;
+    }
+    return parts.join(' > ');
+  }
+
+  function isOpaqueColor(c) {
+    const m = c && c.match(/rgba?\(([^)]+)\)/);
+    if (!m) return false;
+    const parts = m[1].split(',').map((s) => parseFloat(s));
+    const a = parts.length > 3 ? parts[3] : 1;
+    return a >= 0.95;
+  }
+
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const viewportArea = vw * vh;
+  const seen = new Set();
+  const candidates = [];
+
+  const cols = 6, rows = 6;
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      const x = (vw * (i + 0.5)) / cols;
+      const y = (vh * (j + 0.5)) / rows;
+      const stack = document.elementsFromPoint(x, y);
+      for (const el of stack) {
+        if (!el || el.nodeType !== 1 || seen.has(el)) continue;
+        seen.add(el);
+        if (el.id && el.id.indexOf('pagedye') === 0) continue;
+        const tag = el.tagName.toLowerCase();
+        if (tag === 'html' || tag === 'body' || tag === 'script' || tag === 'style') continue;
+        const cs = getComputedStyle(el);
+        const hasOpaqueColor = isOpaqueColor(cs.backgroundColor);
+        const hasImage = cs.backgroundImage && cs.backgroundImage !== 'none';
+        if (!hasOpaqueColor && !hasImage) continue;
+        const rect = el.getBoundingClientRect();
+        const coveragePct = Math.round(((rect.width * rect.height) / viewportArea) * 100);
+        if (coveragePct < 3) continue;
+        candidates.push({
+          selector: getSelector(el),
+          tag,
+          id: el.id || undefined,
+          classes: Array.from(el.classList).filter((c) => c && c.indexOf('pagedye') !== 0).slice(0, 4),
+          coveragePct,
+          bg: hasOpaqueColor ? cs.backgroundColor : undefined,
+          hasImage: !!hasImage,
+          zIndex: cs.zIndex !== 'auto' ? cs.zIndex : undefined
+        });
+      }
+    }
+  }
+
+  candidates.sort((a, b) => b.coveragePct - a.coveragePct);
+  return candidates.slice(0, 30);
+}
+
+const PAGEDYE_AI_CONFIG_KEY = '__pagedye_ai_config__';
+
+async function pagedyeGetAiConfig() {
+  const data = await chrome.storage.local.get(PAGEDYE_AI_CONFIG_KEY);
+  return data[PAGEDYE_AI_CONFIG_KEY] || null;
+}
+
+// Sends the sampled candidates (structure/style only, no page text or HTML)
+// to the user-configured OpenAI-compatible endpoint and asks it to pick the
+// one that's actually blocking the page background — a judgment call plain
+// heuristics get wrong on unusual layouts (e.g. a large decorative banner
+// that isn't the real content wrapper).
+async function pagedyeAskAiForSelector(cfg, candidates, pageTitle) {
+  const prompt =
+    'You are helping pick which DOM element to target so a browser extension can paint a custom background behind a website\'s own content instead of the page default one. ' +
+    'Below is a JSON list of candidate elements sampled from the current page, each with a CSS selector, tag, classes, computed background info, and how much of the viewport (%) it covers. ' +
+    'Pick the ONE candidate that is the outermost/main content wrapper actually responsible for covering the page background (not a small decorative element, not an unrelated card/button that happens to have a background). ' +
+    'Reply with ONLY a JSON object of the form {"selector": "<selector string copied exactly from one candidate>"} and nothing else.\n\n' +
+    'Page title: ' + pageTitle + '\n' +
+    'Candidates: ' + JSON.stringify(candidates);
+
+  const res = await fetch(cfg.baseUrl.replace(/\/+$/, '') + '/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + cfg.apiKey
+    },
+    body: JSON.stringify({
+      model: cfg.model || 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0
+    })
+  });
+  if (!res.ok) throw new Error('AI request failed: ' + res.status);
+  const data = await res.json();
+  const text = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  const match = text && text.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('AI response was not JSON');
+  const parsed = JSON.parse(match[0]);
+  if (!parsed.selector) throw new Error('AI response missing selector');
+  return parsed.selector;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   // Translations
   const i18n = {
@@ -191,6 +320,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetSelector: "Background Selector",
       targetSelectorHint: "Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.",
       pickElement: "Pick",
+      aiPickElement: "AI Pick",
+      aiNotConfigured: "Set up an AI provider in Options first",
+      aiAnalyzing: "AI is analyzing the page…",
+      aiNoCandidates: "AI found no background candidates on this page",
+      aiPickApplied: "AI picked a selector",
+      aiPickFailed: "AI pick failed",
       frostedGlass: "Frosted Glass",
       frostedGlassHint: "Pick a card/container element and PageDye makes its background semi-transparent and blurred, so your wallpaper shows through underneath it.",
       frostedBlur: "Blur",
@@ -306,6 +441,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetSelector: "背景选择器",
       targetSelectorHint: "拾取一个元素（或手动输入 CSS 选择器），PageDye 会把颜色/图片直接应用到该元素，而不是整页。留空则为整页背景。",
       pickElement: "拾取",
+      aiPickElement: "AI 智能识别",
+      aiNotConfigured: "请先在设置页配置 AI 服务",
+      aiAnalyzing: "AI 分析中…",
+      aiNoCandidates: "AI 未在此页面找到可用的背景元素",
+      aiPickApplied: "AI 已选出选择器",
+      aiPickFailed: "AI 识别失败",
       frostedGlass: "磨砂玻璃",
       frostedGlassHint: "拾取一个卡片/容器元素，PageDye 会让它的背景变为半透明并加上模糊效果，让底层的壁纸若隐若现地透上来。",
       frostedBlur: "模糊度",
@@ -431,6 +572,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Advanced
     targetSelector: document.getElementById('target-selector'),
     pickBtn: document.getElementById('pick-btn'),
+    aiPickBtn: document.getElementById('ai-pick-btn'),
     frostedSelector: document.getElementById('frosted-selector'),
     frostedPickBtn: document.getElementById('frosted-pick-btn'),
     frostedBlur: document.getElementById('frosted-blur'),
@@ -811,6 +953,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Advanced: element picker
   els.pickBtn.addEventListener('click', startPicker);
   els.frostedPickBtn.addEventListener('click', startFrostedPicker);
+  els.aiPickBtn.addEventListener('click', startAiPick);
 
   // Top-level tabs: Wallpaper vs Frosted Glass
   const panelWallpaper = document.getElementById('panel-wallpaper');
@@ -1817,6 +1960,43 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.log('Cannot start picker on this page', err);
       setSavingState();
       els.statusText.textContent = t('pickerFailed');
+    }
+  }
+
+  // AI-assisted picker: samples candidate elements from the page (via
+  // pagedyeCollectBgCandidates), asks the user-configured LLM which one is
+  // the real background-blocking container, then applies it exactly like a
+  // manual pick. Keeps the popup open for the round trip instead of
+  // closing immediately like startPicker() does, since there's no
+  // in-page listener to apply an async result after the popup is gone.
+  async function startAiPick() {
+    const cfg = await pagedyeGetAiConfig();
+    if (!cfg || !cfg.apiKey || !cfg.baseUrl) {
+      els.statusText.textContent = t('aiNotConfigured');
+      chrome.runtime.openOptionsPage();
+      return;
+    }
+
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) return;
+
+    els.statusText.textContent = t('aiAnalyzing');
+    try {
+      const [{ result: candidates }] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: pagedyeCollectBgCandidates
+      });
+      if (!candidates || !candidates.length) {
+        els.statusText.textContent = t('aiNoCandidates');
+        return;
+      }
+      const selector = await pagedyeAskAiForSelector(cfg, candidates, tab.title || '');
+      els.targetSelector.value = selector;
+      await saveSettings(true);
+      els.statusText.textContent = t('aiPickApplied');
+    } catch (err) {
+      console.log('AI pick failed', err);
+      els.statusText.textContent = t('aiPickFailed');
     }
   }
 });
