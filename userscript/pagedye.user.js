@@ -46,7 +46,7 @@
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
 
   function defaultGlobalConfig() {
-    return { buttonColor: '#000000', buttonSize: 50, buttonImage: '', edgeSnap: false, side: 'right', topPercent: 88 };
+    return { buttonColor: '#000000', buttonSize: 50, buttonImage: '', draggable: false, edgeSnap: false, side: 'right', topPercent: 88 };
   }
   let globalConfig = null;
   let globalSaveTimer = null;
@@ -1185,9 +1185,11 @@
     html += rangeRow('按钮大小', 'buttonSize', 36, 72, g.buttonSize, 'px', { scope: 'global' });
     html += `<div class="pd-row"><div class="pd-row-head"><span>自定义图标图片</span></div><input type="file" accept="image/*" data-file="button-image" /></div>`;
     if (g.buttonImage) html += `<button class="pd-btn-secondary" data-action="clear-button-image">清除自定义图标,恢复默认齿轮</button>`;
-    html += `<div class="pd-subhead">贴边隐藏</div>`;
-    html += checkboxRow('像悬浮球一样贴边隐藏', 'edgeSnap', !!g.edgeSnap, { scope: 'global', structural: true });
-    html += `<div class="pd-hint">开启后可拖动悬浮按钮到屏幕左右两侧,静止几秒会自动缩到边缘外只留一条边,轻触即可展开,适合手机/平板使用。</div>`;
+    html += `<div class="pd-subhead">移动与贴边隐藏</div>`;
+    html += checkboxRow('允许拖动移动按钮位置', 'draggable', !!g.draggable, { scope: 'global' });
+    html += `<div class="pd-hint">开启后可以直接拖动悬浮按钮,松手会自动吸附到屏幕左侧或右侧最近的边。</div>`;
+    html += checkboxRow('贴边隐藏(像悬浮球一样)', 'edgeSnap', !!g.edgeSnap, { scope: 'global', structural: true });
+    html += `<div class="pd-hint">开启后,面板关闭且按钮静止 ${Math.round(HIDE_DELAY_MS / 1000)} 秒会自动滑出屏幕边缘只留一条边,轻触即可弹回并展开面板。和"允许拖动"是两个独立开关——不开拖动也能用默认位置贴边隐藏。</div>`;
     return html;
   }
 
@@ -1394,6 +1396,8 @@
   // since the button is chrome for the tool itself, not per-site content.
   // --------------------------------------------------------------------
   const HIDE_DELAY_MS = 4000;
+  const PEEK_VISIBLE_PX = 14;
+  const EDGE_MARGIN_PX = 14;
   let hideTimer = null;
   let dragState = null;
   let suppressNextGearClick = false;
@@ -1404,11 +1408,26 @@
   function scheduleHide() {
     clearHideTimer();
     if (!globalConfig.edgeSnap || ui.open) return;
-    hideTimer = setTimeout(() => gearEl.classList.add('pd-peek'), HIDE_DELAY_MS);
+    hideTimer = setTimeout(() => { gearEl.classList.add('pd-peek'); applyEdgeOffset(); }, HIDE_DELAY_MS);
   }
   function unhide() {
     clearHideTimer();
-    gearEl.classList.remove('pd-peek');
+    if (gearEl.classList.contains('pd-peek')) {
+      gearEl.classList.remove('pd-peek');
+      applyEdgeOffset();
+    }
+  }
+
+  // Docks the button flush against the real screen edge, leaving only a
+  // small sliver on-screen, instead of a percentage transform — a fixed
+  // sliver width reads as unmistakably "hidden" no matter the button size.
+  function applyEdgeOffset() {
+    if (!gearEl) return;
+    const size = globalConfig.buttonSize || 50;
+    const peeking = gearEl.classList.contains('pd-peek');
+    const offset = peeking ? -(size - PEEK_VISIBLE_PX) : EDGE_MARGIN_PX;
+    if (globalConfig.side === 'left') { gearEl.style.left = offset + 'px'; gearEl.style.right = 'auto'; }
+    else { gearEl.style.right = offset + 'px'; gearEl.style.left = 'auto'; }
   }
 
   function applyGearStyle() {
@@ -1438,14 +1457,11 @@
     const top = Math.max(6, Math.min(window.innerHeight - size - 6, rawTop));
     gearEl.style.top = top + 'px';
     gearEl.style.bottom = 'auto';
-    if (globalConfig.side === 'left') {
-      gearEl.style.left = '14px'; gearEl.style.right = 'auto';
-    } else {
-      gearEl.style.right = '14px'; gearEl.style.left = 'auto';
-    }
-    gearEl.dataset.side = globalConfig.side || 'right';
+    applyEdgeOffset();
     if (ui.open) positionPanel();
   }
+
+  const PANEL_MAX_HEIGHT_PX = 440;
 
   function positionPanel() {
     if (!gearEl || !panelEl) return;
@@ -1456,21 +1472,22 @@
     } else {
       panelEl.style.right = (window.innerWidth - rect.right) + 'px'; panelEl.style.left = 'auto';
     }
+    const cap = Math.min(PANEL_MAX_HEIGHT_PX, window.innerHeight * 0.62);
     const spaceAbove = rect.top;
     const spaceBelow = window.innerHeight - rect.bottom;
     if (spaceAbove >= spaceBelow) {
       panelEl.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
       panelEl.style.top = 'auto';
-      panelEl.style.maxHeight = Math.max(160, spaceAbove - margin * 2) + 'px';
+      panelEl.style.maxHeight = Math.max(200, Math.min(spaceAbove - margin * 2, cap)) + 'px';
     } else {
       panelEl.style.top = (rect.bottom + 8) + 'px';
       panelEl.style.bottom = 'auto';
-      panelEl.style.maxHeight = Math.max(160, spaceBelow - margin * 2) + 'px';
+      panelEl.style.maxHeight = Math.max(200, Math.min(spaceBelow - margin * 2, cap)) + 'px';
     }
   }
 
   function onGearPointerDown(e) {
-    if (!globalConfig.edgeSnap) return;
+    if (!globalConfig.draggable) return;
     unhide();
     const rect = gearEl.getBoundingClientRect();
     dragState = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, originLeft: rect.left, originTop: rect.top, moved: false };
@@ -1525,12 +1542,10 @@
       }
       .pd-gear.pd-dragging { transition: none; }
       .pd-gear.pd-open { box-shadow: 0 0 0 3px rgba(255,255,255,0.55), 0 4px 16px rgba(0,0,0,0.35); }
-      .pd-gear.pd-peek { opacity: 0.55; }
-      .pd-gear.pd-peek[data-side="right"] { transform: translateX(60%); }
-      .pd-gear.pd-peek[data-side="left"] { transform: translateX(-60%); }
+      .pd-gear.pd-peek { opacity: 0.5; }
       .pd-panel {
         display: none; flex-direction: column; position: fixed; bottom: 74px; right: 18px;
-        width: 340px; max-width: calc(100vw - 24px); max-height: 76vh; overflow-y: auto; border-radius: 14px;
+        width: 340px; max-width: calc(100vw - 24px); max-height: 58vh; overflow-y: auto; border-radius: 14px;
         background: rgba(24,24,27,0.92); color: #f4f4f5; border: 1px solid rgba(255,255,255,0.1);
         box-shadow: 0 12px 40px rgba(0,0,0,0.45); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
         padding: 14px;
