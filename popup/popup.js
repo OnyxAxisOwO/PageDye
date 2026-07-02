@@ -1602,7 +1602,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (radio) radio.checked = true;
     updateModeUI('single');
 
-    document.querySelector('input[value="none"]').click();
+    // Clear every field collectSettings() reads *before* anything below
+    // triggers a save (the "none" click and clearFile() both synchronously
+    // save via triggerImmediateSave()). Reading these fields after the save
+    // fires would persist their stale pre-reset values — targetSelector,
+    // customCss and frostedGlass live outside populateForm()/currentSettings
+    // and are otherwise only cleared afterwards, too late to be picked up.
     els.opacity.value = 100;
     els.blur.value = 0;
     els.effectKind.value = 'waves';
@@ -1612,7 +1617,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.effectDensityVal.textContent = '50%';
     els.effectSpeed.value = 50;
     els.effectSpeedVal.textContent = '50%';
-    clearFile();
     els.imageUrl.value = '';
     els.targetSelector.value = '';
     els.customCss.value = '';
@@ -1622,6 +1626,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.frostedOpacity.value = 55;
     els.frostedOpacityVal.textContent = '55%';
     if (cssEditorController) cssEditorController.update();
+
+    document.querySelector('input[value="none"]').click();
+    clearFile();
 
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab) {

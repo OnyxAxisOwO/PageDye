@@ -299,6 +299,12 @@
     };
 
     if (settings.type === 'color') {
+      // Colors have no "fixed position" toggle (unlike images) — they always
+      // cover the fixed viewport. Reset explicitly: `root` is a persistent,
+      // reused element, and a prior non-fixed image apply may have left
+      // position:absolute / height:100% behind (see the image branch below).
+      root.style.position = 'fixed';
+      root.style.height = '100vh';
       if (settings.colorMode === 'gradient' && settings.gradient) {
         const gradient = settings.gradient;
         style.backgroundColor = 'transparent';

@@ -1,4 +1,6 @@
 :root {
+  color-scheme: light dark;
+
   --bg: #0a0a0a;
   --bg-alt: #141414;
   --card: #1a1a1a;
@@ -7,6 +9,21 @@
   --text-dim: #a1a1aa;
   --accent: #ffffff;
   --accent-text: #000000;
+  --code-bg: rgba(255,255,255,0.08);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fafafa;
+    --bg-alt: #f2f2f3;
+    --card: #ffffff;
+    --border: rgba(0,0,0,0.1);
+    --text: #18181b;
+    --text-dim: #52525b;
+    --accent: #18181b;
+    --accent-text: #ffffff;
+    --code-bg: rgba(0,0,0,0.05);
+  }
 }
 
 * { box-sizing: border-box; }
@@ -27,7 +44,7 @@ html, body {
 }
 
 code {
-  background: rgba(255,255,255,0.08);
+  background: var(--code-bg);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 1px 6px;

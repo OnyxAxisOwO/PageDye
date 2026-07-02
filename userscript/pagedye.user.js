@@ -1377,7 +1377,7 @@
     if (action === 'add-stop') {
       const e2 = getEditable();
       e2.gradient.stops.push({ color: '#ffffff', position: 100 });
-      scheduleSave(); renderPanel();
+      liveApply(); scheduleSave(); renderPanel();
       return;
     }
     if (action === 'remove-stop') {
