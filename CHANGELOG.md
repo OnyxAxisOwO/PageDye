@@ -2,6 +2,12 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.6.2] - 2026-07-03
+
+### Fixed
+- **PageDye Lite panel could be covered by page dialogs/popovers and steal clicks**: the panel already re-parented itself to win z-index ties, but native `<dialog>` and Popover API elements (cookie banners, site modals) render in the browser's top layer, which always wins over z-index regardless of value. The panel now also enters the top layer itself (via the Popover API where supported) and re-asserts its position every time it opens, so it stays clickable above such overlays.
+- **PageDye Lite panel background was translucent with a blur**: switched to a fully opaque background and removed the backdrop blur, so page content behind the panel can no longer bleed through or be mistaken for panel controls.
+
 ## [0.6.1] - 2026-07-02
 
 ### Changed

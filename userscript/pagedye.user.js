@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PageDye Lite
 // @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.6.1
+// @version      0.6.2
 // @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
 // @author       PageDye
 // @match        *://*/*
@@ -40,7 +40,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.6.1';
+  const VERSION = '0.6.2';
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
@@ -1918,7 +1918,7 @@
   }
 
   function applyOpenState() {
-    if (ui.open) { clearHideTimer(); unhide(); positionPanel(); }
+    if (ui.open) { clearHideTimer(); unhide(); reassertTopLayer(); bumpToTop(); positionPanel(); }
     panelEl.classList.toggle('pd-panel-open', ui.open);
     gearEl.classList.toggle('pd-open', ui.open);
     swapGearIcon();
@@ -2085,10 +2085,25 @@
 
   // Keep the widget genuinely on top of the page. A max z-index alone isn't
   // enough: any site element tied at the same z-index wins if it's later in
-  // DOM order, and native fullscreen content renders in the browser's "top
-  // layer" above all regular stacking contexts regardless of z-index. So we
-  // (a) keep panelHost as the last child of its container whenever the page
-  // mutates, and (b) move it inside the fullscreen element while one is active.
+  // DOM order, and native fullscreen/<dialog>/popover content renders in the
+  // browser's "top layer" above all regular stacking contexts regardless of
+  // z-index — that's what lets a cookie banner or site modal visually cover
+  // the panel and steal its clicks. So we (a) keep panelHost as the last
+  // child of its container whenever the page mutates, (b) move it inside the
+  // fullscreen element while one is active, and (c) also park panelHost in
+  // the top layer itself (via the Popover API, when supported) and re-assert
+  // that position whenever the panel opens, so it wins against anything the
+  // page put in the top layer earlier.
+  let supportsPopover = false;
+
+  function reassertTopLayer() {
+    if (!supportsPopover || !panelHost) return;
+    try {
+      if (panelHost.matches(':popover-open')) panelHost.hidePopover();
+      panelHost.showPopover();
+    } catch (err) {}
+  }
+
   function bumpToTop() {
     if (!panelHost) return;
     const fsEl = document.fullscreenElement || document.webkitFullscreenElement || null;
@@ -2105,6 +2120,12 @@
     document.documentElement.appendChild(panelHost);
     shadow = panelHost.attachShadow({ mode: 'open' });
 
+    supportsPopover = typeof panelHost.showPopover === 'function';
+    if (supportsPopover) {
+      panelHost.setAttribute('popover', 'manual');
+      try { panelHost.showPopover(); } catch (err) { supportsPopover = false; }
+    }
+
     const bumpObserver = new MutationObserver(bumpToTop);
     bumpObserver.observe(document.documentElement, { childList: true });
     if (document.body) bumpObserver.observe(document.body, { childList: true });
@@ -2117,7 +2138,7 @@
         color-scheme: light dark;
         --pd-radius-lg: 18px; --pd-radius-md: 10px; --pd-radius-sm: 7px;
         --pd-text: #18181b; --pd-text-secondary: #71717a; --pd-border: rgba(0,0,0,0.12);
-        --pd-panel-bg: rgba(255,255,255,0.97); --pd-gear-bg: #18181b; --pd-gear-text: #fff;
+        --pd-panel-bg: #ffffff; --pd-gear-bg: #18181b; --pd-gear-text: #fff;
         --pd-surface: rgba(0,0,0,0.035); --pd-card: #ffffff;
         --pd-input-bg: rgba(0,0,0,0.045); --pd-btn-bg: rgba(0,0,0,0.05);
         --pd-accent-bg: #18181b; --pd-accent-text: #fff;
@@ -2127,7 +2148,7 @@
       @media (prefers-color-scheme: dark) {
         :host {
           --pd-text: #f4f4f5; --pd-text-secondary: #a1a1aa; --pd-border: rgba(255,255,255,0.14);
-          --pd-panel-bg: rgba(20,20,22,0.97); --pd-gear-bg: #fff; --pd-gear-text: #000;
+          --pd-panel-bg: #141416; --pd-gear-bg: #fff; --pd-gear-text: #000;
           --pd-surface: rgba(255,255,255,0.045); --pd-card: #1c1c1e;
           --pd-input-bg: rgba(255,255,255,0.06); --pd-btn-bg: rgba(255,255,255,0.07);
           --pd-accent-bg: #fff; --pd-accent-text: #000;
@@ -2158,7 +2179,7 @@
         display: flex; flex-direction: column; position: fixed; bottom: 74px; right: 18px;
         width: 384px; max-width: calc(100vw - 24px); max-height: 66vh; border-radius: var(--pd-radius-lg);
         background: var(--pd-panel-bg); color: var(--pd-text); border: 1px solid var(--pd-border);
-        box-shadow: 0 20px 60px var(--pd-shadow); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        box-shadow: 0 20px 60px var(--pd-shadow);
         overflow: hidden;
         opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(8px) scale(0.97);
         transform-origin: bottom right;
