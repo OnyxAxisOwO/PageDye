@@ -109,10 +109,20 @@ function pagedyeElementPicker(settings, domain, fieldPath) {
       const next = JSON.parse(JSON.stringify(settings));
       let obj = next;
       for (let i = 0; i < path.length - 1; i++) {
-        obj[path[i]] = obj[path[i]] || {};
-        obj = obj[path[i]];
+        const key = path[i];
+        const nextKey = path[i + 1];
+        if (obj[key] === undefined || obj[key] === null) {
+          obj[key] = (typeof nextKey === 'number') ? [] : {};
+        }
+        obj = obj[key];
       }
       obj[path[path.length - 1]] = selector;
+      // frostedGlass entries need blur/opacity alongside the selector — back
+      // them in with defaults if this picker call just created the entry.
+      if (path[0] === 'frostedGlass' && path.length > 1) {
+        if (typeof obj.blur !== 'number') obj.blur = 12;
+        if (typeof obj.opacity !== 'number') obj.opacity = 55;
+      }
       chrome.storage.local.set({ [domain]: next });
     } catch (err) { /* storage unavailable */ }
     cleanup();
@@ -200,6 +210,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedGlassHint: "Pick a card/container element and PageDye makes its background semi-transparent and blurred, so your wallpaper shows through underneath it.",
       frostedBlur: "Blur",
       frostedOpacity: "Tint",
+      frostedAddBtn: "+ Add element",
       customCss: "Custom CSS",
       customCssHint: "Injected into this site. Use !important to override stubborn styles.",
       pickerFailed: "Can't pick on this page",
@@ -320,6 +331,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedGlassHint: "拾取一个卡片/容器元素，PageDye 会让它的背景变为半透明并加上模糊效果，让底层的壁纸若隐若现地透上来。",
       frostedBlur: "模糊度",
       frostedOpacity: "透明度",
+      frostedAddBtn: "+ 添加元素",
       customCss: "自定义 CSS",
       customCssHint: "将注入到本网站。可用 !important 覆盖顽固样式。",
       pickerFailed: "此页面无法拾取",
@@ -443,12 +455,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     pickBtn: document.getElementById('pick-btn'),
     deepCompatToggle: document.getElementById('deep-compat-toggle'),
     deepCompatExclude: document.getElementById('deep-compat-exclude'),
-    frostedSelector: document.getElementById('frosted-selector'),
-    frostedPickBtn: document.getElementById('frosted-pick-btn'),
-    frostedBlur: document.getElementById('frosted-blur'),
-    frostedBlurVal: document.getElementById('frosted-blur-val'),
-    frostedOpacity: document.getElementById('frosted-opacity'),
-    frostedOpacityVal: document.getElementById('frosted-opacity-val'),
+    frostedList: document.getElementById('frosted-list'),
+    frostedAddBtn: document.getElementById('frosted-add-btn'),
     customCss: document.getElementById('custom-css'),
     settingsBtn: document.getElementById('settings-btn'),
 
@@ -493,6 +501,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentSettings = null;
   let saveDebounceTimer = null;
   let gradientStopsState = [];
+  let frostedGlassState = [];
   let cssEditorController = null;
 
   // Init
@@ -812,19 +821,49 @@ document.addEventListener('DOMContentLoaded', async () => {
   els.deepCompatToggle.addEventListener('change', () => triggerImmediateSave());
   els.deepCompatExclude.addEventListener('input', () => queueAutoSave());
   els.customCss.addEventListener('input', () => queueAutoSave());
-  els.frostedSelector.addEventListener('input', () => queueAutoSave());
-  els.frostedBlur.addEventListener('input', (e) => {
-    els.frostedBlurVal.textContent = `${e.target.value}px`;
+
+  // Frosted glass entries are rebuilt on every render, so listeners are
+  // delegated on the (stable) parent container rather than attached per-row.
+  els.frostedList.addEventListener('input', (e) => {
+    const row = e.target.closest('.frosted-entry');
+    if (!row) return;
+    const idx = parseInt(row.dataset.index, 10);
+    if (e.target.classList.contains('frosted-entry-selector')) {
+      frostedGlassState[idx].selector = e.target.value;
+    } else if (e.target.classList.contains('frosted-entry-blur')) {
+      frostedGlassState[idx].blur = parseFloat(e.target.value) || 0;
+      row.querySelector('.frosted-entry-blur-val').textContent = `${e.target.value}px`;
+    } else if (e.target.classList.contains('frosted-entry-opacity')) {
+      frostedGlassState[idx].opacity = parseInt(e.target.value, 10);
+      row.querySelector('.frosted-entry-opacity-val').textContent = `${e.target.value}%`;
+    }
     queueAutoSave();
   });
-  els.frostedOpacity.addEventListener('input', (e) => {
-    els.frostedOpacityVal.textContent = `${e.target.value}%`;
-    queueAutoSave();
+
+  els.frostedList.addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('.frosted-entry-remove');
+    if (removeBtn) {
+      const idx = parseInt(removeBtn.closest('.frosted-entry').dataset.index, 10);
+      frostedGlassState.splice(idx, 1);
+      renderFrostedList(frostedGlassState);
+      triggerImmediateSave();
+      return;
+    }
+    const pickBtn = e.target.closest('.frosted-entry-pick');
+    if (pickBtn) {
+      const idx = parseInt(pickBtn.closest('.frosted-entry').dataset.index, 10);
+      startFrostedPicker(idx);
+    }
+  });
+
+  els.frostedAddBtn.addEventListener('click', () => {
+    frostedGlassState.push({ selector: '', blur: 12, opacity: 55 });
+    renderFrostedList(frostedGlassState);
+    triggerImmediateSave();
   });
 
   // Advanced: element picker
   els.pickBtn.addEventListener('click', startPicker);
-  els.frostedPickBtn.addEventListener('click', startFrostedPicker);
 
   // Top-level tabs: Wallpaper vs Frosted Glass
   const panelWallpaper = document.getElementById('panel-wallpaper');
@@ -1256,12 +1295,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.customCss.value = currentSettings.customCss || '';
     if (cssEditorController) cssEditorController.update();
 
-    const frostedGlass = currentSettings.frostedGlass || {};
-    els.frostedSelector.value = frostedGlass.selector || '';
-    els.frostedBlur.value = frostedGlass.blur !== undefined ? frostedGlass.blur : 12;
-    els.frostedBlurVal.textContent = `${els.frostedBlur.value}px`;
-    els.frostedOpacity.value = frostedGlass.opacity !== undefined ? frostedGlass.opacity : 55;
-    els.frostedOpacityVal.textContent = `${els.frostedOpacity.value}%`;
+    renderFrostedList(normalizeFrostedGlassList(currentSettings.frostedGlass));
 
     // Auto expand accordion if target selector or custom css has values.
     // Deep Compatibility Mode now has its own always-expanded accordion.
@@ -1560,6 +1594,97 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.gradientAddStop.disabled = gradientStopsState.length >= window.PageDyeGradient.MAX_STOPS;
   }
 
+  // Older saved settings stored frostedGlass as a single { selector, blur,
+  // opacity } object. Upgrade that shape to a one-entry array transparently.
+  function normalizeFrostedGlassList(fg) {
+    if (Array.isArray(fg)) return fg;
+    if (fg && typeof fg === 'object' && fg.selector) return [fg];
+    return [];
+  }
+
+  // Rebuilds the frosted-entry list from scratch, one card per element, so
+  // applying frosted glass to a new element never clobbers the others.
+  function renderFrostedList(list) {
+    frostedGlassState = list.map(f => ({
+      selector: f.selector || '',
+      blur: f.blur !== undefined ? f.blur : 12,
+      opacity: f.opacity !== undefined ? f.opacity : 55
+    }));
+    els.frostedList.innerHTML = '';
+
+    frostedGlassState.forEach((entry, idx) => {
+      const row = document.createElement('div');
+      row.className = 'frosted-entry';
+      row.dataset.index = idx;
+
+      const selectorRow = document.createElement('div');
+      selectorRow.className = 'selector-row';
+
+      const selectorInput = document.createElement('input');
+      selectorInput.type = 'text';
+      selectorInput.className = 'frosted-entry-selector';
+      selectorInput.placeholder = '.card, main';
+      selectorInput.value = entry.selector;
+
+      const pickBtn = document.createElement('button');
+      pickBtn.type = 'button';
+      pickBtn.className = 'secondary pick-btn frosted-entry-pick';
+      pickBtn.textContent = t('pickElement');
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'frosted-entry-remove';
+      removeBtn.textContent = '×';
+      removeBtn.title = t('gradientRemoveStop');
+
+      selectorRow.appendChild(selectorInput);
+      selectorRow.appendChild(pickBtn);
+      selectorRow.appendChild(removeBtn);
+
+      const blurLabelRow = document.createElement('div');
+      blurLabelRow.className = 'label-row';
+      const blurLabel = document.createElement('label');
+      blurLabel.textContent = t('frostedBlur');
+      const blurVal = document.createElement('span');
+      blurVal.className = 'val-badge frosted-entry-blur-val';
+      blurVal.textContent = `${entry.blur}px`;
+      blurLabelRow.appendChild(blurLabel);
+      blurLabelRow.appendChild(blurVal);
+
+      const blurInput = document.createElement('input');
+      blurInput.type = 'range';
+      blurInput.className = 'frosted-entry-blur';
+      blurInput.min = '0';
+      blurInput.max = '30';
+      blurInput.step = '0.1';
+      blurInput.value = entry.blur;
+
+      const opacityLabelRow = document.createElement('div');
+      opacityLabelRow.className = 'label-row';
+      const opacityLabel = document.createElement('label');
+      opacityLabel.textContent = t('frostedOpacity');
+      const opacityVal = document.createElement('span');
+      opacityVal.className = 'val-badge frosted-entry-opacity-val';
+      opacityVal.textContent = `${entry.opacity}%`;
+      opacityLabelRow.appendChild(opacityLabel);
+      opacityLabelRow.appendChild(opacityVal);
+
+      const opacityInput = document.createElement('input');
+      opacityInput.type = 'range';
+      opacityInput.className = 'frosted-entry-opacity';
+      opacityInput.min = '0';
+      opacityInput.max = '100';
+      opacityInput.value = entry.opacity;
+
+      row.appendChild(selectorRow);
+      row.appendChild(blurLabelRow);
+      row.appendChild(blurInput);
+      row.appendChild(opacityLabelRow);
+      row.appendChild(opacityInput);
+      els.frostedList.appendChild(row);
+    });
+  }
+
   function collectGradientFromForm() {
     const kindRadio = document.querySelector('input[name="gradientKind"]:checked');
     return {
@@ -1665,11 +1790,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentSettings.deepCompat = els.deepCompatToggle.checked;
     currentSettings.deepCompatExclude = els.deepCompatExclude.value.trim();
     currentSettings.customCss = els.customCss.value;
-    currentSettings.frostedGlass = {
-      selector: els.frostedSelector.value.trim(),
-      blur: parseInt(els.frostedBlur.value, 10) || 0,
-      opacity: parseInt(els.frostedOpacity.value, 10)
-    };
+    currentSettings.frostedGlass = frostedGlassState.map(f => ({
+      selector: f.selector.trim(),
+      blur: f.blur,
+      opacity: f.opacity
+    }));
     currentSettings.timestamp = Date.now();
 
     return currentSettings;
@@ -1747,7 +1872,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       deepCompat: false,
       deepCompatExclude: '',
       customCss: '',
-      frostedGlass: { selector: '', blur: 12, opacity: 55 }
+      frostedGlass: []
     };
     activeScheme = 'light';
     activeSlideshowIndex = 0;
@@ -1782,11 +1907,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.deepCompatToggle.checked = false;
     els.deepCompatExclude.value = '';
     els.customCss.value = '';
-    els.frostedSelector.value = '';
-    els.frostedBlur.value = 12;
-    els.frostedBlurVal.textContent = '12px';
-    els.frostedOpacity.value = 55;
-    els.frostedOpacityVal.textContent = '55%';
+    renderFrostedList([]);
     if (cssEditorController) cssEditorController.update();
 
     document.querySelector('input[value="none"]').click();
@@ -1827,8 +1948,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Same flow as startPicker(), but writes the picked selector into
-  // frostedGlass.selector instead of targetSelector.
-  async function startFrostedPicker() {
+  // frostedGlass[index].selector instead of targetSelector — each frosted
+  // entry keeps its own selector, so picking a new element never overwrites
+  // any other entry's.
+  async function startFrostedPicker(index) {
     const settings = collectSettings();
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
@@ -1840,7 +1963,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: pagedyeElementPicker,
-        args: [settings, currentDomain, ['frostedGlass', 'selector']]
+        args: [settings, currentDomain, ['frostedGlass', index, 'selector']]
       });
       window.close();
     } catch (err) {

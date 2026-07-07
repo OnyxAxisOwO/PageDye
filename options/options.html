@@ -740,21 +740,10 @@
 
           <div id="edit-panel-frosted" class="hidden">
             <div class="control-group">
-              <label for="edit-frosted-selector" data-i18n="frostedGlass">Frosted Glass</label>
+              <label data-i18n="frostedGlass">Frosted Glass</label>
               <p class="hint" data-i18n="frostedGlassHint">Pick a card/container element and PageDye makes its background semi-transparent and blurred, so your wallpaper shows through underneath it.</p>
-              <div class="selector-row">
-                <input type="text" id="edit-frosted-selector" placeholder=".card, main">
-              </div>
-              <div class="label-row">
-                <label for="edit-frosted-blur" data-i18n="frostedBlur">Blur</label>
-                <span id="edit-frosted-blur-val" class="val-badge">12px</span>
-              </div>
-              <input type="range" id="edit-frosted-blur" min="0" max="30" value="12">
-              <div class="label-row">
-                <label for="edit-frosted-opacity" data-i18n="frostedOpacity">Tint</label>
-                <span id="edit-frosted-opacity-val" class="val-badge">55%</span>
-              </div>
-              <input type="range" id="edit-frosted-opacity" min="0" max="100" value="55">
+              <div id="edit-frosted-list"></div>
+              <button type="button" id="edit-frosted-add-btn" class="secondary pick-btn" data-i18n="frostedAddBtn">+ Add element</button>
             </div>
           </div>
         </div>

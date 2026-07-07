@@ -2,6 +2,14 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.7.2] - 2026-07-07
+
+### Fixed
+- **Frosted Glass only supported one element per site**: applying frosted glass to a second element used to silently remove the effect from the first, because the config was stored as a single `{selector, blur, opacity}` object and rendered into one hardcoded `<style>` tag. `frostedGlass` is now a list, each entry gets its own style tag, and the extension popup / options dashboard / PageDye Lite / site demo widget all gained an "add element" control so multiple containers can have independent frosted-glass settings at once. Old single-object settings are upgraded automatically.
+
+### Changed
+- **Frosted Glass blur slider now allows decimal values (0.1px steps)**: most of the visually useful range sits below 6px, where whole-pixel steps were too coarse to fine-tune.
+
 ## [0.7.1] - 2026-07-07
 
 ### Changed

@@ -504,6 +504,33 @@ input[type="range"]::-moz-range-thumb {
   cursor: not-allowed;
 }
 
+/* Frosted Glass entries — one card per element, so multiple can coexist */
+.frosted-entry {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.frosted-entry .selector-row {
+  margin-bottom: 8px;
+}
+
+.frosted-entry-remove {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.frosted-entry-remove:hover {
+  color: #ef4444;
+}
+
 .gradient-presets-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);

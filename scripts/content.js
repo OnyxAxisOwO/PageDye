@@ -558,42 +558,56 @@
     style.textContent = css;
   }
 
-  // Turns a chosen container (e.g. a card/main content wrapper) into a
-  // frosted-glass panel: its own background is replaced with a light/dark
-  // tint (matching the OS color scheme) and blurred via backdrop-filter, so
-  // whatever sits behind it (the page's own content, or PageDye's own
-  // wallpaper layer) shows through softly instead of being hidden by an
-  // opaque background.
+  // Turns one or more chosen containers (e.g. a card/main content wrapper)
+  // into frosted-glass panels: each one's own background is replaced with a
+  // light/dark tint (matching the OS color scheme) and blurred via
+  // backdrop-filter, so whatever sits behind it (the page's own content, or
+  // PageDye's own wallpaper layer) shows through softly instead of being
+  // hidden by an opaque background.
+  //
+  // cfg is normally an array of { selector, blur, opacity } entries — one
+  // style tag per entry (unique id) so applying a new one never clobbers the
+  // others. Older saved settings stored a single object here instead of an
+  // array; normalizeFrostedGlassList() upgrades that shape transparently.
+  function normalizeFrostedGlassList(cfg) {
+    if (Array.isArray(cfg)) return cfg;
+    if (cfg && typeof cfg === 'object' && cfg.selector) return [cfg];
+    return [];
+  }
+
   function applyFrostedGlass(cfg) {
     removeFrostedGlass();
-    if (!cfg || !cfg.selector || !cfg.selector.trim()) return;
+    const list = normalizeFrostedGlassList(cfg);
 
-    const sel = scopeSelector(cfg.selector);
-    const blur = typeof cfg.blur === 'number' ? cfg.blur : 12;
-    const alpha = (typeof cfg.opacity === 'number' ? cfg.opacity : 55) / 100;
+    list.forEach((entry, i) => {
+      if (!entry || !entry.selector || !entry.selector.trim()) return;
 
-    const css =
-      `${sel} {` +
-        'background-image: none !important;' +
-        `backdrop-filter: blur(${blur}px) !important;` +
-        `-webkit-backdrop-filter: blur(${blur}px) !important;` +
-      '}' +
-      '@media (prefers-color-scheme: dark) {' +
-        `${sel} { background-color: rgba(20, 20, 20, ${alpha}) !important; }` +
-      '}' +
-      '@media (prefers-color-scheme: light) {' +
-        `${sel} { background-color: rgba(255, 255, 255, ${alpha}) !important; }` +
-      '}';
+      const sel = scopeSelector(entry.selector);
+      const blur = typeof entry.blur === 'number' ? entry.blur : 12;
+      const alpha = (typeof entry.opacity === 'number' ? entry.opacity : 55) / 100;
 
-    const style = document.createElement('style');
-    style.id = FROSTED_STYLE_ID;
-    style.textContent = css;
-    (document.head || document.documentElement).appendChild(style);
+      const css =
+        `${sel} {` +
+          'background-image: none !important;' +
+          `backdrop-filter: blur(${blur}px) !important;` +
+          `-webkit-backdrop-filter: blur(${blur}px) !important;` +
+        '}' +
+        '@media (prefers-color-scheme: dark) {' +
+          `${sel} { background-color: rgba(20, 20, 20, ${alpha}) !important; }` +
+        '}' +
+        '@media (prefers-color-scheme: light) {' +
+          `${sel} { background-color: rgba(255, 255, 255, ${alpha}) !important; }` +
+        '}';
+
+      const style = document.createElement('style');
+      style.id = `${FROSTED_STYLE_ID}-${i}`;
+      style.textContent = css;
+      (document.head || document.documentElement).appendChild(style);
+    });
   }
 
   function removeFrostedGlass() {
-    const style = document.getElementById(FROSTED_STYLE_ID);
-    if (style) style.remove();
+    document.querySelectorAll(`style[id^="${FROSTED_STYLE_ID}"]`).forEach((style) => style.remove());
   }
 
   // Builds a CSS filter string from a settings object.

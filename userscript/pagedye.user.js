@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PageDye Lite
 // @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.7.1
+// @version      0.7.2
 // @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
 // @author       PageDye
 // @match        *://*/*
@@ -40,7 +40,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.7.1';
+  const VERSION = '0.7.2';
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
@@ -277,8 +277,17 @@
       deepCompat: false,
       deepCompatExclude: '',
       customCss: '',
-      frostedGlass: { selector: '', blur: 12, opacity: 55 }
+      frostedGlass: []
     });
+  }
+
+  // Older saved settings stored frostedGlass as a single { selector, blur,
+  // opacity } object. Upgrade that shape to a one-entry array transparently,
+  // so applying frosted glass to one element never wipes out another's.
+  function normalizeFrostedGlassList(fg) {
+    if (Array.isArray(fg)) return fg;
+    if (fg && typeof fg === 'object' && fg.selector) return [fg];
+    return [];
   }
 
   let settings = null;
@@ -370,31 +379,33 @@
 
   function applyFrostedGlass(cfg) {
     removeFrostedGlass();
-    if (!cfg || !cfg.selector || !cfg.selector.trim()) return;
-    const sel = scopeSelector(cfg.selector);
-    const blur = typeof cfg.blur === 'number' ? cfg.blur : 12;
-    const alpha = (typeof cfg.opacity === 'number' ? cfg.opacity : 55) / 100;
-    const css =
-      `${sel} {` +
-        'background-image: none !important;' +
-        `backdrop-filter: blur(${blur}px) !important;` +
-        `-webkit-backdrop-filter: blur(${blur}px) !important;` +
-      '}' +
-      '@media (prefers-color-scheme: dark) {' +
-        `${sel} { background-color: rgba(20, 20, 20, ${alpha}) !important; }` +
-      '}' +
-      '@media (prefers-color-scheme: light) {' +
-        `${sel} { background-color: rgba(255, 255, 255, ${alpha}) !important; }` +
-      '}';
-    const style = document.createElement('style');
-    style.id = FROSTED_STYLE_ID;
-    style.textContent = css;
-    (document.head || document.documentElement).appendChild(style);
+    const list = normalizeFrostedGlassList(cfg);
+    list.forEach((entry, i) => {
+      if (!entry || !entry.selector || !entry.selector.trim()) return;
+      const sel = scopeSelector(entry.selector);
+      const blur = typeof entry.blur === 'number' ? entry.blur : 12;
+      const alpha = (typeof entry.opacity === 'number' ? entry.opacity : 55) / 100;
+      const css =
+        `${sel} {` +
+          'background-image: none !important;' +
+          `backdrop-filter: blur(${blur}px) !important;` +
+          `-webkit-backdrop-filter: blur(${blur}px) !important;` +
+        '}' +
+        '@media (prefers-color-scheme: dark) {' +
+          `${sel} { background-color: rgba(20, 20, 20, ${alpha}) !important; }` +
+        '}' +
+        '@media (prefers-color-scheme: light) {' +
+          `${sel} { background-color: rgba(255, 255, 255, ${alpha}) !important; }` +
+        '}';
+      const style = document.createElement('style');
+      style.id = `${FROSTED_STYLE_ID}-${i}`;
+      style.textContent = css;
+      (document.head || document.documentElement).appendChild(style);
+    });
   }
 
   function removeFrostedGlass() {
-    const style = document.getElementById(FROSTED_STYLE_ID);
-    if (style) style.remove();
+    document.querySelectorAll(`style[id^="${FROSTED_STYLE_ID}"]`).forEach((style) => style.remove());
   }
 
   // Deep Compatibility Mode — see the extension's scripts/content.js for the
@@ -1634,6 +1645,7 @@
           const parsed = JSON.parse(e.target.result);
           if (parsed && typeof parsed === 'object') {
             settings = Object.assign(defaultSettings(), parsed);
+            settings.frostedGlass = normalizeFrostedGlassList(settings.frostedGlass);
             liveApply();
             scheduleSave();
             renderPanel();
@@ -1652,7 +1664,7 @@
     opts = opts || {};
     return `<div class="pd-row">
       <div class="pd-row-head"><span>${label}</span><span data-echo="${path}">${value}${suffix || ''}</span></div>
-      <input type="range" min="${min}" max="${max}" value="${value}" data-path="${path}" data-scope="${opts.scope || 'edit'}"
+      <input type="range" min="${min}" max="${max}" step="${opts.step || 1}" value="${value}" data-path="${path}" data-scope="${opts.scope || 'edit'}"
         data-numeric="1" data-suffix="${suffix || ''}" />
     </div>`;
   }
@@ -1888,11 +1900,20 @@
         `<textarea data-path="customCss" data-scope="root" placeholder="/* 任意 CSS,注入到当前网站 */">${escapeAttr(settings.customCss || '')}</textarea>`;
       html += accordion('target', '目标元素与自定义 CSS(可选)', targetBody);
     } else if (ui.tab === 'frosted') {
+      const itemsHtml = settings.frostedGlass.map((entry, i) => `
+        <div class="pd-frosted-item">
+          <div class="pd-frosted-item-head">
+            <span>元素 ${i + 1}</span>
+            <button data-action="remove-frosted" data-index="${i}" title="删除此元素">${svgIcon(ICON.trash, 13)}</button>
+          </div>
+          ${textRow('CSS 选择器', `frostedGlass.${i}.selector`, entry.selector, '例如 .card, main', { scope: 'root' })}
+          <button class="pd-btn-secondary" data-action="pick-frosted" data-index="${i}">${svgIcon(ICON.target, 14)}<span>拾取页面元素</span></button>
+          ${rangeRow('模糊强度', `frostedGlass.${i}.blur`, 0, 30, entry.blur, 'px', { scope: 'root', step: 0.1 })}
+          ${rangeRow('底色不透明度', `frostedGlass.${i}.opacity`, 0, 100, entry.opacity, '%', { scope: 'root' })}
+        </div>`).join('');
       const frostedBody =
-        textRow('CSS 选择器', 'frostedGlass.selector', settings.frostedGlass.selector, '例如 .card, main', { scope: 'root' }) +
-        `<button class="pd-btn-secondary" data-action="pick-frosted">${svgIcon(ICON.target, 14)}<span>拾取页面元素</span></button>` +
-        rangeRow('模糊强度', 'frostedGlass.blur', 0, 30, settings.frostedGlass.blur, 'px', { scope: 'root' }) +
-        rangeRow('底色不透明度', 'frostedGlass.opacity', 0, 100, settings.frostedGlass.opacity, '%', { scope: 'root' });
+        itemsHtml +
+        `<button class="pd-btn-secondary" data-action="add-frosted">${svgIcon(ICON.plus, 14)}<span>添加元素</span></button>`;
       html += accordion('frosted', '磨砂玻璃容器', frostedBody);
     } else {
       html += renderAdvancedSection();
@@ -2082,10 +2103,22 @@
       return;
     }
     if (action === 'pick-frosted') {
+      const idx = Number(btn.dataset.index);
       startPicker((selector) => {
-        settings.frostedGlass.selector = selector;
+        settings.frostedGlass[idx].selector = selector;
         liveApply(); scheduleSave(); renderPanel();
       });
+      return;
+    }
+    if (action === 'add-frosted') {
+      settings.frostedGlass.push({ selector: '', blur: 12, opacity: 55 });
+      scheduleSave(); renderPanel();
+      return;
+    }
+    if (action === 'remove-frosted') {
+      const idx = Number(btn.dataset.index);
+      settings.frostedGlass.splice(idx, 1);
+      liveApply(); scheduleSave(); renderPanel();
       return;
     }
     if (action === 'gradient-preset') {
@@ -2518,6 +2551,15 @@
       }
       .pd-stop-row button:hover { background: var(--pd-focus); color: var(--pd-danger); }
 
+      .pd-frosted-item { border: 1px solid var(--pd-border); border-radius: var(--pd-radius-md); padding: 10px; margin-bottom: 10px; }
+      .pd-frosted-item-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+      .pd-frosted-item-head span { font-size: 12px; color: var(--pd-text-secondary); }
+      .pd-frosted-item-head button {
+        border: none; background: var(--pd-btn-bg); color: var(--pd-text-secondary); border-radius: var(--pd-radius-sm);
+        cursor: pointer; padding: 6px 8px; display: flex; align-items: center; transition: all 0.15s ease;
+      }
+      .pd-frosted-item-head button:hover { background: var(--pd-focus); color: var(--pd-danger); }
+
       .pd-slides { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
       .pd-slide-item {
         display: flex; align-items: center; gap: 4px; padding: 8px 10px; border-radius: var(--pd-radius-sm);
@@ -2594,6 +2636,7 @@
   async function boot() {
     const [stored, storedGlobal] = await Promise.all([GMBridge.get(STORAGE_KEY), GMBridge.get(GLOBAL_KEY)]);
     settings = stored ? Object.assign(defaultSettings(), stored) : defaultSettings();
+    settings.frostedGlass = normalizeFrostedGlassList(settings.frostedGlass);
     globalConfig = Object.assign(defaultGlobalConfig(), storedGlobal || {});
     await maybeCatchUpSlideshow(settings);
     applyBackground(settings);
