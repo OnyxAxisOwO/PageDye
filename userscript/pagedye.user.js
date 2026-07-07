@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PageDye Lite
 // @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.6.3
+// @version      0.7
 // @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
 // @author       PageDye
 // @match        *://*/*
@@ -40,7 +40,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.6.3';
+  const VERSION = '0.7';
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
@@ -411,6 +411,12 @@
   const DEEP_COMPAT_GRID_ROWS = 8;
   const DEEP_COMPAT_MIN_COVERAGE = 0.5;
   const DEEP_COMPAT_MIN_ALPHA = 0.15;
+  // Some sites (e.g. Google's mobile search results) have no single dominant
+  // opaque wrapper — the whole viewport is tiled edge-to-edge by many small
+  // opaque cards, each individually well under DEEP_COMPAT_MIN_COVERAGE. If
+  // most sampled points resolve to *some* opaque foreground element, treat
+  // the whole tiling as a cover regardless of each tile's own size.
+  const DEEP_COMPAT_TILED_POINT_RATIO = 0.6;
   const DEEP_COMPAT_SCAN_DEBOUNCE_MS = 400;
   const DEEP_COMPAT_SAFETY_INTERVAL_MS = 3000;
   const DEEP_COMPAT_SKIP_TAGS = new Set([
@@ -493,6 +499,9 @@
     const viewportArea = vw * vh;
 
     const candidates = new Set();
+    const tiledCandidates = new Set();
+    let sampledPoints = 0;
+    let opaquePoints = 0;
 
     for (let r = 0; r < DEEP_COMPAT_GRID_ROWS; r++) {
       const y = Math.round(((r + 0.5) / DEEP_COMPAT_GRID_ROWS) * vh);
@@ -504,10 +513,12 @@
         } catch (e) {
           continue;
         }
+        let frontmost = null;
         for (const el of stack) {
           if (!el || el.nodeType !== 1 || el.id === ROOT_ID) continue;
           if (DEEP_COMPAT_SKIP_TAGS.has(el.tagName)) continue;
           if (isDeepCompatExcluded(el)) continue;
+          if (!frontmost) frontmost = el;
 
           const rect = el.getBoundingClientRect();
           const overlapW = Math.min(rect.right, vw) - Math.max(rect.left, 0);
@@ -520,7 +531,20 @@
 
           candidates.add(el);
         }
+
+        if (frontmost) {
+          sampledPoints++;
+          const alpha = deepCompatParseAlpha(window.getComputedStyle(frontmost).backgroundColor);
+          if (alpha >= DEEP_COMPAT_MIN_ALPHA) {
+            opaquePoints++;
+            tiledCandidates.add(frontmost);
+          }
+        }
       }
+    }
+
+    if (sampledPoints > 0 && opaquePoints / sampledPoints >= DEEP_COMPAT_TILED_POINT_RATIO) {
+      for (const el of tiledCandidates) candidates.add(el);
     }
 
     for (const el of deepCompatNeutralized) {

@@ -640,6 +640,12 @@
   const DEEP_COMPAT_GRID_ROWS = 8;
   const DEEP_COMPAT_MIN_COVERAGE = 0.5; // fraction of viewport area a candidate must overlap
   const DEEP_COMPAT_MIN_ALPHA = 0.15; // ignore near-fully-transparent tints/hover states
+  // Some sites (e.g. Google's mobile search results) have no single dominant
+  // opaque wrapper — instead the whole viewport is tiled edge-to-edge by many
+  // small opaque cards, each individually well under DEEP_COMPAT_MIN_COVERAGE.
+  // If most sampled points resolve to *some* opaque foreground element, treat
+  // the whole tiling as a cover regardless of each tile's own size.
+  const DEEP_COMPAT_TILED_POINT_RATIO = 0.6; // fraction of grid points that must hit an opaque element
   const DEEP_COMPAT_SCAN_DEBOUNCE_MS = 400;
   const DEEP_COMPAT_SAFETY_INTERVAL_MS = 3000;
   const DEEP_COMPAT_SKIP_TAGS = new Set([
@@ -741,6 +747,9 @@
     const viewportArea = vw * vh;
 
     const candidates = new Set();
+    const tiledCandidates = new Set();
+    let sampledPoints = 0;
+    let opaquePoints = 0;
 
     for (let r = 0; r < DEEP_COMPAT_GRID_ROWS; r++) {
       const y = Math.round(((r + 0.5) / DEEP_COMPAT_GRID_ROWS) * vh);
@@ -754,10 +763,12 @@
           continue;
         }
 
+        let frontmost = null;
         for (const el of stack) {
           if (!el || el.nodeType !== 1 || el.id === ROOT_ID) continue;
           if (DEEP_COMPAT_SKIP_TAGS.has(el.tagName)) continue;
           if (isDeepCompatExcluded(el)) continue;
+          if (!frontmost) frontmost = el;
 
           const rect = el.getBoundingClientRect();
           const overlapW = Math.min(rect.right, vw) - Math.max(rect.left, 0);
@@ -770,7 +781,23 @@
 
           candidates.add(el);
         }
+
+        // Track the frontmost qualifying element at this point separately,
+        // regardless of its own size, to catch a mosaic of small opaque tiles
+        // (see DEEP_COMPAT_TILED_POINT_RATIO above).
+        if (frontmost) {
+          sampledPoints++;
+          const alpha = parseAlpha(window.getComputedStyle(frontmost).backgroundColor);
+          if (alpha >= DEEP_COMPAT_MIN_ALPHA) {
+            opaquePoints++;
+            tiledCandidates.add(frontmost);
+          }
+        }
       }
+    }
+
+    if (sampledPoints > 0 && opaquePoints / sampledPoints >= DEEP_COMPAT_TILED_POINT_RATIO) {
+      for (const el of tiledCandidates) candidates.add(el);
     }
 
     // Elements that no longer qualify (scrolled away, removed, or the site

@@ -2,6 +2,11 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.7] - 2026-07-07
+
+### Fixed
+- **Deep Compatibility Mode did nothing on sites tiled with many small opaque cards (e.g. Google's mobile search results)**: the scan only neutralized a single element that alone covered at least half the viewport, so on pages where the cover is instead a mosaic of small individually-opaque cards (each well under that threshold, as Google's own result cards are), nothing ever qualified and the background stayed hidden behind them. The scan now also tracks, per sampled grid point, the frontmost qualifying element regardless of its own size; if most sampled points land on some opaque element, every one of those frontmost elements is neutralized too, catching tiled covers the single-dominant-wrapper check couldn't see. Ported to both the extension and PageDye Lite.
+
 ## [0.6.3] - 2026-07-07
 
 ### Added
