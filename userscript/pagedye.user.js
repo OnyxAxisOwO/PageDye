@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PageDye Lite
 // @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.6.2
+// @version      0.6.3
 // @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
 // @author       PageDye
 // @match        *://*/*
@@ -40,7 +40,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.6.2';
+  const VERSION = '0.6.3';
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
@@ -274,6 +274,8 @@
       dark: emptyEditable(),
       slideshow: { interval: 'open', order: 'sequential', currentIndex: 0, lastRotationTime: 0, items: [emptyEditable()] },
       targetSelector: '',
+      deepCompat: false,
+      deepCompatExclude: '',
       customCss: '',
       frostedGlass: { selector: '', blur: 12, opacity: 55 }
     });
@@ -393,6 +395,166 @@
   function removeFrostedGlass() {
     const style = document.getElementById(FROSTED_STYLE_ID);
     if (style) style.remove();
+  }
+
+  // Deep Compatibility Mode — see the extension's scripts/content.js for the
+  // full write-up. Some sites (Google's mobile app shell is the canonical
+  // case) stack several opaque, full-viewport wrapper divs above whatever
+  // PageDye paints, so nothing shows through no matter which mode is used.
+  // Samples a grid of viewport points with elementsFromPoint, and for every
+  // element found there whose computed background is opaque-ish and whose
+  // box covers most of the viewport, forces its background transparent via a
+  // directly-set !important inline style (these wrappers are usually
+  // unlabeled/dynamically-classed, so there's no stable selector to target
+  // with a stylesheet rule instead).
+  const DEEP_COMPAT_GRID_COLS = 6;
+  const DEEP_COMPAT_GRID_ROWS = 8;
+  const DEEP_COMPAT_MIN_COVERAGE = 0.5;
+  const DEEP_COMPAT_MIN_ALPHA = 0.15;
+  const DEEP_COMPAT_SCAN_DEBOUNCE_MS = 400;
+  const DEEP_COMPAT_SAFETY_INTERVAL_MS = 3000;
+  const DEEP_COMPAT_SKIP_TAGS = new Set([
+    'HTML', 'BODY', 'SCRIPT', 'STYLE', 'SVG', 'PATH', 'IMG', 'VIDEO', 'CANVAS',
+    'IFRAME', 'BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'A'
+  ]);
+
+  let deepCompatEnabled = false;
+  let deepCompatExcludeSelector = '';
+  let deepCompatObserver = null;
+  let deepCompatScanTimer = null;
+  let deepCompatIntervalTimer = null;
+  const deepCompatNeutralized = new Set();
+  const deepCompatOriginalStyleAttrs = new WeakMap();
+
+  function updateDeepCompat(enabled, excludeSelector) {
+    deepCompatExcludeSelector = excludeSelector || '';
+    if (enabled === deepCompatEnabled) {
+      if (enabled) scheduleDeepCompatScan();
+      return;
+    }
+    deepCompatEnabled = enabled;
+    if (enabled) startDeepCompat();
+    else stopDeepCompat();
+  }
+
+  function startDeepCompat() {
+    scheduleDeepCompatScan();
+    if (!deepCompatObserver) {
+      deepCompatObserver = new MutationObserver(scheduleDeepCompatScan);
+      deepCompatObserver.observe(document.documentElement, { childList: true, subtree: true });
+    }
+    window.addEventListener('scroll', scheduleDeepCompatScan, { passive: true });
+    window.addEventListener('resize', scheduleDeepCompatScan, { passive: true });
+    if (!deepCompatIntervalTimer) {
+      deepCompatIntervalTimer = setInterval(() => {
+        if (document.visibilityState === 'visible') scanForOpaqueCovers();
+      }, DEEP_COMPAT_SAFETY_INTERVAL_MS);
+    }
+  }
+
+  function stopDeepCompat() {
+    if (deepCompatObserver) { deepCompatObserver.disconnect(); deepCompatObserver = null; }
+    window.removeEventListener('scroll', scheduleDeepCompatScan);
+    window.removeEventListener('resize', scheduleDeepCompatScan);
+    if (deepCompatIntervalTimer) { clearInterval(deepCompatIntervalTimer); deepCompatIntervalTimer = null; }
+    if (deepCompatScanTimer) { clearTimeout(deepCompatScanTimer); deepCompatScanTimer = null; }
+    revertAllDeepCompat();
+  }
+
+  function scheduleDeepCompatScan() {
+    if (deepCompatScanTimer) clearTimeout(deepCompatScanTimer);
+    deepCompatScanTimer = setTimeout(() => {
+      deepCompatScanTimer = null;
+      scanForOpaqueCovers();
+    }, DEEP_COMPAT_SCAN_DEBOUNCE_MS);
+  }
+
+  function deepCompatParseAlpha(colorStr) {
+    const m = colorStr && colorStr.match(/rgba?\(([^)]+)\)/);
+    if (!m) return 1;
+    const parts = m[1].split(',').map((v) => parseFloat(v.trim()));
+    return parts.length === 4 ? parts[3] : 1;
+  }
+
+  function isDeepCompatExcluded(el) {
+    if (!deepCompatExcludeSelector) return false;
+    try {
+      return el.closest(deepCompatExcludeSelector) !== null;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function scanForOpaqueCovers() {
+    if (!deepCompatEnabled) return;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    if (!vw || !vh) return;
+    const viewportArea = vw * vh;
+
+    const candidates = new Set();
+
+    for (let r = 0; r < DEEP_COMPAT_GRID_ROWS; r++) {
+      const y = Math.round(((r + 0.5) / DEEP_COMPAT_GRID_ROWS) * vh);
+      for (let c = 0; c < DEEP_COMPAT_GRID_COLS; c++) {
+        const x = Math.round(((c + 0.5) / DEEP_COMPAT_GRID_COLS) * vw);
+        let stack;
+        try {
+          stack = document.elementsFromPoint(x, y);
+        } catch (e) {
+          continue;
+        }
+        for (const el of stack) {
+          if (!el || el.nodeType !== 1 || el.id === ROOT_ID) continue;
+          if (DEEP_COMPAT_SKIP_TAGS.has(el.tagName)) continue;
+          if (isDeepCompatExcluded(el)) continue;
+
+          const rect = el.getBoundingClientRect();
+          const overlapW = Math.min(rect.right, vw) - Math.max(rect.left, 0);
+          const overlapH = Math.min(rect.bottom, vh) - Math.max(rect.top, 0);
+          if (overlapW <= 0 || overlapH <= 0) continue;
+          if ((overlapW * overlapH) / viewportArea < DEEP_COMPAT_MIN_COVERAGE) continue;
+
+          const alpha = deepCompatParseAlpha(window.getComputedStyle(el).backgroundColor);
+          if (alpha < DEEP_COMPAT_MIN_ALPHA) continue;
+
+          candidates.add(el);
+        }
+      }
+    }
+
+    for (const el of deepCompatNeutralized) {
+      if (!candidates.has(el)) {
+        revertDeepCompatElement(el);
+        deepCompatNeutralized.delete(el);
+      }
+    }
+    for (const el of candidates) {
+      if (!deepCompatNeutralized.has(el)) {
+        neutralizeDeepCompatElement(el);
+        deepCompatNeutralized.add(el);
+      }
+    }
+  }
+
+  function neutralizeDeepCompatElement(el) {
+    if (!deepCompatOriginalStyleAttrs.has(el)) {
+      deepCompatOriginalStyleAttrs.set(el, el.getAttribute('style'));
+    }
+    el.style.setProperty('background-color', 'transparent', 'important');
+    el.style.setProperty('background-image', 'none', 'important');
+  }
+
+  function revertDeepCompatElement(el) {
+    const original = deepCompatOriginalStyleAttrs.get(el);
+    if (original === null || original === undefined) el.removeAttribute('style');
+    else el.setAttribute('style', original);
+    deepCompatOriginalStyleAttrs.delete(el);
+  }
+
+  function revertAllDeepCompat() {
+    for (const el of deepCompatNeutralized) revertDeepCompatElement(el);
+    deepCompatNeutralized.clear();
   }
 
   function applyTargetBackground(selector, s) {
@@ -555,12 +717,12 @@
     if (s.mode === 'auto') {
       const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       const sub = isDark ? s.dark : s.light;
-      active = Object.assign({}, sub || { type: 'none' }, { targetSelector: s.targetSelector, customCss: s.customCss });
+      active = Object.assign({}, sub || { type: 'none' }, { targetSelector: s.targetSelector, customCss: s.customCss, deepCompat: s.deepCompat, deepCompatExclude: s.deepCompatExclude });
     } else if (s.mode === 'slideshow' && s.slideshow && s.slideshow.items && s.slideshow.items.length > 0) {
       const sh = s.slideshow;
       let index = sh.currentIndex || 0;
       if (index >= sh.items.length) index = 0;
-      active = Object.assign({}, sh.items[index] || { type: 'none' }, { targetSelector: s.targetSelector, customCss: s.customCss });
+      active = Object.assign({}, sh.items[index] || { type: 'none' }, { targetSelector: s.targetSelector, customCss: s.customCss, deepCompat: s.deepCompat, deepCompatExclude: s.deepCompatExclude });
       setupSlideshowTimer(s);
     }
 
@@ -570,7 +732,13 @@
     const hasBackground = active.type === 'color' || active.type === 'image' || active.type === 'effect';
     const selector = active.type !== 'effect' && active.targetSelector && active.targetSelector.trim();
 
-    if (!hasBackground) { removeBackdrop(); removeTargetStyle(); return; }
+    if (!hasBackground) { removeBackdrop(); removeTargetStyle(); updateDeepCompat(false, ''); return; }
+
+    // See the extension's scripts/content.js for the full rationale: some
+    // sites stack opaque full-viewport containers above both the overlay and
+    // a selector-targeted element's own layer, hiding the background no
+    // matter which mode painted it.
+    updateDeepCompat(!!active.deepCompat, active.deepCompatExclude);
 
     if (selector) { removeBackdrop(); applyTargetBackground(selector, active); }
     else { removeTargetStyle(); applyOverlay(active); }
@@ -1684,6 +1852,11 @@
         `<div class="pd-subhead">自定义 CSS</div>` +
         `<textarea data-path="customCss" data-scope="root" placeholder="/* 任意 CSS,注入到当前网站 */">${escapeAttr(settings.customCss || '')}</textarea>`;
       html += accordion('target', '目标元素与自定义 CSS(可选)', targetBody);
+      const deepCompatBody =
+        checkboxRow('深度兼容模式', 'deepCompat', !!settings.deepCompat, { scope: 'root' }) +
+        `<div class="pd-hint">适用于顽固网站(例如 Google 移动端页面):多层不透明容器叠在一起,导致背景怎么设都被遮住。开启后自动检测并清除铺满视口的不透明背景层,可能偶尔误伤依赖背景色做对比度的元素,可用下方选择器排除。</div>` +
+        textRow('排除选择器(可选)', 'deepCompatExclude', settings.deepCompatExclude, '.modal, [role=dialog]', { scope: 'root' });
+      html += accordion('deepcompat', '深度兼容模式(可选)', deepCompatBody);
     } else if (ui.tab === 'frosted') {
       const frostedBody =
         textRow('CSS 选择器', 'frostedGlass.selector', settings.frostedGlass.selector, '例如 .card, main', { scope: 'root' }) +

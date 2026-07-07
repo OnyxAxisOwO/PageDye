@@ -191,6 +191,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetSelector: "Background Selector",
       targetSelectorHint: "Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.",
       pickElement: "Pick",
+      deepCompat: "Deep Compatibility Mode",
+      deepCompatHint: "For stubborn sites (e.g. Google's mobile pages) where several stacked opaque containers hide the background no matter what. Automatically detects and neutralizes full-viewport opaque layers. May occasionally strip a background some element needed for contrast — use the exclude field below if so.",
+      deepCompatExcludePlaceholder: "Exclude selector (optional): .modal, [role=dialog]",
       frostedGlass: "Frosted Glass",
       frostedGlassHint: "Pick a card/container element and PageDye makes its background semi-transparent and blurred, so your wallpaper shows through underneath it.",
       frostedBlur: "Blur",
@@ -306,6 +309,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetSelector: "背景选择器",
       targetSelectorHint: "拾取一个元素（或手动输入 CSS 选择器），PageDye 会把颜色/图片直接应用到该元素，而不是整页。留空则为整页背景。",
       pickElement: "拾取",
+      deepCompat: "深度兼容模式",
+      deepCompatHint: "适用于顽固网站（例如 Google 移动端页面）：多层不透明容器叠在一起，导致无论怎么设置背景都被遮住。开启后会自动检测并清除铺满视口的不透明背景层。可能偶尔误伤某些依赖背景色做对比度的元素，遇到这种情况可在下方填入排除选择器。",
+      deepCompatExcludePlaceholder: "排除选择器（可选）：.modal, [role=dialog]",
       frostedGlass: "磨砂玻璃",
       frostedGlassHint: "拾取一个卡片/容器元素，PageDye 会让它的背景变为半透明并加上模糊效果，让底层的壁纸若隐若现地透上来。",
       frostedBlur: "模糊度",
@@ -431,6 +437,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Advanced
     targetSelector: document.getElementById('target-selector'),
     pickBtn: document.getElementById('pick-btn'),
+    deepCompatToggle: document.getElementById('deep-compat-toggle'),
+    deepCompatExclude: document.getElementById('deep-compat-exclude'),
     frostedSelector: document.getElementById('frosted-selector'),
     frostedPickBtn: document.getElementById('frosted-pick-btn'),
     frostedBlur: document.getElementById('frosted-blur'),
@@ -797,6 +805,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Advanced inputs
   els.targetSelector.addEventListener('input', () => queueAutoSave());
+  els.deepCompatToggle.addEventListener('change', () => triggerImmediateSave());
+  els.deepCompatExclude.addEventListener('input', () => queueAutoSave());
   els.customCss.addEventListener('input', () => queueAutoSave());
   els.frostedSelector.addEventListener('input', () => queueAutoSave());
   els.frostedBlur.addEventListener('input', (e) => {
@@ -978,6 +988,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       const key = el.getAttribute('data-i18n');
       if (i18n[lang][key]) {
         el.textContent = i18n[lang][key];
+      }
+    });
+
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      const key = el.getAttribute('data-i18n-placeholder');
+      if (i18n[lang][key]) {
+        el.placeholder = i18n[lang][key];
       }
     });
 
@@ -1230,6 +1247,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateModeUI(mode);
 
     els.targetSelector.value = currentSettings.targetSelector || '';
+    els.deepCompatToggle.checked = !!currentSettings.deepCompat;
+    els.deepCompatExclude.value = currentSettings.deepCompatExclude || '';
     els.customCss.value = currentSettings.customCss || '';
     if (cssEditorController) cssEditorController.update();
 
@@ -1240,9 +1259,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.frostedOpacity.value = frostedGlass.opacity !== undefined ? frostedGlass.opacity : 55;
     els.frostedOpacityVal.textContent = `${els.frostedOpacity.value}%`;
 
-    // Auto expand accordion if target selector or custom css has values
+    // Auto expand accordion if target selector, deep compat or custom css has values
     const accordionAdvanced = document.getElementById('accordion-advanced');
-    if (els.targetSelector.value || els.customCss.value) {
+    if (els.targetSelector.value || els.deepCompatToggle.checked || els.customCss.value) {
       if (accordionAdvanced) accordionAdvanced.open = true;
     } else {
       if (accordionAdvanced) accordionAdvanced.open = false;
@@ -1638,6 +1657,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     currentSettings.targetSelector = els.targetSelector.value.trim();
+    currentSettings.deepCompat = els.deepCompatToggle.checked;
+    currentSettings.deepCompatExclude = els.deepCompatExclude.value.trim();
     currentSettings.customCss = els.customCss.value;
     currentSettings.frostedGlass = {
       selector: els.frostedSelector.value.trim(),
@@ -1718,6 +1739,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         ]
       },
       targetSelector: '',
+      deepCompat: false,
+      deepCompatExclude: '',
       customCss: '',
       frostedGlass: { selector: '', blur: 12, opacity: 55 }
     };
@@ -1751,6 +1774,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.effectSpeedVal.textContent = '50%';
     els.imageUrl.value = '';
     els.targetSelector.value = '';
+    els.deepCompatToggle.checked = false;
+    els.deepCompatExclude.value = '';
     els.customCss.value = '';
     els.frostedSelector.value = '';
     els.frostedBlur.value = 12;

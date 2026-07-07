@@ -703,6 +703,15 @@
                 </div>
               </div>
 
+              <div class="control-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="edit-deep-compat-toggle">
+                  <span data-i18n="deepCompat">Deep Compatibility Mode</span>
+                </label>
+                <p class="hint" data-i18n="deepCompatHint">For stubborn sites (e.g. Google's mobile pages) where several stacked opaque containers hide the background no matter what. Automatically detects and neutralizes full-viewport opaque layers. May occasionally strip a background some element needed for contrast — use the exclude field below if so.</p>
+                <input type="text" id="edit-deep-compat-exclude" placeholder=".modal, [role=dialog]" data-i18n-placeholder="deepCompatExcludePlaceholder">
+              </div>
+
               <div class="control-group" style="margin-bottom: 0;">
                 <label for="edit-custom-css" data-i18n="customCss">Custom CSS</label>
                 <p class="hint" data-i18n="customCssHint">Injected into this site. Use !important to override stubborn styles.</p>

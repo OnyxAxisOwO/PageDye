@@ -2,6 +2,11 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.6.3] - 2026-07-07
+
+### Added
+- **Deep Compatibility Mode**: an opt-in per-site toggle (extension and PageDye Lite) for sites like Google's mobile pages where several stacked opaque containers hide the background no matter which mode is used, because there's always another opaque layer sitting above whatever PageDye painted. Samples a grid of points across the viewport, finds elements whose background is opaque and whose box covers most of the viewport, and forces those backgrounds transparent — re-scanning on scroll, resize and DOM changes to keep up with dynamic pages. An optional exclude-selector field protects any element that turns out to need its background for contrast (e.g. a modal). Not available in the site's demo widget in this release.
+
 ## [0.6.2] - 2026-07-03
 
 ### Fixed
