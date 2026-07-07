@@ -1,200 +1,159 @@
-# Changelog
+# 更新日志
 
-All notable changes to PageDye are documented here.
+本文档记录 PageDye 的所有重要变更。
 
 ## [0.7.2] - 2026-07-07
 
-### Fixed
-- **Frosted Glass only supported one element per site**: applying frosted glass to a second element used to silently remove the effect from the first, because the config was stored as a single `{selector, blur, opacity}` object and rendered into one hardcoded `<style>` tag. `frostedGlass` is now a list, each entry gets its own style tag, and the extension popup / options dashboard / PageDye Lite / site demo widget all gained an "add element" control so multiple containers can have independent frosted-glass settings at once. Old single-object settings are upgraded automatically.
+### 新增
+- **深度兼容模式(Deep Compatibility Mode)**:一个可按站点开启的开关(扩展和 PageDye Lite),用于应对像 Google 移动版页面这类"无论用哪种模式,背景总被上面又一层不透明容器挡住"的网站。会在视口上采样一个网格点阵,找出背景不透明、且盒子覆盖了视口大部分面积的元素,强制清空这些元素的背景色——并在滚动、缩放、DOM 变化时重新扫描以跟上动态页面。可选的"排除选择器"字段用来保护某个确实需要背景色做对比度的元素(比如弹窗)。本版本站点体验版 widget 暂不支持。
 
-### Changed
-- **Frosted Glass blur slider now allows decimal values (0.1px steps)**: most of the visually useful range sits below 6px, where whole-pixel steps were too coarse to fine-tune.
+### 变更
+- **深度兼容模式从"高级设置"里移出来,单独放到面板最前面并高亮**(扩展弹窗、设置页、PageDye Lite)——这是"背景怎么设都不显示"这个最常见问题的解法,不应该被折叠在一个收起的手风琴里。
+- **站点体验版 widget 的背景层改成原生实现,不再靠脚本注入**:scripts/content.js 和 userscript 版本要跟任意第三方页面的 CSS 对抗(所以才需要 `!important` 覆盖、JS 搭出来的 shadow DOM 根节点、极小的整数 z-index)。而体验版 widget 只跑在我们自己的页面上,这套机制纯属多余开销——现在背景层就是 `site/index.html`/`site/style.css` 里直接声明的一个普通静态元素,"让 html/body 变透明"也只是清空站点自己样式表已经在用的那个 `--bg` 自定义属性。
+- **体验版 widget 的背景选择器("拾取页面元素")现在只是个展示用的控件**:输入框和拾取按钮外观和交互都没变,但点击拾取不会再真的启动逐元素选择器——而是弹出一个提示,引导去用扩展或 Lite 版。因为"给指定元素设置背景"总是需要往任意选中的元素上注入一条限定作用域的样式规则,这跟"我们完全掌控的页面"这个场景不搭;目标选择器的值本身也会被忽略(背景始终整页应用)。
+- **磨砂玻璃模糊度滑块现在支持小数点(步进 0.1px)**:大部分视觉上有用的调节区间都在 6px 以下,原来整数像素的步进在这个区间里太粗糙,调不细。
 
-## [0.7.1] - 2026-07-07
-
-### Changed
-- **Deep Compatibility Mode moved out of "Advanced Settings" to its own highlighted section, first in the panel** (extension popup, options page, PageDye Lite) — it's the fix for the single most common "background doesn't show up" case, so it shouldn't be buried behind a collapsed accordion.
-- **Site demo widget's background layer rewritten to be native instead of injected**: scripts/content.js and the userscript have to fight arbitrary third-party page CSS (hence `!important` overrides, a JS-built shadow-DOM root, a min-integer z-index). The demo widget only ever runs on our own page, so that machinery was unnecessary overhead — the background layer is now a plain static element declared directly in `site/index.html`/`site/style.css`, and "make html/body see-through" is just clearing the same `--bg` custom property the site's own stylesheet already uses.
-- **Site demo widget's background selector ("拾取页面元素") is now a display-only control**: the input and Pick button still look and behave the same, but clicking Pick no longer starts a real per-element picker — it shows a tip pointing to the extension/Lite instead. Per-element backgrounds always required injecting a scoped stylesheet rule into an arbitrary picked element, which doesn't fit a page we fully control; the target-selector value is otherwise ignored (backgrounds always apply full-page).
-
-### Fixed
-- **Site demo widget could double-render alongside the real extension/Lite**: if a visitor has the extension or PageDye Lite installed *and* configured a background for pagedye.pages.dev specifically, the site's own embedded demo widget used to boot regardless, stacking a second independent renderer (canvas effects, observers, etc.) on top of the real one — wasted work at best, a visibly broken double background at worst. The demo widget now checks for the real product's marker root element on load and steps aside entirely if found (with a MutationObserver fallback for the rare case where the real product's storage read resolves after the demo has already booted).
-- **Site demo widget's solid-color background could inherit a stale `position: absolute` / `height: 100%` left over from a previous non-fixed image background**, unlike the extension/userscript which reset this explicitly on every color apply.
-
-## [0.7] - 2026-07-07
-
-### Fixed
-- **Deep Compatibility Mode did nothing on sites tiled with many small opaque cards (e.g. Google's mobile search results)**: the scan only neutralized a single element that alone covered at least half the viewport, so on pages where the cover is instead a mosaic of small individually-opaque cards (each well under that threshold, as Google's own result cards are), nothing ever qualified and the background stayed hidden behind them. The scan now also tracks, per sampled grid point, the frontmost qualifying element regardless of its own size; if most sampled points land on some opaque element, every one of those frontmost elements is neutralized too, catching tiled covers the single-dominant-wrapper check couldn't see. Ported to both the extension and PageDye Lite.
-
-## [0.6.3] - 2026-07-07
-
-### Added
-- **Deep Compatibility Mode**: an opt-in per-site toggle (extension and PageDye Lite) for sites like Google's mobile pages where several stacked opaque containers hide the background no matter which mode is used, because there's always another opaque layer sitting above whatever PageDye painted. Samples a grid of points across the viewport, finds elements whose background is opaque and whose box covers most of the viewport, and forces those backgrounds transparent — re-scanning on scroll, resize and DOM changes to keep up with dynamic pages. An optional exclude-selector field protects any element that turns out to need its background for contrast (e.g. a modal). Not available in the site's demo widget in this release.
-
-## [0.6.2] - 2026-07-03
-
-### Fixed
-- **PageDye Lite panel could be covered by page dialogs/popovers and steal clicks**: the panel already re-parented itself to win z-index ties, but native `<dialog>` and Popover API elements (cookie banners, site modals) render in the browser's top layer, which always wins over z-index regardless of value. The panel now also enters the top layer itself (via the Popover API where supported) and re-asserts its position every time it opens, so it stays clickable above such overlays.
-- **PageDye Lite panel background was translucent with a blur**: switched to a fully opaque background and removed the backdrop blur, so page content behind the panel can no longer bleed through or be mistaken for panel controls.
+### 修复
+- **深度兼容模式在铺满大量小块不透明卡片的网站上完全不生效**(比如 Google 移动版搜索结果):原来的扫描逻辑只会清除"单独一个就能盖住视口一半以上面积"的元素,所以在背景遮挡物其实是很多个体积远达不到这个阈值的小卡片拼成的马赛克时(就像 Google 自己的结果卡片那样),没有任何元素能达标,背景依旧被挡住。现在扫描逻辑还会在每个采样格点上记录"最前面那个够格的元素",不管它自己有多大;如果大多数采样点都落在某个不透明元素上,这些"最前面的元素"也会被一并清空,这样就能捕捉到单一巨大容器检测法看不到的"瓷砖状"遮挡。已同步到扩展和 PageDye Lite。
+- **PageDye Lite 面板可能被页面自身的弹窗/浮层遮挡并抢走点击**:面板本来就会重新挂载到 DOM 末尾来赢得 z-index 平局,但原生 `<dialog>` 和 Popover API 元素(比如 cookie 提示条、网站自己的弹窗)会渲染在浏览器的"顶层"(top layer),不管 z-index 多大都会赢。现在面板自己也会进入顶层(在支持的浏览器上通过 Popover API),并且每次打开都重新确认位置,这样即使上面盖着这类浮层,面板依然可以点击。
+- **PageDye Lite 面板背景是半透明带模糊的**:改成完全不透明的背景并去掉了背景模糊,这样面板后面的页面内容不会再透出来,也不会被误认成面板上的控件。
+- **体验版 widget 可能和真正的扩展/Lite 版同时渲染**:如果访客同时装了扩展或 PageDye Lite,并且专门给 pagedye.pages.dev 这个站点配置过背景,站点自带的体验版 widget 以前还是会照常启动,在真正的渲染器上面再叠一个独立的渲染器(canvas 特效、observer 等等)——往轻了说是浪费性能,往重了说会看到明显的双重背景。现在体验版 widget 在加载时会检测真实产品留下的标记根节点,一旦发现就整个让路(还加了 MutationObserver 兜底,应对真实产品的存储读取比体验版启动更慢的极端情况)。
+- **体验版 widget 的纯色背景可能会继承上一次非固定图片背景遗留下来的 `position: absolute` / `height: 100%`**,和扩展/userscript 版不一样——那两个版本每次应用纯色背景时都会显式重置这些属性。
+- **磨砂玻璃一个站点只能支持一个元素**:给第二个元素套用磨砂玻璃效果时,会悄悄把第一个元素的效果去掉,因为配置一直存的是单个 `{selector, blur, opacity}` 对象,渲染成一个写死 id 的 `<style>` 标签。现在 `frostedGlass` 改成了一个列表,每一项各自拥有自己的 style 标签,扩展弹窗/设置面板/PageDye Lite/站点体验版 widget 都新增了"添加元素"控件,可以同时给多个容器分别配置独立的磨砂玻璃效果。旧的单对象格式配置会自动升级。
 
 ## [0.6.1] - 2026-07-02
 
-### Changed
-- **PageDye Lite's settings panel now matches the site demo widget's UI**: flat tabs and emoji icons are replaced with the same collapsible accordion sections, pill-style segmented controls, and outline SVG icons used by the widget — same panel header with a close button, same "start from a template" grouping (mode & slideshow / background / target element & custom CSS under the Wallpaper tab; frosted glass under its own tab; button appearance / drag & edge-snap / backup under Advanced). No settings, storage format, or feature was removed — this is a visual-only rebuild, and Lite's backup files remain interchangeable with the extension and the site widget's.
+### 变更
+- **PageDye Lite 的设置面板外观改成和站点体验版 widget 一致**:原来平铺的标签页和 emoji 图标换成了和 widget 一样的可折叠手风琴分区、胶囊形分段控件,以及线性 SVG 图标——同样的面板头部加关闭按钮,同样的"从模板开始"分组方式(模式与轮播 / 背景 / 目标元素与自定义 CSS 都在"壁纸"标签下;磨砂玻璃单独一个标签;按钮外观 / 拖拽与贴边隐藏 / 备份都在"高级设置"里)。没有删减任何设置项、存储格式或功能——纯粹是外观重做,Lite 版的备份文件依然可以和扩展版、站点 widget 的互相导入。
 
 ## [0.6.0] - 2026-07-02
 
-### Added
-- **Custom Effects API (extension only)**: write your own animated Canvas wallpaper and use it on any site next to the 16 built-in effects. A new "Custom Effects" page in the dashboard gives you a code editor with a live preview, two starter templates ported from the real Waves/Particles engines, and per-effect JSON export/import for sharing. Effects are authored as a plain `{init, resize, draw, onMouseMove?}` object — the same shape and `cfg`/density/speed/color controls as the built-ins — compiled locally, never fetched remotely.
-- A broken custom effect fails safe: a runtime error freezes the wallpaper on its last good frame and stops instead of spamming errors or crashing the page.
-- Not available in PageDye Lite (userscript) or the site's demo widget in this release.
+### 新增
+- **自定义动效 API(仅扩展版)**:可以自己写一个动画 Canvas 壁纸,和内置的 16 种特效一样用在任意网站上。设置面板里新增的"自定义动效"页面提供了一个带实时预览的代码编辑器、两个从真实的 Waves/Particles 引擎移植过来的起始模板,以及按单个特效导出/导入 JSON 的功能。特效以一个普通的 `{init, resize, draw, onMouseMove?}` 对象形式编写——和内置特效同样的结构、同样的 `cfg`/密度/速度/颜色控件——全部在本地编译,不会请求任何远程内容。
+- 写坏的自定义特效会安全失败:运行时报错会让壁纸停在最后一帧正常画面上并停止,而不是疯狂报错或让页面崩溃。
+- 本版本 PageDye Lite(用户脚本版)和站点体验版 widget 暂不支持。
 
 ## [0.5.6] - 2026-07-02
 
-### Added
-- **11 new animated wallpaper effects**: Aurora, Snow, Bubbles, Constellation, Fireflies, Grid Pulse, Rain, Confetti, Plasma, Vortex, and Typewriter (with a configurable text field) join the original five, across the extension, PageDye Lite, and the site's live demo widget — bringing the total to 16.
-- **Site "三种使用方式" section**: the marketing site now explains the differences between the live demo widget, PageDye Lite, and the full extension, with a direct link to try the demo widget in place.
+### 新增
+- **11 种新的动态壁纸特效**:极光(Aurora)、雪花(Snow)、气泡(Bubbles)、星座连线(Constellation)、萤火虫(Fireflies)、网格脉冲(Grid Pulse)、下雨(Rain)、彩带(Confetti)、等离子(Plasma)、漩涡(Vortex)、打字机(Typewriter,带可配置文字)加入最初的 5 种,扩展版、PageDye Lite、站点实时体验版 widget 三端同步——总数达到 16 种。
+- **站点新增"三种使用方式"板块**:官网现在会说明实时体验版 widget、PageDye Lite、完整扩展版三者的区别,并附带一个可以直接试用体验版 widget 的链接。
 
 ## [0.5.5] - 2026-07-02
 
-### Fixed
-- **PageDye Lite floating panel got covered by page content**: the gear button/panel now re-parents itself to stay the last element in the DOM (winning z-index ties against page overlays added afterward) and moves into the active fullscreen element when one is present, instead of relying solely on a static max z-index.
-- **PageDye Lite settings panel was always dark**: the panel now follows `prefers-color-scheme` with light/dark CSS variables, matching the popup/options theming, instead of being hardcoded to a dark palette.
-- **PageDye Lite: deleting an earlier slideshow frame could silently swap the live wallpaper**: removing a slide now shifts the "currently displayed" pointer along with the panel's edit cursor, instead of only adjusting the latter.
-- **Wallpaper grid delete button unreachable on touch devices**: it only appeared on `:hover`, which touchscreens don't have; now also shown unconditionally on hover-incapable devices.
-- **Settings import could wipe existing config on partial failure**: import now writes the new config and only then removes keys the backup doesn't mention, instead of clearing storage before validating the write succeeded.
+### 修复
+- **PageDye Lite 悬浮面板会被页面内容盖住**:齿轮按钮/面板现在会自己重新挂载到 DOM 末尾,保持"最后一个元素"的位置(在 z-index 相同时赢过之后才加进来的页面浮层),并且在页面进入全屏状态时移动到当前的全屏元素里,而不是只靠一个写死的超大 z-index。
+- **PageDye Lite 设置面板一直是暗色的**:面板现在会跟随 `prefers-color-scheme` 切换浅色/深色 CSS 变量,和弹窗/设置页的主题保持一致,而不是写死用暗色调色板。
+- **PageDye Lite:删除较早的一帧幻灯片可能会悄悄换掉正在显示的壁纸**:删除某一帧时,现在会把"当前正在显示"的指针和面板的编辑光标一起挪动,而不是只调整后者。
+- **壁纸网格的删除按钮在触屏设备上够不着**:原来只在 `:hover` 时才显示,而触屏设备没有 hover 状态;现在在不支持 hover 的设备上会始终显示。
+- **导入设置在部分失败时可能清空现有配置**:导入现在会先写入新配置,确认写入成功后才去删除备份里没提到的旧键,而不是先清空存储再校验写入结果。
 
-### Added
-- **Background color for animated effects**: Matrix/Particles/Waves/Starfield/Ripple effects had a hardcoded black canvas background regardless of the configured line/particle color. Added an independent "Background Color" control (extension popup, options page, and PageDye Lite) so these effects can be styled for light backgrounds too.
+### 新增
+- **动效壁纸的背景色**:Matrix/粒子/波浪/星空/涟漪几种特效原来不管配置的线条/粒子颜色是什么,canvas 背景都写死是黑色。新增了一个独立的"背景颜色"控件(扩展弹窗、设置页、PageDye Lite 均可用),这样这些特效也能适配浅色背景。
 
 ## [0.5.4] - 2026-07-02
 
-### Fixed
-- **PageDye Lite: no way to remove an uploaded image**: On touch devices (iPad, etc.) there was no equivalent of the full extension's "remove image" button once a local image was uploaded. Added a "✕ 删除当前图片" button under the image type editor that clears the current image.
+### 修复
+- **PageDye Lite:没法删除已上传的图片**:在触屏设备(比如 iPad)上,一旦本地上传了图片,没有对应完整扩展版里"移除图片"按钮的功能。在图片类型编辑器下新增了一个"✕ 删除当前图片"按钮,用来清除当前图片。
 
 ## [0.5.3] - 2026-07-02
 
-### Added
-- **Mobile install docs**: README now covers installing PageDye Lite on Android (Edge / Firefox, both of which now support installing Tampermonkey from their extension stores) and iOS/iPadOS Safari (via the Userscripts app).
+### 新增
+- **移动端安装文档**:README 现在包含了在 Android(Edge / Firefox,两者现在都支持从各自的扩展商店安装 Tampermonkey)和 iOS/iPadOS Safari(通过 Userscripts App)上安装 PageDye Lite 的说明。
 
-### Changed
-- **PageDye Lite**: renamed the button-customization tab to "高级设置" (Advanced Settings) and moved backup export/import/reset and the about/version line into it; split "allow dragging" from "edge-snap hide" into independent toggles; fixed edge-snap hiding to dock flush against the screen edge instead of a barely-visible transform; capped the settings panel height so it stays a compact scrollable sheet on phones.
+### 变更
+- **PageDye Lite**:把按钮自定义那个标签页改名为"高级设置",把备份导出/导入/重置以及关于/版本这一行都挪了进去;把"允许拖拽"和"贴边隐藏"拆成两个独立开关;修复了贴边隐藏时没有真正贴到屏幕边缘、只有一个几乎看不出来的位移的问题;给设置面板高度设了上限,让它在手机上始终是一个紧凑的可滚动面板。
 
 ## [0.5.2] - 2026-07-02
 
-### Added
-- **Firefox Support**: PageDye now runs natively in Firefox 140+ and Firefox for Android 142+, alongside Chrome, Edge and other Chromium browsers. Added `browser_specific_settings.gecko` manifest keys, `::-moz-range-thumb` styling for range sliders, and standard `scrollbar-width`/`scrollbar-color` for cross-browser scrollbar styling.
+### 新增
+- **支持 Firefox**:PageDye 现在原生运行在 Firefox 140+ 和 Firefox for Android 142+ 上,和 Chrome、Edge 等 Chromium 内核浏览器并列。新增了 `browser_specific_settings.gecko` 的 manifest 字段、滑杆控件的 `::-moz-range-thumb` 样式,以及跨浏览器通用的 `scrollbar-width`/`scrollbar-color` 滚动条样式。
 
 ## [0.5.1] - 2026-07-02
 
-### Fixed
-- **Settings Dashboard Unresponsive**: The full-page options dashboard ("PageDye 控制面板") was completely non-interactive — sidebar navigation, search, export/import, delete, and site editing all silently failed. Root cause: a variable was used before its `let` declaration in the same scope, throwing a `ReferenceError` during setup that aborted nearly all event listener registration. Also fixed several dangling references uncovered alongside it (missing Reset button listener, a status toast element that was never added to the page, and stale element IDs from the advanced-settings auto-expand logic).
+### 修复
+- **设置仪表盘完全无响应**:整页的设置仪表盘("PageDye 控制面板")完全无法交互——侧边栏导航、搜索、导出/导入、删除、编辑站点全部悄悄失效。根因:同一作用域里,一个变量在它的 `let` 声明之前就被用到了,初始化过程中抛出 `ReferenceError`,导致几乎所有事件监听器都没能注册成功。顺带修复了跟着一起发现的几个悬空引用(缺失的重置按钮监听器、一个从未被真正加到页面里的状态提示元素,以及高级设置自动展开逻辑里几个过时的元素 ID)。
 
 ## [0.5.0] - 2026-07-01
 
-### Added
-- **Frosted Glass (磨砂玻璃)**: Pick a card/container element and PageDye turns its background semi-transparent with a `backdrop-filter` blur, so the wallpaper shows through underneath — with its own selector, blur and tint controls, independent of the main background.
-- **Effects (动效)**: A fourth background type alongside Color/Image — five minimalist black & white Canvas 2D animated wallpapers: Matrix rain, Particles (mouse-repel), Waves, Starfield and Ripple. Each has a customizable color, density and speed. Rendering pauses automatically when the tab is hidden or `prefers-reduced-motion` is set, to avoid wasting battery.
-- **Tabbed popup/options layout**: The popup and options editor now split into "Wallpaper" and "Frosted Glass" tabs instead of one long scrolling list of accordions.
+### 新增
+- **磨砂玻璃**:拾取一个卡片/容器元素,PageDye 会用 `backdrop-filter` 模糊把它的背景变成半透明的,让壁纸从底下透出来——有自己独立的选择器、模糊度和底色控件,和主背景互不影响。
+- **动效**:在纯色/图片之外新增的第四种背景类型——五种极简黑白风格的 Canvas 2D 动态壁纸:Matrix 数字雨、粒子(鼠标排斥)、波浪、星空、涟漪。每一种都可以自定义颜色、密度和速度。标签页隐藏或系统开启 `prefers-reduced-motion` 时会自动暂停渲染,避免浪费电量。
+- **弹窗/设置页改成标签式布局**:弹窗和设置编辑器现在拆成"壁纸"和"磨砂玻璃"两个标签页,而不是一长串要一直往下滚的手风琴列表。
 
 ## [0.3.0] - 2026-07-01
 
-### Added
-- **Slideshow / Wallpaper Rotation (幻灯轮换)**: Configure multiple wallpapers that rotate automatically. Supports per-open, 15-minute, 30-minute, 1-hour and 1-day intervals, with optional random order.
-- **Auto Light/Dark Wallpapers (昼夜双态联动)**: Configure separate backgrounds for Light and Dark modes. The extension automatically reads `prefers-color-scheme` and switches wallpapers when the system theme changes.
-- **Advanced Image Filters (高级图片滤镜)**: Full CSS filter chain for image backgrounds — Brightness, Contrast, Grayscale, Hue-Rotate and Invert. Available in both the popup and the options dashboard. Each filter has a live-preview slider and a one-click Reset button.
+### 新增
+- **幻灯轮换**:配置多张壁纸,自动轮流显示。支持"每次打开切换一张"、15 分钟、30 分钟、1 小时、1 天等间隔,可选随机顺序。
+- **昼夜双态联动**:分别给浅色和深色模式配置不同的背景。扩展会自动读取 `prefers-color-scheme`,系统主题切换时自动换壁纸。
+- **高级图片滤镜**:图片背景支持完整的 CSS 滤镜链——亮度、对比度、灰度、色相旋转、反色。弹窗和设置仪表盘里都能用。每个滤镜都有实时预览的滑杆和一键重置按钮。
 
-### Fixed
-- **Image Lost After Type Switch**: Switching background type Image → Color → Image no longer loses the previously uploaded image. The base64 data is now correctly restored from the in-memory settings when returning to the Image type.
-- **Save Failure After Type Switch**: The auto-save triggered after switching back to Image type no longer overwrites the stored image with an empty value.
-- **Popup / Options Data Sync**: `popup.js` now writes and reads the same `filters` sub-object structure as `options.js`, preventing mismatched storage data between the two interfaces.
-
+### 修复
+- **切换背景类型后图片丢失**:图片 → 纯色 → 图片这样切换类型,不会再丢失之前上传的图片。切回图片类型时,base64 数据现在能从内存里的设置正确恢复。
+- **切换类型后保存失败**:切回图片类型后触发的自动保存,不会再用空值把存好的图片覆盖掉。
+- **弹窗/设置页数据不同步**:`popup.js` 现在写入和读取的 `filters` 子对象结构和 `options.js` 完全一致,避免两个界面之间存储数据对不上。
 
 ## [0.2.7]
 
-### Added
-- **Interactive Domain Copying**: Click on the domain badge in the popup header to copy the active domain name directly to the clipboard.
-- **Custom Styled Checkboxes**: Custom styled, premium checkboxes with smooth scale transitions, borders, and theme contrast integration across all interfaces.
+### 新增
+- **域名交互式复制**:点击弹窗头部的域名徽标,直接把当前域名复制到剪贴板。
+- **自定义样式复选框**:所有界面统一换成带平滑缩放过渡、边框和主题对比度的定制复选框样式。
 
-### Fixed
-- **Mobile Responsive Layouts**: Removed verbose "Back to Sites" text on mobile back-buttons for a clean square arrow icon layout. Prevented table cell text wrapping for background badge labels ("图片" / "纯色") and headers on small screens.
-- **Fixed Position Label Wrapping**: Added wrapping prevention and flex-shrink rules on checkbox labels inside row control groups.
+### 修复
+- **移动端响应式布局**:移动端返回按钮去掉了冗长的"返回站点列表"文字,改成简洁的方形箭头图标。小屏幕上防止了背景类型徽标("图片"/"纯色")和表头文字换行。
+- **固定位置标签换行**:给控件行里复选框标签加上了防止换行和 flex-shrink 规则。
 
 ## [0.2.6]
 
-### Added
-- **Deep Site Customization**: Added support for clicking on any configured site domain name in the dashboard sites table to open a full settings editing page to perform deep customization and custom CSS.
+### 新增
+- **深度站点定制**:支持在仪表盘的站点表格里点击任意已配置站点的域名,打开一个完整的设置编辑页面,进行深度定制和自定义 CSS。
 
-### Fixed
-- **Preview Opacity**: Fixed a bug where the opacity slider did not affect the image preview box inside the popup and options interfaces.
+### 修复
+- **预览不透明度**:修复了不透明度滑杆不影响弹窗和设置界面里图片预览框的问题。
 
 ## [0.2.5]
 
-### Changed
-- **Responsive Settings Layout**: Adapted the options dashboard page to work beautifully on mobile with a top-bar tab navigation UI, and on desktop with a centered container wrapper.
-- **Pure Black-and-White Theme**: Redesigned options page and popup UI color schemes to a pure black and white theme.
-- **Scrollbar Styling**: Customized scrollbars for a cleaner, modern, and premium aesthetic.
+### 变更
+- **响应式设置布局**:设置仪表盘页面适配了移动端(顶部标签导航 UI)和桌面端(居中容器)两种布局,效果都不错。
+- **纯黑白主题**:设置页和弹窗的配色方案重做成纯黑白主题。
+- **滚动条样式**:定制了滚动条样式,更干净、现代、精致。
 
 ## [0.2.4]
 
-### Added
-- **Options Dashboard Page**: A separate, full-page dashboard settings interface containing site management, backup/restore, and info.
-- **Dark Mode Support**: Full support for prefers-color-scheme browser dark mode across all interfaces.
-- **Backup & Restore**: One-click configuration backup and restore (including base64-encoded local images).
+### 新增
+- **设置仪表盘页面**:独立的整页仪表盘设置界面,包含站点管理、备份/恢复和关于信息。
+- **深色模式支持**:所有界面完整支持浏览器的 prefers-color-scheme 深色模式。
+- **备份与恢复**:一键备份和恢复配置(包括 base64 编码的本地图片)。
 
 ## [0.2.3]
 
-### Fixed
-- **Background Selector**: blur/opacity were lost after a page reload (they only
-  showed right after picking/applying). Root cause: the content script runs at
-  `document_start`, so its `<style>` is injected *before* the page's own
-  stylesheets — and with equal specificity + `!important`, CSS breaks the tie by
-  document order, letting the site's background win after a reload. The site's
-  opaque background then covered the image/blur layer (which sits behind it).
-  PageDye now scopes its selector-mode rules with `:root` to win on specificity
-  regardless of stylesheet order, so blur/opacity survive reloads. The popup
-  also re-injects the latest content script before saving, so an already-open
-  tab can't keep applying stale logic.
+### 修复
+- **背景选择器**:页面刷新后模糊度/不透明度会丢失(只在刚拾取/应用后才生效)。根因:内容脚本在 `document_start` 就运行了,它的 `<style>` 在页面自己的样式表*之前*就注入了——在优先级相同且都带 `!important` 的情况下,CSS 靠文档顺序打破平局,于是刷新后网站自己的背景赢了。网站的不透明背景就盖住了(在它下面的)图片/模糊层。现在 PageDye 用 `:root` 限定选择器模式下的规则作用域,不管样式表顺序如何都能在优先级上获胜,模糊度/不透明度就能在刷新后保留下来。弹窗保存前也会重新注入最新的内容脚本,这样已经打开的标签页就不会继续用旧逻辑了。
 
 ## [0.2.2]
 
-### Fixed
-- **Background Selector**: blur/opacity were lost after a page reload (they
-  worked right after applying, but not on refresh). Because the content script
-  runs at `document_start`, our injected styles landed before the page's own
-  stylesheets and lost the CSS document-order tiebreak to same-specificity
-  `!important` site rules. The background is now re-applied once the document is
-  ready so our styles end up last.
+### 修复
+- **背景选择器**:页面刷新后模糊度/不透明度会丢失(刚应用时正常,刷新后失效)。因为内容脚本在 `document_start` 运行,我们注入的样式先于页面自己的样式表加载,在相同优先级的 `!important` 站点规则的 CSS 文档顺序平局判定里落败了。现在会在文档 ready 之后重新应用一次背景,确保我们的样式排在最后。
 
 ## [0.2.1]
 
-### Fixed
-- **Background Selector**: opacity, blur and fixed-position now work for image
-  backgrounds in selector mode. The image is painted on a `::before` layer
-  behind the element's content, so these effects no longer require dimming or
-  blurring the element's own text/children (previously they were skipped).
+### 修复
+- **背景选择器**:选择器模式下,图片背景现在支持不透明度、模糊和固定定位。图片被画在元素内容后面的一个 `::before` 图层上,这样这些效果就不需要再让元素自身的文字/子元素跟着变暗或模糊(之前是直接跳过不做)。
 
 ## [0.2.0]
 
-### Added
-- **Background Selector** (advanced settings): pick an element with an
-  AdGuard-style **element picker** (or type a CSS selector) and PageDye applies
-  your color/image directly to *that element's* background with `!important`,
-  instead of the full-page overlay. Useful when a site's own CSS makes the page
-  background unreachable. The picked element updates immediately — no need to
-  reopen the popup.
-- **Custom CSS**: inject arbitrary CSS into the current site.
-- **Clear All Sites**: remove the saved settings for every website in one click.
-- Extension **version shown in the popup footer**.
+### 新增
+- **背景选择器**(高级设置):用类似 AdGuard 的**元素选择器**拾取一个元素(或者直接输入 CSS 选择器),PageDye 就会用 `!important` 把你的颜色/图片直接应用到*那个元素*的背景上,而不是整页覆盖层。适合网站自己的 CSS 让整页背景没法生效的情况。拾取的元素会立即生效,不需要重新打开弹窗。
+- **自定义 CSS**:往当前网站注入任意 CSS。
+- **一键清空所有站点**:一键移除所有网站保存的设置。
+- 弹窗底部**显示扩展版本号**。
 
-### Changed
-- The popup ensures the latest content script is running before picking, and the
-  content script now reacts to `chrome.storage` changes, so settings (including
-  "Clear All") apply live across open tabs without a reload.
+### 变更
+- 拾取前弹窗会确保运行的是最新的内容脚本,内容脚本现在也会响应 `chrome.storage` 的变化,这样设置(包括"清空所有")能在已打开的标签页里实时生效,不需要刷新。
 
 ## [0.0.1]
 
-### Added
-- Per-site custom backgrounds (solid color or image via local file / URL).
-- Opacity, blur, fixed/scroll, size and repeat controls.
-- English / Chinese UI based on browser language.
+### 新增
+- 按站点自定义背景(纯色或本地文件/URL 图片)。
+- 不透明度、模糊、固定/滚动、尺寸和重复控件。
+- 根据浏览器语言自动切换中英文界面。
