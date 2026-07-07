@@ -37,6 +37,12 @@
       "matches": ["<all_urls>"],
       "js": ["scripts/gradient.js", "scripts/effects.js", "scripts/content.js", "scripts/debug.js"],
       "run_at": "document_start"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["scripts/debug-network.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [

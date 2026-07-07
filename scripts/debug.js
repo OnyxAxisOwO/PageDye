@@ -8,6 +8,9 @@
   const HOST_ID = 'pagedye-debug-host';
   const FPS_SAMPLE_SIZE = 90;
   const LOG_LIMIT = 200;
+  const NETWORK_LIMIT = 200;
+  const NETWORK_ENTRY_EVENT = 'pagedye-debug-network-entry';
+  const NETWORK_TOGGLE_EVENT = 'pagedye-debug-network-toggle';
 
   const domain = window.location.hostname;
 
@@ -31,6 +34,12 @@
   let lockedEl = null;
   let lastSelector = '';
   let hoverBox = null, hoverLabel = null, hoverTip = null;
+
+  // Network capture (fed by scripts/debug-network.js running in the page's
+  // MAIN world — see that file for why a separate script is needed)
+  let networkEntries = [];
+  let networkIdSeq = 0;
+  let expandedNetworkId = null;
 
   // A re-injection (e.g. after the extension is reloaded and a tab's content
   // scripts get re-run) would otherwise leave the previous instance's rAF
@@ -73,6 +82,7 @@
     if (enabled) return;
     enabled = true;
     startFpsLoop();
+    startNetworkCapture();
     buildUI();
   }
 
@@ -81,6 +91,7 @@
     enabled = false;
     stopPicking();
     stopFpsLoop();
+    stopNetworkCapture();
     unpatchConsole();
     destroyUI();
   }
@@ -185,6 +196,31 @@
     if (!n && n !== 0) return '--';
     const mb = n / (1024 * 1024);
     return mb.toFixed(1) + ' MB';
+  }
+
+  // ------------------------------------------------------------------
+  // Network capture — scripts/debug-network.js patches fetch/XHR in the
+  // page's MAIN world (a content script's own fetch/XHR are separate
+  // bindings and never see the page's calls) and reports each finished
+  // request here via a CustomEvent on the shared document.
+  // ------------------------------------------------------------------
+  function startNetworkCapture() {
+    document.addEventListener(NETWORK_ENTRY_EVENT, onNetworkEntry);
+    document.dispatchEvent(new CustomEvent(NETWORK_TOGGLE_EVENT, { detail: { enabled: true } }));
+  }
+
+  function stopNetworkCapture() {
+    document.removeEventListener(NETWORK_ENTRY_EVENT, onNetworkEntry);
+    document.dispatchEvent(new CustomEvent(NETWORK_TOGGLE_EVENT, { detail: { enabled: false } }));
+    networkEntries = [];
+    expandedNetworkId = null;
+  }
+
+  function onNetworkEntry(e) {
+    const entry = Object.assign({ id: ++networkIdSeq }, e.detail);
+    networkEntries.push(entry);
+    if (networkEntries.length > NETWORK_LIMIT) networkEntries.shift();
+    if (ui.open && ui.tab === 'network') renderTabBody();
   }
 
   // ------------------------------------------------------------------
@@ -333,6 +369,7 @@
     { id: 'state', label: '状态' },
     { id: 'perf', label: '性能' },
     { id: 'logs', label: '日志' },
+    { id: 'network', label: '网络' },
     { id: 'inspector', label: '元素' }
   ];
 
@@ -365,6 +402,7 @@
     if (ui.tab === 'state') renderStateTab(body);
     else if (ui.tab === 'perf') renderPerfTab(body);
     else if (ui.tab === 'logs') renderLogsTab(body);
+    else if (ui.tab === 'network') renderNetworkTab(body);
     else if (ui.tab === 'inspector') renderInspectorTab(body);
   }
 
@@ -442,6 +480,73 @@
     if (list) list.scrollTop = list.scrollHeight;
   }
 
+  function statusClass(entry) {
+    if (entry.error || !entry.status) return 'pd-dbg-net-status-error';
+    if (entry.status >= 500) return 'pd-dbg-net-status-error';
+    if (entry.status >= 400) return 'pd-dbg-net-status-warn';
+    return 'pd-dbg-net-status-ok';
+  }
+
+  function shortUrl(url) {
+    try {
+      const u = new URL(url, location.href);
+      return u.pathname + u.search || u.href;
+    } catch (e) {
+      return url;
+    }
+  }
+
+  function renderNetworkTab(body) {
+    const rows = networkEntries.slice().reverse().map((entry) => {
+      const expanded = expandedNetworkId === entry.id;
+      const statusText = entry.error ? '失败' : entry.status;
+      let html = `<div class="pd-dbg-net-row ${expanded ? 'pd-dbg-net-row-open' : ''}" data-network-id="${entry.id}">
+        <div class="pd-dbg-net-summary" data-action="toggle-network">
+          <span class="pd-dbg-net-method">${escapeHtml(entry.method)}</span>
+          <span class="pd-dbg-net-url" title="${escapeHtml(entry.url)}">${escapeHtml(shortUrl(entry.url))}</span>
+          <span class="pd-dbg-net-status ${statusClass(entry)}">${escapeHtml(String(statusText))}</span>
+          <span class="pd-dbg-net-duration">${Math.round(entry.duration)}ms</span>
+        </div>`;
+      if (expanded) html += renderNetworkDetail(entry);
+      html += '</div>';
+      return html;
+    }).join('');
+
+    body.innerHTML = `
+      <div class="pd-dbg-log-toolbar">
+        <button type="button" class="pd-dbg-btn-secondary" data-action="clear-network">清空</button>
+        <span class="pd-dbg-hint" style="margin:0;">已捕获 ${networkEntries.length} 条(fetch/XHR,不含图片/脚本等资源加载)</span>
+      </div>
+      <div class="pd-dbg-net-list">${rows || '<p class="pd-dbg-hint">暂无请求。触发页面上的操作(点击按钮、翻页等)后这里会实时出现。</p>'}</div>
+    `;
+  }
+
+  function headersBlock(headers) {
+    const keys = Object.keys(headers || {});
+    if (!keys.length) return '(无)';
+    return keys.map((k) => `${escapeHtml(k)}: ${escapeHtml(headers[k])}`).join('\n');
+  }
+
+  function renderNetworkDetail(entry) {
+    let html = '<div class="pd-dbg-net-detail">';
+    if (entry.error) html += `<p class="pd-dbg-hint" style="color:var(--pd-danger);">请求失败:${escapeHtml(entry.error)}</p>`;
+    html += '<div class="pd-dbg-subhead">请求头</div>';
+    html += `<pre class="pd-dbg-json">${escapeHtml(headersBlock(entry.reqHeaders))}</pre>`;
+    if (entry.reqBody) {
+      html += '<div class="pd-dbg-subhead">请求体</div>';
+      html += `<pre class="pd-dbg-json">${escapeHtml(entry.reqBody)}</pre>`;
+    }
+    html += '<div class="pd-dbg-subhead">响应头</div>';
+    html += `<pre class="pd-dbg-json">${escapeHtml(headersBlock(entry.resHeaders))}</pre>`;
+    if (entry.resBody != null) {
+      html += '<div class="pd-dbg-subhead">响应体</div>';
+      html += `<pre class="pd-dbg-json">${escapeHtml(entry.resBody)}</pre>`;
+    }
+    html += `<button type="button" class="pd-dbg-btn-secondary" data-action="copy-network-url" data-network-id="${entry.id}">复制 URL</button>`;
+    html += '</div>';
+    return html;
+  }
+
   function renderInspectorTab(body) {
     let html = `<button type="button" class="pd-dbg-btn-primary" data-action="toggle-pick">${picking ? '停止拾取' : (lockedEl ? '重新拾取元素' : '开始拾取元素')}</button>`;
     html += `<p class="pd-dbg-hint">${picking ? '在页面上移动鼠标高亮元素,点击锁定,Esc 取消。' : '点击上方按钮后,悬停页面元素查看,点击锁定详情。'}</p>`;
@@ -516,6 +621,18 @@
       if (picking) stopPicking(); else startPicking();
     } else if (name === 'copy-selector') {
       copyToClipboard(lastSelector);
+    } else if (name === 'clear-network') {
+      networkEntries = [];
+      expandedNetworkId = null;
+      renderTabBody();
+    } else if (name === 'toggle-network') {
+      const id = Number(action.closest('[data-network-id]').getAttribute('data-network-id'));
+      expandedNetworkId = expandedNetworkId === id ? null : id;
+      renderTabBody();
+    } else if (name === 'copy-network-url') {
+      const id = Number(action.getAttribute('data-network-id'));
+      const entry = networkEntries.find((e) => e.id === id);
+      if (entry) copyToClipboard(entry.url);
     }
   }
 
@@ -649,6 +766,22 @@
 
     .pd-dbg-mono { font: 11px/1.4 ui-monospace, Menlo, Consolas, monospace; word-break: break-all; }
     .pd-dbg-selector-box { background: var(--pd-surface); border-radius: 8px; padding: 8px; margin-bottom: 8px; }
+
+    .pd-dbg-net-list { display: flex; flex-direction: column; gap: 4px; max-height: 380px; overflow-y: auto; }
+    .pd-dbg-net-row { background: var(--pd-surface); border-radius: 6px; overflow: hidden; }
+    .pd-dbg-net-summary {
+      display: flex; align-items: center; gap: 6px; padding: 6px 8px; cursor: pointer;
+      font: 11px/1.4 ui-monospace, Menlo, Consolas, monospace;
+    }
+    .pd-dbg-net-method { flex: none; font-weight: 700; color: var(--pd-info); }
+    .pd-dbg-net-url { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .pd-dbg-net-status { flex: none; font-weight: 700; }
+    .pd-dbg-net-status-ok { color: #16a34a; }
+    .pd-dbg-net-status-warn { color: var(--pd-warn); }
+    .pd-dbg-net-status-error { color: var(--pd-danger); }
+    .pd-dbg-net-duration { flex: none; color: var(--pd-text-secondary); }
+    .pd-dbg-net-detail { padding: 0 8px 10px; }
+    .pd-dbg-subhead { font-size: 10.5px; font-weight: 700; color: var(--pd-text-secondary); text-transform: uppercase; margin: 8px 0 4px; }
 
     .pd-dbg-hover-box {
       position: fixed; display: none; pointer-events: none; z-index: 2147483647;
