@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       bgTypeNone: "None",
       bgTypeColor: "Color",
       bgTypeImage: "Image",
+      bgTypeEffect: "Effect",
       deleteBtn: "Delete",
       confirmDelete: "Are you sure you want to delete settings for {domain}?",
       defaultBgRowLabel: "Default Background (All Sites)",
@@ -252,6 +253,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       bgTypeNone: "无",
       bgTypeColor: "颜色",
       bgTypeImage: "图片",
+      bgTypeEffect: "动效",
       deleteBtn: "删除",
       confirmDelete: "确定要删除 {domain} 的配置吗？",
       defaultBgRowLabel: "所有网站默认背景",
@@ -615,6 +617,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       badge.className = `bg-type-badge ${settings.type}`;
       if (settings.type === 'color') typeText = t('bgTypeColor');
       if (settings.type === 'image') typeText = t('bgTypeImage');
+      if (settings.type === 'effect') typeText = t('bgTypeEffect');
     }
     badge.textContent = typeText;
     return badge;
@@ -678,6 +681,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       swatch.style.backgroundColor = settings.value;
     } else if (settings.type === 'image' && settings.value) {
       swatch.style.backgroundImage = `url('${settings.value}')`;
+    } else if (settings.type === 'effect') {
+      swatch.style.background = 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 50%, #6d28d9 100%)';
     }
     const opVal = settings.opacity !== undefined ? settings.opacity : 100;
     swatch.style.opacity = opVal / 100;

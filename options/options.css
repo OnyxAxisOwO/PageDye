@@ -32,6 +32,8 @@
   --badge-color-text: var(--primary-color);
   --badge-image-bg: rgba(113, 113, 122, 0.15);
   --badge-image-text: #52525b;
+  --badge-effect-bg: rgba(99, 102, 241, 0.12);
+  --badge-effect-text: #4f46e5;
 
   --toast-bg: rgba(15, 23, 42, 0.9);
   --toast-text: #ffffff;
@@ -68,6 +70,8 @@
     --badge-color-text: #ffffff;
     --badge-image-bg: rgba(255, 255, 255, 0.15);
     --badge-image-text: #e5e5e5;
+    --badge-effect-bg: rgba(129, 140, 248, 0.18);
+    --badge-effect-text: #a5b4fc;
     
     --toast-bg: rgba(255, 255, 255, 0.95);
     --toast-text: #000000;
@@ -391,6 +395,11 @@ body {
 .bg-type-badge.none {
   background: var(--surface-bg);
   color: var(--text-secondary);
+}
+
+.bg-type-badge.effect {
+  background: var(--badge-effect-bg);
+  color: var(--badge-effect-text);
 }
 
 .no-data {
