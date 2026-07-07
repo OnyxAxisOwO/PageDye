@@ -5,6 +5,7 @@
 (() => {
   const DEBUG_MODE_KEY = '__pagedye_debug_mode__';
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
+  const POSITION_KEY = '__pagedye_debug_position__';
   const HOST_ID = 'pagedye-debug-host';
   const FPS_SAMPLE_SIZE = 90;
   const PERF_HISTORY_SIZE = 60; // 60 samples * 0.5s tick = 30s of history shown in the perf charts
@@ -18,6 +19,10 @@
   let enabled = false;
   let host = null, shadow = null;
   let ui = { open: false, tab: 'state' };
+  let position = { side: 'right', topPercent: 88 };
+  let dragState = null;
+  let suppressClick = false;
+  let networkCaptureActive = false;
 
   // Console mirror
   let logs = [];
@@ -59,10 +64,13 @@
     if (typeof chrome === 'undefined' || !chrome.runtime?.id) return;
     try {
       chrome.storage.onChanged.addListener(onStorageChanged);
-      chrome.storage.local.get([DEBUG_MODE_KEY], (data) => {
+      chrome.storage.local.get([DEBUG_MODE_KEY, POSITION_KEY], (data) => {
         if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
           teardown();
           return;
+        }
+        if (data[POSITION_KEY]) {
+          position = data[POSITION_KEY];
         }
         if (data[DEBUG_MODE_KEY]) enable();
       });
@@ -94,6 +102,11 @@
       else disable();
     }
 
+    if (Object.prototype.hasOwnProperty.call(changes, POSITION_KEY)) {
+      position = changes[POSITION_KEY].newValue || { side: 'right', topPercent: 88 };
+      if (enabled) applyPosition();
+    }
+
     if (!enabled || !ui.open) return;
     if (ui.tab === 'state' && (Object.prototype.hasOwnProperty.call(changes, domain) ||
         Object.prototype.hasOwnProperty.call(changes, CUSTOM_EFFECTS_KEY))) {
@@ -107,6 +120,7 @@
     startFpsLoop();
     startNetworkCapture();
     buildUI();
+    window.addEventListener('resize', onWindowResize);
   }
 
   function disable() {
@@ -117,6 +131,11 @@
     stopNetworkCapture();
     unpatchConsole();
     destroyUI();
+    window.removeEventListener('resize', onWindowResize);
+  }
+
+  function onWindowResize() {
+    if (enabled) applyPosition();
   }
 
   // ------------------------------------------------------------------
@@ -257,8 +276,7 @@
   // request here via a CustomEvent on the shared document.
   // ------------------------------------------------------------------
   function startNetworkCapture() {
-    document.addEventListener(NETWORK_ENTRY_EVENT, onNetworkEntry);
-    document.dispatchEvent(new CustomEvent(NETWORK_TOGGLE_EVENT, { detail: { enabled: true } }));
+    updateNetworkCaptureState();
   }
 
   function stopNetworkCapture() {
@@ -266,6 +284,16 @@
     document.dispatchEvent(new CustomEvent(NETWORK_TOGGLE_EVENT, { detail: { enabled: false } }));
     networkEntries = [];
     expandedNetworkId = null;
+  }
+
+  function updateNetworkCaptureState() {
+    if (networkCaptureActive) {
+      document.addEventListener(NETWORK_ENTRY_EVENT, onNetworkEntry);
+      document.dispatchEvent(new CustomEvent(NETWORK_TOGGLE_EVENT, { detail: { enabled: true } }));
+    } else {
+      document.removeEventListener(NETWORK_ENTRY_EVENT, onNetworkEntry);
+      document.dispatchEvent(new CustomEvent(NETWORK_TOGGLE_EVENT, { detail: { enabled: false } }));
+    }
   }
 
   function onNetworkEntry(e) {
@@ -379,6 +407,148 @@
   }
 
   // ------------------------------------------------------------------
+  // Dragging and positioning of FAB and Panel
+  // ------------------------------------------------------------------
+  function applyPosition() {
+    if (!shadow) return;
+    const fab = shadow.querySelector('.pd-dbg-fab');
+    if (!fab) return;
+    const size = 44;
+    const rawTop = (position.topPercent / 100) * window.innerHeight - size / 2;
+    const top = Math.max(6, Math.min(window.innerHeight - size - 6, rawTop));
+    fab.style.top = top + 'px';
+    fab.style.bottom = 'auto';
+
+    const margin = 18;
+    if (position.side === 'left') {
+      fab.style.left = margin + 'px';
+      fab.style.right = 'auto';
+    } else {
+      fab.style.right = margin + 'px';
+      fab.style.left = 'auto';
+    }
+
+    if (ui.open) {
+      positionPanel();
+    }
+  }
+
+  function positionPanel() {
+    const fab = shadow.querySelector('.pd-dbg-fab');
+    const panel = shadow.getElementById('pd-dbg-panel');
+    if (!fab || !panel) return;
+
+    const rect = fab.getBoundingClientRect();
+    const margin = 10;
+    
+    if (position.side === 'left') {
+      panel.style.left = rect.left + 'px';
+      panel.style.right = 'auto';
+    } else {
+      panel.style.right = (window.innerWidth - rect.right) + 'px';
+      panel.style.left = 'auto';
+    }
+
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const cap = window.innerHeight * 0.62;
+
+    let originY = 'bottom';
+    if (spaceAbove >= spaceBelow) {
+      panel.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+      panel.style.top = 'auto';
+      panel.style.maxHeight = Math.max(200, Math.min(spaceAbove - margin * 2, cap)) + 'px';
+      originY = 'bottom';
+    } else {
+      panel.style.top = (rect.bottom + 8) + 'px';
+      panel.style.bottom = 'auto';
+      panel.style.maxHeight = Math.max(200, Math.min(spaceBelow - margin * 2, cap)) + 'px';
+      originY = 'top';
+    }
+
+    const originX = position.side;
+    panel.style.transformOrigin = `${originY} ${originX}`;
+  }
+
+  function onFabPointerDown(e) {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    const fab = shadow.querySelector('.pd-dbg-fab');
+    if (!fab) return;
+    const rect = fab.getBoundingClientRect();
+    dragState = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      originLeft: rect.left,
+      originTop: rect.top,
+      moved: false
+    };
+    if (fab.setPointerCapture) {
+      try { fab.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    fab.addEventListener('pointermove', onFabPointerMove);
+    fab.addEventListener('pointerup', onFabPointerUp);
+    fab.addEventListener('pointercancel', onFabPointerUp);
+  }
+
+  function onFabPointerMove(e) {
+    if (!dragState || dragState.pointerId !== e.pointerId) return;
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    if (!dragState.moved && Math.hypot(dx, dy) < 6) return;
+    dragState.moved = true;
+
+    const fab = shadow.querySelector('.pd-dbg-fab');
+    if (!fab) return;
+    fab.classList.add('pd-dbg-dragging');
+
+    const size = 44;
+    const left = Math.max(4, Math.min(window.innerWidth - size - 4, dragState.originLeft + dx));
+    const top = Math.max(4, Math.min(window.innerHeight - size - 4, dragState.originTop + dy));
+
+    fab.style.left = left + 'px';
+    fab.style.right = 'auto';
+    fab.style.top = top + 'px';
+    fab.style.bottom = 'auto';
+
+    if (ui.open) {
+      positionPanel();
+    }
+  }
+
+  function onFabPointerUp(e) {
+    if (!dragState || dragState.pointerId !== e.pointerId) return;
+    const wasDrag = dragState.moved;
+    
+    const fab = shadow.querySelector('.pd-dbg-fab');
+    if (fab) {
+      fab.classList.remove('pd-dbg-dragging');
+      fab.removeEventListener('pointermove', onFabPointerMove);
+      fab.removeEventListener('pointerup', onFabPointerUp);
+      fab.removeEventListener('pointercancel', onFabPointerUp);
+      if (fab.releasePointerCapture) {
+        try { fab.releasePointerCapture(e.pointerId); } catch (err) {}
+      }
+    }
+
+    if (wasDrag) {
+      suppressClick = true;
+      const rect = fab.getBoundingClientRect();
+      const size = 44;
+      position.side = (rect.left + size / 2) < window.innerWidth / 2 ? 'left' : 'right';
+      position.topPercent = Math.max(0, Math.min(100, ((rect.top + size / 2) / window.innerHeight) * 100));
+      
+      try {
+        chrome.storage.local.set({ [POSITION_KEY]: position });
+      } catch (err) {
+        // ignore storage write errors (e.g. context invalidated)
+      }
+      applyPosition();
+    }
+    dragState = null;
+  }
+
+  // ------------------------------------------------------------------
   // Panel UI
   // ------------------------------------------------------------------
   function buildUI() {
@@ -406,7 +576,15 @@
     fab.type = 'button';
     fab.title = 'PageDye 调试面板';
     fab.innerHTML = svgIcon(ICON_CPU, 22);
-    fab.addEventListener('click', () => { ui.open = !ui.open; render(); });
+    fab.addEventListener('click', () => {
+      if (suppressClick) {
+        suppressClick = false;
+        return;
+      }
+      ui.open = !ui.open;
+      render();
+    });
+    fab.addEventListener('pointerdown', onFabPointerDown);
     shadow.appendChild(fab);
 
     const panel = document.createElement('div');
@@ -417,6 +595,7 @@
     shadow.addEventListener('click', onShadowClick);
 
     render();
+    applyPosition();
   }
 
   function destroyUI() {
@@ -455,6 +634,7 @@
       <div class="pd-dbg-body" id="pd-dbg-body"></div>
     `;
     renderTabBody();
+    positionPanel();
   }
 
   function renderTabBody() {
@@ -618,9 +798,13 @@
     body.innerHTML = `
       <div class="pd-dbg-log-toolbar">
         <button type="button" class="pd-dbg-btn-secondary" data-action="clear-network">清空</button>
-        <span class="pd-dbg-hint" style="margin:0;">已捕获 ${networkEntries.length} 条(fetch/XHR,不含图片/脚本等资源加载)</span>
+        <label style="display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--pd-text-secondary); cursor: pointer; user-select: none; margin: 0;">
+          <input type="checkbox" data-action="toggle-network-capture" ${networkCaptureActive ? 'checked' : ''} style="margin: 0; cursor: pointer;"/>
+          <span>开启捕获</span>
+        </label>
+        <span class="pd-dbg-hint" style="margin: 0 0 0 auto;">${networkCaptureActive ? `已捕获 ${networkEntries.length} 条` : '捕获已关闭'}</span>
       </div>
-      <div class="pd-dbg-net-list">${rows || '<p class="pd-dbg-hint">暂无请求。触发页面上的操作(点击按钮、翻页等)后这里会实时出现。</p>'}</div>
+      <div class="pd-dbg-net-list">${rows || (networkCaptureActive ? '<p class="pd-dbg-hint">暂无请求。触发页面上的操作(点击按钮、翻页等)后这里会实时出现。</p>' : '<p class="pd-dbg-hint">捕获已关闭。请勾选“开启捕获”以观察网络流量。</p>')}</div>
     `;
   }
 
@@ -736,6 +920,13 @@
       const id = Number(action.getAttribute('data-network-id'));
       const entry = networkEntries.find((e) => e.id === id);
       if (entry) copyToClipboard(entry.url);
+    } else if (name === 'toggle-network-capture') {
+      const checkbox = shadow.querySelector('[data-action="toggle-network-capture"]');
+      if (checkbox) {
+        networkCaptureActive = checkbox.checked;
+        updateNetworkCaptureState();
+        renderTabBody();
+      }
     }
   }
 
@@ -775,9 +966,11 @@
       background: var(--pd-fab-bg); color: var(--pd-fab-text); border: 1px solid var(--pd-border);
       display: flex; align-items: center; justify-content: center; cursor: pointer;
       box-shadow: 0 4px 16px var(--pd-shadow); transition: transform 0.15s ease, box-shadow 0.15s ease;
+      touch-action: none;
     }
     .pd-dbg-fab:hover { transform: scale(1.06); }
     .pd-dbg-fab-open { box-shadow: 0 0 0 3px var(--pd-focus), 0 4px 16px var(--pd-shadow); }
+    .pd-dbg-fab.pd-dbg-dragging { transition: none !important; transform: scale(1.04) !important; cursor: grabbing !important; }
 
     .pd-dbg-panel {
       display: flex; flex-direction: column; position: fixed; bottom: 70px; right: 18px;
@@ -818,7 +1011,7 @@
     }
     .pd-dbg-seg button.active { background: var(--pd-card); color: var(--pd-text); font-weight: 600; box-shadow: 0 1px 3px var(--pd-shadow); }
 
-    .pd-dbg-body { padding: 12px; overflow-y: auto; }
+    .pd-dbg-body { padding: 12px; overflow-y: auto; flex: 1; min-height: 0; }
     .pd-dbg-body::-webkit-scrollbar { width: 6px; }
     .pd-dbg-body::-webkit-scrollbar-thumb { background: var(--pd-border); border-radius: 3px; }
 
@@ -858,7 +1051,7 @@
 
     .pd-dbg-log-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .pd-dbg-log-toolbar .pd-dbg-btn-secondary { width: auto; margin-bottom: 0; padding: 5px 10px; }
-    .pd-dbg-log-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
+    .pd-dbg-log-list { display: flex; flex-direction: column; gap: 4px; }
     .pd-dbg-log-row {
       display: flex; gap: 6px; font: 11px/1.4 ui-monospace, Menlo, Consolas, monospace;
       padding: 5px 7px; border-radius: 6px; background: var(--pd-surface); word-break: break-all;
@@ -872,7 +1065,7 @@
     .pd-dbg-mono { font: 11px/1.4 ui-monospace, Menlo, Consolas, monospace; word-break: break-all; }
     .pd-dbg-selector-box { background: var(--pd-surface); border-radius: 8px; padding: 8px; margin-bottom: 8px; }
 
-    .pd-dbg-net-list { display: flex; flex-direction: column; gap: 4px; max-height: 380px; overflow-y: auto; }
+    .pd-dbg-net-list { display: flex; flex-direction: column; gap: 4px; }
     .pd-dbg-net-row { background: var(--pd-surface); border-radius: 6px; overflow: hidden; }
     .pd-dbg-net-summary {
       display: flex; align-items: center; gap: 6px; padding: 6px 8px; cursor: pointer;
