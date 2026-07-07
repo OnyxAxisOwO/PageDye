@@ -151,7 +151,9 @@
       const subSettings = isDark ? settings.dark : settings.light;
       activeSettings = Object.assign({}, subSettings || { type: 'none' }, {
         targetSelector: settings.targetSelector,
-        customCss: settings.customCss
+        customCss: settings.customCss,
+        deepCompat: settings.deepCompat,
+        deepCompatExclude: settings.deepCompatExclude
       });
     } else if (settings.mode === 'slideshow' && settings.slideshow && settings.slideshow.items && settings.slideshow.items.length > 0) {
       const sh = settings.slideshow;
@@ -160,7 +162,9 @@
       const subSettings = sh.items[index];
       activeSettings = Object.assign({}, subSettings || { type: 'none' }, {
         targetSelector: settings.targetSelector,
-        customCss: settings.customCss
+        customCss: settings.customCss,
+        deepCompat: settings.deepCompat,
+        deepCompatExclude: settings.deepCompatExclude
       });
       setupSlideshowTimer(settings);
     }
@@ -178,8 +182,16 @@
     if (!hasBackground) {
       removeBackdrop();
       removeTargetStyle();
+      updateDeepCompat(false, '');
       return;
     }
+
+    // Deep Compatibility Mode runs independently of selector/overlay mode:
+    // some sites stack several opaque full-viewport containers *above* both
+    // the negative-z-index overlay and a selector-targeted element's own
+    // ::before layer (e.g. Google's mobile app shell), hiding the background
+    // no matter which mode painted it.
+    updateDeepCompat(!!activeSettings.deepCompat, activeSettings.deepCompatExclude);
 
     if (selector) {
       // Selector mode: paint the chosen element(s) directly via their own CSS
@@ -606,6 +618,226 @@
     if (invert     > 0)    parts.push(`invert(${invert}%)`);
 
     return parts.length ? parts.join(' ') : 'none';
+  }
+
+  // Deep Compatibility Mode
+  //
+  // Some sites (Google's mobile app shell is the canonical case) stack several
+  // opaque, full-viewport wrapper `<div>`s above whatever PageDye paints, so
+  // neither the full-page overlay (behind everything via negative z-index) nor
+  // a selector-targeted element's own ::before layer can ever show through —
+  // there's always another opaque sheet sitting on top of it in paint order.
+  //
+  // Rather than requiring the user to hand-pick every offending wrapper (they
+  // are usually unlabeled, dynamically-classed divs that differ per page), this
+  // samples a grid of points across the current viewport with
+  // `elementsFromPoint`, and for every element at those points whose computed
+  // background is opaque-ish *and* whose box covers most of the viewport, force
+  // its background transparent via a directly-set `!important` inline style
+  // (highest-priority way to win against the site's own stylesheets without
+  // needing a stable selector for elements that often don't have one).
+  const DEEP_COMPAT_GRID_COLS = 6;
+  const DEEP_COMPAT_GRID_ROWS = 8;
+  const DEEP_COMPAT_MIN_COVERAGE = 0.5; // fraction of viewport area a candidate must overlap
+  const DEEP_COMPAT_MIN_ALPHA = 0.15; // ignore near-fully-transparent tints/hover states
+  // Some sites (e.g. Google's mobile search results) have no single dominant
+  // opaque wrapper — instead the whole viewport is tiled edge-to-edge by many
+  // small opaque cards, each individually well under DEEP_COMPAT_MIN_COVERAGE.
+  // If most sampled points resolve to *some* opaque foreground element, treat
+  // the whole tiling as a cover regardless of each tile's own size.
+  const DEEP_COMPAT_TILED_POINT_RATIO = 0.6; // fraction of grid points that must hit an opaque element
+  const DEEP_COMPAT_SCAN_DEBOUNCE_MS = 400;
+  const DEEP_COMPAT_SAFETY_INTERVAL_MS = 3000;
+  const DEEP_COMPAT_SKIP_TAGS = new Set([
+    'HTML', 'BODY', 'SCRIPT', 'STYLE', 'SVG', 'PATH', 'IMG', 'VIDEO', 'CANVAS',
+    'IFRAME', 'BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'A'
+  ]);
+
+  let deepCompatEnabled = false;
+  let deepCompatExcludeSelector = '';
+  let deepCompatObserver = null;
+  let deepCompatScanTimer = null;
+  let deepCompatIntervalTimer = null;
+  const deepCompatNeutralized = new Set();
+  const deepCompatOriginalStyleAttrs = new WeakMap();
+
+  // Called on every applyBackground() pass with the desired enabled state.
+  // Starts/stops the watchers on an enabled-state transition, and re-scans
+  // immediately if only the exclude selector changed while already running.
+  function updateDeepCompat(enabled, excludeSelector) {
+    deepCompatExcludeSelector = excludeSelector || '';
+    if (enabled === deepCompatEnabled) {
+      if (enabled) scheduleDeepCompatScan();
+      return;
+    }
+    deepCompatEnabled = enabled;
+    if (enabled) {
+      startDeepCompat();
+    } else {
+      stopDeepCompat();
+    }
+  }
+
+  function startDeepCompat() {
+    scheduleDeepCompatScan();
+    if (!deepCompatObserver) {
+      deepCompatObserver = new MutationObserver(scheduleDeepCompatScan);
+      deepCompatObserver.observe(document.documentElement, { childList: true, subtree: true });
+    }
+    window.addEventListener('scroll', scheduleDeepCompatScan, { passive: true });
+    window.addEventListener('resize', scheduleDeepCompatScan, { passive: true });
+    if (!deepCompatIntervalTimer) {
+      // Safety net for changes a mutation/scroll/resize listener can miss,
+      // e.g. a class toggle that resizes an existing element without adding
+      // or removing any nodes.
+      deepCompatIntervalTimer = setInterval(() => {
+        if (document.visibilityState === 'visible') scanForOpaqueCovers();
+      }, DEEP_COMPAT_SAFETY_INTERVAL_MS);
+    }
+  }
+
+  function stopDeepCompat() {
+    if (deepCompatObserver) {
+      deepCompatObserver.disconnect();
+      deepCompatObserver = null;
+    }
+    window.removeEventListener('scroll', scheduleDeepCompatScan);
+    window.removeEventListener('resize', scheduleDeepCompatScan);
+    if (deepCompatIntervalTimer) {
+      clearInterval(deepCompatIntervalTimer);
+      deepCompatIntervalTimer = null;
+    }
+    if (deepCompatScanTimer) {
+      clearTimeout(deepCompatScanTimer);
+      deepCompatScanTimer = null;
+    }
+    revertAllDeepCompat();
+  }
+
+  function scheduleDeepCompatScan() {
+    if (deepCompatScanTimer) clearTimeout(deepCompatScanTimer);
+    deepCompatScanTimer = setTimeout(() => {
+      deepCompatScanTimer = null;
+      scanForOpaqueCovers();
+    }, DEEP_COMPAT_SCAN_DEBOUNCE_MS);
+  }
+
+  function parseAlpha(colorStr) {
+    const m = colorStr && colorStr.match(/rgba?\(([^)]+)\)/);
+    if (!m) return 1;
+    const parts = m[1].split(',').map((s) => parseFloat(s.trim()));
+    return parts.length === 4 ? parts[3] : 1;
+  }
+
+  function isDeepCompatExcluded(el) {
+    if (!deepCompatExcludeSelector) return false;
+    try {
+      return el.closest(deepCompatExcludeSelector) !== null;
+    } catch (e) {
+      return false; // invalid user-supplied selector — fail open, exclude nothing
+    }
+  }
+
+  function scanForOpaqueCovers() {
+    if (!deepCompatEnabled) return;
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    if (!vw || !vh) return;
+    const viewportArea = vw * vh;
+
+    const candidates = new Set();
+    const tiledCandidates = new Set();
+    let sampledPoints = 0;
+    let opaquePoints = 0;
+
+    for (let r = 0; r < DEEP_COMPAT_GRID_ROWS; r++) {
+      const y = Math.round(((r + 0.5) / DEEP_COMPAT_GRID_ROWS) * vh);
+      for (let c = 0; c < DEEP_COMPAT_GRID_COLS; c++) {
+        const x = Math.round(((c + 0.5) / DEEP_COMPAT_GRID_COLS) * vw);
+
+        let stack;
+        try {
+          stack = document.elementsFromPoint(x, y);
+        } catch (e) {
+          continue;
+        }
+
+        let frontmost = null;
+        for (const el of stack) {
+          if (!el || el.nodeType !== 1 || el.id === ROOT_ID) continue;
+          if (DEEP_COMPAT_SKIP_TAGS.has(el.tagName)) continue;
+          if (isDeepCompatExcluded(el)) continue;
+          if (!frontmost) frontmost = el;
+
+          const rect = el.getBoundingClientRect();
+          const overlapW = Math.min(rect.right, vw) - Math.max(rect.left, 0);
+          const overlapH = Math.min(rect.bottom, vh) - Math.max(rect.top, 0);
+          if (overlapW <= 0 || overlapH <= 0) continue;
+          if ((overlapW * overlapH) / viewportArea < DEEP_COMPAT_MIN_COVERAGE) continue;
+
+          const alpha = parseAlpha(window.getComputedStyle(el).backgroundColor);
+          if (alpha < DEEP_COMPAT_MIN_ALPHA) continue;
+
+          candidates.add(el);
+        }
+
+        // Track the frontmost qualifying element at this point separately,
+        // regardless of its own size, to catch a mosaic of small opaque tiles
+        // (see DEEP_COMPAT_TILED_POINT_RATIO above).
+        if (frontmost) {
+          sampledPoints++;
+          const alpha = parseAlpha(window.getComputedStyle(frontmost).backgroundColor);
+          if (alpha >= DEEP_COMPAT_MIN_ALPHA) {
+            opaquePoints++;
+            tiledCandidates.add(frontmost);
+          }
+        }
+      }
+    }
+
+    if (sampledPoints > 0 && opaquePoints / sampledPoints >= DEEP_COMPAT_TILED_POINT_RATIO) {
+      for (const el of tiledCandidates) candidates.add(el);
+    }
+
+    // Elements that no longer qualify (scrolled away, removed, or the site
+    // changed their background itself) get their original style restored.
+    for (const el of deepCompatNeutralized) {
+      if (!candidates.has(el)) {
+        revertDeepCompatElement(el);
+        deepCompatNeutralized.delete(el);
+      }
+    }
+
+    for (const el of candidates) {
+      if (!deepCompatNeutralized.has(el)) {
+        neutralizeDeepCompatElement(el);
+        deepCompatNeutralized.add(el);
+      }
+    }
+  }
+
+  function neutralizeDeepCompatElement(el) {
+    if (!deepCompatOriginalStyleAttrs.has(el)) {
+      deepCompatOriginalStyleAttrs.set(el, el.getAttribute('style'));
+    }
+    el.style.setProperty('background-color', 'transparent', 'important');
+    el.style.setProperty('background-image', 'none', 'important');
+  }
+
+  function revertDeepCompatElement(el) {
+    const original = deepCompatOriginalStyleAttrs.get(el);
+    if (original === null || original === undefined) {
+      el.removeAttribute('style');
+    } else {
+      el.setAttribute('style', original);
+    }
+    deepCompatOriginalStyleAttrs.delete(el);
+  }
+
+  function revertAllDeepCompat() {
+    for (const el of deepCompatNeutralized) revertDeepCompatElement(el);
+    deepCompatNeutralized.clear();
   }
 
 })();
