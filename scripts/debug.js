@@ -7,6 +7,7 @@
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
   const HOST_ID = 'pagedye-debug-host';
   const FPS_SAMPLE_SIZE = 90;
+  const PERF_HISTORY_SIZE = 60; // 60 samples * 0.5s tick = 30s of history shown in the perf charts
   const LOG_LIMIT = 200;
   const NETWORK_LIMIT = 200;
   const NETWORK_ENTRY_EVENT = 'pagedye-debug-network-entry';
@@ -23,11 +24,14 @@
   let consolePatched = false;
   const originalConsole = {};
 
-  // FPS
+  // FPS / perf history (for the perf tab's sparkline charts)
   let rafId = null;
   let perfTimer = null;
   let frameTimes = [];
   let lastFrameAt = null;
+  let fpsHistory = [], frameMsHistory = [], memHistory = [], longTaskPctHistory = [];
+  let longTaskObserver = null;
+  let longTaskBusyMs = 0;
 
   // Inspector
   let picking = false;
@@ -151,6 +155,7 @@
     if (rafId) return;
     lastFrameAt = null;
     frameTimes = [];
+    fpsHistory = []; frameMsHistory = []; memHistory = []; longTaskPctHistory = [];
     const tick = (now) => {
       if (lastFrameAt !== null) {
         frameTimes.push(now - lastFrameAt);
@@ -161,15 +166,23 @@
     };
     rafId = requestAnimationFrame(tick);
 
+    startLongTaskObserver();
+
+    // Sampling runs continuously (not just while the perf tab is visible) so
+    // switching to it shows an already-populated history instead of an empty
+    // chart every time.
     perfTimer = setInterval(() => {
-      if (ui.open && ui.tab === 'perf') updatePerfDisplay();
+      sampleTick();
+      if (ui.open && ui.tab === 'perf') renderTabBody();
     }, 500);
   }
 
   function stopFpsLoop() {
     if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
     if (perfTimer) { clearInterval(perfTimer); perfTimer = null; }
+    stopLongTaskObserver();
     frameTimes = [];
+    fpsHistory = []; frameMsHistory = []; memHistory = []; longTaskPctHistory = [];
   }
 
   function currentFps() {
@@ -178,24 +191,40 @@
     return { fps: avgMs > 0 ? 1000 / avgMs : 0, frameMs: avgMs };
   }
 
-  function updatePerfDisplay() {
-    const body = shadow && shadow.getElementById('pd-dbg-body');
-    if (!body) return;
+  function pushHistory(arr, value) {
+    arr.push(value);
+    if (arr.length > PERF_HISTORY_SIZE) arr.shift();
+  }
+
+  function sampleTick() {
     const stats = currentFps();
-    const fpsEl = body.querySelector('#pd-dbg-fps');
-    const msEl = body.querySelector('#pd-dbg-frametime');
-    const memEl = body.querySelector('#pd-dbg-memory');
-    if (fpsEl) fpsEl.textContent = stats ? Math.round(stats.fps) : '--';
-    if (msEl) msEl.textContent = stats ? stats.frameMs.toFixed(1) : '--';
-    if (memEl && performance.memory) {
-      memEl.textContent = formatBytes(performance.memory.usedJSHeapSize);
+    pushHistory(fpsHistory, stats ? stats.fps : 0);
+    pushHistory(frameMsHistory, stats ? stats.frameMs : 0);
+    if (performance.memory) pushHistory(memHistory, performance.memory.usedJSHeapSize / (1024 * 1024));
+    if (longTaskObserver) {
+      pushHistory(longTaskPctHistory, Math.min(100, (longTaskBusyMs / 500) * 100));
+      longTaskBusyMs = 0;
     }
   }
 
-  function formatBytes(n) {
-    if (!n && n !== 0) return '--';
-    const mb = n / (1024 * 1024);
-    return mb.toFixed(1) + ' MB';
+  // Long Tasks API: the standard, permission-free stand-in for "CPU usage" —
+  // real per-tab CPU% isn't exposed to extensions at all (chrome.system.cpu
+  // is system-wide, needs a new permission, and needs a background service
+  // worker this extension doesn't have). Chromium-only; feature-detected.
+  function startLongTaskObserver() {
+    if (longTaskObserver || typeof PerformanceObserver === 'undefined') return;
+    if (!PerformanceObserver.supportedEntryTypes || !PerformanceObserver.supportedEntryTypes.includes('longtask')) return;
+    try {
+      longTaskObserver = new PerformanceObserver((list) => {
+        list.getEntries().forEach((entry) => { longTaskBusyMs += entry.duration; });
+      });
+      longTaskObserver.observe({ entryTypes: ['longtask'] });
+    } catch (e) { longTaskObserver = null; }
+  }
+
+  function stopLongTaskObserver() {
+    if (longTaskObserver) { longTaskObserver.disconnect(); longTaskObserver = null; }
+    longTaskBusyMs = 0;
   }
 
   // ------------------------------------------------------------------
@@ -441,16 +470,46 @@
     return [];
   }
 
+  function lastOf(arr) {
+    return arr.length ? arr[arr.length - 1] : null;
+  }
+
+  function sparkline(data, color, maxOverride) {
+    const w = 300, h = 44;
+    if (!data.length) return `<svg class="pd-dbg-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"></svg>`;
+    const max = maxOverride != null ? maxOverride : Math.max(1, Math.max.apply(null, data));
+    const stepX = data.length > 1 ? w / (data.length - 1) : w;
+    const points = data.map((v, i) => {
+      const x = i * stepX;
+      const y = h - Math.max(0, Math.min(1, v / max)) * h;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    return `<svg class="pd-dbg-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+      <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>`;
+  }
+
   function renderPerfTab(body) {
-    body.innerHTML = `
-      <div class="pd-dbg-perf-grid">
-        <div class="pd-dbg-perf-card"><span class="pd-dbg-perf-value" id="pd-dbg-fps">--</span><span class="pd-dbg-perf-label">FPS</span></div>
-        <div class="pd-dbg-perf-card"><span class="pd-dbg-perf-value" id="pd-dbg-frametime">--</span><span class="pd-dbg-perf-label">帧耗时(ms)</span></div>
-        ${performance.memory ? '<div class="pd-dbg-perf-card"><span class="pd-dbg-perf-value" id="pd-dbg-memory">--</span><span class="pd-dbg-perf-label">JS 堆内存</span></div>' : ''}
-      </div>
-      <p class="pd-dbg-hint">基于 requestAnimationFrame,最近 ${FPS_SAMPLE_SIZE} 帧的滚动平均,每 0.5 秒刷新一次。${performance.memory ? '' : '(此浏览器不支持 JS 堆内存读数)'}</p>
-    `;
-    updatePerfDisplay();
+    const fps = lastOf(fpsHistory);
+    const frameMs = lastOf(frameMsHistory);
+    const mem = lastOf(memHistory);
+    const longTaskPct = lastOf(longTaskPctHistory);
+
+    let html = '<div class="pd-dbg-perf-grid">';
+    html += `<div class="pd-dbg-perf-card"><span class="pd-dbg-perf-value">${fps != null ? Math.round(fps) : '--'}</span><span class="pd-dbg-perf-label">FPS</span></div>`;
+    html += `<div class="pd-dbg-perf-card"><span class="pd-dbg-perf-value">${frameMs != null ? frameMs.toFixed(1) : '--'}</span><span class="pd-dbg-perf-label">帧耗时(ms)</span></div>`;
+    if (performance.memory) html += `<div class="pd-dbg-perf-card"><span class="pd-dbg-perf-value">${mem != null ? mem.toFixed(1) : '--'}</span><span class="pd-dbg-perf-label">JS 堆内存(MB)</span></div>`;
+    if (longTaskObserver) html += `<div class="pd-dbg-perf-card"><span class="pd-dbg-perf-value">${longTaskPct != null ? Math.round(longTaskPct) : '--'}%</span><span class="pd-dbg-perf-label">主线程繁忙度</span></div>`;
+    html += '</div>';
+
+    html += '<div class="pd-dbg-subhead">FPS</div>' + sparkline(fpsHistory, 'var(--pd-info)', 60);
+    html += '<div class="pd-dbg-subhead">帧耗时 (ms)</div>' + sparkline(frameMsHistory, 'var(--pd-warn)');
+    if (performance.memory) html += '<div class="pd-dbg-subhead">JS 堆内存 (MB)</div>' + sparkline(memHistory, '#16a34a');
+    if (longTaskObserver) html += '<div class="pd-dbg-subhead">主线程繁忙度 (%)</div>' + sparkline(longTaskPctHistory, 'var(--pd-danger)', 100);
+
+    html += `<p class="pd-dbg-hint">FPS/帧耗时基于 requestAnimationFrame 采样;繁忙度基于 Long Tasks API(主线程被单个任务连续占用超过 50ms 的时间占比,是不需要额外权限时最接近"CPU 有多忙"的替代指标,浏览器扩展拿不到系统级 CPU 占用率)。每 0.5 秒采样一次,图表窗口 ${PERF_HISTORY_SIZE * 0.5} 秒。${performance.memory ? '' : ' 此浏览器不支持 JS 堆内存读数。'}${longTaskObserver ? '' : ' 此浏览器不支持 Long Tasks API,已隐藏繁忙度。'}</p>`;
+
+    body.innerHTML = html;
   }
 
   function levelClass(level) {
@@ -750,6 +809,8 @@
     }
     .pd-dbg-perf-value { font-size: 20px; font-weight: 700; }
     .pd-dbg-perf-label { font-size: 10.5px; color: var(--pd-text-secondary); }
+
+    .pd-dbg-spark { width: 100%; height: 44px; display: block; background: var(--pd-surface); border-radius: 8px; margin-bottom: 4px; }
 
     .pd-dbg-log-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .pd-dbg-log-toolbar .pd-dbg-btn-secondary { width: auto; margin-bottom: 0; padding: 5px 10px; }
