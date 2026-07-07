@@ -2,6 +2,12 @@
 
 本文档记录 PageDye 的所有重要变更。
 
+## [0.7.5] - 2026-07-08
+
+### 修复
+- **扩展上下文失效相关报错**: 针对在重新加载/更新扩展后已注入页面的内容脚本失效问题，在 `scripts/debug.js` 和 `scripts/content.js` 的所有 API 通信口增加了 `chrome.runtime?.id` 环境有效性检测。一旦检测到环境失效，调试面板及相关监控定时器、事件监听器均会自动进行自清理（teardown），避免在控制台持续抛出 `Extension context invalidated` 异常。
+- **Google 搜索等页面的 `rel=expect` 渲染报错**: 针对在 Chromium 浏览器开启 `<link rel="expect">` 渲染期待的页面上，面板的 `buildUI` 在解析未完成时同步注入 DOM 元素干扰网页解析的问题，现在将 `buildUI` 的构建逻辑完全延迟到 `DOMContentLoaded` 之后（或页面解析完毕后）执行，避免首屏解析和渲染警告。
+
 ## [0.7.4] - 2026-07-08
 
 ### 新增

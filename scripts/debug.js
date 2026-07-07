@@ -56,18 +56,37 @@
   init();
 
   function init() {
-    chrome.storage.onChanged.addListener(onStorageChanged);
-    chrome.storage.local.get([DEBUG_MODE_KEY], (data) => {
-      if (data[DEBUG_MODE_KEY]) enable();
-    });
+    if (typeof chrome === 'undefined' || !chrome.runtime?.id) return;
+    try {
+      chrome.storage.onChanged.addListener(onStorageChanged);
+      chrome.storage.local.get([DEBUG_MODE_KEY], (data) => {
+        if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
+          teardown();
+          return;
+        }
+        if (data[DEBUG_MODE_KEY]) enable();
+      });
+    } catch (e) {
+      teardown();
+    }
   }
 
   function teardown() {
-    chrome.storage.onChanged.removeListener(onStorageChanged);
+    if (typeof chrome !== 'undefined' && chrome.runtime?.id && chrome.storage) {
+      try {
+        chrome.storage.onChanged.removeListener(onStorageChanged);
+      } catch (e) {
+        // ignore
+      }
+    }
     disable();
   }
 
   function onStorageChanged(changes, area) {
+    if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
+      teardown();
+      return;
+    }
     if (area !== 'local') return;
 
     if (Object.prototype.hasOwnProperty.call(changes, DEBUG_MODE_KEY)) {
@@ -172,6 +191,10 @@
     // switching to it shows an already-populated history instead of an empty
     // chart every time.
     perfTimer = setInterval(() => {
+      if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
+        teardown();
+        return;
+      }
       sampleTick();
       if (ui.open && ui.tab === 'perf') renderTabBody();
     }, 500);
@@ -359,6 +382,15 @@
   // Panel UI
   // ------------------------------------------------------------------
   function buildUI() {
+    if (!enabled) return;
+    if (document.getElementById(HOST_ID)) return;
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        if (enabled) buildUI();
+      }, { once: true });
+      return;
+    }
+
     host = document.createElement('div');
     host.id = HOST_ID;
     Object.assign(host.style, { position: 'fixed', zIndex: '2147483647', bottom: '0', right: '0', all: 'initial' });
@@ -440,28 +472,40 @@
   }
 
   function renderStateTab(body) {
-    chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY], (data) => {
-      if (ui.tab !== 'state') return; // user may have switched tabs while this resolved
-      const settings = data[domain] || null;
-      const effects = data[CUSTOM_EFFECTS_KEY] || [];
-      const frosted = settings ? normalizeFrostedGlassList(settings.frostedGlass) : [];
+    if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
+      teardown();
+      return;
+    }
+    try {
+      chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY], (data) => {
+        if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
+          teardown();
+          return;
+        }
+        if (ui.tab !== 'state') return; // user may have switched tabs while this resolved
+        const settings = data[domain] || null;
+        const effects = data[CUSTOM_EFFECTS_KEY] || [];
+        const frosted = settings ? normalizeFrostedGlassList(settings.frostedGlass) : [];
 
-      let html = '<div class="pd-dbg-kv">';
-      html += kvRow('域名', escapeHtml(domain));
-      html += kvRow('是否已配置', settings ? '是' : '否');
-      if (settings) {
-        html += kvRow('模式', escapeHtml(settings.mode || 'single'));
-        html += kvRow('类型', escapeHtml(settings.type || 'none'));
-        html += kvRow('深度兼容模式', settings.deepCompat ? '开启' : '关闭');
-        html += kvRow('磨砂玻璃元素数', String(frosted.length));
-      }
-      html += kvRow('自定义动效数(全局)', String(effects.length));
-      html += '</div>';
-      html += '<button type="button" class="pd-dbg-btn-secondary" data-action="copy-state-json">复制完整 JSON</button>';
-      html += `<pre class="pd-dbg-json">${escapeHtml(JSON.stringify(settings, null, 2))}</pre>`;
-      body.innerHTML = html;
-      body.dataset.stateJson = JSON.stringify(settings, null, 2);
-    });
+        let html = '<div class="pd-dbg-kv">';
+        html += kvRow('域名', escapeHtml(domain));
+        html += kvRow('是否已配置', settings ? '是' : '否');
+        if (settings) {
+          html += kvRow('模式', escapeHtml(settings.mode || 'single'));
+          html += kvRow('类型', escapeHtml(settings.type || 'none'));
+          html += kvRow('深度兼容模式', settings.deepCompat ? '开启' : '关闭');
+          html += kvRow('磨砂玻璃元素数', String(frosted.length));
+        }
+        html += kvRow('自定义动效数(全局)', String(effects.length));
+        html += '</div>';
+        html += '<button type="button" class="pd-dbg-btn-secondary" data-action="copy-state-json">复制完整 JSON</button>';
+        html += `<pre class="pd-dbg-json">${escapeHtml(JSON.stringify(settings, null, 2))}</pre>`;
+        body.innerHTML = html;
+        body.dataset.stateJson = JSON.stringify(settings, null, 2);
+      });
+    } catch (e) {
+      teardown();
+    }
   }
 
   function normalizeFrostedGlassList(cfg) {

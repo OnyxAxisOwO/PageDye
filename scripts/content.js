@@ -20,20 +20,29 @@
   init();
 
   function init() {
+    if (typeof chrome === 'undefined' || !chrome.runtime?.id) return;
     // Keep exactly one live listener of each kind, even if this script is
     // injected more than once (manifest at document_start + on-demand
     // re-injection from the popup after the extension is reloaded).
-    if (window.__pagedyeListener) {
-      chrome.runtime.onMessage.removeListener(window.__pagedyeListener);
-    }
+    try {
+      if (window.__pagedyeListener) {
+        chrome.runtime.onMessage.removeListener(window.__pagedyeListener);
+      }
+    } catch (e) {}
     window.__pagedyeListener = onMessage;
-    chrome.runtime.onMessage.addListener(onMessage);
+    try {
+      chrome.runtime.onMessage.addListener(onMessage);
+    } catch (e) {}
 
-    if (window.__pagedyeStorageListener) {
-      chrome.storage.onChanged.removeListener(window.__pagedyeStorageListener);
-    }
+    try {
+      if (window.__pagedyeStorageListener) {
+        chrome.storage.onChanged.removeListener(window.__pagedyeStorageListener);
+      }
+    } catch (e) {}
     window.__pagedyeStorageListener = onStorageChanged;
-    chrome.storage.onChanged.addListener(onStorageChanged);
+    try {
+      chrome.storage.onChanged.addListener(onStorageChanged);
+    } catch (e) {}
 
     // Listen to prefers-color-scheme change
     if (window.__pagedyeMediaListener) {
@@ -44,51 +53,61 @@
 
     // Load initial settings
     const domain = window.location.hostname;
-    chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY, DEFAULT_BG_KEY], (data) => {
-      currentCustomEffects = data[CUSTOM_EFFECTS_KEY] || [];
-      lastKnownDefault = data[DEFAULT_BG_KEY] || null;
-      usingDefault = !data[domain] && !!lastKnownDefault;
-      const settings = data[domain] || lastKnownDefault;
-      if (settings) {
-        currentSettings = settings;
-        if (settings.mode === 'slideshow' && settings.slideshow && settings.slideshow.items && settings.slideshow.items.length > 1) {
-          const sh = settings.slideshow;
-          let needRotate = false;
-          if (sh.interval === 'open') {
-            needRotate = true;
-          } else {
-            let intervalMs = 15 * 60 * 1000;
-            if (sh.interval === '30m') intervalMs = 30 * 60 * 1000;
-            if (sh.interval === '1h') intervalMs = 60 * 60 * 1000;
-            if (sh.interval === '24h') intervalMs = 24 * 60 * 60 * 1000;
-            if (Date.now() - (sh.lastRotationTime || 0) >= intervalMs) {
+    try {
+      chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY, DEFAULT_BG_KEY], (data) => {
+        if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
+          return;
+        }
+        currentCustomEffects = data[CUSTOM_EFFECTS_KEY] || [];
+        lastKnownDefault = data[DEFAULT_BG_KEY] || null;
+        usingDefault = !data[domain] && !!lastKnownDefault;
+        const settings = data[domain] || lastKnownDefault;
+        if (settings) {
+          currentSettings = settings;
+          if (settings.mode === 'slideshow' && settings.slideshow && settings.slideshow.items && settings.slideshow.items.length > 1) {
+            const sh = settings.slideshow;
+            let needRotate = false;
+            if (sh.interval === 'open') {
               needRotate = true;
-            }
-          }
-          
-          if (needRotate) {
-            let nextIndex = sh.currentIndex || 0;
-            if (sh.order === 'random') {
-              let rand = nextIndex;
-              while (rand === nextIndex) {
-                rand = Math.floor(Math.random() * sh.items.length);
-              }
-              nextIndex = rand;
             } else {
-              nextIndex = (nextIndex + 1) % sh.items.length;
+              let intervalMs = 15 * 60 * 1000;
+              if (sh.interval === '30m') intervalMs = 30 * 60 * 1000;
+              if (sh.interval === '1h') intervalMs = 60 * 60 * 1000;
+              if (sh.interval === '24h') intervalMs = 24 * 60 * 60 * 1000;
+              if (Date.now() - (sh.lastRotationTime || 0) >= intervalMs) {
+                needRotate = true;
+              }
             }
             
-            sh.currentIndex = nextIndex;
-            sh.lastRotationTime = Date.now();
-            chrome.storage.local.set({ [usingDefault ? DEFAULT_BG_KEY : domain]: settings }, () => {
-              applyBackground(settings);
-            });
-            return;
+            if (needRotate) {
+              let nextIndex = sh.currentIndex || 0;
+              if (sh.order === 'random') {
+                let rand = nextIndex;
+                while (rand === nextIndex) {
+                  rand = Math.floor(Math.random() * sh.items.length);
+                }
+                nextIndex = rand;
+              } else {
+                nextIndex = (nextIndex + 1) % sh.items.length;
+              }
+              
+              sh.currentIndex = nextIndex;
+              sh.lastRotationTime = Date.now();
+              try {
+                chrome.storage.local.set({ [usingDefault ? DEFAULT_BG_KEY : domain]: settings }, () => {
+                  if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
+                    return;
+                  }
+                  applyBackground(settings);
+                });
+              } catch (e) {}
+              return;
+            }
           }
+          applyBackground(settings);
         }
-        applyBackground(settings);
-      }
-    });
+      });
+    } catch (e) {}
   }
 
   function onMediaSchemeChanged() {
@@ -115,12 +134,15 @@
   }
 
   function onMessage(message, sender, sendResponse) {
+    if (typeof chrome === 'undefined' || !chrome.runtime?.id) return;
     if (message.action === 'updateBackground') {
       currentSettings = message.settings;
       applyBackground(message.settings);
     }
     // Reply so the sender's awaited sendMessage resolves cleanly.
-    sendResponse({ ok: true });
+    try {
+      sendResponse({ ok: true });
+    } catch (e) {}
     return false;
   }
 
@@ -128,6 +150,7 @@
   // background update even when it's written by the in-page element picker
   // (the popup is closed at that point and can't message us).
   function onStorageChanged(changes, area) {
+    if (typeof chrome === 'undefined' || !chrome.runtime?.id) return;
     if (area !== 'local') return;
     const domain = window.location.hostname;
 
@@ -270,14 +293,21 @@
     }
 
     const domain = window.location.hostname;
-    chrome.storage.local.get(domain, (data) => {
-      const stored = data[domain];
-      if (stored && stored.mode === 'slideshow' && stored.slideshow) {
-        stored.slideshow.currentIndex = nextIndex;
-        stored.slideshow.lastRotationTime = Date.now();
-        chrome.storage.local.set({ [domain]: stored });
-      }
-    });
+    try {
+      chrome.storage.local.get(domain, (data) => {
+        if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
+          return;
+        }
+        const stored = data[domain];
+        if (stored && stored.mode === 'slideshow' && stored.slideshow) {
+          stored.slideshow.currentIndex = nextIndex;
+          stored.slideshow.lastRotationTime = Date.now();
+          try {
+            chrome.storage.local.set({ [domain]: stored });
+          } catch (e) {}
+        }
+      });
+    } catch (e) {}
   }
 
   // Full-page background: a fixed layer behind everything, with html/body
