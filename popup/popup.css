@@ -118,20 +118,12 @@ h1 {
   transform: rotate(45deg);
 }
 
-.header-side {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-}
-
 .target-tabs {
-  padding: 2px;
+  margin-bottom: 8px;
 }
 
 .target-tabs label {
-  padding: 4px 10px;
-  font-size: 11px;
+  white-space: nowrap;
 }
 
 .target-hint {

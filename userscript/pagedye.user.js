@@ -2534,6 +2534,7 @@
         flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
         min-height: 32px; padding: 6px 8px; border-radius: calc(var(--pd-radius-md) - 3px); border: none;
         background: transparent; color: var(--pd-text-secondary); font-size: 12.5px; cursor: pointer;
+        white-space: nowrap;
         transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
       }
       .pd-seg button.active { background: var(--pd-card); color: var(--pd-text); box-shadow: 0 1px 3px var(--pd-shadow); font-weight: 600; }

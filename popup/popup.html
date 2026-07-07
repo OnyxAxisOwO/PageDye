@@ -19,17 +19,15 @@
           </svg>
         </button>
       </div>
-      <div class="header-side">
-        <span id="current-domain" class="domain-badge">...</span>
-        <div class="segmented-control target-tabs" id="target-tabs">
-          <input type="radio" name="targetTab" value="site" id="target-site" checked>
-          <label for="target-site" data-i18n="targetSite">This Site</label>
-
-          <input type="radio" name="targetTab" value="default" id="target-default">
-          <label for="target-default" data-i18n="targetDefault">Default (All Sites)</label>
-        </div>
-      </div>
+      <span id="current-domain" class="domain-badge">...</span>
     </header>
+    <div class="segmented-control target-tabs" id="target-tabs">
+      <input type="radio" name="targetTab" value="site" id="target-site" checked>
+      <label for="target-site" data-i18n="targetSite">This Site</label>
+
+      <input type="radio" name="targetTab" value="default" id="target-default">
+      <label for="target-default" data-i18n="targetDefault">Default (All Sites)</label>
+    </div>
     <p class="hint target-hint" id="target-hint"></p>
 
     <main>
