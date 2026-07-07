@@ -195,6 +195,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       error: "Error saving!",
       noTab: "No Active Tab",
       invalidUrl: "Invalid URL",
+      targetSite: "This Site",
+      targetDefault: "Default (All Sites)",
+      targetHintInherited: "This site has no settings of its own — showing the global default. Editing will save a config just for this site.",
+      targetHintDefault: "Applies to every site that doesn't have its own settings.",
       tabWallpaper: "Wallpaper",
       tabFrostedGlass: "Frosted Glass",
       advanced: "Advanced",
@@ -316,6 +320,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       error: "保存失败!",
       noTab: "无活动标签页",
       invalidUrl: "无效的链接",
+      targetSite: "此网站",
+      targetDefault: "全站默认",
+      targetHintInherited: "当前网站没有单独设置，正在使用全局默认背景。修改后将为此网站单独保存。",
+      targetHintDefault: "应用于所有没有单独设置背景的网站。",
       tabWallpaper: "壁纸",
       tabFrostedGlass: "磨砂玻璃",
       advanced: "高级设置",
@@ -387,6 +395,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Elements
   const els = {
     domainBadge: document.getElementById('current-domain'),
+    targetTabs: document.getElementsByName('targetTab'),
+    targetHint: document.getElementById('target-hint'),
     bgTypes: document.getElementsByName('bgType'),
     sectionColor: document.getElementById('section-color'),
     sectionImage: document.getElementById('section-image'),
@@ -491,9 +501,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
+  const DEFAULT_BG_KEY = '__pagedye_default_background__';
 
   // State
-  let currentDomain = '';
+  let currentDomain = ''; // key currently being edited/saved: siteDomain or DEFAULT_BG_KEY
+  let siteDomain = ''; // the active tab's real hostname, always
+  let siteHasOwnConfig = false; // whether siteDomain has its own saved entry (vs. inheriting the default)
   let currentImageBase64 = null;
   let lang = 'en';
   let activeScheme = 'light';
@@ -523,10 +536,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (tab && tab.url) {
     try {
       const url = new URL(tab.url);
-      currentDomain = url.hostname;
+      siteDomain = url.hostname;
+      currentDomain = siteDomain;
       els.domainBadge.textContent = currentDomain;
       els.domainBadge.title = lang === 'zh' ? '点击复制域名' : 'Click to copy domain';
       await loadSettings(currentDomain);
+      els.targetTabs.forEach(radio => {
+        radio.addEventListener('change', () => {
+          if (radio.checked) switchTarget(radio.value);
+        });
+      });
     } catch (e) {
       els.domainBadge.textContent = t('invalidUrl');
       disableAll();
@@ -1232,9 +1251,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
   }
 
+  function updateTargetHint() {
+    if (currentDomain === DEFAULT_BG_KEY) {
+      els.targetHint.textContent = t('targetHintDefault');
+      els.targetHint.style.display = '';
+    } else if (!siteHasOwnConfig) {
+      els.targetHint.textContent = t('targetHintInherited');
+      els.targetHint.style.display = '';
+    } else {
+      els.targetHint.textContent = '';
+      els.targetHint.style.display = 'none';
+    }
+  }
+
+  async function switchTarget(target) {
+    currentDomain = target === 'default' ? DEFAULT_BG_KEY : siteDomain;
+    els.domainBadge.textContent = target === 'default' ? t('targetDefault') : siteDomain;
+    await loadSettings(currentDomain);
+  }
+
   async function loadSettings(domain) {
-    const data = await chrome.storage.local.get(domain);
-    currentSettings = data[domain] || {
+    const data = await chrome.storage.local.get([domain, DEFAULT_BG_KEY]);
+    const ownEntry = data[domain];
+    const isSiteTarget = domain === siteDomain;
+    if (isSiteTarget) siteHasOwnConfig = !!ownEntry;
+    // Editing "this site" with no override of its own falls back to the
+    // global default — the form should show what the page actually
+    // renders right now, not a misleading blank slate.
+    const fallbackDefault = isSiteTarget ? data[DEFAULT_BG_KEY] : null;
+    currentSettings = ownEntry || fallbackDefault || {
       mode: 'single',
       type: 'none',
       value: '',
@@ -1242,6 +1287,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       blur: 0,
       style: { fixed: true, size: 'cover', repeat: false }
     };
+    updateTargetHint();
 
     if (!currentSettings.mode) {
       currentSettings.mode = 'single';
@@ -1829,6 +1875,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       await chrome.storage.local.set({ [currentDomain]: settings });
+      if (currentDomain === siteDomain) { siteHasOwnConfig = true; updateTargetHint(); }
 
       try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -1849,7 +1896,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function resetSettings() {
     setSavingState();
     await chrome.storage.local.remove(currentDomain);
-    
+    if (currentDomain === siteDomain) { siteHasOwnConfig = false; updateTargetHint(); }
+
     currentSettings = {
       mode: 'single',
       type: 'none',

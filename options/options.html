@@ -50,6 +50,21 @@
           </svg>
           <span data-i18n="navBackup">Backup & Restore</span>
         </button>
+        <button type="button" class="nav-item" data-target="section-debug">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+            <rect x="9" y="9" width="6" height="6"></rect>
+            <line x1="9" y1="1" x2="9" y2="4"></line>
+            <line x1="15" y1="1" x2="15" y2="4"></line>
+            <line x1="9" y1="20" x2="9" y2="23"></line>
+            <line x1="15" y1="20" x2="15" y2="23"></line>
+            <line x1="20" y1="9" x2="23" y2="9"></line>
+            <line x1="20" y1="14" x2="23" y2="14"></line>
+            <line x1="1" y1="9" x2="4" y2="9"></line>
+            <line x1="1" y1="14" x2="4" y2="14"></line>
+          </svg>
+          <span data-i18n="navDebug">Debug Mode</span>
+        </button>
         <button type="button" class="nav-item" data-target="section-about">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
@@ -247,6 +262,34 @@
         </div>
       </section>
       
+      <!-- Section 2.5: Debug Mode -->
+      <section id="section-debug" class="content-section">
+        <div class="section-header">
+          <h2 data-i18n="debugTitle">Debug Mode</h2>
+          <p class="section-subtitle" data-i18n="debugHint">Adds a floating debug panel to every page for inspecting PageDye's own state and troubleshooting sites it doesn't render correctly on. Intended for developers/power users.</p>
+        </div>
+
+        <div class="card">
+          <div class="control-group" style="margin-bottom: 0;">
+            <label class="checkbox-label">
+              <input type="checkbox" id="debug-mode-toggle">
+              <span data-i18n="debugEnable">Enable debug mode</span>
+            </label>
+            <p class="hint" data-i18n="debugEnableHint">Shows a floating button on every page (bottom-right). Takes effect immediately on already-open tabs, no reload needed.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 data-i18n="debugFeaturesTitle">What's included</h3>
+          <ul class="debug-feature-list">
+            <li><strong data-i18n="debugFeatureStateTitle">State</strong> — <span data-i18n="debugFeatureState">Live view of the current site's saved settings (mode, background type, Deep Compatibility Mode, Frosted Glass entries) and the raw JSON.</span></li>
+            <li><strong data-i18n="debugFeaturePerfTitle">Performance</strong> — <span data-i18n="debugFeaturePerf">Live FPS, frame time, and JS heap memory (where supported).</span></li>
+            <li><strong data-i18n="debugFeatureLogsTitle">Logs</strong> — <span data-i18n="debugFeatureLogs">A mirror of this page's console.log/warn/error output.</span></li>
+            <li><strong data-i18n="debugFeatureInspectorTitle">Inspector</strong> — <span data-i18n="debugFeatureInspector">Hover to highlight and click to lock an element, showing its tag/id/class, guessed selector, size and key computed styles.</span></li>
+          </ul>
+        </div>
+      </section>
+
       <!-- Section 3: About -->
       <section id="section-about" class="content-section">
         <div class="section-header">

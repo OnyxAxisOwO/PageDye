@@ -5,9 +5,16 @@
   const CUSTOM_STYLE_ID = 'pagedye-custom-css';
   const FROSTED_STYLE_ID = 'pagedye-frosted-glass';
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
+  const DEFAULT_BG_KEY = '__pagedye_default_background__';
   let currentSettings = null;
   let slideshowTimer = null;
   let currentCustomEffects = [];
+  // Whether currentSettings for this page came from DEFAULT_BG_KEY rather
+  // than the page's own domain entry — decides where slideshow rotation
+  // writes back to, and whether a DEFAULT_BG_KEY storage change should
+  // repaint this page.
+  let usingDefault = false;
+  let lastKnownDefault = null;
 
   // Initialize
   init();
@@ -37,9 +44,11 @@
 
     // Load initial settings
     const domain = window.location.hostname;
-    chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY], (data) => {
+    chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY, DEFAULT_BG_KEY], (data) => {
       currentCustomEffects = data[CUSTOM_EFFECTS_KEY] || [];
-      const settings = data[domain];
+      lastKnownDefault = data[DEFAULT_BG_KEY] || null;
+      usingDefault = !data[domain] && !!lastKnownDefault;
+      const settings = data[domain] || lastKnownDefault;
       if (settings) {
         currentSettings = settings;
         if (settings.mode === 'slideshow' && settings.slideshow && settings.slideshow.items && settings.slideshow.items.length > 1) {
@@ -71,7 +80,7 @@
             
             sh.currentIndex = nextIndex;
             sh.lastRotationTime = Date.now();
-            chrome.storage.local.set({ [domain]: settings }, () => {
+            chrome.storage.local.set({ [usingDefault ? DEFAULT_BG_KEY : domain]: settings }, () => {
               applyBackground(settings);
             });
             return;
@@ -130,10 +139,27 @@
       if (currentSettings) applyBackground(currentSettings);
     }
 
+    let domainHandled = false;
+    if (Object.prototype.hasOwnProperty.call(changes, DEFAULT_BG_KEY)) {
+      lastKnownDefault = changes[DEFAULT_BG_KEY].newValue || null;
+    }
+
     if (Object.prototype.hasOwnProperty.call(changes, domain)) {
-      const settings = changes[domain].newValue || { type: 'none' };
+      domainHandled = true;
+      const newValue = changes[domain].newValue;
+      usingDefault = !newValue && !!lastKnownDefault;
+      const settings = newValue || lastKnownDefault || { type: 'none' };
       currentSettings = settings;
       applyBackground(settings);
+    }
+
+    // Only repaint from a default-background change if this page isn't
+    // already covered by the domain-change branch above and has no
+    // override of its own — otherwise this would clobber a site that just
+    // got (or already has) its own independent settings.
+    if (!domainHandled && Object.prototype.hasOwnProperty.call(changes, DEFAULT_BG_KEY) && usingDefault) {
+      currentSettings = lastKnownDefault || { type: 'none' };
+      applyBackground(currentSettings);
     }
   }
 

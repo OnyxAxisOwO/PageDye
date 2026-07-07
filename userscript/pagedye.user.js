@@ -44,6 +44,12 @@
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
+  const DEFAULT_BG_KEY = 'pagedye-lite:default-background';
+
+  // Whether the currently-applied `settings` for this page came from
+  // DEFAULT_BG_KEY rather than this domain's own entry — decides where
+  // slideshow rotation writes its state back to.
+  let usingDefault = false;
 
   function defaultGlobalConfig() {
     return { buttonColor: '#000000', buttonSize: 50, buttonImage: '', draggable: false, edgeSnap: false, side: 'right', topPercent: 88 };
@@ -291,6 +297,15 @@
   }
 
   let settings = null;
+  // Which key the panel is currently editing/saving to: 'site' (this
+  // domain, the default) or 'default' (DEFAULT_BG_KEY, applies to every
+  // site without its own override). Independent from `usingDefault` above,
+  // which tracks the page's own passive fallback resolution.
+  let panelTarget = 'site';
+  let editingKey = STORAGE_KEY;
+  // Whether this domain has its own saved entry (vs. currently just
+  // inheriting the shared default) — drives the panel's hint text.
+  let siteHasOwnConfig = false;
 
   // --------------------------------------------------------------------
   // Render engine — ported from scripts/content.js. Same DOM strategy
@@ -814,7 +829,7 @@
     }
     sh.currentIndex = nextIndex;
     sh.lastRotationTime = Date.now();
-    await GMBridge.set(STORAGE_KEY, s);
+    await GMBridge.set(usingDefault ? DEFAULT_BG_KEY : STORAGE_KEY, s);
     applyBackground(s);
   }
 
@@ -841,7 +856,7 @@
     }
     sh.currentIndex = nextIndex;
     sh.lastRotationTime = Date.now();
-    await GMBridge.set(STORAGE_KEY, s);
+    await GMBridge.set(usingDefault ? DEFAULT_BG_KEY : STORAGE_KEY, s);
   }
 
   // --- Effects (animated Canvas 2D wallpapers) — ported unchanged --------
@@ -1611,7 +1626,8 @@
   }
   async function persist() {
     settings.timestamp = Date.now();
-    await GMBridge.set(STORAGE_KEY, settings);
+    await GMBridge.set(editingKey, settings);
+    if (editingKey === STORAGE_KEY) siteHasOwnConfig = true;
     setStatus('已同步');
   }
   function setStatus(text) {
@@ -1620,14 +1636,49 @@
   }
   function liveApply() { applyBackground(settings); }
 
-  function resetCurrentSite() {
+  async function resetCurrentSite() {
     clearTimeout(saveTimer);
-    GMBridge.remove(STORAGE_KEY);
-    settings = defaultSettings();
+    GMBridge.remove(editingKey);
+    if (panelTarget === 'default') {
+      settings = defaultSettings();
+    } else {
+      // Falls back to whatever the shared default currently is, matching
+      // what this page will actually show once the panel closes — not a
+      // blank slate.
+      siteHasOwnConfig = false;
+      const storedDefault = await GMBridge.get(DEFAULT_BG_KEY);
+      settings = storedDefault ? Object.assign(defaultSettings(), storedDefault) : defaultSettings();
+    }
     ui.tab = 'wallpaper'; ui.scheme = 'light'; ui.slideIndex = 0;
     liveApply();
     renderPanel();
     setStatus('已重置');
+  }
+
+  // Switches what the panel edits/saves to: this domain, or the shared
+  // default background used by every site without its own override.
+  async function switchPanelTarget(target) {
+    if (target === panelTarget) return;
+    clearTimeout(saveTimer);
+    panelTarget = target;
+    editingKey = target === 'default' ? DEFAULT_BG_KEY : STORAGE_KEY;
+    const stored = await GMBridge.get(editingKey);
+    if (target === 'site') siteHasOwnConfig = !!stored;
+    if (stored) {
+      settings = Object.assign(defaultSettings(), stored);
+    } else if (target === 'site') {
+      // Same fallback chain as boot(): show what this site will actually
+      // render (the shared default) rather than a misleading blank slate.
+      const storedDefault = await GMBridge.get(DEFAULT_BG_KEY);
+      settings = storedDefault ? Object.assign(defaultSettings(), storedDefault) : defaultSettings();
+    } else {
+      settings = defaultSettings();
+    }
+    settings.frostedGlass = normalizeFrostedGlassList(settings.frostedGlass);
+    ui.tab = 'wallpaper'; ui.scheme = 'light'; ui.slideIndex = 0;
+    liveApply();
+    renderPanel();
+    setStatus('已同步');
   }
 
   function exportSettings() {
@@ -1635,7 +1686,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `pagedye-${domain}.json`;
+    a.download = panelTarget === 'default' ? 'pagedye-default.json' : `pagedye-${domain}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -1875,9 +1926,19 @@
     let html = '';
     html += accordion('buttonAppearance', '悬浮按钮外观', appearance);
     html += accordion('movement', '移动与贴边隐藏', movement);
-    html += accordion('backup', '备份(当前网站)', backup);
+    html += accordion('backup', panelTarget === 'default' ? '备份(全站默认)' : '备份(当前网站)', backup);
     html += `<div class="pd-hint pd-version">PageDye Lite v${VERSION} · ${domain}</div>`;
     return html;
+  }
+
+  function renderTargetHint() {
+    if (panelTarget === 'default') {
+      return `<div class="pd-hint">应用于所有没有单独设置背景的网站。</div>`;
+    }
+    if (!siteHasOwnConfig) {
+      return `<div class="pd-hint">当前网站没有单独设置,正在显示全站默认背景。修改后将为此网站单独保存。</div>`;
+    }
+    return '';
   }
 
   function renderPanel() {
@@ -1885,7 +1946,13 @@
     const body = shadow.getElementById('pd-body');
     if (!body) return;
 
-    let html = `<div class="pd-seg pd-seg-main">
+    let html = `<div class="pd-seg pd-target-seg">
+      <button class="${panelTarget === 'site' ? 'active' : ''}" data-action="set-target" data-value="site">此网站</button>
+      <button class="${panelTarget === 'default' ? 'active' : ''}" data-action="set-target" data-value="default">全站默认</button>
+    </div>`;
+    html += renderTargetHint();
+
+    html += `<div class="pd-seg pd-seg-main">
       <button class="${ui.tab === 'wallpaper' ? 'active' : ''}" data-action="set-tab" data-value="wallpaper">${svgIcon(ICON.layers, 13)}<span>壁纸</span></button>
       <button class="${ui.tab === 'frosted' ? 'active' : ''}" data-action="set-tab" data-value="frosted">磨砂玻璃</button>
       <button class="${ui.tab === 'advanced' ? 'active' : ''}" data-action="set-tab" data-value="advanced">高级设置</button>
@@ -2076,6 +2143,7 @@
       return;
     }
     if (action === 'set-tab') { ui.tab = btn.dataset.value; renderPanel(); return; }
+    if (action === 'set-target') { switchPanelTarget(btn.dataset.value); return; }
     if (action === 'set-scheme') { ui.scheme = btn.dataset.value; renderPanel(); return; }
     if (action === 'set-mode') {
       settings.mode = btn.dataset.value;
@@ -2470,6 +2538,7 @@
       }
       .pd-seg button.active { background: var(--pd-card); color: var(--pd-text); box-shadow: 0 1px 3px var(--pd-shadow); font-weight: 600; }
       .pd-seg-main { margin-bottom: 14px; }
+      .pd-target-seg { margin-bottom: 8px; border: 1px solid var(--pd-border); }
 
       .pd-scheme-switch { display: flex; gap: 8px; margin-bottom: 10px; }
       .pd-scheme-switch button {
@@ -2644,8 +2713,14 @@
   // Boot
   // --------------------------------------------------------------------
   async function boot() {
-    const [stored, storedGlobal] = await Promise.all([GMBridge.get(STORAGE_KEY), GMBridge.get(GLOBAL_KEY)]);
-    settings = stored ? Object.assign(defaultSettings(), stored) : defaultSettings();
+    const [stored, storedGlobal, storedDefault] = await Promise.all([
+      GMBridge.get(STORAGE_KEY), GMBridge.get(GLOBAL_KEY), GMBridge.get(DEFAULT_BG_KEY)
+    ]);
+    usingDefault = !stored && !!storedDefault;
+    siteHasOwnConfig = !!stored;
+    settings = stored ? Object.assign(defaultSettings(), stored)
+      : storedDefault ? Object.assign(defaultSettings(), storedDefault)
+      : defaultSettings();
     settings.frostedGlass = normalizeFrostedGlassList(settings.frostedGlass);
     globalConfig = Object.assign(defaultGlobalConfig(), storedGlobal || {});
     await maybeCatchUpSlideshow(settings);

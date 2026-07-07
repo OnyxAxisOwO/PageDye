@@ -35,7 +35,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["scripts/gradient.js", "scripts/effects.js", "scripts/content.js"],
+      "js": ["scripts/gradient.js", "scripts/effects.js", "scripts/content.js", "scripts/debug.js"],
       "run_at": "document_start"
     }
   ],

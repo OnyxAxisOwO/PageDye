@@ -350,6 +350,15 @@ body {
   background: var(--table-hover-bg);
 }
 
+.row-default-bg td {
+  background: var(--surface-bg);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.row-default-bg .domain-edit-link {
+  font-weight: 600;
+}
+
 .preview-swatch {
   width: 32px;
   height: 32px;
@@ -1375,6 +1384,33 @@ input[type="range"]::-moz-range-thumb {
 .selector-row {
   display: flex;
   gap: 8px;
+}
+
+.card h3 {
+  font-size: 15px;
+  margin: 0 0 12px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.debug-feature-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.debug-feature-list li {
+  margin-bottom: 8px;
+}
+
+.debug-feature-list li:last-child {
+  margin-bottom: 0;
+}
+
+.debug-feature-list strong {
+  color: var(--text-color);
 }
 
 .selector-row input[type="text"] {

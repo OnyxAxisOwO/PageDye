@@ -7,7 +7,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       navCustomEffects: "Custom Effects",
       navAppearance: "Appearance",
       navBackup: "Backup & Restore",
+      navDebug: "Debug Mode",
       navAbout: "About",
+      debugTitle: "Debug Mode",
+      debugHint: "Adds a floating debug panel to every page for inspecting PageDye's own state and troubleshooting sites it doesn't render correctly on. Intended for developers/power users.",
+      debugEnable: "Enable debug mode",
+      debugEnableHint: "Shows a floating button on every page (bottom-right). Takes effect immediately on already-open tabs, no reload needed.",
+      debugFeaturesTitle: "What's included",
+      debugFeatureStateTitle: "State",
+      debugFeatureState: "Live view of the current site's saved settings (mode, background type, Deep Compatibility Mode, Frosted Glass entries) and the raw JSON.",
+      debugFeaturePerfTitle: "Performance",
+      debugFeaturePerf: "Live FPS, frame time, and JS heap memory (where supported).",
+      debugFeatureLogsTitle: "Logs",
+      debugFeatureLogs: "A mirror of this page's console.log/warn/error output.",
+      debugFeatureInspectorTitle: "Inspector",
+      debugFeatureInspector: "Hover to highlight and click to lock an element, showing its tag/id/class, guessed selector, size and key computed styles.",
       appearanceTitle: "Appearance",
       appearanceHint: "Customize the colors of this dashboard itself (not your websites' backgrounds).",
       pageBackground: "Page Background",
@@ -33,6 +47,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       bgTypeImage: "Image",
       deleteBtn: "Delete",
       confirmDelete: "Are you sure you want to delete settings for {domain}?",
+      defaultBgRowLabel: "Default Background (All Sites)",
+      defaultBgEditTitle: "Default Background (All Sites)",
+      confirmDeleteDefault: "Clear the default background? Sites that were inheriting it will show nothing until given their own settings.",
       modalTitle: "Notification",
       confirmOk: "Confirm",
       confirmCancel: "Cancel",
@@ -197,7 +214,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       navCustomEffects: "自定义动效",
       navAppearance: "外观",
       navBackup: "备份与恢复",
+      navDebug: "调试模式",
       navAbout: "关于 PageDye",
+      debugTitle: "调试模式",
+      debugHint: "在每个页面上添加一个悬浮调试面板,用来查看 PageDye 自身当前的状态,排查某些网站渲染不正常的问题。面向开发者/高级用户。",
+      debugEnable: "启用调试模式",
+      debugEnableHint: "在每个页面右下角显示一个悬浮按钮。对已打开的标签页立即生效,无需刷新。",
+      debugFeaturesTitle: "包含的功能",
+      debugFeatureStateTitle: "状态",
+      debugFeatureState: "实时查看当前网站已保存的设置(模式、背景类型、深度兼容模式、磨砂玻璃条目)以及原始 JSON。",
+      debugFeaturePerfTitle: "性能",
+      debugFeaturePerf: "实时 FPS、单帧耗时,以及 JS 堆内存占用(视浏览器支持情况而定)。",
+      debugFeatureLogsTitle: "日志",
+      debugFeatureLogs: "镜像当前页面的 console.log/warn/error 输出。",
+      debugFeatureInspectorTitle: "元素检查",
+      debugFeatureInspector: "悬停高亮、点击锁定某个元素,查看其标签/ID/class、猜测的选择器、尺寸和关键计算样式。",
       appearanceTitle: "外观",
       appearanceHint: "自定义控制面板本身的配色（不影响您各个网站的背景设置）。",
       pageBackground: "页面背景",
@@ -223,6 +254,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       bgTypeImage: "图片",
       deleteBtn: "删除",
       confirmDelete: "确定要删除 {domain} 的配置吗？",
+      defaultBgRowLabel: "所有网站默认背景",
+      defaultBgEditTitle: "所有网站默认背景",
+      confirmDeleteDefault: "确定要清除全站默认背景吗？之前依赖它的网站在单独设置背景之前将不显示任何背景。",
       modalTitle: "提示",
       confirmOk: "确定",
       confirmCancel: "取消",
@@ -386,6 +420,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const UI_THEME_KEY = '__pagedye_ui_theme__';
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
+  const DEBUG_MODE_KEY = '__pagedye_debug_mode__';
+  const DEFAULT_BG_KEY = '__pagedye_default_background__';
   const UI_THEME_DEFAULTS = { pageBg: '#f1f5f9', containerBg: '#ffffff', pageBgImage: null, containerBgImage: null };
   let currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS);
 
@@ -418,6 +454,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     themeContainerBgFileInfo: document.getElementById('theme-container-bg-file-info'),
     themeContainerBgFilename: document.getElementById('theme-container-bg-filename'),
     themeContainerBgRemove: document.getElementById('theme-container-bg-remove'),
+    debugModeToggle: document.getElementById('debug-mode-toggle'),
 
     // Edit site controls
     editWpModes: document.getElementsByName('edit-wpMode'),
@@ -473,6 +510,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadSitesList();
   await loadCustomEffectsList();
   await populateCustomEffectOptions(document.getElementById('edit-effect-kind'));
+
+  // Debug mode toggle — global (not per-domain), read directly by scripts/debug.js
+  // on every page via chrome.storage.onChanged, so this takes effect immediately.
+  if (els.debugModeToggle) {
+    const debugData = await chrome.storage.local.get([DEBUG_MODE_KEY]);
+    els.debugModeToggle.checked = !!debugData[DEBUG_MODE_KEY];
+    els.debugModeToggle.addEventListener('change', () => {
+      chrome.storage.local.set({ [DEBUG_MODE_KEY]: els.debugModeToggle.checked });
+    });
+  }
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local' || !Object.prototype.hasOwnProperty.call(changes, CUSTOM_EFFECTS_KEY)) return;
@@ -554,24 +601,139 @@ document.addEventListener('DOMContentLoaded', async () => {
     return i18n[lang][key] || key;
   }
 
+  function buildBgTypeBadge(settings) {
+    const badge = document.createElement('span');
+    let typeText = t('bgTypeNone');
+    if (settings.mode === 'auto') {
+      badge.className = 'bg-type-badge auto';
+      typeText = t('autoScheme');
+    } else if (settings.mode === 'slideshow') {
+      badge.className = 'bg-type-badge slideshow';
+      const count = settings.slideshow && settings.slideshow.items ? settings.slideshow.items.length : 0;
+      typeText = `${t('modeSlideshow')} (${count})`;
+    } else {
+      badge.className = `bg-type-badge ${settings.type}`;
+      if (settings.type === 'color') typeText = t('bgTypeColor');
+      if (settings.type === 'image') typeText = t('bgTypeImage');
+    }
+    badge.textContent = typeText;
+    return badge;
+  }
+
+  function buildPreviewSwatch(settings) {
+    if (settings.mode === 'auto') {
+      const swatch = document.createElement('div');
+      swatch.className = 'preview-swatch preview-swatch-auto';
+
+      const lightSwatch = document.createElement('div');
+      lightSwatch.className = 'swatch-half light-half';
+      if (settings.light.type === 'color' && settings.light.colorMode === 'gradient' && settings.light.gradient) {
+        lightSwatch.style.backgroundImage = window.PageDyeGradient.buildGradientCss(settings.light.gradient);
+      } else if (settings.light.type === 'color') {
+        lightSwatch.style.backgroundColor = settings.light.value;
+      } else if (settings.light.type === 'image' && settings.light.value) {
+        lightSwatch.style.backgroundImage = `url('${settings.light.value}')`;
+      }
+      lightSwatch.style.opacity = (settings.light.opacity !== undefined ? settings.light.opacity : 100) / 100;
+
+      const darkSwatch = document.createElement('div');
+      darkSwatch.className = 'swatch-half dark-half';
+      if (settings.dark.type === 'color' && settings.dark.colorMode === 'gradient' && settings.dark.gradient) {
+        darkSwatch.style.backgroundImage = window.PageDyeGradient.buildGradientCss(settings.dark.gradient);
+      } else if (settings.dark.type === 'color') {
+        darkSwatch.style.backgroundColor = settings.dark.value;
+      } else if (settings.dark.type === 'image' && settings.dark.value) {
+        darkSwatch.style.backgroundImage = `url('${settings.dark.value}')`;
+      }
+      darkSwatch.style.opacity = (settings.dark.opacity !== undefined ? settings.dark.opacity : 100) / 100;
+
+      swatch.appendChild(lightSwatch);
+      swatch.appendChild(darkSwatch);
+      return swatch;
+    } else if (settings.mode === 'slideshow' && settings.slideshow && settings.slideshow.items) {
+      const stack = document.createElement('div');
+      stack.className = 'preview-swatch-stack';
+
+      const items = settings.slideshow.items.slice(0, 3);
+      items.forEach((item) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'stack-item';
+        if (item.type === 'color' && item.colorMode === 'gradient' && item.gradient) {
+          itemEl.style.backgroundImage = window.PageDyeGradient.buildGradientCss(item.gradient);
+        } else if (item.type === 'color') {
+          itemEl.style.backgroundColor = item.value;
+        } else if (item.type === 'image' && item.value) {
+          itemEl.style.backgroundImage = `url('${item.value}')`;
+        }
+        itemEl.style.opacity = (item.opacity !== undefined ? item.opacity : 100) / 100;
+        stack.appendChild(itemEl);
+      });
+      return stack;
+    }
+    const swatch = document.createElement('div');
+    swatch.className = 'preview-swatch';
+    if (settings.type === 'color' && settings.colorMode === 'gradient' && settings.gradient) {
+      swatch.style.backgroundImage = window.PageDyeGradient.buildGradientCss(settings.gradient);
+    } else if (settings.type === 'color') {
+      swatch.style.backgroundColor = settings.value;
+    } else if (settings.type === 'image' && settings.value) {
+      swatch.style.backgroundImage = `url('${settings.value}')`;
+    }
+    const opVal = settings.opacity !== undefined ? settings.opacity : 100;
+    swatch.style.opacity = opVal / 100;
+    return swatch;
+  }
+
+  // Pinned first row for the shared default background — always shown
+  // (even unconfigured) so it's discoverable, excluded from the per-site
+  // domain filter/search and from "no sites configured" messaging.
+  function buildDefaultBgRow(rawSettings) {
+    const settings = rawSettings || { mode: 'single', type: 'none' };
+    const tr = document.createElement('tr');
+    tr.className = 'row-default-bg';
+    tr.dataset.pinned = 'true';
+
+    const tdDomain = document.createElement('td');
+    const link = document.createElement('button');
+    link.type = 'button';
+    link.className = 'domain-edit-link';
+    link.textContent = '🌐 ' + t('defaultBgRowLabel');
+    link.addEventListener('click', () => openEditSite(DEFAULT_BG_KEY));
+    tdDomain.appendChild(link);
+    tr.appendChild(tdDomain);
+
+    const tdBgType = document.createElement('td');
+    tdBgType.appendChild(buildBgTypeBadge(settings));
+    tr.appendChild(tdBgType);
+
+    const tdPreview = document.createElement('td');
+    tdPreview.appendChild(buildPreviewSwatch(settings));
+    tr.appendChild(tdPreview);
+
+    tr.appendChild(document.createElement('td'));
+
+    return tr;
+  }
+
   async function loadSitesList() {
     els.sitesListBody.innerHTML = '';
     const data = await chrome.storage.local.get(null);
-    
+
+    els.sitesListBody.appendChild(buildDefaultBgRow(data[DEFAULT_BG_KEY] || null));
+
     // Filter out potential non-domain configuration keys
     const domains = Object.keys(data).filter(key => {
+      if (key === DEFAULT_BG_KEY) return false;
       const val = data[key];
       return val && typeof val === 'object' && val.type !== undefined;
     });
 
     if (domains.length === 0) {
       els.noSitesMsg.classList.remove('hidden');
-      document.querySelector('.sites-table').classList.add('hidden');
       return;
     }
 
     els.noSitesMsg.classList.add('hidden');
-    document.querySelector('.sites-table').classList.remove('hidden');
 
     // Sort domain keys alphabetically
     domains.sort().forEach(domain => {
@@ -593,91 +755,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // 2. Background Type badge column
       const tdBgType = document.createElement('td');
-      const badge = document.createElement('span');
-      
-      let typeText = t('bgTypeNone');
-      if (settings.mode === 'auto') {
-        badge.className = 'bg-type-badge auto';
-        typeText = t('autoScheme');
-      } else if (settings.mode === 'slideshow') {
-        badge.className = 'bg-type-badge slideshow';
-        const count = settings.slideshow && settings.slideshow.items ? settings.slideshow.items.length : 0;
-        typeText = `${t('modeSlideshow')} (${count})`;
-      } else {
-        badge.className = `bg-type-badge ${settings.type}`;
-        if (settings.type === 'color') typeText = t('bgTypeColor');
-        if (settings.type === 'image') typeText = t('bgTypeImage');
-      }
-      
-      badge.textContent = typeText;
-      tdBgType.appendChild(badge);
+      tdBgType.appendChild(buildBgTypeBadge(settings));
       tr.appendChild(tdBgType);
 
       // 3. Preview Swatch column (supports settings opacity)
       const tdPreview = document.createElement('td');
-      
-      if (settings.mode === 'auto') {
-        const swatch = document.createElement('div');
-        swatch.className = 'preview-swatch preview-swatch-auto';
-        
-        const lightSwatch = document.createElement('div');
-        lightSwatch.className = 'swatch-half light-half';
-        if (settings.light.type === 'color' && settings.light.colorMode === 'gradient' && settings.light.gradient) {
-          lightSwatch.style.backgroundImage = window.PageDyeGradient.buildGradientCss(settings.light.gradient);
-        } else if (settings.light.type === 'color') {
-          lightSwatch.style.backgroundColor = settings.light.value;
-        } else if (settings.light.type === 'image' && settings.light.value) {
-          lightSwatch.style.backgroundImage = `url('${settings.light.value}')`;
-        }
-        lightSwatch.style.opacity = (settings.light.opacity !== undefined ? settings.light.opacity : 100) / 100;
-
-        const darkSwatch = document.createElement('div');
-        darkSwatch.className = 'swatch-half dark-half';
-        if (settings.dark.type === 'color' && settings.dark.colorMode === 'gradient' && settings.dark.gradient) {
-          darkSwatch.style.backgroundImage = window.PageDyeGradient.buildGradientCss(settings.dark.gradient);
-        } else if (settings.dark.type === 'color') {
-          darkSwatch.style.backgroundColor = settings.dark.value;
-        } else if (settings.dark.type === 'image' && settings.dark.value) {
-          darkSwatch.style.backgroundImage = `url('${settings.dark.value}')`;
-        }
-        darkSwatch.style.opacity = (settings.dark.opacity !== undefined ? settings.dark.opacity : 100) / 100;
-        
-        swatch.appendChild(lightSwatch);
-        swatch.appendChild(darkSwatch);
-        tdPreview.appendChild(swatch);
-      } else if (settings.mode === 'slideshow' && settings.slideshow && settings.slideshow.items) {
-        const stack = document.createElement('div');
-        stack.className = 'preview-swatch-stack';
-        
-        const items = settings.slideshow.items.slice(0, 3);
-        items.forEach((item) => {
-          const itemEl = document.createElement('div');
-          itemEl.className = 'stack-item';
-          if (item.type === 'color' && item.colorMode === 'gradient' && item.gradient) {
-            itemEl.style.backgroundImage = window.PageDyeGradient.buildGradientCss(item.gradient);
-          } else if (item.type === 'color') {
-            itemEl.style.backgroundColor = item.value;
-          } else if (item.type === 'image' && item.value) {
-            itemEl.style.backgroundImage = `url('${item.value}')`;
-          }
-          itemEl.style.opacity = (item.opacity !== undefined ? item.opacity : 100) / 100;
-          stack.appendChild(itemEl);
-        });
-        tdPreview.appendChild(stack);
-      } else {
-        const swatch = document.createElement('div');
-        swatch.className = 'preview-swatch';
-        if (settings.type === 'color' && settings.colorMode === 'gradient' && settings.gradient) {
-          swatch.style.backgroundImage = window.PageDyeGradient.buildGradientCss(settings.gradient);
-        } else if (settings.type === 'color') {
-          swatch.style.backgroundColor = settings.value;
-        } else if (settings.type === 'image' && settings.value) {
-          swatch.style.backgroundImage = `url('${settings.value}')`;
-        }
-        const opVal = settings.opacity !== undefined ? settings.opacity : 100;
-        swatch.style.opacity = opVal / 100;
-        tdPreview.appendChild(swatch);
-      }
+      tdPreview.appendChild(buildPreviewSwatch(settings));
       tr.appendChild(tdPreview);
 
       // 4. Actions column (Delete button)
@@ -710,7 +793,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function filterSites(query) {
-    const rows = els.sitesListBody.querySelectorAll('tr');
+    const rows = els.sitesListBody.querySelectorAll('tr:not([data-pinned])');
     let visibleCount = 0;
 
     rows.forEach(row => {
@@ -725,10 +808,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (visibleCount === 0) {
       els.noSitesMsg.classList.remove('hidden');
-      document.querySelector('.sites-table').classList.add('hidden');
     } else {
       els.noSitesMsg.classList.add('hidden');
-      document.querySelector('.sites-table').classList.remove('hidden');
     }
   }
 
@@ -1199,10 +1280,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function clearAllSites() {
     if (!(await showConfirm(t('clearAllConfirm')))) return;
-    const themeData = await chrome.storage.local.get(UI_THEME_KEY);
+    // The default background isn't a "site config" — it has no domain of
+    // its own — so it's preserved the same way UI_THEME_KEY is.
+    const preserved = await chrome.storage.local.get([UI_THEME_KEY, DEFAULT_BG_KEY]);
     await chrome.storage.local.clear();
-    if (themeData[UI_THEME_KEY]) {
-      await chrome.storage.local.set({ [UI_THEME_KEY]: themeData[UI_THEME_KEY] });
+    if (preserved[UI_THEME_KEY]) {
+      await chrome.storage.local.set({ [UI_THEME_KEY]: preserved[UI_THEME_KEY] });
+    }
+    if (preserved[DEFAULT_BG_KEY]) {
+      await chrome.storage.local.set({ [DEFAULT_BG_KEY]: preserved[DEFAULT_BG_KEY] });
     }
     await loadSitesList();
     showStatus(t('clearAllDone'));
@@ -1542,7 +1628,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function openEditSite(domain) {
     currentEditingDomain = domain;
-    document.getElementById('edit-domain-name').textContent = domain;
+    document.getElementById('edit-domain-name').textContent =
+      domain === DEFAULT_BG_KEY ? t('defaultBgEditTitle') : domain;
 
     els.sections.forEach(s => s.classList.remove('active'));
     document.getElementById('section-edit-site').classList.add('active');
@@ -2113,7 +2200,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function resetEditSettings() {
-    if (!(await showConfirm(t('confirmDelete').replace('{domain}', currentEditingDomain)))) return;
+    const confirmMsg = currentEditingDomain === DEFAULT_BG_KEY
+      ? t('confirmDeleteDefault')
+      : t('confirmDelete').replace('{domain}', currentEditingDomain);
+    if (!(await showConfirm(confirmMsg))) return;
     setEditSavingState();
     await chrome.storage.local.remove(currentEditingDomain);
     
@@ -2190,7 +2280,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (tab.url) {
           try {
             const url = new URL(tab.url);
-            if (url.hostname.toLowerCase() === domain.toLowerCase()) {
+            let shouldNotify;
+            if (domain === DEFAULT_BG_KEY) {
+              // The default only actually applies to tabs whose own site
+              // has no override — pushing it to every open tab would
+              // clobber sites that are independently configured.
+              const own = await chrome.storage.local.get(url.hostname);
+              shouldNotify = !own[url.hostname];
+            } else {
+              shouldNotify = url.hostname.toLowerCase() === domain.toLowerCase();
+            }
+            if (shouldNotify) {
               try {
                 await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/content.js'] });
               } catch (e) {}
