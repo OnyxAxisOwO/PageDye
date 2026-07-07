@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PageDye Lite
 // @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.7.2
+// @version      0.7.3
 // @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
 // @author       PageDye
 // @match        *://*/*
@@ -40,7 +40,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.7.2';
+  const VERSION = '0.7.3';
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
@@ -537,16 +537,26 @@
           if (overlapW <= 0 || overlapH <= 0) continue;
           if ((overlapW * overlapH) / viewportArea < DEEP_COMPAT_MIN_COVERAGE) continue;
 
-          const alpha = deepCompatParseAlpha(window.getComputedStyle(el).backgroundColor);
-          if (alpha < DEEP_COMPAT_MIN_ALPHA) continue;
+          // Already-neutralized elements read back ~0 alpha (we forced them
+          // transparent), so re-checking live alpha here would make them
+          // look like they stopped covering the screen and get reverted —
+          // which makes them opaque again on the very next scan, causing a
+          // neutralize/revert flicker loop. Keep them as candidates as long
+          // as they still pass the coverage check above; only never-touched
+          // elements need the live alpha check.
+          if (!deepCompatNeutralized.has(el)) {
+            const alpha = deepCompatParseAlpha(window.getComputedStyle(el).backgroundColor);
+            if (alpha < DEEP_COMPAT_MIN_ALPHA) continue;
+          }
 
           candidates.add(el);
         }
 
         if (frontmost) {
           sampledPoints++;
-          const alpha = deepCompatParseAlpha(window.getComputedStyle(frontmost).backgroundColor);
-          if (alpha >= DEEP_COMPAT_MIN_ALPHA) {
+          const isOpaque = deepCompatNeutralized.has(frontmost)
+            || deepCompatParseAlpha(window.getComputedStyle(frontmost).backgroundColor) >= DEEP_COMPAT_MIN_ALPHA;
+          if (isOpaque) {
             opaquePoints++;
             tiledCandidates.add(frontmost);
           }

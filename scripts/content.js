@@ -790,8 +790,18 @@
           if (overlapW <= 0 || overlapH <= 0) continue;
           if ((overlapW * overlapH) / viewportArea < DEEP_COMPAT_MIN_COVERAGE) continue;
 
-          const alpha = parseAlpha(window.getComputedStyle(el).backgroundColor);
-          if (alpha < DEEP_COMPAT_MIN_ALPHA) continue;
+          // Once we've neutralized an element, its own computed alpha reads
+          // as ~0 (we forced it transparent), so re-checking it here would
+          // make it look like it "stopped" covering the screen and get
+          // reverted — which makes it opaque again on the very next scan,
+          // producing a neutralize/revert flicker loop. Elements we already
+          // neutralized stay candidates as long as they still pass the
+          // position/size coverage check above; only never-touched elements
+          // need the live alpha check.
+          if (!deepCompatNeutralized.has(el)) {
+            const alpha = parseAlpha(window.getComputedStyle(el).backgroundColor);
+            if (alpha < DEEP_COMPAT_MIN_ALPHA) continue;
+          }
 
           candidates.add(el);
         }
@@ -801,8 +811,9 @@
         // (see DEEP_COMPAT_TILED_POINT_RATIO above).
         if (frontmost) {
           sampledPoints++;
-          const alpha = parseAlpha(window.getComputedStyle(frontmost).backgroundColor);
-          if (alpha >= DEEP_COMPAT_MIN_ALPHA) {
+          const isOpaque = deepCompatNeutralized.has(frontmost)
+            || parseAlpha(window.getComputedStyle(frontmost).backgroundColor) >= DEEP_COMPAT_MIN_ALPHA;
+          if (isOpaque) {
             opaquePoints++;
             tiledCandidates.add(frontmost);
           }
