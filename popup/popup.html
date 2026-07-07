@@ -39,7 +39,9 @@
         <label for="tab-frosted" data-i18n="tabFrostedGlass">Frosted Glass</label>
       </div>
 
-      <div id="panel-wallpaper">
+      <div class="editor-panels-slider-viewport">
+        <div class="editor-panels-slider" id="panels-slider">
+          <div id="panel-wallpaper" class="editor-panel-slide">
       <!-- Deep Compatibility Mode: surfaced first and highlighted so it isn't
            missed — it's the fix for the single most common "why isn't this
            working" support question (stubborn sites like Google's mobile
@@ -83,53 +85,60 @@
             </div>
           </div>
 
-          <!-- Auto Mode Cards inside Mode Accordion -->
-          <div id="scheme-cards-container" class="control-group hidden" style="margin-top: 12px; margin-bottom: 0;">
-            <label data-i18n="selectSchemeToEdit" style="margin-bottom: 8px; display: block; font-size: 13px; font-weight: 500; color: var(--text-color);">Select background to edit</label>
-            <div class="scheme-cards-grid">
-              <div class="scheme-card active" id="card-scheme-light" data-scheme="light">
-                <div class="scheme-card-preview" id="preview-card-light"></div>
-                <div class="scheme-card-info">
-                  <svg class="scheme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-                  <span data-i18n="schemeLight">Light Version</span>
+          <div class="editor-panels-slider-viewport" style="margin-top: 12px;">
+            <div class="editor-panels-slider slider-3-panels" id="wp-mode-slider">
+              <!-- Panel 1: Single Mode (empty placeholder) -->
+              <div id="mode-panel-single" class="editor-panel-slide slide-3-panels"></div>
+
+              <!-- Panel 2: Auto Mode Cards inside Mode Accordion -->
+              <div id="scheme-cards-container" class="editor-panel-slide slide-3-panels inactive control-group" style="margin-bottom: 0;">
+                <label data-i18n="selectSchemeToEdit" style="margin-bottom: 8px; display: block; font-size: 13px; font-weight: 500; color: var(--text-color);">Select background to edit</label>
+                <div class="scheme-cards-grid">
+                  <div class="scheme-card active" id="card-scheme-light" data-scheme="light">
+                    <div class="scheme-card-preview" id="preview-card-light"></div>
+                    <div class="scheme-card-info">
+                      <svg class="scheme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                      <span data-i18n="schemeLight">Light Version</span>
+                    </div>
+                  </div>
+                  
+                  <div class="scheme-card" id="card-scheme-dark" data-scheme="dark">
+                    <div class="scheme-card-preview" id="preview-card-dark"></div>
+                    <div class="scheme-card-info">
+                      <svg class="scheme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                      <span data-i18n="schemeDark">Dark Version</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              
-              <div class="scheme-card" id="card-scheme-dark" data-scheme="dark">
-                <div class="scheme-card-preview" id="preview-card-dark"></div>
-                <div class="scheme-card-info">
-                  <svg class="scheme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-                  <span data-i18n="schemeDark">Dark Version</span>
+
+              <!-- Panel 3: Slideshow Config Panel inside Mode Accordion -->
+              <div id="slideshow-config-panel" class="editor-panel-slide slide-3-panels inactive section" style="margin-bottom: 0;">
+                <div class="control-group row" style="margin-bottom: 8px;">
+                  <label for="slideshow-interval" data-i18n="rotationInterval">Interval</label>
+                  <select id="slideshow-interval">
+                    <option value="open" data-i18n="intervalOpen">Each Open</option>
+                    <option value="15m" data-i18n="interval15m">15 Mins</option>
+                    <option value="30m" data-i18n="interval30m">30 Mins</option>
+                    <option value="1h" data-i18n="interval1h">1 Hour</option>
+                    <option value="24h" data-i18n="interval24h">1 Day</option>
+                  </select>
                 </div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Slideshow Config Panel inside Mode Accordion -->
-          <div id="slideshow-config-panel" class="section hidden" style="margin-top: 12px; margin-bottom: 0;">
-            <div class="control-group row" style="margin-bottom: 8px;">
-              <label for="slideshow-interval" data-i18n="rotationInterval">Interval</label>
-              <select id="slideshow-interval">
-                <option value="open" data-i18n="intervalOpen">Each Open</option>
-                <option value="15m" data-i18n="interval15m">15 Mins</option>
-                <option value="30m" data-i18n="interval30m">30 Mins</option>
-                <option value="1h" data-i18n="interval1h">1 Hour</option>
-                <option value="24h" data-i18n="interval24h">1 Day</option>
-              </select>
-            </div>
+                <div class="control-group row" style="margin-bottom: 12px;">
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="slideshow-random">
+                    <span data-i18n="randomOrder">Random Order</span>
+                  </label>
+                </div>
 
-            <div class="control-group row" style="margin-bottom: 12px;">
-              <label class="checkbox-label">
-                <input type="checkbox" id="slideshow-random">
-                <span data-i18n="randomOrder">Random Order</span>
-              </label>
-            </div>
-
-            <div class="control-group" style="margin-bottom: 0;">
-              <label data-i18n="wallpapersList">Wallpapers</label>
-              <div class="wallpapers-grid-container">
-                <div class="wallpapers-grid" id="wallpapers-grid">
-                  <!-- Dynamically populated -->
+                <div class="control-group" style="margin-bottom: 0;">
+                  <label data-i18n="wallpapersList">Wallpapers</label>
+                  <div class="wallpapers-grid-container">
+                    <div class="wallpapers-grid" id="wallpapers-grid">
+                      <!-- Dynamically populated -->
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -160,8 +169,13 @@
             </div>
           </div>
 
-          <!-- Color Section -->
-          <div id="section-color" class="section hidden">
+          <div class="editor-panels-slider-viewport">
+            <div class="editor-panels-slider slider-4-panels" id="bg-type-slider">
+              <!-- Panel 1: None Mode (empty placeholder) -->
+              <div id="section-none" class="editor-panel-slide slide-4-panels"></div>
+
+              <!-- Panel 2: Color Section -->
+              <div id="section-color" class="editor-panel-slide slide-4-panels inactive section">
             <div class="control-group" style="margin-bottom: 10px;">
               <div class="segmented-control" id="color-mode-toggle">
                 <input type="radio" name="colorMode" value="solid" id="colormode-solid" checked>
@@ -172,7 +186,9 @@
               </div>
             </div>
 
-            <div id="solid-color-panel" class="control-group" style="margin-bottom: 0;">
+            <div class="editor-panels-slider-viewport" style="margin-top: 10px;">
+              <div class="editor-panels-slider" id="color-mode-slider">
+                <div id="solid-color-panel" class="editor-panel-slide control-group" style="margin-bottom: 0;">
               <label for="color-picker" data-i18n="color">Color</label>
               <div class="color-input-wrapper">
                 <input type="color" id="color-picker" value="#ffffff">
@@ -181,7 +197,7 @@
             </div>
 
             <!-- Gradient Panel -->
-            <div id="gradient-panel" class="section hidden">
+            <div id="gradient-panel" class="editor-panel-slide inactive section">
               <div class="control-group preview-group" style="margin-bottom: 10px;">
                 <div id="gradient-preview" class="image-preview" style="margin-top: 0; height: 56px;">
                   <div id="gradient-preview-bg" class="image-preview-bg"></div>
@@ -246,6 +262,8 @@
                 <input type="range" id="gradient-speed" min="2" max="30" value="10" step="1">
               </div>
             </div>
+          </div>
+          </div>
           </div>
 
           <!-- Image Section -->
@@ -352,6 +370,8 @@
               </div>
               <input type="range" id="effect-speed" min="0" max="100" value="50">
             </div>
+          </div>
+          </div>
           </div>
 
           <!-- Common Styles -->
@@ -473,13 +493,15 @@
       </details>
       </div>
 
-      <div id="panel-frosted" class="hidden">
+      <div id="panel-frosted" class="editor-panel-slide inactive">
         <div class="control-group">
           <label data-i18n="frostedGlass">Frosted Glass</label>
           <p class="hint" data-i18n="frostedGlassHint">Pick a card/container element and PageDye makes its background semi-transparent and blurred, so your wallpaper shows through underneath it.</p>
           <div id="frosted-list"></div>
           <button type="button" id="frosted-add-btn" class="secondary pick-btn" data-i18n="frostedAddBtn">+ Add element</button>
         </div>
+      </div>
+      </div>
       </div>
     </main>
 

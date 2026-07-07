@@ -7,6 +7,7 @@
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
   const DEFAULT_BG_KEY = '__pagedye_default_background__';
   let currentSettings = null;
+  let currentActiveSettings = null;
   let slideshowTimer = null;
   let currentCustomEffects = [];
   // Whether currentSettings for this page came from DEFAULT_BG_KEY rather
@@ -106,6 +107,71 @@
           }
           applyBackground(settings);
         }
+    // Listen to Alt key keyboard events for background interaction
+    if (window.__pagedyeKeydownListener) {
+      window.removeEventListener('keydown', window.__pagedyeKeydownListener);
+    }
+    if (window.__pagedyeKeyupListener) {
+      window.removeEventListener('keyup', window.__pagedyeKeyupListener);
+    }
+    if (window.__pagedyeBlurListener) {
+      window.removeEventListener('blur', window.__pagedyeBlurListener);
+    }
+
+    let isAltActive = false;
+    function updateBackgroundInteractiveState() {
+      const root = document.getElementById(ROOT_ID);
+      if (!root) return;
+      const iframe = root.shadowRoot.getElementById('pagedye-effect-iframe');
+      if (!iframe) return;
+
+      const activeSettings = currentActiveSettings;
+      let customEffect = null;
+      if (activeSettings && activeSettings.type === 'effect' && activeSettings.effect && activeSettings.effect.startsWith('custom:')) {
+        const customId = activeSettings.effect.replace('custom:', '');
+        customEffect = currentCustomEffects.find((eff) => eff.id === customId);
+      }
+
+      if (customEffect && customEffect.type === 'url' && customEffect.interactive) {
+        if (isAltActive) {
+          root.style.zIndex = '2147483647';
+          iframe.style.pointerEvents = 'auto';
+        } else {
+          root.style.zIndex = '-2147483648';
+          iframe.style.pointerEvents = 'none';
+        }
+      }
+    }
+
+    window.__pagedyeKeydownListener = (e) => {
+      if (e.key === 'Alt') {
+        const activeSettings = currentActiveSettings;
+        let customEffect = null;
+        if (activeSettings && activeSettings.type === 'effect' && activeSettings.effect && activeSettings.effect.startsWith('custom:')) {
+          const customId = activeSettings.effect.replace('custom:', '');
+          customEffect = currentCustomEffects.find((eff) => eff.id === customId);
+        }
+        if (customEffect && customEffect.type === 'url' && customEffect.interactive) {
+          e.preventDefault();
+          isAltActive = true;
+          updateBackgroundInteractiveState();
+        }
+      }
+    };
+    window.__pagedyeKeyupListener = (e) => {
+      if (e.key === 'Alt') {
+        isAltActive = false;
+        updateBackgroundInteractiveState();
+      }
+    };
+    window.__pagedyeBlurListener = () => {
+      isAltActive = false;
+      updateBackgroundInteractiveState();
+    };
+
+    window.addEventListener('keydown', window.__pagedyeKeydownListener);
+    window.addEventListener('keyup', window.__pagedyeKeyupListener);
+    window.addEventListener('blur', window.__pagedyeBlurListener);
       });
     } catch (e) {}
   }
@@ -218,6 +284,8 @@
       setupSlideshowTimer(settings);
     }
 
+    currentActiveSettings = activeSettings;
+
     // Custom CSS and the frosted-glass container effect are both applied
     // independently of the background type/mode.
     applyCustomCss(activeSettings.customCss);
@@ -316,7 +384,7 @@
     enforceTransparency();
 
     let root = document.getElementById(ROOT_ID);
-    let layer, canvas;
+    let layer, canvas, iframe;
 
     if (!root) {
       root = document.createElement('div');
@@ -362,9 +430,47 @@
         transition: 'opacity 0.3s ease'
       });
       shadow.appendChild(canvas);
+
+      iframe = document.createElement('iframe');
+      iframe.id = 'pagedye-effect-iframe';
+      Object.assign(iframe.style, {
+        position: 'absolute',
+        top: '0',
+        left: '0',
+        width: '100%',
+        height: '100%',
+        border: 'none',
+        display: 'none',
+        transition: 'opacity 0.3s ease'
+      });
+      shadow.appendChild(iframe);
     } else {
       layer = root.shadowRoot.getElementById('pagedye-layer');
       canvas = root.shadowRoot.getElementById('pagedye-effect-canvas');
+      iframe = root.shadowRoot.getElementById('pagedye-effect-iframe');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'pagedye-effect-iframe';
+        Object.assign(iframe.style, {
+          position: 'absolute',
+          top: '0',
+          left: '0',
+          width: '100%',
+          height: '100%',
+          border: 'none',
+          display: 'none',
+          transition: 'opacity 0.3s ease'
+        });
+        root.shadowRoot.appendChild(iframe);
+      }
+    }
+
+    root.style.zIndex = '-2147483648';
+
+    let customEffect = null;
+    if (settings.type === 'effect' && settings.effect && settings.effect.startsWith('custom:')) {
+      const customId = settings.effect.replace('custom:', '');
+      customEffect = currentCustomEffects.find((e) => e.id === customId);
     }
 
     if (settings.type === 'effect') {
@@ -375,6 +481,31 @@
       root.style.height = '100vh';
       layer.style.backgroundImage = 'none';
       layer.style.backgroundColor = 'transparent';
+
+      if (customEffect && customEffect.type === 'url') {
+        window.PageDyeEffects.stopEffect();
+        canvas.style.display = 'none';
+
+        iframe.style.display = 'block';
+        iframe.style.opacity = ((typeof settings.opacity === 'number' ? settings.opacity : 100) / 100).toString();
+        iframe.style.pointerEvents = customEffect.interactive ? 'auto' : 'none';
+
+        let targetUrl = customEffect.url || '';
+        if (targetUrl && !/^https?:\/\//i.test(targetUrl)) {
+          targetUrl = 'https://' + targetUrl;
+        }
+        if (iframe.src !== targetUrl) {
+          iframe.src = targetUrl;
+        }
+        return;
+      }
+
+      if (iframe) {
+        iframe.style.display = 'none';
+        iframe.style.pointerEvents = 'none';
+        iframe.src = '';
+      }
+
       const resolvedColors = resolveEffectColors(settings);
       window.PageDyeEffects.startEffect(canvas, settings.effect || 'waves', settings.opacity, {
         color: resolvedColors.color,
@@ -388,6 +519,11 @@
 
     window.PageDyeEffects.stopEffect();
     canvas.style.display = 'none';
+    if (iframe) {
+      iframe.style.display = 'none';
+      iframe.style.pointerEvents = 'none';
+      iframe.src = '';
+    }
 
     const style = {
       width: '100%',

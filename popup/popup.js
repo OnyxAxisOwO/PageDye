@@ -516,6 +516,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let gradientStopsState = [];
   let frostedGlassState = [];
   let cssEditorController = null;
+  let isInitialLoad = true;
 
   // Init
   initI18n();
@@ -541,6 +542,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       els.domainBadge.textContent = currentDomain;
       els.domainBadge.title = lang === 'zh' ? '点击复制域名' : 'Click to copy domain';
       await loadSettings(currentDomain);
+
+      // Restore last active tab on popup startup
+      const lastSelectedPopupTab = localStorage.getItem('pagedye_last_popup_tab') || 'wallpaper';
+      const tabRadio = document.querySelector(`input[name="mainTab"][value="${lastSelectedPopupTab}"]`);
+      if (tabRadio) tabRadio.checked = true;
+      const panelsSlider = document.getElementById('panels-slider');
+      if (panelsSlider) {
+        panelsSlider.style.transition = 'none';
+        panelsSlider.style.transform = lastSelectedPopupTab === 'frosted' ? 'translateX(-50%)' : 'translateX(0)';
+        panelsSlider.offsetHeight; // trigger reflow
+        panelsSlider.style.transition = '';
+      }
+      const panelWallpaper = document.getElementById('panel-wallpaper');
+      const panelFrosted = document.getElementById('panel-frosted');
+      if (panelWallpaper) {
+        panelWallpaper.classList.toggle('inactive', lastSelectedPopupTab === 'frosted');
+      }
+      if (panelFrosted) {
+        panelFrosted.classList.toggle('inactive', lastSelectedPopupTab !== 'frosted');
+      }
+
       els.targetTabs.forEach(radio => {
         radio.addEventListener('change', () => {
           if (radio.checked) switchTarget(radio.value);
@@ -884,16 +906,61 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Advanced: element picker
   els.pickBtn.addEventListener('click', startPicker);
 
-  // Top-level tabs: Wallpaper vs Frosted Glass
+  // Top-level tabs: Wallpaper vs Frosted Glass sliding transition
   const panelWallpaper = document.getElementById('panel-wallpaper');
   const panelFrosted = document.getElementById('panel-frosted');
+  const panelsSlider = document.getElementById('panels-slider');
+
   document.getElementsByName('mainTab').forEach((radio) => {
     radio.addEventListener('change', () => {
       const isFrosted = radio.checked && radio.value === 'frosted';
-      panelWallpaper.classList.toggle('hidden', isFrosted);
-      panelFrosted.classList.toggle('hidden', !isFrosted);
+      localStorage.setItem('pagedye_last_popup_tab', radio.value);
+      
+      if (panelsSlider) {
+        panelsSlider.classList.add('transitioning');
+      }
+      
+      if (panelWallpaper) panelWallpaper.classList.toggle('inactive', isFrosted);
+      if (panelFrosted) panelFrosted.classList.toggle('inactive', !isFrosted);
+      
+      requestAnimationFrame(() => {
+        if (panelsSlider) {
+          panelsSlider.style.transform = isFrosted ? 'translateX(-50%)' : 'translateX(0)';
+        }
+      });
     });
   });
+
+  if (panelsSlider) {
+    panelsSlider.addEventListener('transitionend', (e) => {
+      if (e.target !== panelsSlider || e.propertyName !== 'transform') return;
+      panelsSlider.classList.remove('transitioning');
+    });
+  }
+
+  const wpModeSlider = document.getElementById('wp-mode-slider');
+  if (wpModeSlider) {
+    wpModeSlider.addEventListener('transitionend', (e) => {
+      if (e.target !== wpModeSlider || e.propertyName !== 'transform') return;
+      wpModeSlider.classList.remove('transitioning');
+    });
+  }
+
+  const bgTypeSlider = document.getElementById('bg-type-slider');
+  if (bgTypeSlider) {
+    bgTypeSlider.addEventListener('transitionend', (e) => {
+      if (e.target !== bgTypeSlider || e.propertyName !== 'transform') return;
+      bgTypeSlider.classList.remove('transitioning');
+    });
+  }
+
+  const colorModeSlider = document.getElementById('color-mode-slider');
+  if (colorModeSlider) {
+    colorModeSlider.addEventListener('transitionend', (e) => {
+      if (e.target !== colorModeSlider || e.propertyName !== 'transform') return;
+      colorModeSlider.classList.remove('transitioning');
+    });
+  }
 
   // Wallpaper Mode Switch
   els.wpModes.forEach(radio => {
@@ -1356,8 +1423,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function updateModeUI(mode) {
-    els.schemeCardsContainer.classList.add('hidden');
-    els.slideshowConfigPanel.classList.add('hidden');
+    const slider = document.getElementById('wp-mode-slider');
+    const singlePanel = document.getElementById('mode-panel-single');
+    const autoPanel = document.getElementById('scheme-cards-container');
+    const slideshowPanel = document.getElementById('slideshow-config-panel');
+
+    if (slider && !isInitialLoad) {
+      slider.classList.add('transitioning');
+    }
+
+    if (singlePanel) singlePanel.classList.toggle('inactive', mode !== 'single');
+    if (autoPanel) autoPanel.classList.toggle('inactive', mode !== 'auto');
+    if (slideshowPanel) slideshowPanel.classList.toggle('inactive', mode !== 'slideshow');
+
+    if (slider) {
+      if (isInitialLoad) {
+        slider.style.transition = 'none';
+      }
+      if (mode === 'single') slider.style.transform = 'translateX(0)';
+      else if (mode === 'auto') slider.style.transform = 'translateX(-33.333%)';
+      else if (mode === 'slideshow') slider.style.transform = 'translateX(-66.666%)';
+      if (isInitialLoad) {
+        slider.offsetHeight; // trigger reflow
+        slider.style.transition = '';
+      }
+    }
 
     const activeModeBadge = document.getElementById('active-mode-badge');
     if (activeModeBadge) {
@@ -1373,7 +1463,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (mode === 'single') {
       populateForm(currentSettings);
     } else if (mode === 'auto') {
-      els.schemeCardsContainer.classList.remove('hidden');
       els.cardSchemeLight.classList.remove('active');
       els.cardSchemeDark.classList.remove('active');
       if (activeScheme === 'dark') {
@@ -1384,7 +1473,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       populateForm(currentSettings[activeScheme]);
     } else if (mode === 'slideshow') {
-      els.slideshowConfigPanel.classList.remove('hidden');
       els.slideshowInterval.value = currentSettings.slideshow.interval || 'open';
       els.slideshowRandom.checked = currentSettings.slideshow.order === 'random';
       
@@ -1511,27 +1599,50 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function updateUI(type) {
-    els.sectionColor.classList.add('hidden');
-    els.sectionImage.classList.add('hidden');
-    els.sectionEffects.classList.add('hidden');
+    const bgTypeSlider = document.getElementById('bg-type-slider');
+    const sectionNone = document.getElementById('section-none');
+    const sectionColor = document.getElementById('section-color');
+    const sectionImage = document.getElementById('section-image');
+    const sectionEffects = document.getElementById('section-effects');
+
+    if (bgTypeSlider && !isInitialLoad) {
+      bgTypeSlider.classList.add('transitioning');
+    }
+
+    if (sectionNone) sectionNone.classList.toggle('inactive', type !== 'none');
+    if (sectionColor) sectionColor.classList.toggle('inactive', type !== 'color');
+    if (sectionImage) sectionImage.classList.toggle('inactive', type !== 'image');
+    if (sectionEffects) sectionEffects.classList.toggle('inactive', type !== 'effect');
+
+    if (bgTypeSlider) {
+      if (isInitialLoad) {
+        bgTypeSlider.style.transition = 'none';
+      }
+      if (type === 'none') bgTypeSlider.style.transform = 'translateX(0)';
+      else if (type === 'color') bgTypeSlider.style.transform = 'translateX(-25%)';
+      else if (type === 'image') bgTypeSlider.style.transform = 'translateX(-50%)';
+      else if (type === 'effect') bgTypeSlider.style.transform = 'translateX(-75%)';
+      if (isInitialLoad) {
+        bgTypeSlider.offsetHeight; // trigger reflow
+        bgTypeSlider.style.transition = '';
+      }
+    }
+
     els.sectionStyles.classList.add('hidden');
     els.blurControl.classList.add('hidden');
     const advFilters = document.getElementById('advanced-filters');
     if (advFilters) advFilters.classList.add('hidden');
 
     if (type === 'color') {
-      els.sectionColor.classList.remove('hidden');
       els.sectionStyles.classList.remove('hidden');
       const checkedColorMode = document.querySelector('input[name="colorMode"]:checked');
       updateColorModeUI(checkedColorMode ? checkedColorMode.value : 'solid');
     } else if (type === 'image') {
-      els.sectionImage.classList.remove('hidden');
       els.sectionStyles.classList.remove('hidden');
       els.blurControl.classList.remove('hidden');
       if (advFilters) advFilters.classList.remove('hidden');
       updatePreview();
     } else if (type === 'effect') {
-      els.sectionEffects.classList.remove('hidden');
       els.sectionStyles.classList.remove('hidden');
     }
 
@@ -1550,8 +1661,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isGradient = colorMode === 'gradient';
     const radio = document.querySelector(`input[name="colorMode"][value="${colorMode || 'solid'}"]`);
     if (radio) radio.checked = true;
-    els.solidColorPanel.classList.toggle('hidden', isGradient);
-    els.gradientPanel.classList.toggle('hidden', !isGradient);
+
+    const slider = document.getElementById('color-mode-slider');
+    const solidPanel = document.getElementById('solid-color-panel');
+    const gradPanel = document.getElementById('gradient-panel');
+
+    if (slider && !isInitialLoad) {
+      slider.classList.add('transitioning');
+    }
+
+    if (solidPanel) solidPanel.classList.toggle('inactive', isGradient);
+    if (gradPanel) gradPanel.classList.toggle('inactive', !isGradient);
+
+    if (slider) {
+      if (isInitialLoad) {
+        slider.style.transition = 'none';
+      }
+      slider.style.transform = isGradient ? 'translateX(-50%)' : 'translateX(0)';
+      if (isInitialLoad) {
+        slider.offsetHeight; // trigger reflow
+        slider.style.transition = '';
+      }
+    }
+
     if (isGradient) {
       // Guards against toggling to Gradient on a slot that has never been
       // through populateGradientPanel (e.g. a fresh domain whose type
@@ -2020,6 +2152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       els.statusText.textContent = t('pickerFailed');
     }
   }
+  isInitialLoad = false;
 });
 
 function initCustomCssEditor(textareaId, containerId) {

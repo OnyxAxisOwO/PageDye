@@ -153,6 +153,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       thEffectUpdated: "Updated",
       noCustomEffects: "No custom effects yet.",
       backToCustomEffects: "Back to Custom Effects",
+      customEffectTypeLabel: "Effect Type",
+      customEffectTypeCode: "Canvas Code",
+      customEffectTypeUrl: "Website URL",
+      effectUrlLabel: "Website URL",
+      effectUrlHint: "Directly embed another website via iframe as the background. Note: Some websites may block iframe embedding due to security policies (X-Frame-Options/CSP).",
+      customEffectInteractive: "Allow background interaction (clicks/scrolls)",
+      customEffectInteractiveHint: "Note: Because the background is layered behind the webpage, you need to hold the **Alt** key on your keyboard to bring the background to the front and click/interact with it.",
       effectNameLabel: "Name",
       startFromTemplate: "Start from template",
       templateBlank: "Blank skeleton",
@@ -361,6 +368,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       thEffectUpdated: "更新时间",
       noCustomEffects: "还没有自定义动效。",
       backToCustomEffects: "返回自定义动效",
+      customEffectTypeLabel: "动效类型",
+      customEffectTypeCode: "Canvas 代码",
+      customEffectTypeUrl: "网站 URL",
+      effectUrlLabel: "网站 URL",
+      effectUrlHint: "直接通过 iframe 将其他网站嵌入为背景。注意：部分网站由于安全策略 (X-Frame-Options/CSP) 可能会阻止在 iframe 中嵌入。",
+      customEffectInteractive: "允许与背景交互（点击/滚动）",
+      customEffectInteractiveHint: "注意：由于背景层铺在网页底层，您需要在网页上按住 **Alt** 键即可临时将背景置顶并与其交互（点击/滚动）。",
       effectNameLabel: "名称",
       startFromTemplate: "起始模板",
       templateBlank: "空白骨架",
@@ -489,7 +503,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     editCustomEffectError: document.getElementById('edit-custom-effect-error'),
     editCustomEffectPreviewCanvas: document.getElementById('edit-custom-effect-preview-canvas'),
     editCustomEffectExportBtn: document.getElementById('edit-custom-effect-export-btn'),
-    editCustomEffectExportDivider: document.getElementById('edit-custom-effect-export-divider'),
     editCustomEffectDeleteBtn: document.getElementById('edit-custom-effect-delete-btn'),
     editCustomEffectSaveBtn: document.getElementById('edit-custom-effect-save-btn')
   };
@@ -1003,6 +1016,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const tdName = document.createElement('td');
       tdName.textContent = entry.name || t('untitledEffect');
+      if (entry.type === 'url') {
+        const badge = document.createElement('span');
+        badge.className = 'bg-type-badge';
+        badge.style.marginLeft = '8px';
+        badge.style.fontSize = '10px';
+        badge.style.padding = '2px 6px';
+        badge.style.borderRadius = '4px';
+        badge.style.background = 'rgba(99, 102, 241, 0.12)';
+        badge.style.color = '#4f46e5';
+        badge.textContent = 'URL';
+        tdName.appendChild(badge);
+      }
       tr.appendChild(tdName);
 
       const tdUpdated = document.createElement('td');
@@ -1058,34 +1083,59 @@ document.addEventListener('DOMContentLoaded', async () => {
     effectPreviewDebounceTimer = setTimeout(() => {
       window.PageDyeEffects.stopEffect();
       const canvas = els.editCustomEffectPreviewCanvas;
-      const code = els.editCustomEffectCode.value;
+      const iframe = document.getElementById('edit-custom-effect-preview-iframe');
+      const type = document.querySelector('input[name="edit-custom-effect-type"]:checked').value;
 
-      if (!code.trim()) {
-        els.editCustomEffectError.classList.add('hidden');
-        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-        return;
-      }
-
-      const compiled = window.PageDyeEffects.compileCustomEffect(code);
-      if (!compiled.ok) {
-        els.editCustomEffectError.textContent = compiled.error;
-        els.editCustomEffectError.classList.remove('hidden');
-        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-        return;
-      }
-
-      els.editCustomEffectError.classList.add('hidden');
-      window.PageDyeEffects.startEffect(
-        canvas,
-        'custom:__preview__',
-        100,
-        { color: '#ffffff', bgColor: '#000000', density: 50, speed: 50, text: 'PageDye' },
-        [{ id: '__preview__', code }],
-        (err) => {
-          els.editCustomEffectError.textContent = (err && err.message) ? err.message : String(err);
-          els.editCustomEffectError.classList.remove('hidden');
+      if (type === 'url') {
+        canvas.style.display = 'none';
+        iframe.style.display = 'block';
+        const urlVal = document.getElementById('edit-custom-effect-url').value.trim();
+        if (urlVal) {
+          let targetUrl = urlVal;
+          if (!/^https?:\/\//i.test(targetUrl)) {
+            targetUrl = 'https://' + targetUrl;
+          }
+          if (iframe.src !== targetUrl) {
+            iframe.src = targetUrl;
+          }
+        } else {
+          iframe.src = 'about:blank';
         }
-      );
+      } else {
+        if (iframe) {
+          iframe.style.display = 'none';
+          iframe.src = 'about:blank';
+        }
+        canvas.style.display = 'block';
+        const code = els.editCustomEffectCode.value;
+
+        if (!code.trim()) {
+          els.editCustomEffectError.classList.add('hidden');
+          canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+          return;
+        }
+
+        const compiled = window.PageDyeEffects.compileCustomEffect(code);
+        if (!compiled.ok) {
+          els.editCustomEffectError.textContent = compiled.error;
+          els.editCustomEffectError.classList.remove('hidden');
+          canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+          return;
+        }
+
+        els.editCustomEffectError.classList.add('hidden');
+        window.PageDyeEffects.startEffect(
+          canvas,
+          'custom:__preview__',
+          100,
+          { color: '#ffffff', bgColor: '#000000', density: 50, speed: 50, text: 'PageDye' },
+          [{ id: '__preview__', code }],
+          (err) => {
+            els.editCustomEffectError.textContent = (err && err.message) ? err.message : String(err);
+            els.editCustomEffectError.classList.remove('hidden');
+          }
+        );
+      }
     }, 350);
   }
 
@@ -1093,6 +1143,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentEditingEffectId = null;
     els.editCustomEffectHeading.textContent = t('newCustomEffect');
     els.editCustomEffectName.value = '';
+
+    document.querySelector('input[name="edit-custom-effect-type"][value="code"]').checked = true;
+    document.getElementById('edit-custom-effect-code-control').classList.remove('hidden');
+    document.getElementById('edit-custom-effect-url-control').classList.add('hidden');
+    document.getElementById('edit-custom-effect-url').value = '';
+    document.getElementById('edit-custom-effect-interactive').checked = false;
+    document.getElementById('edit-accordion-custom-effect-advanced').open = false;
+
     els.editCustomEffectTemplateControl.classList.remove('hidden');
     els.editCustomEffectTemplate.value = 'blank';
     els.editCustomEffectCode.value = CUSTOM_EFFECT_TEMPLATES.blank;
@@ -1100,7 +1158,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.editCustomEffectError.classList.add('hidden');
     els.editCustomEffectDeleteBtn.classList.add('hidden');
     els.editCustomEffectExportBtn.classList.add('hidden');
-    els.editCustomEffectExportDivider.classList.add('hidden');
 
     els.sections.forEach((s) => s.classList.remove('active'));
     document.getElementById('section-edit-custom-effect').classList.add('active');
@@ -1115,15 +1172,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentEditingEffectId = id;
     els.editCustomEffectHeading.textContent = entry.name || t('untitledEffect');
     els.editCustomEffectName.value = entry.name || '';
-    // Editing existing code — the template picker would silently overwrite
-    // it, so it's only offered when creating a new effect.
+
+    const type = entry.type || 'code';
+    document.querySelector(`input[name="edit-custom-effect-type"][value="${type}"]`).checked = true;
+
+    const codeControl = document.getElementById('edit-custom-effect-code-control');
+    const urlControl = document.getElementById('edit-custom-effect-url-control');
+    const urlInput = document.getElementById('edit-custom-effect-url');
+
+    if (type === 'url') {
+      codeControl.classList.add('hidden');
+      urlControl.classList.remove('hidden');
+      urlInput.value = entry.url || '';
+    } else {
+      codeControl.classList.remove('hidden');
+      urlControl.classList.add('hidden');
+      urlInput.value = '';
+    }
+
+    document.getElementById('edit-custom-effect-interactive').checked = !!entry.interactive;
+    document.getElementById('edit-accordion-custom-effect-advanced').open = !!entry.interactive;
+
     els.editCustomEffectTemplateControl.classList.add('hidden');
-    els.editCustomEffectCode.value = entry.code;
+    els.editCustomEffectCode.value = entry.code || '';
     editCustomEffectCodeController.update();
     els.editCustomEffectError.classList.add('hidden');
     els.editCustomEffectDeleteBtn.classList.remove('hidden');
     els.editCustomEffectExportBtn.classList.remove('hidden');
-    els.editCustomEffectExportDivider.classList.remove('hidden');
 
     els.sections.forEach((s) => s.classList.remove('active'));
     document.getElementById('section-edit-custom-effect').classList.add('active');
@@ -1132,6 +1207,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function closeCustomEffectEditor() {
     window.PageDyeEffects.stopEffect();
+    const iframe = document.getElementById('edit-custom-effect-preview-iframe');
+    if (iframe) iframe.src = 'about:blank';
     els.sections.forEach((s) => s.classList.remove('active'));
     document.getElementById('section-custom-effects').classList.add('active');
     loadCustomEffectsList();
@@ -1139,19 +1216,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function saveCustomEffect() {
     const name = els.editCustomEffectName.value.trim() || t('untitledEffect');
-    const code = els.editCustomEffectCode.value;
+    const type = document.querySelector('input[name="edit-custom-effect-type"]:checked').value;
+    let code = '';
+    let url = '';
+    const interactive = document.getElementById('edit-custom-effect-interactive').checked;
 
-    const compiled = window.PageDyeEffects.compileCustomEffect(code);
-    if (!compiled.ok) {
-      els.editCustomEffectError.textContent = compiled.error;
-      els.editCustomEffectError.classList.remove('hidden');
-      return;
+    if (type === 'url') {
+      url = document.getElementById('edit-custom-effect-url').value.trim();
+      if (!url) {
+        showStatus(t('customEffectTypeUrl') + ' is required');
+        return;
+      }
+    } else {
+      code = els.editCustomEffectCode.value;
+      const compiled = window.PageDyeEffects.compileCustomEffect(code);
+      if (!compiled.ok) {
+        els.editCustomEffectError.textContent = compiled.error;
+        els.editCustomEffectError.classList.remove('hidden');
+        return;
+      }
     }
 
     const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
     const list = data[CUSTOM_EFFECTS_KEY] || [];
     const id = currentEditingEffectId || generateEffectId();
-    const entry = { id, name, code, updatedAt: Date.now() };
+    const entry = { id, name, type, code, url, interactive, updatedAt: Date.now() };
     const idx = list.findIndex((e) => e.id === id);
     if (idx >= 0) list[idx] = entry; else list.push(entry);
     await chrome.storage.local.set({ [CUSTOM_EFFECTS_KEY]: list });
@@ -1161,7 +1250,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function exportCustomEffectEntry(entry) {
-    const payload = { pagedyeCustomEffect: true, name: entry.name, code: entry.code };
+    const payload = {
+      pagedyeCustomEffect: true,
+      name: entry.name,
+      type: entry.type || 'code',
+      code: entry.code || '',
+      url: entry.url || '',
+      interactive: !!entry.interactive
+    };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1178,13 +1274,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     reader.onload = async (event) => {
       try {
         const parsed = JSON.parse(event.target.result);
-        if (!parsed || typeof parsed.code !== 'string') {
+        if (!parsed || !parsed.pagedyeCustomEffect) {
+          showStatus(t('importError'));
+          return;
+        }
+        const type = parsed.type || 'code';
+        if (type === 'code' && typeof parsed.code !== 'string') {
+          showStatus(t('importError'));
+          return;
+        }
+        if (type === 'url' && typeof parsed.url !== 'string') {
           showStatus(t('importError'));
           return;
         }
         const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
         const list = data[CUSTOM_EFFECTS_KEY] || [];
-        list.push({ id: generateEffectId(), name: parsed.name || t('untitledEffect'), code: parsed.code, updatedAt: Date.now() });
+        list.push({
+          id: generateEffectId(),
+          name: parsed.name || t('untitledEffect'),
+          type,
+          code: parsed.code || '',
+          url: parsed.url || '',
+          interactive: !!parsed.interactive,
+          updatedAt: Date.now()
+        });
         await chrome.storage.local.set({ [CUSTOM_EFFECTS_KEY]: list });
         await loadCustomEffectsList();
         showStatus(t('importSuccess'));
@@ -1493,6 +1606,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentEditSettings = null;
   let editGradientStopsState = [];
   let editFrostedGlassState = [];
+  let lastSelectedEditorTab = 'wallpaper';
 
   function populateEditForm(subSettings) {
     document.querySelector(`input[name="edit-bgType"][value="${subSettings.type || 'none'}"]`).checked = true;
@@ -1638,6 +1752,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     els.sections.forEach(s => s.classList.remove('active'));
     document.getElementById('section-edit-site').classList.add('active');
+
+    // Restore the last selected tab when opening the editor
+    const activeTab = lastSelectedEditorTab || 'wallpaper';
+    const tabRadio = document.querySelector(`input[name="edit-mainTab"][value="${activeTab}"]`);
+    if (tabRadio) tabRadio.checked = true;
+
+    const editPanelsSlider = document.getElementById('edit-panels-slider');
+    if (editPanelsSlider) {
+      editPanelsSlider.style.transition = 'none';
+      editPanelsSlider.style.transform = activeTab === 'frosted' ? 'translateX(-50%)' : 'translateX(0)';
+      editPanelsSlider.offsetHeight; // trigger reflow
+      editPanelsSlider.style.transition = '';
+    }
+    const editPanelWallpaper = document.getElementById('edit-panel-wallpaper');
+    const editPanelFrosted = document.getElementById('edit-panel-frosted');
+    if (editPanelWallpaper) {
+      editPanelWallpaper.classList.toggle('inactive', activeTab === 'frosted');
+    }
+    if (editPanelFrosted) {
+      editPanelFrosted.classList.toggle('inactive', activeTab !== 'frosted');
+    }
 
     const data = await chrome.storage.local.get(domain);
     currentEditSettings = data[domain] || {
@@ -2698,16 +2833,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadSitesList();
   });
 
-  // Top-level tabs: Wallpaper vs Frosted Glass
+  // Top-level tabs: Wallpaper vs Frosted Glass sliding transition
   const editPanelWallpaper = document.getElementById('edit-panel-wallpaper');
   const editPanelFrosted = document.getElementById('edit-panel-frosted');
+  const editPanelsSlider = document.getElementById('edit-panels-slider');
+
   document.getElementsByName('edit-mainTab').forEach((radio) => {
     radio.addEventListener('change', () => {
       const isFrosted = radio.checked && radio.value === 'frosted';
-      editPanelWallpaper.classList.toggle('hidden', isFrosted);
-      editPanelFrosted.classList.toggle('hidden', !isFrosted);
+      lastSelectedEditorTab = radio.value;
+      
+      // Ensure both are visible during transition
+      if (editPanelWallpaper) editPanelWallpaper.classList.remove('inactive');
+      if (editPanelFrosted) editPanelFrosted.classList.remove('inactive');
+      
+      requestAnimationFrame(() => {
+        if (editPanelsSlider) {
+          editPanelsSlider.style.transform = isFrosted ? 'translateX(-50%)' : 'translateX(0)';
+        }
+      });
     });
   });
+
+  if (editPanelsSlider) {
+    editPanelsSlider.addEventListener('transitionend', (e) => {
+      if (e.target !== editPanelsSlider || e.propertyName !== 'transform') return;
+      const activeRadio = document.querySelector('input[name="edit-mainTab"]:checked');
+      const isFrosted = activeRadio && activeRadio.value === 'frosted';
+      if (isFrosted) {
+        if (editPanelWallpaper) editPanelWallpaper.classList.add('inactive');
+      } else {
+        if (editPanelFrosted) editPanelFrosted.classList.add('inactive');
+      }
+    });
+  }
 
   // Edit Wallpaper Mode Switch
   els.editWpModes.forEach(radio => {
@@ -2838,6 +2997,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   els.editCustomEffectCode.addEventListener('input', updateCustomEffectPreview);
+
+  document.getElementsByName('edit-custom-effect-type').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      const type = radio.value;
+      const codeControl = document.getElementById('edit-custom-effect-code-control');
+      const urlControl = document.getElementById('edit-custom-effect-url-control');
+      if (type === 'url') {
+        codeControl.classList.add('hidden');
+        urlControl.classList.remove('hidden');
+        els.editCustomEffectTemplateControl.classList.add('hidden');
+      } else {
+        codeControl.classList.remove('hidden');
+        urlControl.classList.add('hidden');
+        if (!currentEditingEffectId) {
+          els.editCustomEffectTemplateControl.classList.remove('hidden');
+        }
+      }
+      updateCustomEffectPreview();
+    });
+  });
+
+  document.getElementById('edit-custom-effect-url').addEventListener('input', updateCustomEffectPreview);
 
   els.editCustomEffectDeleteBtn.addEventListener('click', async () => {
     if (!currentEditingEffectId) return;

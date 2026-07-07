@@ -342,7 +342,9 @@
             <label for="edit-tab-frosted" data-i18n="tabFrostedGlass">Frosted Glass</label>
           </div>
 
-          <div id="edit-panel-wallpaper">
+          <div class="editor-panels-slider-viewport">
+            <div class="editor-panels-slider" id="edit-panels-slider">
+              <div id="edit-panel-wallpaper" class="editor-panel-slide">
           <!-- Deep Compatibility Mode: surfaced first and highlighted, same
                rationale as popup.html. Not expanded by default. -->
           <details class="accordion accordion-highlight" id="edit-accordion-deepcompat">
@@ -781,13 +783,14 @@
           </details>
           </div>
 
-          <div id="edit-panel-frosted" class="hidden">
+          <div id="edit-panel-frosted" class="editor-panel-slide inactive">
             <div class="control-group">
               <label data-i18n="frostedGlass">Frosted Glass</label>
               <p class="hint" data-i18n="frostedGlassHint">Pick a card/container element and PageDye makes its background semi-transparent and blurred, so your wallpaper shows through underneath it.</p>
               <div id="edit-frosted-list"></div>
               <button type="button" id="edit-frosted-add-btn" class="secondary pick-btn" data-i18n="frostedAddBtn">+ Add element</button>
             </div>
+          </div>
           </div>
         </div>
 
@@ -797,8 +800,7 @@
             <span class="status-text" id="edit-status-text" data-i18n="statusSynced">Synced</span>
           </div>
           <div class="edit-actions-right">
-            <button id="edit-reset-btn" class="ghost-link-btn" data-i18n="reset">Reset</button>
-            <span class="divider">|</span>
+            <button id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
             <span class="version-text" id="edit-version">v0.3.0</span>
             <span class="divider">|</span>
             <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
@@ -827,6 +829,16 @@
             <input type="text" id="edit-custom-effect-name" placeholder="Breathing Dot" maxlength="60">
           </div>
 
+          <div class="control-group">
+            <label data-i18n="customEffectTypeLabel">Effect Type</label>
+            <div class="segmented-control" id="edit-custom-effect-type-toggle">
+              <input type="radio" name="edit-custom-effect-type" value="code" id="edit-custom-effect-type-code" checked>
+              <label for="edit-custom-effect-type-code" data-i18n="customEffectTypeCode">Canvas Code</label>
+              <input type="radio" name="edit-custom-effect-type" value="url" id="edit-custom-effect-type-url">
+              <label for="edit-custom-effect-type-url" data-i18n="customEffectTypeUrl">Website URL</label>
+            </div>
+          </div>
+
           <div class="control-group" id="edit-custom-effect-template-control">
             <label for="edit-custom-effect-template" data-i18n="startFromTemplate">Start from template</label>
             <select id="edit-custom-effect-template">
@@ -836,7 +848,7 @@
             </select>
           </div>
 
-          <div class="control-group" style="margin-bottom: 0;">
+          <div class="control-group" id="edit-custom-effect-code-control" style="margin-bottom: 0;">
             <label for="edit-custom-effect-code" data-i18n="effectCode">Code</label>
             <p class="hint" data-i18n="effectCodeHint">Must evaluate to an object with init(cfg), resize(state, width, height) and draw(ctx, canvas, state, dt) — the same shape as PageDye's built-in effects. cfg has color/bgColor/density/speed/text. Helpers: window.PageDyeEffects.helpers.{hexToRgba, effectSpeedMultiplier, clampPercent}.</p>
             <div class="pagedye-code-editor" id="edit-custom-effect-code-editor">
@@ -848,6 +860,28 @@
             </div>
             <p id="edit-custom-effect-error" class="effect-error-banner hidden"></p>
           </div>
+
+          <div class="control-group hidden" id="edit-custom-effect-url-control" style="margin-bottom: 0;">
+            <label for="edit-custom-effect-url" data-i18n="effectUrlLabel">Website URL</label>
+            <input type="url" id="edit-custom-effect-url" placeholder="https://example.com/some-cool-wallpaper" style="width: 100%; box-sizing: border-box;">
+            <p class="hint" data-i18n="effectUrlHint">Directly embed another website via iframe as the background. Note: Some websites may block iframe embedding due to security policies (X-Frame-Options/CSP).</p>
+
+            <details class="accordion" id="edit-accordion-custom-effect-advanced" style="margin-top: 15px;">
+              <summary class="accordion-summary">
+                <span data-i18n="advanced">Advanced Settings</span>
+                <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </summary>
+              <div class="accordion-content">
+                <div class="control-group" style="margin-bottom: 0;">
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="edit-custom-effect-interactive">
+                    <span data-i18n="customEffectInteractive">Allow background interaction (clicks/scrolls)</span>
+                  </label>
+                  <p class="hint" data-i18n="customEffectInteractiveHint" style="margin-top: 5px; margin-left: 24px;">Note: Because the background is layered behind the webpage, you need to hold the <strong>Alt</strong> key on your keyboard to bring the background to the front and click/interact with it.</p>
+                </div>
+              </div>
+            </details>
+          </div>
         </div>
 
         <div class="card">
@@ -855,14 +889,14 @@
             <label data-i18n="effectPreviewLabel">Live Preview</label>
             <div class="effect-preview-box">
               <canvas id="edit-custom-effect-preview-canvas" width="280" height="160"></canvas>
+              <iframe id="edit-custom-effect-preview-iframe" width="280" height="160" style="display: none; border: none; background: #000;"></iframe>
             </div>
           </div>
         </div>
 
         <div class="edit-actions-card" style="justify-content: flex-end;">
           <div class="edit-actions-right">
-            <button type="button" id="edit-custom-effect-export-btn" class="ghost-link-btn hidden" data-i18n="exportEffectBtn">Export</button>
-            <span class="divider hidden" id="edit-custom-effect-export-divider">|</span>
+            <button type="button" id="edit-custom-effect-export-btn" class="btn secondary-btn hidden" data-i18n="exportEffectBtn">Export</button>
             <button type="button" id="edit-custom-effect-delete-btn" class="btn danger-btn hidden" data-i18n="deleteBtn">Delete</button>
             <button type="button" id="edit-custom-effect-save-btn" class="btn primary-btn" data-i18n="save">Save</button>
           </div>

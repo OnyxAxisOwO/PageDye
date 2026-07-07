@@ -1281,3 +1281,48 @@ footer {
   border: none !important;
 }
 
+/* Sliding animation for editor panels */
+.editor-panels-slider-viewport {
+  overflow: hidden;
+  width: 100%;
+}
+
+.editor-panels-slider {
+  display: flex;
+  width: 200%;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  align-items: flex-start;
+}
+
+.editor-panel-slide {
+  width: 50%;
+  flex-shrink: 0;
+  transition: opacity 0.3s ease;
+}
+
+.editor-panel-slide.inactive {
+  height: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+/* Modifiers for multi-panel sliders */
+.slider-3-panels {
+  width: 300% !important;
+}
+.slide-3-panels {
+  width: 33.333% !important;
+}
+
+.slider-4-panels {
+  width: 400% !important;
+}
+.slide-4-panels {
+  width: 25% !important;
+}
+
