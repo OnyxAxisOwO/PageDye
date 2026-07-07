@@ -2,6 +2,17 @@
 
 All notable changes to PageDye are documented here.
 
+## [0.7.1] - 2026-07-07
+
+### Changed
+- **Deep Compatibility Mode moved out of "Advanced Settings" to its own highlighted section, first in the panel** (extension popup, options page, PageDye Lite) — it's the fix for the single most common "background doesn't show up" case, so it shouldn't be buried behind a collapsed accordion.
+- **Site demo widget's background layer rewritten to be native instead of injected**: scripts/content.js and the userscript have to fight arbitrary third-party page CSS (hence `!important` overrides, a JS-built shadow-DOM root, a min-integer z-index). The demo widget only ever runs on our own page, so that machinery was unnecessary overhead — the background layer is now a plain static element declared directly in `site/index.html`/`site/style.css`, and "make html/body see-through" is just clearing the same `--bg` custom property the site's own stylesheet already uses.
+- **Site demo widget's background selector ("拾取页面元素") is now a display-only control**: the input and Pick button still look and behave the same, but clicking Pick no longer starts a real per-element picker — it shows a tip pointing to the extension/Lite instead. Per-element backgrounds always required injecting a scoped stylesheet rule into an arbitrary picked element, which doesn't fit a page we fully control; the target-selector value is otherwise ignored (backgrounds always apply full-page).
+
+### Fixed
+- **Site demo widget could double-render alongside the real extension/Lite**: if a visitor has the extension or PageDye Lite installed *and* configured a background for pagedye.pages.dev specifically, the site's own embedded demo widget used to boot regardless, stacking a second independent renderer (canvas effects, observers, etc.) on top of the real one — wasted work at best, a visibly broken double background at worst. The demo widget now checks for the real product's marker root element on load and steps aside entirely if found (with a MutationObserver fallback for the rare case where the real product's storage read resolves after the demo has already booted).
+- **Site demo widget's solid-color background could inherit a stale `position: absolute` / `height: 100%` left over from a previous non-fixed image background**, unlike the extension/userscript which reset this explicitly on every color apply.
+
 ## [0.7] - 2026-07-07
 
 ### Fixed

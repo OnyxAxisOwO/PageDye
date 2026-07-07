@@ -116,7 +116,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetSelector: "Background Selector",
       targetSelectorHint: "Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.",
       deepCompat: "Deep Compatibility Mode",
-      deepCompatHint: "For stubborn sites (e.g. Google's mobile pages) where several stacked opaque containers hide the background no matter what. Automatically detects and neutralizes full-viewport opaque layers. May occasionally strip a background some element needed for contrast — use the exclude field below if so.",
+      deepCompatBadge: "For stubborn sites",
+      deepCompatEnable: "Enable for this site",
+      deepCompatHint: "For stubborn sites (e.g. Google's mobile pages) where several stacked opaque containers hide the background no matter what. Automatically detects and neutralizes full-viewport opaque layers — including a mosaic of many small opaque cards, not just one big wrapper. May occasionally strip a background some element needed for contrast — use the exclude field below if so.",
       deepCompatExcludePlaceholder: "Exclude selector (optional): .modal, [role=dialog]",
       frostedGlass: "Frosted Glass",
       frostedGlassHint: "Pick a card/container element and PageDye makes its background semi-transparent and blurred, so your wallpaper shows through underneath it.",
@@ -303,7 +305,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetSelector: "背景选择器",
       targetSelectorHint: "拾取一个元素（或手动输入 CSS 选择器），PageDye 会把颜色/图片直接应用到该元素，而不是整页。留空则为整页背景。",
       deepCompat: "深度兼容模式",
-      deepCompatHint: "适用于顽固网站（例如 Google 移动端页面）：多层不透明容器叠在一起，导致无论怎么设置背景都被遮住。开启后会自动检测并清除铺满视口的不透明背景层。可能偶尔误伤某些依赖背景色做对比度的元素，遇到这种情况可在下方填入排除选择器。",
+      deepCompatBadge: "顽固网站专用",
+      deepCompatEnable: "为此网站启用",
+      deepCompatHint: "适用于顽固网站（例如 Google 移动端页面）：多层不透明容器叠在一起，导致无论怎么设置背景都被遮住。开启后会自动检测并清除铺满视口的不透明背景层——包括由许多小块不透明卡片拼成的情况，不只是单个大容器。可能偶尔误伤某些依赖背景色做对比度的元素，遇到这种情况可在下方填入排除选择器。",
       deepCompatExcludePlaceholder: "排除选择器（可选）：.modal, [role=dialog]",
       frostedGlass: "磨砂玻璃",
       frostedGlassHint: "拾取一个卡片/容器元素，PageDye 会让它的背景变为半透明并加上模糊效果，让底层的壁纸若隐若现地透上来。",
@@ -1609,9 +1613,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-frosted-opacity').value = editFrostedGlass.opacity !== undefined ? editFrostedGlass.opacity : 55;
     document.getElementById('edit-frosted-opacity-val').textContent = `${document.getElementById('edit-frosted-opacity').value}%`;
 
+    // Deep Compatibility Mode now has its own always-expanded accordion.
     const editAccordionAdvanced = document.getElementById('edit-accordion-advanced');
     if (editAccordionAdvanced) {
-      editAccordionAdvanced.open = !!(currentEditSettings.targetSelector || currentEditSettings.deepCompat || currentEditSettings.customCss);
+      editAccordionAdvanced.open = !!(currentEditSettings.targetSelector || currentEditSettings.customCss);
     }
   }
 

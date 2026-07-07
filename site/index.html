@@ -9,9 +9,17 @@
 </head>
 <body>
 
+<!-- Native background layer for the demo widget — see site/style.css and
+     pagedye-widget.js. Declared here (not JS-created) since this is our own
+     page, not an arbitrary third-party site the widget needs to inject into. -->
+<div id="pagedye-embed-root" aria-hidden="true">
+  <div id="pagedye-embed-layer"></div>
+  <canvas id="pagedye-embed-effect-canvas"></canvas>
+</div>
+
 <header class="hero">
   <div class="wrap">
-    <div class="badge">v0.7</div>
+    <div class="badge">v0.7.1</div>
     <h1>PageDye</h1>
     <p class="tagline">给任意网站设置自定义背景——纯色、渐变、图片或动态特效壁纸。按站点独立保存，完全本地，无追踪、无网络请求。</p>
     <div class="cta-row">

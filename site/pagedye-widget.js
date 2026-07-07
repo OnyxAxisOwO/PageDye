@@ -17,10 +17,24 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.7';
+  const VERSION = '0.7.1';
   const domain = window.location.hostname;
   const STORAGE_KEY = 'pagedye-embed:' + domain;
   const GLOBAL_KEY = 'pagedye-embed:global-ui';
+
+  // If the real extension or PageDye Lite is already painting a background on
+  // this exact page (i.e. the visitor configured a wallpaper for this domain
+  // through one of those), this demo widget backs off entirely instead of
+  // fighting it for the same DOM — two independent renderers (each with their
+  // own canvas/observers) stacking on one page is redundant work at best and
+  // a visibly broken double-background at worst. Both real products create a
+  // stable root element only once they have an active background to paint,
+  // so its presence is also a precise "is something already rendering here"
+  // signal, not just "is it installed".
+  const REAL_PRODUCT_ROOT_IDS = ['pagedye-extension-root', 'pagedye-lite-root'];
+  function isRealPageDyeActive() {
+    return REAL_PRODUCT_ROOT_IDS.some((id) => document.getElementById(id));
+  }
 
   function defaultGlobalConfig() {
     return { buttonColor: '#000000', buttonSize: 50, buttonImage: '', draggable: false, edgeSnap: false, side: 'right', topPercent: 88 };
@@ -247,11 +261,17 @@
   let settings = null;
 
   // --------------------------------------------------------------------
-  // Render engine — ported unchanged from scripts/content.js / Lite.
+  // Render engine — this is our own page, not an arbitrary third-party site,
+  // so unlike scripts/content.js / the userscript it doesn't need to fight
+  // unknown CSS: the background layer is a plain static element declared in
+  // index.html (see site/style.css), and "make html/body see-through" is
+  // just clearing the same --bg custom property the site's own stylesheet
+  // already uses — no injected !important override stylesheet needed.
+  // Per-element target-selector background is a display-only control here
+  // (see the "target" accordion below) — it's not wired to any real picking
+  // or per-element style injection in this demo.
   // --------------------------------------------------------------------
   const ROOT_ID = 'pagedye-embed-root';
-  const STYLE_ID = 'pagedye-embed-style-override';
-  const TARGET_STYLE_ID = 'pagedye-embed-target-style';
   const CUSTOM_STYLE_ID = 'pagedye-embed-custom-css';
   const FROSTED_STYLE_ID = 'pagedye-embed-frosted-glass';
   let slideshowTimer = null;
@@ -285,31 +305,35 @@
     return parts.length ? parts.join(' ') : 'none';
   }
 
+  // Still needed by the (real, functional) frosted-glass feature below,
+  // which applies to an arbitrary picked element via a scoped stylesheet
+  // rule — unlike the background overlay, that one isn't a static element
+  // we control ahead of time.
   function scopeSelector(selector) {
     return selector.split(',').map((s) => s.trim()).filter(Boolean).map((s) => `:root ${s}`).join(', ');
   }
 
+  // html/body's own background is `var(--bg)` (site/style.css); overriding
+  // the custom property on :root beats the stylesheet rule on specificity
+  // alone, no !important needed.
   function enforceTransparency() {
-    let style = document.getElementById(STYLE_ID);
-    if (!style) {
-      style = document.createElement('style');
-      style.id = STYLE_ID;
-      style.textContent = 'html, body { background: none !important; background-color: transparent !important; }';
-      (document.head || document.documentElement).appendChild(style);
-    }
+    document.documentElement.style.setProperty('--bg', 'transparent');
   }
 
-  function removeTargetStyle() {
-    const style = document.getElementById(TARGET_STYLE_ID);
-    if (style) style.remove();
+  function restoreTransparency() {
+    document.documentElement.style.removeProperty('--bg');
   }
 
   function removeBackdrop() {
     stopEffect();
+    restoreTransparency();
     const root = document.getElementById(ROOT_ID);
-    if (root) root.remove();
-    const style = document.getElementById(STYLE_ID);
-    if (style) style.remove();
+    if (!root) return;
+    const layer = document.getElementById('pagedye-embed-layer');
+    const canvas = document.getElementById('pagedye-embed-effect-canvas');
+    root.style.cssText = '';
+    if (layer) layer.style.cssText = '';
+    if (canvas) canvas.style.cssText = '';
   }
 
   function applyCustomCss(css) {
@@ -355,92 +379,15 @@
     if (style) style.remove();
   }
 
-  function applyTargetBackground(selector, s) {
-    removeTargetStyle();
-    const sel = scopeSelector(selector);
-    const isGradient = s.type === 'color' && s.colorMode === 'gradient' && s.gradient;
-    let css = '';
-    if (s.type === 'color' && !isGradient) {
-      const alpha = (typeof s.opacity === 'number' ? s.opacity : 100) / 100;
-      css = `${sel} { background-image: none !important; background-color: ${hexToRgba(s.value, alpha)} !important; }`;
-    } else if (s.type === 'image' || isGradient) {
-      const st = s.style || {};
-      const opacity = (typeof s.opacity === 'number' ? s.opacity : 100) / 100;
-      const layerPos = st.fixed
-        ? 'position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important;'
-        : 'position: absolute !important; inset: 0 !important;';
-      let bgImageCss, filterStr, sizeCss, repeatCss, animationCss, positionCss;
-      if (isGradient) {
-        const gradient = s.gradient;
-        bgImageCss = Gradient.buildGradientCss(gradient);
-        filterStr = 'none';
-        repeatCss = 'no-repeat';
-        if (gradient.animated) {
-          sizeCss = gradient.kind === 'radial' ? '200% 200%' : '300% 300%';
-          animationCss = `pagedye-embed-gradient-flow ${gradient.speed || 10}s ease infinite`;
-          positionCss = '';
-        } else {
-          sizeCss = 'auto';
-          animationCss = 'none';
-          positionCss = 'background-position: center center !important;';
-        }
-      } else {
-        bgImageCss = `url("${s.value}")`;
-        filterStr = buildFilterString(s);
-        sizeCss = st.size || 'cover';
-        repeatCss = st.repeat ? 'repeat' : 'no-repeat';
-        animationCss = 'none';
-        positionCss = 'background-position: center center !important;';
-      }
-      css =
-        `${sel} { position: relative !important; isolation: isolate !important; background-image: none !important; background-color: transparent !important; }` +
-        `${sel}::before {` +
-          'content: "" !important;' + layerPos +
-          'z-index: -1 !important; pointer-events: none !important;' +
-          `background-image: ${bgImageCss} !important;` + positionCss +
-          `background-size: ${sizeCss} !important;` +
-          `background-repeat: ${repeatCss} !important;` +
-          `filter: ${filterStr} !important;` +
-          `opacity: ${opacity} !important;` +
-          `animation: ${animationCss} !important;` +
-        '}';
-    }
-    const style = document.createElement('style');
-    style.id = TARGET_STYLE_ID;
-    style.textContent = Gradient.GRADIENT_KEYFRAMES_CSS + css;
-    (document.head || document.documentElement).appendChild(style);
-  }
-
   function applyOverlay(s) {
     enforceTransparency();
-    let root = document.getElementById(ROOT_ID);
-    let layer, canvas;
-    if (!root) {
-      root = document.createElement('div');
-      root.id = ROOT_ID;
-      Object.assign(root.style, {
-        position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
-        zIndex: '-2147483648', pointerEvents: 'none', overflow: 'hidden', display: 'block'
-      });
-      document.documentElement.appendChild(root);
-      const shadow = root.attachShadow({ mode: 'open' });
-      const keyframesStyle = document.createElement('style');
-      keyframesStyle.textContent = Gradient.GRADIENT_KEYFRAMES_CSS;
-      shadow.appendChild(keyframesStyle);
-      layer = document.createElement('div');
-      layer.id = 'pagedye-embed-layer';
-      shadow.appendChild(layer);
-      canvas = document.createElement('canvas');
-      canvas.id = 'pagedye-embed-effect-canvas';
-      Object.assign(canvas.style, {
-        position: 'absolute', top: '0', left: '0', width: '100%', height: '100%',
-        display: 'none', transition: 'opacity 0.3s ease'
-      });
-      shadow.appendChild(canvas);
-    } else {
-      layer = root.shadowRoot.getElementById('pagedye-embed-layer');
-      canvas = root.shadowRoot.getElementById('pagedye-embed-effect-canvas');
-    }
+    // root/layer/canvas are static elements declared in index.html (see
+    // site/style.css for their base positioning) — this just toggles their
+    // inline styles per the current settings.
+    const root = document.getElementById(ROOT_ID);
+    const layer = document.getElementById('pagedye-embed-layer');
+    const canvas = document.getElementById('pagedye-embed-effect-canvas');
+    if (!root || !layer || !canvas) return;
 
     if (s.type === 'effect') {
       root.style.position = 'fixed';
@@ -462,6 +409,13 @@
     };
 
     if (s.type === 'color') {
+      // Colors have no "fixed position" toggle (unlike images) — always
+      // cover the fixed viewport. Reset explicitly: root/layer are
+      // persistent, reused elements, and a prior non-fixed image apply may
+      // have left position:absolute / height:100% behind (see the image
+      // branch below).
+      root.style.position = 'fixed';
+      root.style.height = '100vh';
       if (s.colorMode === 'gradient' && s.gradient) {
         const gradient = s.gradient;
         style.backgroundColor = 'transparent';
@@ -527,13 +481,12 @@
     applyCustomCss(active.customCss);
     applyFrostedGlass(s.frostedGlass);
 
+    // Per-element target-selector background is a display-only control in
+    // this demo (see the "target" accordion) — always overlay mode here,
+    // regardless of settings.targetSelector.
     const hasBackground = active.type === 'color' || active.type === 'image' || active.type === 'effect';
-    const selector = active.type !== 'effect' && active.targetSelector && active.targetSelector.trim();
-
-    if (!hasBackground) { removeBackdrop(); removeTargetStyle(); return; }
-
-    if (selector) { removeBackdrop(); applyTargetBackground(selector, active); }
-    else { removeTargetStyle(); applyOverlay(active); }
+    if (!hasBackground) { removeBackdrop(); return; }
+    applyOverlay(active);
   }
 
   function setupSlideshowTimer(s) {
@@ -1219,6 +1172,34 @@
     return parts.join(' > ');
   }
 
+  // The "background selector" (target-selector + Pick button) UI is kept
+  // identical to the extension/Lite for a consistent first look, but isn't
+  // wired to a real per-element picker here — clicking Pick just surfaces
+  // this instead of doing anything.
+  let fakePickerTipTimer = null;
+  function showFakePickerTip() {
+    let tip = document.getElementById('pagedye-embed-fake-picker-tip');
+    if (!tip) {
+      tip = document.createElement('div');
+      tip.id = 'pagedye-embed-fake-picker-tip';
+      tip.textContent = 'PageDye:元素拾取在完整版 / PageDye Lite 中可用,官网演示暂不支持';
+      Object.assign(tip.style, {
+        position: 'fixed', zIndex: '2147483647', top: '20px', left: '50%',
+        transform: 'translateX(-50%)', background: '#000', color: '#fff',
+        font: '13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        padding: '8px 16px', borderRadius: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        opacity: '0', transition: 'opacity 0.2s ease', pointerEvents: 'none'
+      });
+      document.documentElement.appendChild(tip);
+    }
+    clearTimeout(fakePickerTipTimer);
+    requestAnimationFrame(() => { tip.style.opacity = '1'; });
+    fakePickerTipTimer = setTimeout(() => {
+      tip.style.opacity = '0';
+      setTimeout(() => tip.remove(), 250);
+    }, 2200);
+  }
+
   function startPicker(onPicked) {
     if (window.__pagedyeEmbedPicking) return;
     window.__pagedyeEmbedPicking = true;
@@ -1826,10 +1807,7 @@
       return;
     }
     if (action === 'pick-target') {
-      startPicker((selector) => {
-        settings.targetSelector = selector;
-        liveApply(); scheduleSave(); renderPanel();
-      });
+      showFakePickerTip();
       return;
     }
     if (action === 'pick-frosted') {
@@ -2309,7 +2287,45 @@
   // --------------------------------------------------------------------
   // Boot
   // --------------------------------------------------------------------
+  let deferredToRealProduct = false;
+
+  // In the unlikely event the real extension/Lite's storage read resolves
+  // *after* this widget has already booted (both also run at document-start,
+  // so in practice they win the race), tear the demo down as soon as its
+  // root element shows up instead of leaving two renderers fighting over
+  // the same page.
+  function watchForRealProduct() {
+    if (isRealPageDyeActive()) {
+      backOffForRealProduct();
+      return;
+    }
+    const observer = new MutationObserver(() => {
+      if (isRealPageDyeActive()) {
+        observer.disconnect();
+        backOffForRealProduct();
+      }
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  function backOffForRealProduct() {
+    if (deferredToRealProduct) return;
+    deferredToRealProduct = true;
+    if (slideshowTimer) { clearTimeout(slideshowTimer); slideshowTimer = null; }
+    removeBackdrop();
+    applyCustomCss('');
+    removeFrostedGlass();
+    const host = document.getElementById('pagedye-embed-panel-host');
+    if (host) host.remove();
+    console.info('[PageDye] Real extension/Lite detected on this page — demo widget stepped aside to avoid double-rendering.');
+  }
+
   function boot() {
+    if (isRealPageDyeActive()) {
+      backOffForRealProduct();
+      return;
+    }
+
     const stored = Store.get(STORAGE_KEY);
     const storedGlobal = Store.get(GLOBAL_KEY);
     settings = stored ? Object.assign(defaultSettings(), stored) : defaultSettings();
@@ -2320,15 +2336,17 @@
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
       // Also lets an "auto" effect color preset track the OS scheme live,
       // independent of the wallpaper light/dark MODE.
-      if (settings) applyBackground(settings);
+      if (settings && !deferredToRealProduct) applyBackground(settings);
     });
 
-    const start = () => buildUI();
+    const start = () => { if (!deferredToRealProduct) buildUI(); };
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', start, { once: true });
     } else {
       start();
     }
+
+    watchForRealProduct();
   }
 
   boot();

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PageDye Lite
 // @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.7
+// @version      0.7.1
 // @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
 // @author       PageDye
 // @match        *://*/*
@@ -40,7 +40,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.7';
+  const VERSION = '0.7.1';
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
@@ -1560,7 +1560,7 @@
   let panelHost = null, shadow = null, panelEl = null, gearEl = null;
   const ui = {
     open: false, tab: 'wallpaper', scheme: 'light', slideIndex: 0,
-    accordions: { mode: true, bg: true, target: false, frosted: true, buttonAppearance: true, movement: false, backup: false }
+    accordions: { mode: true, bg: true, target: false, deepcompat: false, frosted: true, buttonAppearance: true, movement: false, backup: false }
   };
 
   function getEditable() {
@@ -1690,8 +1690,10 @@
   function accordion(id, title, bodyHtml, opts) {
     opts = opts || {};
     const open = ui.accordions[id] !== false;
-    const badge = opts.badge ? `<span class="pd-acc-badge">${opts.badge}</span>` : '';
-    return `<details class="pd-accordion" data-acc-id="${id}" ${open ? 'open' : ''}>
+    const badgeClass = opts.highlight ? 'pd-acc-badge pd-acc-badge-highlight' : 'pd-acc-badge';
+    const badge = opts.badge ? `<span class="${badgeClass}">${opts.badge}</span>` : '';
+    const accClass = opts.highlight ? 'pd-accordion pd-accordion-highlight' : 'pd-accordion';
+    return `<details class="${accClass}" data-acc-id="${id}" ${open ? 'open' : ''}>
       <summary class="pd-accordion-summary">
         <span class="pd-acc-title">${title}</span>
         ${badge}
@@ -1868,6 +1870,15 @@
     </div>`;
 
     if (ui.tab === 'wallpaper') {
+      // Surfaced first and highlighted — the fix for the single most common
+      // "why isn't this working" case (stubborn sites like Google's mobile
+      // pages), so it shouldn't be buried behind other accordions.
+      const deepCompatBody =
+        checkboxRow('为此网站启用', 'deepCompat', !!settings.deepCompat, { scope: 'root' }) +
+        `<div class="pd-hint">适用于顽固网站(例如 Google 移动端页面):多层不透明容器叠在一起,导致背景怎么设都被遮住。开启后自动检测并清除铺满视口的不透明背景层——包括由许多小块不透明卡片拼成的情况,不只是单个大容器。可能偶尔误伤依赖背景色做对比度的元素,可用下方选择器排除。</div>` +
+        textRow('排除选择器(可选)', 'deepCompatExclude', settings.deepCompatExclude, '.modal, [role=dialog]', { scope: 'root' });
+      html += accordion('deepcompat', '深度兼容模式', deepCompatBody, { badge: '顽固网站专用', highlight: true });
+
       html += accordion('mode', '模式与轮播', renderModeControls(), { badge: MODE_LABEL[settings.mode] });
       html += accordion('bg', '背景设置', renderEditableSection(getEditable()));
       const targetBody =
@@ -1876,11 +1887,6 @@
         `<div class="pd-subhead">自定义 CSS</div>` +
         `<textarea data-path="customCss" data-scope="root" placeholder="/* 任意 CSS,注入到当前网站 */">${escapeAttr(settings.customCss || '')}</textarea>`;
       html += accordion('target', '目标元素与自定义 CSS(可选)', targetBody);
-      const deepCompatBody =
-        checkboxRow('深度兼容模式', 'deepCompat', !!settings.deepCompat, { scope: 'root' }) +
-        `<div class="pd-hint">适用于顽固网站(例如 Google 移动端页面):多层不透明容器叠在一起,导致背景怎么设都被遮住。开启后自动检测并清除铺满视口的不透明背景层,可能偶尔误伤依赖背景色做对比度的元素,可用下方选择器排除。</div>` +
-        textRow('排除选择器(可选)', 'deepCompatExclude', settings.deepCompatExclude, '.modal, [role=dialog]', { scope: 'root' });
-      html += accordion('deepcompat', '深度兼容模式(可选)', deepCompatBody);
     } else if (ui.tab === 'frosted') {
       const frostedBody =
         textRow('CSS 选择器', 'frostedGlass.selector', settings.frostedGlass.selector, '例如 .card, main', { scope: 'root' }) +
@@ -2445,6 +2451,8 @@
         font-size: 10.5px; font-weight: 500; color: var(--pd-text-secondary); background: var(--pd-btn-bg);
         padding: 2px 8px; border-radius: 999px;
       }
+      .pd-accordion-highlight { border-color: var(--pd-text); }
+      .pd-acc-badge-highlight { color: var(--pd-panel-bg); background: var(--pd-text); }
       .pd-chevron { display: flex; color: var(--pd-text-secondary); transition: transform 0.2s ease; }
       .pd-accordion[open] > .pd-accordion-summary .pd-chevron { transform: rotate(180deg); }
       .pd-accordion-content { padding: 12px; border-top: 1px solid var(--pd-border); background: var(--pd-surface); }

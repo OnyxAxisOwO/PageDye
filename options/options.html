@@ -300,6 +300,26 @@
           </div>
 
           <div id="edit-panel-wallpaper">
+          <!-- Deep Compatibility Mode: surfaced first and highlighted, same
+               rationale as popup.html. Not expanded by default. -->
+          <details class="accordion accordion-highlight" id="edit-accordion-deepcompat">
+            <summary class="accordion-summary">
+              <span data-i18n="deepCompat">Deep Compatibility Mode</span>
+              <span class="badge-new" data-i18n="deepCompatBadge">For stubborn sites</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </summary>
+            <div class="accordion-content">
+              <div class="control-group" style="margin-bottom: 0;">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="edit-deep-compat-toggle">
+                  <span data-i18n="deepCompatEnable">Enable for this site</span>
+                </label>
+                <p class="hint" data-i18n="deepCompatHint">For stubborn sites (e.g. Google's mobile pages) where several stacked opaque containers hide the background no matter what. Automatically detects and neutralizes full-viewport opaque layers — including a mosaic of many small opaque cards, not just one big wrapper. May occasionally strip a background some element needed for contrast — use the exclude field below if so.</p>
+                <input type="text" id="edit-deep-compat-exclude" placeholder=".modal, [role=dialog]" data-i18n-placeholder="deepCompatExcludePlaceholder">
+              </div>
+            </div>
+          </details>
+
           <!-- Details 1: Wallpaper Mode & Rotation -->
           <details class="accordion" id="edit-accordion-mode" open>
             <summary class="accordion-summary">
@@ -701,15 +721,6 @@
                 <div class="selector-row">
                   <input type="text" id="edit-target-selector" placeholder="#app, .main-bg">
                 </div>
-              </div>
-
-              <div class="control-group">
-                <label class="checkbox-label">
-                  <input type="checkbox" id="edit-deep-compat-toggle">
-                  <span data-i18n="deepCompat">Deep Compatibility Mode</span>
-                </label>
-                <p class="hint" data-i18n="deepCompatHint">For stubborn sites (e.g. Google's mobile pages) where several stacked opaque containers hide the background no matter what. Automatically detects and neutralizes full-viewport opaque layers. May occasionally strip a background some element needed for contrast — use the exclude field below if so.</p>
-                <input type="text" id="edit-deep-compat-exclude" placeholder=".modal, [role=dialog]" data-i18n-placeholder="deepCompatExcludePlaceholder">
               </div>
 
               <div class="control-group" style="margin-bottom: 0;">

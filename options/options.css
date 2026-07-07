@@ -1867,6 +1867,22 @@ input:checked + .slider.round:before {
   transform: rotate(180deg);
 }
 
+.accordion-highlight {
+  border-color: var(--text-color);
+}
+
+.badge-new {
+  font-size: 10px;
+  font-weight: 500;
+  background: var(--text-color);
+  color: var(--bg-color);
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin-left: auto;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+
 .accordion-content {
   padding: 16px;
   border-top: 1px solid var(--border-color);
