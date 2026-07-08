@@ -55,12 +55,13 @@ jobs:
           # Commits land straight on main without PRs, so GitHub's
           # generate_release_notes has nothing to summarize — pull the
           # matching version's own written entry out of CHANGELOG.md instead.
-          VERSION_NO_V="${{ steps.version.outputs.version }}"
-          VERSION_NO_V="${VERSION_NO_V#v}"
-          awk -v ver="$VERSION_NO_V" '
-            /^## \[/ {
+          # CHANGELOG.md headers look like "### ✨ v0.7.13 更新日志" (not the
+          # keepachangelog "## [x.y.z]" style this originally matched).
+          VERSION="${{ steps.version.outputs.version }}"
+          awk -v marker="$VERSION " '
+            /^### / {
               if (found) exit
-              if (index($0, "## [" ver "]") == 1) found=1
+              if (index($0, marker) > 0) found=1
             }
             found { print }
           ' CHANGELOG.md > release_notes.md
