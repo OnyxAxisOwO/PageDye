@@ -194,6 +194,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       effectDensity: "Density",
       effectSpeed: "Speed",
       color: "Color",
+      selectColor: "Select Color",
       opacity: "Opacity",
       blur: "Blur",
       fixed: "Fixed Position",
@@ -328,6 +329,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       effectDensity: "密度",
       effectSpeed: "速度",
       color: "颜色",
+      selectColor: "选择颜色",
       opacity: "不透明度",
       blur: "模糊度",
       fixed: "固定背景",
@@ -1712,6 +1714,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function updateUI(type) {
+    if (window.syncFacadeUI) window.syncFacadeUI();
     const bgTypeSlider = document.getElementById('bg-type-slider');
     const sectionNone = document.getElementById('section-none');
     const sectionColor = document.getElementById('section-color');
@@ -1771,6 +1774,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function updateColorModeUI(colorMode) {
+    if (window.syncFacadeUI) window.syncFacadeUI();
     const isGradient = colorMode === 'gradient';
     const radio = document.querySelector(`input[name="colorMode"][value="${colorMode || 'solid'}"]`);
     if (radio) radio.checked = true;
@@ -2590,3 +2594,87 @@ function initCustomCssEditor(textareaId, containerId) {
     update: updateEditor
   };
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  // --- New UI Enhancements (Facade & Preset Colors) ---
+  const facadeRadios = document.querySelectorAll('input[name="bgStyleFacade"]');
+  const presetDots = document.querySelectorAll('.preset-color-dot');
+  const colorPicker = document.getElementById('color-picker');
+  const colorText = document.getElementById('color-text');
+  const copyBtn = document.getElementById('copy-color-btn');
+
+  function syncFacadeUI() {
+    const activeType = document.querySelector('input[name="bgType"]:checked')?.value || 'none';
+    const activeColorMode = document.querySelector('input[name="colorMode"]:checked')?.value || 'solid';
+    
+    let facadeValue = activeType;
+    if (activeType === 'color') {
+      facadeValue = activeColorMode; // 'solid' or 'gradient'
+    }
+    
+    const facadeInput = document.querySelector(`input[name="bgStyleFacade"][value="${facadeValue}"]`);
+    if (facadeInput) {
+      facadeInput.checked = true;
+    }
+  }
+
+  window.syncFacadeUI = syncFacadeUI;
+  setTimeout(syncFacadeUI, 100);
+
+  facadeRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      const val = e.target.value;
+      let targetType = val;
+      let targetColorMode = null;
+      
+      if (val === 'solid' || val === 'gradient') {
+        targetType = 'color';
+        targetColorMode = val;
+      }
+      
+      const typeInput = document.querySelector(`input[name="bgType"][value="${targetType}"]`);
+      if (typeInput && !typeInput.checked) {
+        typeInput.checked = true;
+        typeInput.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      
+      if (targetColorMode) {
+        const modeInput = document.querySelector(`input[name="colorMode"][value="${targetColorMode}"]`);
+        if (modeInput && !modeInput.checked) {
+          modeInput.checked = true;
+          modeInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    });
+  });
+
+  presetDots.forEach(dot => {
+    dot.addEventListener('click', (e) => {
+      const color = e.target.getAttribute('data-color');
+      presetDots.forEach(d => d.classList.remove('active'));
+      e.target.classList.add('active');
+      
+      if (colorPicker) {
+        colorPicker.value = color;
+        colorPicker.dispatchEvent(new Event('input', { bubbles: true }));
+        colorPicker.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      if (colorText) {
+        colorText.value = color;
+      }
+    });
+  });
+
+  if (copyBtn && colorText) {
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(colorText.value).then(() => {
+        copyBtn.classList.add('copied');
+        copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        setTimeout(() => {
+          copyBtn.classList.remove('copied');
+          copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+        }, 1500);
+      });
+    });
+  }
+});
