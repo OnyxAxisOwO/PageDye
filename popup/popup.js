@@ -1433,24 +1433,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       };
     }
 
-    if (!currentSettings.timeRange) {
-      const template = {
-        type: currentSettings.type && currentSettings.type !== 'none' ? currentSettings.type : 'none',
-        value: currentSettings.value || '',
-        opacity: currentSettings.opacity !== undefined ? currentSettings.opacity : 100,
-        blur: currentSettings.blur !== undefined ? currentSettings.blur : 0,
-        style: Object.assign({ fixed: true, size: 'cover', repeat: false }, currentSettings.style || {}),
-        colorMode: currentSettings.colorMode || 'solid',
-        gradient: currentSettings.gradient || null,
-        effect: currentSettings.effect || 'waves',
-        effectText: currentSettings.effectText || 'PageDye',
-        effectColorScheme: currentSettings.effectColorScheme || 'auto',
-        effectColor: currentSettings.effectColor || '#ffffff',
-        effectBgColor: currentSettings.effectBgColor || '#000000',
-        effectDensity: currentSettings.effectDensity !== undefined ? currentSettings.effectDensity : 50,
-        effectSpeed: currentSettings.effectSpeed !== undefined ? currentSettings.effectSpeed : 50,
-        filters: Object.assign({ brightness: 100, contrast: 100, grayscale: 0, hue: 0, invert: 0 }, currentSettings.filters || {})
-      };
     if (!currentSettings.timeRange || !Array.isArray(currentSettings.timeRange.items)) {
       if (currentSettings.timeRange && currentSettings.timeRange.morning) {
         const tr = currentSettings.timeRange;
