@@ -1037,6 +1037,34 @@ input[type="color"]::-webkit-color-swatch {
   border-radius: 6px;
 }
 
+.theme-color-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.theme-color-dot {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
+}
+
+.theme-color-dot.active::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--primary-color);
+  border-radius: 50%;
+}
+
+.theme-custom-color-row {
+  margin-top: 4px;
+}
+
 /* File Drop Area */
 .file-drop-area {
   border: 2px dashed var(--border-color);
@@ -2576,7 +2604,7 @@ h1,
 .mode-pill-group input:checked + label {
   background: var(--primary-color);
   border-color: var(--primary-color);
-  color: #ffffff;
+  color: var(--primary-color-text);
 }
 
 /* Material You 3 system layer */

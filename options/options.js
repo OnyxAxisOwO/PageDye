@@ -33,6 +33,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       appearanceResetDone: "Appearance reset!",
       disableThemeAnimation: "Disable dashboard animations",
       disableThemeAnimationHint: "Turns off transitions, fade-ins, and animations in the extension panel/popup interface.",
+      uiThemeColor: "Interface Theme Color",
+      uiThemeColorHint: "Changes PageDye popup and settings colors only. Websites stay unchanged.",
       dragOrClick: "Drag image here, or",
       chooseFile: "choose file",
       savedImage: "Saved image",
@@ -69,6 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       clearAllBtn: "Wipe All Configurations",
       clearAllConfirm: "Remove PageDye settings for ALL websites? This cannot be undone.",
       clearAllDone: "All sites cleared!",
+      deleteSiteDone: "Site configuration removed!",
       aboutTitle: "About PageDye",
       aboutText: "PageDye is a browser extension that allows you to dye any webpage's background with your choice of color or custom image. You can adjust opacity, blur, repetition, element selector, and even inject custom CSS for complete control over readability and design.",
       aboutAuthor: "Developer",
@@ -297,6 +300,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       clearAllBtn: "清除全部网站配置",
       clearAllConfirm: "确定要清除所有网站的 PageDye 设置吗？此操作无法撤销。",
       clearAllDone: "已清除全部网站!",
+      deleteSiteDone: "网站配置已清除!",
       aboutTitle: "关于 PageDye",
       aboutText: "PageDye 是一款能够为您定制任何网页背景的浏览器插件。您可以使用纯色或自定义图片作为背景，并能自由调整不透明度、模糊度、平铺方式，甚至能使用元素选择器和自定义 CSS，让页面背景更符合您的阅读习惯与个性偏好。",
       aboutAuthor: "开发者",
@@ -464,8 +468,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
   const DEBUG_MODE_KEY = '__pagedye_debug_mode__';
   const DEFAULT_BG_KEY = '__pagedye_default_background__';
-  const UI_THEME_DEFAULTS = { pageBg: '#f1f5f9', containerBg: '#ffffff', pageBgImage: null, containerBgImage: null, disableAnimation: false };
+  const UI_THEME_DEFAULTS = { pageBg: '#f1f5f9', containerBg: '#ffffff', pageBgImage: null, containerBgImage: null, accent: 'neutral', customAccent: '#18181b', disableAnimation: false };
   let currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS);
+  const UI_THEME_ACCENTS = {
+    neutral: '#18181b',
+    red: '#BA1A1A',
+    pink: '#B3266E',
+    purple: '#6750A4',
+    indigo: '#445E91',
+    blue: '#0061A4',
+    cyan: '#006874',
+    teal: '#006A6A',
+    green: '#386A20',
+    orange: '#8B5000'
+  };
 
   // The base stylesheet only themes text/border/badge colors via
   // `@media (prefers-color-scheme: dark)`, so once the user picks a custom
@@ -515,6 +531,63 @@ document.addEventListener('DOMContentLoaded', async () => {
     return (0.299 * r + 0.587 * g + 0.114 * b) >= 140;
   }
 
+  function normalizeHexColor(color, fallback) {
+    const value = (color || '').trim();
+    return /^#[0-9a-fA-F]{6}$/.test(value) ? value.toUpperCase() : fallback;
+  }
+
+  function hexToRgba(color, alpha) {
+    const hex = normalizeHexColor(color, '#18181B').replace('#', '');
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function shiftHexColor(color, amount) {
+    const hex = normalizeHexColor(color, '#18181B').replace('#', '');
+    const next = [0, 2, 4].map((idx) => {
+      const value = Math.max(0, Math.min(255, parseInt(hex.slice(idx, idx + 2), 16) + amount));
+      return value.toString(16).padStart(2, '0');
+    });
+    return '#' + next.join('').toUpperCase();
+  }
+
+  function getUiAccentColor(theme) {
+    if (theme.accent === 'custom') {
+      return normalizeHexColor(theme.customAccent, UI_THEME_ACCENTS.neutral);
+    }
+    return UI_THEME_ACCENTS[theme.accent] || UI_THEME_ACCENTS.neutral;
+  }
+
+  function applyUiThemeAccent(theme) {
+    const root = document.documentElement.style;
+    const accent = getUiAccentColor(theme);
+    const onAccent = colorIsLight(accent) ? '#000000' : '#ffffff';
+    const hover = shiftHexColor(accent, colorIsLight(accent) ? -32 : 24);
+    root.setProperty('--primary-color', accent);
+    root.setProperty('--primary-color-text', onAccent);
+    root.setProperty('--primary-hover', hover);
+    root.setProperty('--input-focus-shadow', hexToRgba(accent, 0.16));
+    root.setProperty('--primary-gradient', `linear-gradient(135deg, ${accent} 0%, ${hover} 100%)`);
+    root.setProperty('--accent-glow', `0 0 12px ${hexToRgba(accent, 0.22)}`);
+    root.setProperty('--accent-glow-large', `0 8px 24px ${hexToRgba(accent, 0.22)}`);
+    root.setProperty('--table-hover-bg', hexToRgba(accent, 0.05));
+    root.setProperty('--badge-color-bg', hexToRgba(accent, 0.12));
+    root.setProperty('--badge-color-text', accent);
+    root.setProperty('--badge-image-bg', hexToRgba(accent, 0.14));
+    root.setProperty('--badge-image-text', accent);
+    root.setProperty('--md-sys-color-primary', accent);
+    root.setProperty('--md-sys-color-on-primary', onAccent);
+    root.setProperty('--md-sys-color-primary-container', hexToRgba(accent, 0.18));
+    root.setProperty('--md-sys-color-on-primary-container', accent);
+    root.setProperty('--md-sys-color-secondary-container', hexToRgba(accent, 0.16));
+    root.setProperty('--md-sys-color-on-secondary-container', accent);
+    root.setProperty('--md-state-hover', hexToRgba(accent, 0.08));
+    root.setProperty('--md-state-focus', hexToRgba(accent, 0.14));
+    root.setProperty('--md-state-press', hexToRgba(accent, 0.14));
+  }
+
   // Elements
   const els = {
     navItems: document.querySelectorAll('.nav-item'),
@@ -544,6 +617,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     themeContainerBgFileInfo: document.getElementById('theme-container-bg-file-info'),
     themeContainerBgFilename: document.getElementById('theme-container-bg-filename'),
     themeContainerBgRemove: document.getElementById('theme-container-bg-remove'),
+    uiThemeColorGrid: document.getElementById('ui-theme-color-grid'),
+    uiThemeCustomColor: document.getElementById('ui-theme-custom-color'),
+    uiThemeCustomColorText: document.getElementById('ui-theme-custom-color-text'),
     debugModeToggle: document.getElementById('debug-mode-toggle'),
 
     // Edit site controls
@@ -679,22 +755,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Translate elements with data-i18n
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');
-      if (i18n[lang][key]) {
-        el.textContent = i18n[lang][key];
-      }
+      el.textContent = t(key);
     });
 
     // Translate inputs with data-i18n-placeholder
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
       const key = el.getAttribute('data-i18n-placeholder');
-      if (i18n[lang][key]) {
-        el.placeholder = i18n[lang][key];
-      }
+      el.placeholder = t(key);
     });
   }
 
   function t(key) {
-    return i18n[lang][key] || key;
+    const zhFallback = {
+      uiThemeColor: "\u754c\u9762\u4e3b\u9898\u8272",
+      uiThemeColorHint: "\u53ea\u6539\u53d8 PageDye \u8bbe\u7f6e\u9875\u548c\u5f39\u7a97\u989c\u8272\uff0c\u4e0d\u4f1a\u5f71\u54cd\u7f51\u7ad9\u989c\u8272\u3002"
+    };
+    if (lang === 'zh' && zhFallback[key]) return zhFallback[key];
+    return i18n[lang][key] || i18n.en[key] || key;
   }
 
   function buildBgTypeBadge(settings) {
@@ -904,7 +981,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (await showConfirm(confirmMsg)) {
           await chrome.storage.local.remove(domain);
           await loadSitesList();
-          showStatus(t('clearAllDone')); // reuse standard status
+          showStatus(t('deleteSiteDone'));
         }
       });
       tdActions.appendChild(deleteBtn);
@@ -1543,6 +1620,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onContainerBgChange(e.target.value);
     });
 
+    if (els.uiThemeColorGrid) {
+      els.uiThemeColorGrid.addEventListener('click', (e) => {
+        const dot = e.target.closest('.theme-color-dot');
+        if (!dot) return;
+        saveUiTheme({ accent: dot.dataset.themeAccent || 'neutral' });
+      });
+    }
+    const onCustomAccentChange = (value) => {
+      const color = normalizeHexColor(value, currentUiTheme.customAccent || UI_THEME_ACCENTS.neutral);
+      els.uiThemeCustomColor.value = color;
+      els.uiThemeCustomColorText.value = color;
+      saveUiTheme({ accent: 'custom', customAccent: color });
+    };
+    if (els.uiThemeCustomColor) {
+      els.uiThemeCustomColor.addEventListener('input', (e) => onCustomAccentChange(e.target.value));
+    }
+    if (els.uiThemeCustomColorText) {
+      els.uiThemeCustomColorText.addEventListener('change', (e) => {
+        if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onCustomAccentChange(e.target.value);
+      });
+    }
+
     setupThemeImageUpload('page', els.themePageBgDrop, els.themePageBgFile, els.themePageBgFileInfo, els.themePageBgFilename, els.themePageBgRemove);
     setupThemeImageUpload('container', els.themeContainerBgDrop, els.themeContainerBgFile, els.themeContainerBgFileInfo, els.themeContainerBgFilename, els.themeContainerBgRemove);
 
@@ -1606,6 +1705,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.themePageBgText.value = theme.pageBg;
     els.themeContainerBg.value = theme.containerBg;
     els.themeContainerBgText.value = theme.containerBg;
+    if (els.uiThemeCustomColor) els.uiThemeCustomColor.value = normalizeHexColor(theme.customAccent, UI_THEME_ACCENTS.neutral);
+    if (els.uiThemeCustomColorText) els.uiThemeCustomColorText.value = normalizeHexColor(theme.customAccent, UI_THEME_ACCENTS.neutral);
+    if (els.uiThemeColorGrid) {
+      els.uiThemeColorGrid.querySelectorAll('.theme-color-dot').forEach((dot) => {
+        dot.classList.toggle('active', (theme.accent || 'neutral') === dot.dataset.themeAccent);
+      });
+    }
 
     syncThemeImageUi(theme.pageBgImage, els.themePageBgDrop, els.themePageBgFileInfo, els.themePageBgFilename);
     syncThemeImageUi(theme.containerBgImage, els.themeContainerBgDrop, els.themeContainerBgFileInfo, els.themeContainerBgFilename);
@@ -1636,6 +1742,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const palette = colorIsLight(theme.containerBg) ? UI_THEME_LIGHT_PALETTE : UI_THEME_DARK_PALETTE;
     Object.keys(palette).forEach(name => root.setProperty(name, palette[name]));
+    applyUiThemeAccent(theme);
 
     applyThemeBgImage(document.body, theme.pageBgImage);
     applyThemeBgImage(document.querySelector('.dashboard-container'), theme.containerBgImage);
@@ -1667,6 +1774,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function saveUiTheme(partial) {
     currentUiTheme = Object.assign({}, currentUiTheme, partial);
     applyUiTheme(currentUiTheme);
+    syncUiThemeInputs(currentUiTheme);
 
     if (themeSaveDebounceTimer) clearTimeout(themeSaveDebounceTimer);
     themeSaveDebounceTimer = setTimeout(async () => {

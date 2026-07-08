@@ -605,6 +605,27 @@
         </summary>
         <div class="accordion-content">
           <div class="control-group">
+            <label data-i18n="uiThemeColor">Interface Theme Color</label>
+            <p class="hint" data-i18n="uiThemeColorHint">Changes PageDye popup and settings colors only. Websites stay unchanged.</p>
+            <div class="theme-color-grid" id="ui-theme-color-grid">
+              <button type="button" class="theme-color-dot" data-theme-accent="neutral" style="background-color: #18181b;" title="Black & White"></button>
+              <button type="button" class="theme-color-dot" data-theme-accent="red" style="background-color: #BA1A1A;" title="Red"></button>
+              <button type="button" class="theme-color-dot" data-theme-accent="pink" style="background-color: #B3266E;" title="Pink"></button>
+              <button type="button" class="theme-color-dot" data-theme-accent="purple" style="background-color: #6750A4;" title="Purple"></button>
+              <button type="button" class="theme-color-dot" data-theme-accent="indigo" style="background-color: #445E91;" title="Indigo"></button>
+              <button type="button" class="theme-color-dot" data-theme-accent="blue" style="background-color: #0061A4;" title="Blue"></button>
+              <button type="button" class="theme-color-dot" data-theme-accent="cyan" style="background-color: #006874;" title="Cyan"></button>
+              <button type="button" class="theme-color-dot" data-theme-accent="teal" style="background-color: #006A6A;" title="Teal"></button>
+              <button type="button" class="theme-color-dot" data-theme-accent="green" style="background-color: #386A20;" title="Green"></button>
+              <button type="button" class="theme-color-dot" data-theme-accent="orange" style="background-color: #8B5000;" title="Orange"></button>
+            </div>
+            <div class="color-input-wrapper theme-custom-color-row">
+              <input type="color" id="ui-theme-custom-color" value="#18181b">
+              <input type="text" id="ui-theme-custom-color-text" value="#18181b" aria-label="Custom interface theme color">
+            </div>
+          </div>
+
+          <div class="control-group">
             <label for="target-selector" data-i18n="targetSelector">Background Selector</label>
             <p class="hint" data-i18n="targetSelectorHint">Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.</p>
             <div class="selector-row">

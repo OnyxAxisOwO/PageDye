@@ -165,6 +165,80 @@ function pagedyeElementPicker(settings, domain, fieldPath, tipTextMultiple, tipT
 // Shared across both DOMContentLoaded listeners below (they're independent,
 // sibling closures — not nested — so this can't live inside either one).
 const CUSTOM_PRESET_COLORS_KEY = '__pagedye_custom_preset_colors__';
+const UI_THEME_KEY = '__pagedye_ui_theme__';
+const UI_THEME_DEFAULTS = { accent: 'neutral', customAccent: '#18181b', disableAnimation: false };
+const UI_THEME_ACCENTS = {
+  neutral: '#18181b',
+  red: '#BA1A1A',
+  pink: '#B3266E',
+  purple: '#6750A4',
+  indigo: '#445E91',
+  blue: '#0061A4',
+  cyan: '#006874',
+  teal: '#006A6A',
+  green: '#386A20',
+  orange: '#8B5000'
+};
+
+function normalizeHexColor(color, fallback) {
+  const value = (color || '').trim();
+  return /^#[0-9a-fA-F]{6}$/.test(value) ? value.toUpperCase() : fallback;
+}
+
+function colorIsLight(color) {
+  const hex = normalizeHexColor(color, '#18181B').replace('#', '');
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) >= 140;
+}
+
+function hexToRgba(color, alpha) {
+  const hex = normalizeHexColor(color, '#18181B').replace('#', '');
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function shiftHexColor(color, amount) {
+  const hex = normalizeHexColor(color, '#18181B').replace('#', '');
+  const next = [0, 2, 4].map((idx) => {
+    const value = Math.max(0, Math.min(255, parseInt(hex.slice(idx, idx + 2), 16) + amount));
+    return value.toString(16).padStart(2, '0');
+  });
+  return '#' + next.join('').toUpperCase();
+}
+
+function getUiAccentColor(theme) {
+  if (theme.accent === 'custom') {
+    return normalizeHexColor(theme.customAccent, UI_THEME_ACCENTS.neutral);
+  }
+  return UI_THEME_ACCENTS[theme.accent] || UI_THEME_ACCENTS.neutral;
+}
+
+function applyUiTheme(theme) {
+  const root = document.documentElement.style;
+  const accent = getUiAccentColor(theme);
+  const onAccent = colorIsLight(accent) ? '#000000' : '#ffffff';
+  const hover = shiftHexColor(accent, colorIsLight(accent) ? -32 : 24);
+  root.setProperty('--primary-color', accent);
+  root.setProperty('--primary-color-text', onAccent);
+  root.setProperty('--primary-hover', hover);
+  root.setProperty('--input-focus-shadow', hexToRgba(accent, 0.16));
+  root.setProperty('--primary-gradient', `linear-gradient(135deg, ${accent} 0%, ${hover} 100%)`);
+  root.setProperty('--accent-glow', `0 0 12px ${hexToRgba(accent, 0.22)}`);
+  root.setProperty('--table-hover-bg', hexToRgba(accent, 0.05));
+  root.setProperty('--badge-color-bg', hexToRgba(accent, 0.12));
+  root.setProperty('--badge-color-text', accent);
+  root.setProperty('--badge-image-bg', hexToRgba(accent, 0.14));
+  root.setProperty('--badge-image-text', accent);
+  if (theme.disableAnimation) {
+    document.documentElement.classList.add('pagedye-no-animation');
+  } else {
+    document.documentElement.classList.remove('pagedye-no-animation');
+  }
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Translations
@@ -234,6 +308,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       tabWallpaper: "Wallpaper",
       tabFrostedGlass: "Frosted Glass",
       advanced: "Advanced",
+      uiThemeColor: "Interface Theme Color",
+      uiThemeColorHint: "Changes PageDye popup and settings colors only. Websites stay unchanged.",
       targetSelector: "Background Selector",
       targetSelectorHint: "Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.",
       pickElement: "Pick",
@@ -578,6 +654,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     deepCompatExcludeList: document.getElementById('deep-compat-exclude-list'),
     deepCompatAddBtn: document.getElementById('deep-compat-add-btn'),
     deepCompatPickBtn: document.getElementById('deep-compat-pick-btn'),
+    uiThemeColorGrid: document.getElementById('ui-theme-color-grid'),
+    uiThemeCustomColor: document.getElementById('ui-theme-custom-color'),
+    uiThemeCustomColorText: document.getElementById('ui-theme-custom-color-text'),
     frostedList: document.getElementById('frosted-list'),
     frostedAddBtn: document.getElementById('frosted-add-btn'),
     cursorToggle: document.getElementById('cursor-toggle'),
@@ -624,6 +703,53 @@ document.addEventListener('DOMContentLoaded', async () => {
     statusText: document.getElementById('status-text')
   };
 
+  function syncUiThemeControls() {
+    if (els.uiThemeCustomColor) {
+      els.uiThemeCustomColor.value = normalizeHexColor(currentUiTheme.customAccent, UI_THEME_ACCENTS.neutral);
+    }
+    if (els.uiThemeCustomColorText) {
+      els.uiThemeCustomColorText.value = normalizeHexColor(currentUiTheme.customAccent, UI_THEME_ACCENTS.neutral);
+    }
+    if (els.uiThemeColorGrid) {
+      els.uiThemeColorGrid.querySelectorAll('.theme-color-dot').forEach((dot) => {
+        dot.classList.toggle('active', (currentUiTheme.accent || 'neutral') === dot.dataset.themeAccent);
+      });
+    }
+  }
+
+  async function saveUiTheme(partial) {
+    currentUiTheme = Object.assign({}, currentUiTheme, partial);
+    applyUiTheme(currentUiTheme);
+    syncUiThemeControls();
+    const existing = await chrome.storage.local.get(UI_THEME_KEY);
+    const next = Object.assign({}, existing[UI_THEME_KEY] || {}, currentUiTheme);
+    await chrome.storage.local.set({ [UI_THEME_KEY]: next });
+  }
+
+  function initUiThemeControls() {
+    syncUiThemeControls();
+    if (els.uiThemeColorGrid) {
+      els.uiThemeColorGrid.addEventListener('click', (e) => {
+        const dot = e.target.closest('.theme-color-dot');
+        if (!dot) return;
+        saveUiTheme({ accent: dot.dataset.themeAccent || 'neutral' });
+      });
+    }
+
+    const onCustomAccentChange = (value) => {
+      const color = normalizeHexColor(value, currentUiTheme.customAccent || UI_THEME_ACCENTS.neutral);
+      saveUiTheme({ accent: 'custom', customAccent: color });
+    };
+    if (els.uiThemeCustomColor) {
+      els.uiThemeCustomColor.addEventListener('input', (e) => onCustomAccentChange(e.target.value));
+    }
+    if (els.uiThemeCustomColorText) {
+      els.uiThemeCustomColorText.addEventListener('change', (e) => {
+        if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onCustomAccentChange(e.target.value);
+      });
+    }
+  }
+
   // Sends a message to the tab's content script, injecting it first if it is
   // not reachable (page predates the extension, or the extension was reloaded
   // while the tab stayed open). Requires the "scripting" permission.
@@ -655,15 +781,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   let cursorPresetState = 'ball';
   let cssEditorController = null;
   let isInitialLoad = true;
+  let currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS);
 
   // Init
-  chrome.storage.local.get('__pagedye_ui_theme__', (data) => {
-    const theme = data['__pagedye_ui_theme__'];
-    if (theme && theme.disableAnimation) {
-      document.documentElement.classList.add('pagedye-no-animation');
-    }
-  });
+  const themeData = await chrome.storage.local.get(UI_THEME_KEY);
+  currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS, themeData[UI_THEME_KEY] || {});
+  applyUiTheme(currentUiTheme);
   initI18n();
+  initUiThemeControls();
   cssEditorController = initCustomCssEditor('custom-css', 'custom-css-editor');
   const gradientKeyframesStyle = document.createElement('style');
   gradientKeyframesStyle.textContent = window.PageDyeGradient.GRADIENT_KEYFRAMES_CSS;
@@ -1332,16 +1457,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');
-      if (i18n[lang][key]) {
-        el.textContent = i18n[lang][key];
-      }
+      el.textContent = t(key);
     });
 
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
       const key = el.getAttribute('data-i18n-placeholder');
-      if (i18n[lang][key]) {
-        el.placeholder = i18n[lang][key];
-      }
+      el.placeholder = t(key);
     });
 
     const settingsBtn = document.getElementById('settings-btn');
@@ -1351,7 +1472,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function t(key) {
-    return i18n[lang][key] || key;
+    const zhFallback = {
+      uiThemeColor: "\u754c\u9762\u4e3b\u9898\u8272",
+      uiThemeColorHint: "\u53ea\u6539\u53d8 PageDye \u8bbe\u7f6e\u9875\u548c\u5f39\u7a97\u989c\u8272\uff0c\u4e0d\u4f1a\u5f71\u54cd\u7f51\u7ad9\u989c\u8272\u3002"
+    };
+    if (lang === 'zh' && zhFallback[key]) return zhFallback[key];
+    return i18n[lang][key] || i18n.en[key] || key;
   }
 
   // Appends the user's custom effects as an <optgroup> after the built-in
