@@ -144,11 +144,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedGlassHint: "Pick a card/container element and PageDye makes its background semi-transparent and blurred, so your wallpaper shows through underneath it.",
       frostedBlur: "Blur",
       frostedOpacity: "Tint",
+      frostedCustomColor: "Custom Color",
       frostedAddBtn: "+ Add element",
       customCss: "Custom CSS",
       customCssHint: "Injected into this site. Use !important to override stubborn styles.",
       customEffectsTitle: "Custom Effects",
-      customEffectsHint: "Write your own animated Canvas wallpaper and use it on any site, just like the built-in effects. Extension only — not available in PageDye Lite or the site widget.",
+      customEffectsHint: "Write your own animated Canvas wallpaper and use it on any site, just like the built-in effects. Extension only — not available in PageDye Lite.",
       newCustomEffect: "New Custom Effect",
       importEffectBtn: "Import",
       thEffectName: "Name",
@@ -371,11 +372,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedGlassHint: "拾取一个卡片/容器元素，PageDye 会让它的背景变为半透明并加上模糊效果，让底层的壁纸若隐若现地透上来。",
       frostedBlur: "模糊度",
       frostedOpacity: "透明度",
+      frostedCustomColor: "自定义颜色",
       frostedAddBtn: "+ 添加元素",
       customCss: "自定义 CSS",
       customCssHint: "将注入到本网站。可用 !important 覆盖顽固样式。",
       customEffectsTitle: "自定义动效",
-      customEffectsHint: "编写你自己的 Canvas 动态壁纸，像内置动效一样在任意网站使用。仅浏览器扩展版支持——PageDye Lite 和网页体验版暂不支持。",
+      customEffectsHint: "编写你自己的 Canvas 动态壁纸，像内置动效一样在任意网站使用。仅浏览器扩展版支持——PageDye Lite 暂不支持。",
       newCustomEffect: "新建自定义动效",
       importEffectBtn: "导入",
       thEffectName: "名称",
@@ -2316,7 +2318,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     editFrostedGlassState = list.map(f => ({
       selector: f.selector || '',
       blur: f.blur !== undefined ? f.blur : 12,
-      opacity: f.opacity !== undefined ? f.opacity : 55
+      opacity: f.opacity !== undefined ? f.opacity : 55,
+      color: f.color || null
     }));
     const container = document.getElementById('edit-frosted-list');
     container.innerHTML = '';
@@ -2379,11 +2382,35 @@ document.addEventListener('DOMContentLoaded', async () => {
       opacityInput.max = '100';
       opacityInput.value = entry.opacity;
 
+      const colorRow = document.createElement('div');
+      colorRow.className = 'frosted-entry-color-row';
+
+      const colorToggleLabel = document.createElement('label');
+      colorToggleLabel.className = 'checkbox-label';
+      const colorToggle = document.createElement('input');
+      colorToggle.type = 'checkbox';
+      colorToggle.className = 'frosted-entry-color-toggle';
+      colorToggle.checked = !!entry.color;
+      const colorToggleText = document.createElement('span');
+      colorToggleText.textContent = t('frostedCustomColor');
+      colorToggleLabel.appendChild(colorToggle);
+      colorToggleLabel.appendChild(colorToggleText);
+
+      const colorInput = document.createElement('input');
+      colorInput.type = 'color';
+      colorInput.className = 'frosted-entry-color';
+      colorInput.value = entry.color || '#ffffff';
+      colorInput.disabled = !entry.color;
+
+      colorRow.appendChild(colorToggleLabel);
+      colorRow.appendChild(colorInput);
+
       row.appendChild(selectorRow);
       row.appendChild(blurLabelRow);
       row.appendChild(blurInput);
       row.appendChild(opacityLabelRow);
       row.appendChild(opacityInput);
+      row.appendChild(colorRow);
       container.appendChild(row);
     });
   }
@@ -2508,7 +2535,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentEditSettings.frostedGlass = editFrostedGlassState.map(f => ({
       selector: f.selector.trim(),
       blur: f.blur,
-      opacity: f.opacity
+      opacity: f.opacity,
+      color: f.color || null
     }));
     currentEditSettings.timestamp = Date.now();
   }
@@ -3003,6 +3031,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else if (e.target.classList.contains('frosted-entry-opacity')) {
       editFrostedGlassState[idx].opacity = parseInt(e.target.value, 10);
       row.querySelector('.frosted-entry-opacity-val').textContent = `${e.target.value}%`;
+    } else if (e.target.classList.contains('frosted-entry-color-toggle')) {
+      const colorInput = row.querySelector('.frosted-entry-color');
+      colorInput.disabled = !e.target.checked;
+      editFrostedGlassState[idx].color = e.target.checked ? colorInput.value : null;
+    } else if (e.target.classList.contains('frosted-entry-color')) {
+      editFrostedGlassState[idx].color = e.target.value;
     }
     queueEditAutoSave();
   });
@@ -3017,7 +3051,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.getElementById('edit-frosted-add-btn').addEventListener('click', () => {
-    editFrostedGlassState.push({ selector: '', blur: 12, opacity: 55 });
+    editFrostedGlassState.push({ selector: '', blur: 12, opacity: 55, color: null });
     renderEditFrostedList(editFrostedGlassState);
     triggerEditImmediateSave();
   });

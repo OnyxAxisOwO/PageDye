@@ -306,6 +306,8 @@ window.PageDyeGradient = (function () {
     clampStops,
     defaultGradient,
     extractPaletteFromImage,
-    generateTonalPalette
+    generateTonalPalette,
+    isValidCssHexColor,
+    hexToRgb
   };
 })();

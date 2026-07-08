@@ -828,18 +828,27 @@
       const blur = typeof entry.blur === 'number' ? entry.blur : 12;
       const alpha = (typeof entry.opacity === 'number' ? entry.opacity : 55) / 100;
 
+      // A custom tint replaces the OS-scheme-driven black/white default with
+      // a single fixed color across both light and dark — the user picked it
+      // to match their wallpaper, not to adapt to the system theme.
+      const hasCustomColor = window.PageDyeGradient.isValidCssHexColor(entry.color);
+      const rgb = hasCustomColor ? window.PageDyeGradient.hexToRgb(entry.color) : null;
+      const colorRule = hasCustomColor
+        ? `${sel} { background-color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha}) !important; }`
+        : '@media (prefers-color-scheme: dark) {' +
+            `${sel} { background-color: rgba(20, 20, 20, ${alpha}) !important; }` +
+          '}' +
+          '@media (prefers-color-scheme: light) {' +
+            `${sel} { background-color: rgba(255, 255, 255, ${alpha}) !important; }` +
+          '}';
+
       const css =
         `${sel} {` +
           'background-image: none !important;' +
           `backdrop-filter: blur(${blur}px) !important;` +
           `-webkit-backdrop-filter: blur(${blur}px) !important;` +
         '}' +
-        '@media (prefers-color-scheme: dark) {' +
-          `${sel} { background-color: rgba(20, 20, 20, ${alpha}) !important; }` +
-        '}' +
-        '@media (prefers-color-scheme: light) {' +
-          `${sel} { background-color: rgba(255, 255, 255, ${alpha}) !important; }` +
-        '}';
+        colorRule;
 
       const style = document.createElement('style');
       style.id = `${FROSTED_STYLE_ID}-${i}`;

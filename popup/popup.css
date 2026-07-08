@@ -547,6 +547,23 @@ input[type="range"]::-moz-range-thumb {
   color: #ef4444;
 }
 
+.frosted-entry-color-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.frosted-entry-color-row input[type="color"] {
+  width: 28px;
+  height: 28px;
+}
+
+.frosted-entry-color-row input[type="color"]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .gradient-presets-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);

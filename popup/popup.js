@@ -249,6 +249,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedGlassHint: "Pick a card/container element and PageDye makes its background semi-transparent and blurred, so your wallpaper shows through underneath it.",
       frostedBlur: "Blur",
       frostedOpacity: "Tint",
+      frostedCustomColor: "Custom Color",
       frostedAddBtn: "+ Add element",
       customCss: "Custom CSS",
       customCssHint: "Injected into this site. Use !important to override stubborn styles.",
@@ -391,6 +392,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedGlassHint: "拾取一个卡片/容器元素，PageDye 会让它的背景变为半透明并加上模糊效果，让底层的壁纸若隐若现地透上来。",
       frostedBlur: "模糊度",
       frostedOpacity: "透明度",
+      frostedCustomColor: "自定义颜色",
       frostedAddBtn: "+ 添加元素",
       customCss: "自定义 CSS",
       customCssHint: "将注入到本网站。可用 !important 覆盖顽固样式。",
@@ -964,6 +966,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else if (e.target.classList.contains('frosted-entry-opacity')) {
       frostedGlassState[idx].opacity = parseInt(e.target.value, 10);
       row.querySelector('.frosted-entry-opacity-val').textContent = `${e.target.value}%`;
+    } else if (e.target.classList.contains('frosted-entry-color-toggle')) {
+      const colorInput = row.querySelector('.frosted-entry-color');
+      colorInput.disabled = !e.target.checked;
+      frostedGlassState[idx].color = e.target.checked ? colorInput.value : null;
+    } else if (e.target.classList.contains('frosted-entry-color')) {
+      frostedGlassState[idx].color = e.target.value;
     }
     queueAutoSave();
   });
@@ -985,7 +993,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   els.frostedAddBtn.addEventListener('click', () => {
-    frostedGlassState.push({ selector: '', blur: 12, opacity: 55 });
+    frostedGlassState.push({ selector: '', blur: 12, opacity: 55, color: null });
     renderFrostedList(frostedGlassState);
     triggerImmediateSave();
   });
@@ -1983,7 +1991,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     frostedGlassState = list.map(f => ({
       selector: f.selector || '',
       blur: f.blur !== undefined ? f.blur : 12,
-      opacity: f.opacity !== undefined ? f.opacity : 55
+      opacity: f.opacity !== undefined ? f.opacity : 55,
+      color: f.color || null
     }));
     els.frostedList.innerHTML = '';
 
@@ -2051,11 +2060,35 @@ document.addEventListener('DOMContentLoaded', async () => {
       opacityInput.max = '100';
       opacityInput.value = entry.opacity;
 
+      const colorRow = document.createElement('div');
+      colorRow.className = 'frosted-entry-color-row';
+
+      const colorToggleLabel = document.createElement('label');
+      colorToggleLabel.className = 'checkbox-label';
+      const colorToggle = document.createElement('input');
+      colorToggle.type = 'checkbox';
+      colorToggle.className = 'frosted-entry-color-toggle';
+      colorToggle.checked = !!entry.color;
+      const colorToggleText = document.createElement('span');
+      colorToggleText.textContent = t('frostedCustomColor');
+      colorToggleLabel.appendChild(colorToggle);
+      colorToggleLabel.appendChild(colorToggleText);
+
+      const colorInput = document.createElement('input');
+      colorInput.type = 'color';
+      colorInput.className = 'frosted-entry-color';
+      colorInput.value = entry.color || '#ffffff';
+      colorInput.disabled = !entry.color;
+
+      colorRow.appendChild(colorToggleLabel);
+      colorRow.appendChild(colorInput);
+
       row.appendChild(selectorRow);
       row.appendChild(blurLabelRow);
       row.appendChild(blurInput);
       row.appendChild(opacityLabelRow);
       row.appendChild(opacityInput);
+      row.appendChild(colorRow);
       els.frostedList.appendChild(row);
     });
   }
@@ -2174,7 +2207,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentSettings.frostedGlass = frostedGlassState.map(f => ({
       selector: f.selector.trim(),
       blur: f.blur,
-      opacity: f.opacity
+      opacity: f.opacity,
+      color: f.color || null
     }));
     currentSettings.timestamp = Date.now();
 
