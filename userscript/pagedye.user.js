@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PageDye Lite
 // @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.7.10
+// @version      0.7.12
 // @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
 // @author       PageDye
 // @match        *://*/*
@@ -40,7 +40,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.7.10';
+  const VERSION = '0.7.12';
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
@@ -1583,7 +1583,7 @@
     return parts.join(' > ');
   }
 
-  function startPicker(onPicked) {
+  function startPicker(onPicked, isMulti = false) {
     if (window.__pagedyeLitePicking) return;
     window.__pagedyeLitePicking = true;
     setPanelVisible(false);
@@ -1592,7 +1592,8 @@
     Object.assign(box.style, {
       position: 'fixed', zIndex: '2147483647', pointerEvents: 'none',
       border: '2px solid #fff', background: 'rgba(255,255,255,0.25)',
-      boxSizing: 'border-box', borderRadius: '2px', display: 'none', top: '0', left: '0'
+      boxSizing: 'border-box', borderRadius: '2px', display: 'none', top: '0', left: '0',
+      transition: 'background-color 0.15s ease, border-color 0.15s ease'
     });
     const label = document.createElement('div');
     Object.assign(label.style, {
@@ -1604,7 +1605,7 @@
       boxShadow: '0 2px 8px rgba(0,0,0,0.3)', display: 'none'
     });
     const tip = document.createElement('div');
-    tip.textContent = 'PageDye Lite:点击一个元素应用背景 · Esc 取消';
+    tip.textContent = isMulti ? 'PageDye Lite: 连续点击拾取多个元素 · 按 Esc 或右键退出' : 'PageDye Lite:点击一个元素应用背景 · Esc 取消';
     Object.assign(tip.style, {
       position: 'fixed', zIndex: '2147483647', pointerEvents: 'none',
       top: '12px', left: '50%', transform: 'translateX(-50%)',
@@ -1617,8 +1618,10 @@
     document.documentElement.appendChild(tip);
 
     let current = null;
+    let flashing = false;
 
     function onMove(e) {
+      if (flashing) return;
       const el = document.elementFromPoint(e.clientX, e.clientY);
       if (!el || el === box || el === label || el === tip) return;
       current = el;
@@ -1632,6 +1635,7 @@
     function cleanup() {
       document.removeEventListener('mousemove', onMove, true);
       document.removeEventListener('click', onClick, true);
+      document.removeEventListener('contextmenu', onContext, true);
       document.removeEventListener('keydown', onKey, true);
       box.remove(); label.remove(); tip.remove();
       window.__pagedyeLitePicking = false;
@@ -1642,13 +1646,32 @@
       if (e.stopImmediatePropagation) e.stopImmediatePropagation();
       const el = current || document.elementFromPoint(e.clientX, e.clientY);
       const selector = getSelectorFor(el);
-      cleanup();
-      onPicked(selector);
+      if (isMulti) {
+        flashing = true;
+        box.style.borderColor = '#4ade80';
+        box.style.backgroundColor = 'rgba(74, 222, 128, 0.2)';
+        setTimeout(() => {
+          box.style.borderColor = '#fff';
+          box.style.backgroundColor = 'rgba(255,255,255,0.25)';
+          flashing = false;
+        }, 300);
+        onPicked(selector);
+      } else {
+        cleanup();
+        onPicked(selector);
+      }
+    }
+    function onContext(e) {
+      if (isMulti) {
+        e.preventDefault(); e.stopPropagation();
+        cleanup();
+      }
     }
     function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); cleanup(); } }
 
     document.addEventListener('mousemove', onMove, true);
     document.addEventListener('click', onClick, true);
+    document.addEventListener('contextmenu', onContext, true);
     document.addEventListener('keydown', onKey, true);
   }
 
@@ -1675,6 +1698,7 @@
     download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
     refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
     xCircle: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+    grid: '<rect x="3" y="3" width="4" height="4"/><rect x="10" y="3" width="4" height="4"/><rect x="17" y="3" width="4" height="4"/><rect x="3" y="10" width="4" height="4"/><rect x="10" y="10" width="4" height="4"/><rect x="17" y="10" width="4" height="4"/><rect x="3" y="17" width="4" height="4"/><rect x="10" y="17" width="4" height="4"/><rect x="17" y="17" width="4" height="4"/>',
     layers: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>'
   };
 
@@ -1964,17 +1988,25 @@
   const MODE_LABEL = { single: '单一', auto: '昼夜自动', timeRange: '时段多态', slideshow: '幻灯轮播' };
 
   function renderModeControls() {
-    let html = `<div class="pd-seg">
-      <button class="${settings.mode === 'single' ? 'active' : ''}" data-action="set-mode" data-value="single">单一</button>
-      <button class="${settings.mode === 'auto' ? 'active' : ''}" data-action="set-mode" data-value="auto">昼夜自动</button>
-      <button class="${settings.mode === 'timeRange' ? 'active' : ''}" data-action="set-mode" data-value="timeRange">时段多态</button>
-      <button class="${settings.mode === 'slideshow' ? 'active' : ''}" data-action="set-mode" data-value="slideshow">幻灯轮播</button>
+    let html = `<div class="pd-seg" style="margin-bottom: 12px; padding: 4px; background: var(--pd-input-bg); border-radius: var(--pd-radius-md);">
+      <button class="${settings.mode === 'single' ? 'active' : ''}" data-action="set-mode" data-value="single" title="单一" style="flex-direction: row; gap: 6px;">
+        ${svgIcon(ICON.layers, 14)} 单一
+      </button>
+      <button class="${settings.mode === 'auto' ? 'active' : ''}" data-action="set-mode" data-value="auto" title="昼夜自动" style="flex-direction: row; gap: 6px;">
+        ${svgIcon(ICON.sun, 14)} 昼夜自动
+      </button>
+      <button class="${settings.mode === 'timeRange' ? 'active' : ''}" data-action="set-mode" data-value="timeRange" title="时段多态" style="flex-direction: row; gap: 6px;">
+        ${svgIcon(ICON.clock, 14)} 时段多态
+      </button>
+      <button class="${settings.mode === 'slideshow' ? 'active' : ''}" data-action="set-mode" data-value="slideshow" title="幻灯轮播" style="flex-direction: row; gap: 6px;">
+        ${svgIcon(ICON.image, 14)} 幻灯轮播
+      </button>
     </div>`;
 
     if (settings.mode === 'auto') {
-      html += `<div class="pd-scheme-switch">
-        <button class="${ui.scheme === 'light' ? 'active' : ''}" data-action="set-scheme" data-value="light">${svgIcon(ICON.sun, 14)}<span>浅色</span></button>
-        <button class="${ui.scheme === 'dark' ? 'active' : ''}" data-action="set-scheme" data-value="dark">${svgIcon(ICON.moon, 14)}<span>深色</span></button>
+      html += `<div class="pd-scheme-switch" style="display: flex; gap: 6px; margin-bottom: 12px;">
+        <button class="pd-btn-secondary ${ui.scheme === 'light' ? 'active' : ''}" data-action="set-scheme" data-value="light" style="margin: 0; flex: 1; ${ui.scheme === 'light' ? 'background: var(--pd-accent-bg); color: var(--pd-accent-text);' : ''}">${svgIcon(ICON.sun, 14)}<span>编辑浅色</span></button>
+        <button class="pd-btn-secondary ${ui.scheme === 'dark' ? 'active' : ''}" data-action="set-scheme" data-value="dark" style="margin: 0; flex: 1; ${ui.scheme === 'dark' ? 'background: var(--pd-accent-bg); color: var(--pd-accent-text);' : ''}">${svgIcon(ICON.moon, 14)}<span>编辑深色</span></button>
       </div>`;
     }
 
@@ -2067,7 +2099,14 @@
       <button data-action="reset" class="pd-danger">${svgIcon(ICON.refresh, 14)}<span>重置</span></button>
     </div>`;
 
+    let targetBody = '';
+    targetBody += textRow('CSS 选择器', 'targetSelector', settings.targetSelector, '留空 = 整页背景', { scope: 'root' });
+    targetBody += `<button class="pd-btn-secondary" data-action="pick-target">${svgIcon(ICON.target, 14)}<span>拾取页面元素</span></button>`;
+    targetBody += `<div class="pd-subhead">自定义 CSS</div>`;
+    targetBody += `<textarea data-path="customCss" data-scope="root" placeholder="/* 任意 CSS,注入到当前网站 */">${escapeAttr(settings.customCss || '')}</textarea>`;
+
     let html = '';
+    html += accordion('adv-target', '目标元素与自定义 CSS', targetBody);
     html += accordion('buttonAppearance', '悬浮按钮外观', appearance);
     html += accordion('movement', '移动与贴边隐藏', movement);
     html += accordion('backup', panelTarget === 'default' ? '备份(全站默认)' : '备份(当前网站)', backup);
@@ -2096,33 +2135,20 @@
     </div>`;
     html += renderTargetHint();
 
-    html += `<div class="pd-seg pd-seg-main">
-      <button class="${ui.tab === 'wallpaper' ? 'active' : ''}" data-action="set-tab" data-value="wallpaper">${svgIcon(ICON.layers, 13)}<span>壁纸</span></button>
-      <button class="${ui.tab === 'frosted' ? 'active' : ''}" data-action="set-tab" data-value="frosted">磨砂玻璃</button>
-      <button class="${ui.tab === 'advanced' ? 'active' : ''}" data-action="set-tab" data-value="advanced">高级设置</button>
-    </div>`;
-
     if (ui.tab === 'wallpaper') {
-      // Surfaced first and highlighted — the fix for the single most common
-      // "why isn't this working" case (stubborn sites like Google's mobile
-      // pages), so it shouldn't be buried behind other accordions.
+      html += accordion('mode', '壁纸模式', renderModeControls(), { badge: MODE_LABEL[settings.mode] });
+      html += accordion('bg', '背景设置', renderEditableSection(getEditable()));
       const deepCompatBody =
         checkboxRow('为此网站启用', 'deepCompat', !!settings.deepCompat, { scope: 'root' }) +
-        `<div class="pd-hint">适用于顽固网站(例如 Google 移动端页面):多层不透明容器叠在一起,导致背景怎么设都被遮住。开启后自动检测并清除铺满视口的不透明背景层——包括由许多小块不透明卡片拼成的情况,不只是单个大容器。可能偶尔误伤依赖背景色做对比度的元素,可用下方选择器排除。</div>` +
-        textRow('排除选择器(可选)', 'deepCompatExclude', settings.deepCompatExclude, '.modal, [role=dialog]', { scope: 'root' }) +
-        `<button class="pd-btn-secondary" data-action="pick-deepcompat">${svgIcon(ICON.target, 14)}<span>拾取排除元素</span></button>`;
-      html += accordion('deepcompat', '深度兼容模式', deepCompatBody, { badge: '顽固网站专用', highlight: true });
-
-      html += accordion('mode', '模式与轮播', renderModeControls(), { badge: MODE_LABEL[settings.mode] });
-      html += accordion('bg', '背景设置', renderEditableSection(getEditable()));
-      const targetBody =
-        textRow('CSS 选择器', 'targetSelector', settings.targetSelector, '留空 = 整页背景', { scope: 'root' }) +
-        `<button class="pd-btn-secondary" data-action="pick-target">${svgIcon(ICON.target, 14)}<span>拾取页面元素</span></button>` +
-        `<div class="pd-subhead">自定义 CSS</div>` +
-        `<textarea data-path="customCss" data-scope="root" placeholder="/* 任意 CSS,注入到当前网站 */">${escapeAttr(settings.customCss || '')}</textarea>`;
-      html += accordion('target', '目标元素与自定义 CSS(可选)', targetBody);
+        `<div class="pd-hint">强制在存在不透明遮挡的顽固网页上显示壁纸(如 Google 移动端)。</div>` +
+        textRow('排除元素选择器', 'deepCompatExclude', settings.deepCompatExclude, '', { scope: 'root' }) +
+        `<div class="pd-footer-btns">
+          <button data-action="add-deepcompat">${svgIcon(ICON.plus, 14)} 手动添加</button>
+          <button class="pd-btn-secondary" data-action="pick-deepcompat" style="margin:0;">${svgIcon(ICON.target, 14)}<span>拾取元素</span></button>
+        </div>`;
+      html += accordion('deepcompat', '深度兼容模式', deepCompatBody, { badge: '顽固网站专用' });
     } else if (ui.tab === 'frosted') {
-      const itemsHtml = settings.frostedGlass.map((entry, i) => `
+      const frostedItemsHtml = settings.frostedGlass.map((entry, i) => `
         <div class="pd-frosted-item">
           <div class="pd-frosted-item-head">
             <span>元素 ${i + 1}</span>
@@ -2133,17 +2159,29 @@
           ${rangeRow('模糊强度', `frostedGlass.${i}.blur`, 0, 30, entry.blur, 'px', { scope: 'root', step: 0.1 })}
           ${rangeRow('底色不透明度', `frostedGlass.${i}.opacity`, 0, 100, entry.opacity, '%', { scope: 'root' })}
         </div>`).join('');
-      const frostedBody =
-        itemsHtml +
-        `<button class="pd-btn-secondary" data-action="add-frosted">${svgIcon(ICON.plus, 14)}<span>添加元素</span></button>`;
-      html += accordion('frosted', '磨砂玻璃容器', frostedBody);
-    } else {
+      const frostedBody = frostedItemsHtml + `<button class="pd-btn-secondary" data-action="add-frosted">${svgIcon(ICON.plus, 14)}<span>添加元素</span></button>`;
+      html += frostedBody;
+    } else if (ui.tab === 'advanced') {
       html += renderAdvancedSection();
     }
 
     html += `
       <div class="pd-footer">
         <div id="pd-status">已同步</div>
+      </div>
+      <div class="pd-bottom-nav">
+        <button class="${ui.tab === 'wallpaper' ? 'active' : ''}" data-action="set-tab" data-value="wallpaper">
+          <div class="pd-nav-icon-container">${svgIcon(ICON.layers, 20)}</div>
+          <span class="pd-nav-label">壁纸</span>
+        </button>
+        <button class="${ui.tab === 'frosted' ? 'active' : ''}" data-action="set-tab" data-value="frosted">
+          <div class="pd-nav-icon-container">${svgIcon(ICON.grid, 20)}</div>
+          <span class="pd-nav-label">磨砂玻璃</span>
+        </button>
+        <button class="${ui.tab === 'advanced' ? 'active' : ''}" data-action="set-tab" data-value="advanced">
+          <div class="pd-nav-icon-container">${svgIcon(ICON.gear, 20)}</div>
+          <span class="pd-nav-label">高级设置</span>
+        </button>
       </div>
     `;
 
@@ -2352,6 +2390,15 @@
       });
       return;
     }
+    if (action === 'add-deepcompat') {
+      const current = settings.deepCompatExclude || '';
+      const newVal = prompt('请输入要排除的 CSS 选择器(例如 .modal, #dialog):', current);
+      if (newVal !== null) {
+        settings.deepCompatExclude = newVal;
+        liveApply(); scheduleSave(); renderPanel();
+      }
+      return;
+    }
     if (action === 'pick-deepcompat') {
       startPicker((selector) => {
         const oldVal = settings.deepCompatExclude;
@@ -2365,7 +2412,7 @@
           settings.deepCompatExclude = selector;
         }
         liveApply(); scheduleSave(); renderPanel();
-      });
+      }, true);
       return;
     }
     if (action === 'pick-frosted') {
@@ -2852,8 +2899,31 @@
       .pd-footer-btns button:hover { background: var(--pd-surface); color: var(--pd-text); }
       .pd-footer-btns button.pd-danger:hover { color: var(--pd-danger); border-color: var(--pd-danger); }
 
-      .pd-footer { margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--pd-border); font-size: 11px; color: var(--pd-text-secondary); }
+      .pd-footer { margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--pd-border); font-size: 11px; color: var(--pd-text-secondary); margin-bottom: 74px; }
       .pd-version { opacity: 0.65; margin: 8px 0 0; }
+
+      .pd-bottom-nav {
+        display: flex; background: var(--pd-panel-bg); padding: 8px 12px 16px 12px;
+        position: absolute; bottom: 0; left: 0; right: 0; z-index: 100;
+        border-top: 1px solid var(--pd-border);
+      }
+      .pd-bottom-nav button {
+        flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+        padding: 4px 0; cursor: pointer; color: var(--pd-text-secondary); background: transparent; border: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); margin: 0; outline: none;
+      }
+      .pd-nav-icon-container {
+        display: flex; align-items: center; justify-content: center; width: 64px; height: 32px;
+        border-radius: 16px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .pd-nav-icon { transition: transform 0.3s; display: flex; align-items: center; justify-content: center; }
+      .pd-nav-label { font-size: 12px; font-weight: 600; }
+      .pd-bottom-nav button.active { color: var(--pd-text); }
+      .pd-bottom-nav button.active .pd-nav-icon-container { background: #C2E7FF; color: #001D35; }
+      @media (prefers-color-scheme: dark) {
+        .pd-bottom-nav button.active .pd-nav-icon-container { background: #004A77; color: #C2E7FF; }
+      }
+      .pd-bottom-nav button.active .pd-nav-icon { transform: scale(1.1); }
 
       button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
         outline: 2px solid var(--pd-accent-bg); outline-offset: 1px;
