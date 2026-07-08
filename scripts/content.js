@@ -9,6 +9,8 @@
   let currentSettings = null;
   let currentActiveSettings = null;
   let slideshowTimer = null;
+  let timePeriodCheckInterval = null;
+  let lastTimePeriod = null;
   let currentCustomEffects = [];
   // Whether currentSettings for this page came from DEFAULT_BG_KEY rather
   // than the page's own domain entry — decides where slideshow rotation
@@ -259,6 +261,10 @@
       clearTimeout(slideshowTimer);
       slideshowTimer = null;
     }
+    if (timePeriodCheckInterval) {
+      clearInterval(timePeriodCheckInterval);
+      timePeriodCheckInterval = null;
+    }
 
     let activeSettings = settings;
     if (settings.mode === 'auto') {
@@ -270,6 +276,20 @@
         deepCompat: settings.deepCompat,
         deepCompatExclude: settings.deepCompatExclude
       });
+    } else if (settings.mode === 'timeRange') {
+      const activeItem = getCurrentTimePeriod(settings);
+      if (activeItem) {
+        lastTimePeriod = activeItem.id || 'first';
+        activeSettings = Object.assign({}, activeItem, {
+          targetSelector: settings.targetSelector,
+          customCss: settings.customCss,
+          deepCompat: settings.deepCompat,
+          deepCompatExclude: settings.deepCompatExclude
+        });
+      } else {
+        activeSettings = { type: 'none' };
+      }
+      setupTimeRangeCheck(settings);
     } else if (settings.mode === 'slideshow' && settings.slideshow && settings.slideshow.items && settings.slideshow.items.length > 0) {
       const sh = settings.slideshow;
       let index = sh.currentIndex || 0;
@@ -376,6 +396,36 @@
         }
       });
     } catch (e) {}
+  }
+
+  function getCurrentTimePeriod(settings) {
+    if (!settings || !settings.timeRange || !Array.isArray(settings.timeRange.items) || settings.timeRange.items.length === 0) {
+      return null;
+    }
+    const hour = new Date().getHours();
+    for (const item of settings.timeRange.items) {
+      const start = item.start;
+      const end = item.end;
+      if (start < end) {
+        if (hour >= start && hour < end) return item;
+      } else if (start > end) {
+        if (hour >= start || hour < end) return item;
+      } else {
+        if (hour === start) return item;
+      }
+    }
+    return settings.timeRange.items[0];
+  }
+
+  function setupTimeRangeCheck(settings) {
+    timePeriodCheckInterval = setInterval(() => {
+      const currentItem = getCurrentTimePeriod(settings);
+      const currentId = currentItem ? currentItem.id : null;
+      if (currentId !== lastTimePeriod) {
+        lastTimePeriod = currentId;
+        applyBackground(settings);
+      }
+    }, 60000); // Check every minute
   }
 
   // Full-page background: a fixed layer behind everything, with html/body

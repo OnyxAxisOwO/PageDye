@@ -389,6 +389,9 @@
                   
                   <input type="radio" name="edit-wpMode" value="auto" id="edit-mode-auto">
                   <label for="edit-mode-auto" data-i18n="modeAuto">Light/Dark</label>
+
+                  <input type="radio" name="edit-wpMode" value="timeRange" id="edit-mode-timerange">
+                  <label for="edit-mode-timerange" data-i18n="modeTimeRange">Time</label>
                   
                   <input type="radio" name="edit-wpMode" value="slideshow" id="edit-mode-slideshow">
                   <label for="edit-mode-slideshow" data-i18n="modeSlideshow">Slideshow</label>
@@ -414,6 +417,15 @@
                       <span data-i18n="schemeDark">Dark Version</span>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <!-- Time Range Mode Cards -->
+              <!-- Time Range Mode Cards -->
+              <div id="edit-time-cards-container" class="control-group hidden" style="margin-top: 12px; margin-bottom: 0;">
+                <label data-i18n="selectTimeToEdit" style="margin-bottom: 8px; display: block; font-size: 13px; font-weight: 500; color: var(--text-color);">Select background to edit</label>
+                <div class="scheme-cards-grid" id="edit-time-periods-list">
+                  <!-- Dynamically populated -->
                 </div>
               </div>
 
@@ -456,6 +468,21 @@
               <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </summary>
             <div class="accordion-content">
+              <!-- Period Editing Fields (Time Mode only) -->
+              <div id="edit-time-range-period-edit-fields" class="hidden" style="margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 16px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                  <span data-i18n="labelPeriodName" style="font-size: 13px; font-weight: 500;">Period Name:</span>
+                  <input type="text" id="edit-time-period-name" style="padding: 6px 12px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--surface-bg); color: var(--text-color); width: 160px;" />
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                  <span data-i18n="labelPeriodRange" style="font-size: 13px; font-weight: 500;">Time Range:</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <select id="edit-time-period-start" style="padding: 4px 8px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--surface-bg); color: var(--text-color); width: 80px;"></select>
+                    <span style="color: var(--text-secondary); font-size: 13px;">-</span>
+                    <select id="edit-time-period-end" style="padding: 4px 8px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--surface-bg); color: var(--text-color); width: 80px;"></select>
+                  </div>
+                </div>
+              </div>
               <div class="control-group">
                 <div class="segmented-control">
                   <input type="radio" name="edit-bgType" value="none" id="edit-type-none" checked>

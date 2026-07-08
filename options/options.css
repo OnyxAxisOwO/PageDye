@@ -934,6 +934,7 @@ label {
   transition: all 0.2s;
   color: var(--text-secondary);
   margin: 0;
+  white-space: nowrap;
 }
 
 .segmented-control input:checked + label {

@@ -278,6 +278,14 @@
       mode: 'single',
       light: emptyEditable(),
       dark: emptyEditable(),
+      timeRange: {
+        items: [
+          { id: 'morning', name: '清晨', start: 5, end: 9, type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+          { id: 'noon', name: '正午', start: 9, end: 17, type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+          { id: 'dusk', name: '黄昏', start: 17, end: 21, type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+          { id: 'night', name: '深夜', start: 21, end: 5, type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } }
+        ]
+      },
       slideshow: { interval: 'open', order: 'sequential', currentIndex: 0, lastRotationTime: 0, items: [emptyEditable()] },
       targetSelector: '',
       deepCompat: false,
@@ -285,6 +293,48 @@
       customCss: '',
       frostedGlass: []
     });
+  }
+
+  function normalizeTimeRange(s) {
+    if (!s.timeRange || !Array.isArray(s.timeRange.items)) {
+      if (s.timeRange && s.timeRange.morning) {
+        const tr = s.timeRange;
+        const config = s.timeRangeConfig || { morningStart: 5, noonStart: 9, duskStart: 17, nightStart: 21 };
+        s.timeRange = {
+          items: [
+            Object.assign({ id: 'morning', name: '清晨', start: config.morningStart, end: config.noonStart }, tr.morning),
+            Object.assign({ id: 'noon', name: '正午', start: config.noonStart, end: config.duskStart }, tr.noon),
+            Object.assign({ id: 'dusk', name: '黄昏', start: config.duskStart, end: config.nightStart }, tr.dusk),
+            Object.assign({ id: 'night', name: '深夜', start: config.nightStart, end: config.morningStart }, tr.night)
+          ]
+        };
+      } else {
+        const template = {
+          type: s.type && s.type !== 'none' ? s.type : 'none',
+          colorMode: s.colorMode || 'solid',
+          value: s.value || '',
+          opacity: s.opacity !== undefined ? s.opacity : 100,
+          blur: s.blur !== undefined ? s.blur : 0,
+          style: Object.assign({ fixed: true, size: 'cover', repeat: false }, s.style || {}),
+          filters: Object.assign({ brightness: 100, contrast: 100, grayscale: 0, hue: 0, invert: 0 }, s.filters || {}),
+          gradient: s.gradient || null,
+          effect: s.effect || 'waves',
+          effectColorScheme: s.effectColorScheme || 'auto',
+          effectColor: s.effectColor || '#ffffff',
+          effectBgColor: s.effectBgColor || '#000000',
+          effectDensity: s.effectDensity !== undefined ? s.effectDensity : 50,
+          effectSpeed: s.effectSpeed !== undefined ? s.effectSpeed : 50
+        };
+        s.timeRange = {
+          items: [
+            Object.assign({ id: 'morning', name: '清晨', start: 5, end: 9 }, JSON.parse(JSON.stringify(template))),
+            Object.assign({ id: 'noon', name: '正午', start: 9, end: 17 }, JSON.parse(JSON.stringify(template))),
+            Object.assign({ id: 'dusk', name: '黄昏', start: 17, end: 21 }, JSON.parse(JSON.stringify(template))),
+            Object.assign({ id: 'night', name: '深夜', start: 21, end: 5 }, JSON.parse(JSON.stringify(template)))
+          ]
+        };
+      }
+    }
   }
 
   // Older saved settings stored frostedGlass as a single { selector, blur,
@@ -769,15 +819,58 @@
     return isDark ? EFFECT_DARK_PRESET : EFFECT_LIGHT_PRESET;
   }
 
+  let lastTimePeriod = null;
+  let timePeriodCheckInterval = null;
+
+  function getCurrentTimePeriod(s) {
+    if (!s || !s.timeRange || !Array.isArray(s.timeRange.items) || s.timeRange.items.length === 0) {
+      return null;
+    }
+    const hour = new Date().getHours();
+    for (const item of s.timeRange.items) {
+      const start = item.start;
+      const end = item.end;
+      if (start < end) {
+        if (hour >= start && hour < end) return item;
+      } else if (start > end) {
+        if (hour >= start || hour < end) return item;
+      } else {
+        if (hour === start) return item;
+      }
+    }
+    return s.timeRange.items[0];
+  }
+
+  function setupTimeRangeCheck(s) {
+    timePeriodCheckInterval = setInterval(() => {
+      const currentItem = getCurrentTimePeriod(s);
+      const currentId = currentItem ? currentItem.id : null;
+      if (currentId !== lastTimePeriod) {
+        lastTimePeriod = currentId;
+        applyBackground(s);
+      }
+    }, 60000);
+  }
+
   function applyBackground(s) {
     s = s || { type: 'none' };
     if (slideshowTimer) { clearTimeout(slideshowTimer); slideshowTimer = null; }
+    if (timePeriodCheckInterval) { clearInterval(timePeriodCheckInterval); timePeriodCheckInterval = null; }
 
     let active = s;
     if (s.mode === 'auto') {
       const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       const sub = isDark ? s.dark : s.light;
       active = Object.assign({}, sub || { type: 'none' }, { targetSelector: s.targetSelector, customCss: s.customCss, deepCompat: s.deepCompat, deepCompatExclude: s.deepCompatExclude });
+    } else if (s.mode === 'timeRange') {
+      const activeItem = getCurrentTimePeriod(s);
+      if (activeItem) {
+        lastTimePeriod = activeItem.id || 'first';
+        active = Object.assign({}, activeItem, { targetSelector: s.targetSelector, customCss: s.customCss, deepCompat: s.deepCompat, deepCompatExclude: s.deepCompatExclude });
+      } else {
+        active = { type: 'none' };
+      }
+      setupTimeRangeCheck(s);
     } else if (s.mode === 'slideshow' && s.slideshow && s.slideshow.items && s.slideshow.items.length > 0) {
       const sh = s.slideshow;
       let index = sh.currentIndex || 0;
@@ -1595,12 +1688,17 @@
   let saveTimer = null;
   let panelHost = null, shadow = null, panelEl = null, gearEl = null;
   const ui = {
-    open: false, tab: 'wallpaper', scheme: 'light', slideIndex: 0,
+    open: false, tab: 'wallpaper', scheme: 'light', slideIndex: 0, timePeriodIndex: 0,
     accordions: { mode: true, bg: true, target: false, deepcompat: false, frosted: true, buttonAppearance: true, movement: false, backup: false }
   };
 
   function getEditable() {
     if (settings.mode === 'auto') return settings[ui.scheme];
+    if (settings.mode === 'timeRange') {
+      const items = settings.timeRange.items || [];
+      if (ui.timePeriodIndex === undefined || ui.timePeriodIndex >= items.length) ui.timePeriodIndex = 0;
+      return items[ui.timePeriodIndex] || (items[0] = emptyEditable());
+    }
     if (settings.mode === 'slideshow') {
       if (!settings.slideshow.items[ui.slideIndex]) ui.slideIndex = 0;
       return settings.slideshow.items[ui.slideIndex] || (settings.slideshow.items[0] = emptyEditable());
@@ -1649,6 +1747,7 @@
       const storedDefault = await GMBridge.get(DEFAULT_BG_KEY);
       settings = storedDefault ? Object.assign(defaultSettings(), storedDefault) : defaultSettings();
     }
+    normalizeTimeRange(settings);
     ui.tab = 'wallpaper'; ui.scheme = 'light'; ui.slideIndex = 0;
     liveApply();
     renderPanel();
@@ -1674,6 +1773,7 @@
     } else {
       settings = defaultSettings();
     }
+    normalizeTimeRange(settings);
     settings.frostedGlass = normalizeFrostedGlassList(settings.frostedGlass);
     ui.tab = 'wallpaper'; ui.scheme = 'light'; ui.slideIndex = 0;
     liveApply();
@@ -1706,6 +1806,7 @@
           const parsed = JSON.parse(e.target.result);
           if (parsed && typeof parsed === 'object') {
             settings = Object.assign(defaultSettings(), parsed);
+            normalizeTimeRange(settings);
             settings.frostedGlass = normalizeFrostedGlassList(settings.frostedGlass);
             liveApply();
             scheduleSave();
@@ -1860,12 +1961,13 @@
     return body;
   }
 
-  const MODE_LABEL = { single: '单一', auto: '昼夜自动', slideshow: '幻灯轮播' };
+  const MODE_LABEL = { single: '单一', auto: '昼夜自动', timeRange: '时段多态', slideshow: '幻灯轮播' };
 
   function renderModeControls() {
     let html = `<div class="pd-seg">
       <button class="${settings.mode === 'single' ? 'active' : ''}" data-action="set-mode" data-value="single">单一</button>
       <button class="${settings.mode === 'auto' ? 'active' : ''}" data-action="set-mode" data-value="auto">昼夜自动</button>
+      <button class="${settings.mode === 'timeRange' ? 'active' : ''}" data-action="set-mode" data-value="timeRange">时段多态</button>
       <button class="${settings.mode === 'slideshow' ? 'active' : ''}" data-action="set-mode" data-value="slideshow">幻灯轮播</button>
     </div>`;
 
@@ -1874,6 +1976,48 @@
         <button class="${ui.scheme === 'light' ? 'active' : ''}" data-action="set-scheme" data-value="light">${svgIcon(ICON.sun, 14)}<span>浅色</span></button>
         <button class="${ui.scheme === 'dark' ? 'active' : ''}" data-action="set-scheme" data-value="dark">${svgIcon(ICON.moon, 14)}<span>深色</span></button>
       </div>`;
+    }
+
+    if (settings.mode === 'timeRange') {
+      const items = settings.timeRange.items || [];
+      if (ui.timePeriodIndex === undefined || ui.timePeriodIndex >= items.length) ui.timePeriodIndex = 0;
+      const activeItem = items[ui.timePeriodIndex] || items[0];
+      
+      const formatHour = h => String(h).padStart(2, '0') + ':00';
+      
+      const periodButtons = items.map((item, idx) => {
+        const isActive = idx === ui.timePeriodIndex;
+        return `<button class="${isActive ? 'active' : ''}" data-action="select-user-period" data-index="${idx}" style="font-size: 11px; padding: 4px 6px;">
+          <span>${item.name || '未命名'} (${formatHour(item.start)}-${formatHour(item.end)})</span>
+        </button>`;
+      }).join('');
+
+      html += `<div style="display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: grid; grid-template-columns: 1fr; gap: 4px;">
+          ${periodButtons}
+        </div>
+        <div style="display: flex; gap: 4px; margin-top: 4px;">
+          <button class="pd-btn-secondary" data-action="add-user-period" style="flex: 1; padding: 4px; font-size: 11px;">+ 添加新时段</button>
+          ${items.length > 1 ? `<button class="pd-btn-secondary pd-danger" data-action="delete-user-period" style="padding: 4px 8px; font-size: 11px;">删除当前时段</button>` : ''}
+        </div>
+      </div>`;
+
+      if (activeItem) {
+        const hourOptions = [];
+        for (let h = 0; h < 24; h++) {
+          hourOptions.push([String(h), String(h).padStart(2, '0') + ':00']);
+        }
+
+        html += `<div style="margin-top: 8px; border-top: 1px dashed var(--pd-border); padding-top: 8px;">
+          <div style="font-size: 11px; font-weight: bold; margin-bottom: 4px;">时段属性编辑</div>
+          <div class="pd-row">
+            <div class="pd-row-head"><span>时段名称</span></div>
+            <input type="text" data-path="timeRange.items.${ui.timePeriodIndex}.name" data-scope="root" data-structural="1" value="${escapeAttr(activeItem.name || '')}" style="padding: 2px 4px; font-size: 12px; width: 100px; text-align: right;" />
+          </div>
+          ${selectRow('起始时间', `timeRange.items.${ui.timePeriodIndex}.start`, hourOptions, String(activeItem.start), { scope: 'root' })}
+          ${selectRow('结束时间', `timeRange.items.${ui.timePeriodIndex}.end`, hourOptions, String(activeItem.end), { scope: 'root' })}
+        </div>`;
+      }
     }
 
     if (settings.mode === 'slideshow') {
@@ -1965,7 +2109,8 @@
       const deepCompatBody =
         checkboxRow('为此网站启用', 'deepCompat', !!settings.deepCompat, { scope: 'root' }) +
         `<div class="pd-hint">适用于顽固网站(例如 Google 移动端页面):多层不透明容器叠在一起,导致背景怎么设都被遮住。开启后自动检测并清除铺满视口的不透明背景层——包括由许多小块不透明卡片拼成的情况,不只是单个大容器。可能偶尔误伤依赖背景色做对比度的元素,可用下方选择器排除。</div>` +
-        textRow('排除选择器(可选)', 'deepCompatExclude', settings.deepCompatExclude, '.modal, [role=dialog]', { scope: 'root' });
+        textRow('排除选择器(可选)', 'deepCompatExclude', settings.deepCompatExclude, '.modal, [role=dialog]', { scope: 'root' }) +
+        `<button class="pd-btn-secondary" data-action="pick-deepcompat">${svgIcon(ICON.target, 14)}<span>拾取排除元素</span></button>`;
       html += accordion('deepcompat', '深度兼容模式', deepCompatBody, { badge: '顽固网站专用', highlight: true });
 
       html += accordion('mode', '模式与轮播', renderModeControls(), { badge: MODE_LABEL[settings.mode] });
@@ -2047,7 +2192,7 @@
     if (el.type === 'checkbox') {
       if (el.dataset.truthy) value = el.checked ? el.dataset.truthy : el.dataset.falsy;
       else value = el.checked;
-    } else if (el.dataset.numeric) {
+    } else if (el.dataset.numeric || el.dataset.path.endsWith('Start')) {
       value = Number(el.value);
     } else {
       value = el.value;
@@ -2145,6 +2290,33 @@
     if (action === 'set-tab') { ui.tab = btn.dataset.value; renderPanel(); return; }
     if (action === 'set-target') { switchPanelTarget(btn.dataset.value); return; }
     if (action === 'set-scheme') { ui.scheme = btn.dataset.value; renderPanel(); return; }
+    if (action === 'select-user-period') { ui.timePeriodIndex = Number(btn.dataset.index); renderPanel(); return; }
+    if (action === 'add-user-period') {
+      const template = {
+        id: 'period_' + Date.now(),
+        name: '新时段',
+        start: 0,
+        end: 23,
+        type: 'none',
+        value: '',
+        opacity: 100,
+        blur: 0,
+        style: { fixed: true, size: 'cover', repeat: false }
+      };
+      settings.timeRange.items.push(template);
+      ui.timePeriodIndex = settings.timeRange.items.length - 1;
+      liveApply(); scheduleSave(); renderPanel();
+      return;
+    }
+    if (action === 'delete-user-period') {
+      if (settings.timeRange.items.length <= 1) return;
+      settings.timeRange.items.splice(ui.timePeriodIndex, 1);
+      if (ui.timePeriodIndex >= settings.timeRange.items.length) {
+        ui.timePeriodIndex = settings.timeRange.items.length - 1;
+      }
+      liveApply(); scheduleSave(); renderPanel();
+      return;
+    }
     if (action === 'set-mode') {
       settings.mode = btn.dataset.value;
       liveApply(); scheduleSave(); renderPanel();
@@ -2176,6 +2348,22 @@
     if (action === 'pick-target') {
       startPicker((selector) => {
         settings.targetSelector = selector;
+        liveApply(); scheduleSave(); renderPanel();
+      });
+      return;
+    }
+    if (action === 'pick-deepcompat') {
+      startPicker((selector) => {
+        const oldVal = settings.deepCompatExclude;
+        if (oldVal && oldVal.trim()) {
+          const list = oldVal.split(',').map(s => s.trim()).filter(Boolean);
+          if (!list.includes(selector)) {
+            list.push(selector);
+          }
+          settings.deepCompatExclude = list.join(', ');
+        } else {
+          settings.deepCompatExclude = selector;
+        }
         liveApply(); scheduleSave(); renderPanel();
       });
       return;
@@ -2722,6 +2910,7 @@
     settings = stored ? Object.assign(defaultSettings(), stored)
       : storedDefault ? Object.assign(defaultSettings(), storedDefault)
       : defaultSettings();
+    normalizeTimeRange(settings);
     settings.frostedGlass = normalizeFrostedGlassList(settings.frostedGlass);
     globalConfig = Object.assign(defaultGlobalConfig(), storedGlobal || {});
     await maybeCatchUpSlideshow(settings);

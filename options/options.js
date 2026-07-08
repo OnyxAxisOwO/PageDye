@@ -181,8 +181,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       schemeDark: "Dark Version",
       wallpaperMode: "Wallpaper Mode",
       modeSingle: "Single",
-      modeAuto: "Light/Dark",
-      modeSlideshow: "Slideshow",
+      modeAuto: "Auto",
+      modeTimeRange: "Time",
+      modeSlideshow: "Slide",
       rotationInterval: "Interval",
       intervalOpen: "Each Open",
       interval15m: "15 Mins",
@@ -191,6 +192,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       interval24h: "1 Day",
       randomOrder: "Random Order",
       wallpapersList: "Wallpapers",
+      selectSchemeToEdit: "Select background to edit",
+      selectTimeToEdit: "Select background to edit",
+      schemeMorning: "Morning",
+      schemeNoon: "Noon",
+      schemeDusk: "Dusk",
+      schemeNight: "Night",
+      timeRangeSettingsTitle: "Custom Time Ranges",
+      labelPeriodName: "Period Name:",
+      labelPeriodRange: "Time Range:",
       advancedFilters: "Advanced Filters",
       filtersReset: "Reset",
       filterBrightness: "Brightness",
@@ -397,9 +407,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       schemeLight: "日光版",
       schemeDark: "夜间版",
       wallpaperMode: "壁纸模式",
-      modeSingle: "单一壁纸",
-      modeAuto: "昼夜联动",
-      modeSlideshow: "幻灯轮换",
+      modeSingle: "单一",
+      modeAuto: "昼夜",
+      modeTimeRange: "时段",
+      modeSlideshow: "幻灯",
       rotationInterval: "轮换间隔",
       intervalOpen: "每次打开",
       interval15m: "15分钟",
@@ -408,6 +419,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       interval24h: "1天",
       randomOrder: "随机顺序",
       wallpapersList: "壁纸列表",
+      selectSchemeToEdit: "选择要编辑的背景",
+      selectTimeToEdit: "选择要编辑的背景",
+      schemeMorning: "清晨",
+      schemeNoon: "正午",
+      schemeDusk: "黄昏",
+      schemeNight: "深夜",
+      timeRangeSettingsTitle: "自定义时段范围",
+      labelPeriodName: "时段名称:",
+      labelPeriodRange: "时间范围:",
       advancedFilters: "高级滤镜",
       filtersReset: "重置",
       filterBrightness: "亮度",
@@ -483,6 +503,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     editCardSchemeDark: document.getElementById('edit-card-scheme-dark'),
     editPreviewCardLight: document.getElementById('edit-preview-card-light'),
     editPreviewCardDark: document.getElementById('edit-preview-card-dark'),
+
+    editTimeCardsContainer: document.getElementById('edit-time-cards-container'),
+    editTimePeriodsList: document.getElementById('edit-time-periods-list'),
+    editTimePeriodName: document.getElementById('edit-time-period-name'),
+    editTimePeriodStart: document.getElementById('edit-time-period-start'),
+    editTimePeriodEnd: document.getElementById('edit-time-period-end'),
+    editTimeRangePeriodEditFields: document.getElementById('edit-time-range-period-edit-fields'),
     
     editSlideshowConfigPanel: document.getElementById('edit-slideshow-config-panel'),
     editSlideshowInterval: document.getElementById('edit-slideshow-interval'),
@@ -1624,6 +1651,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentEditingDomain = '';
   let editCurrentImageBase64 = null;
   let editActiveScheme = 'light';
+  let editActiveTimePeriodIndex = 0;
   let editActiveSlideshowIndex = 0;
   let currentEditSettings = null;
   let editGradientStopsState = [];
@@ -1829,6 +1857,47 @@ document.addEventListener('DOMContentLoaded', async () => {
       };
     }
 
+    if (!currentEditSettings.timeRange || !Array.isArray(currentEditSettings.timeRange.items)) {
+      if (currentEditSettings.timeRange && currentEditSettings.timeRange.morning) {
+        const tr = currentEditSettings.timeRange;
+        const config = currentEditSettings.timeRangeConfig || { morningStart: 5, noonStart: 9, duskStart: 17, nightStart: 21 };
+        currentEditSettings.timeRange = {
+          items: [
+            Object.assign({ id: 'morning', name: lang === 'zh' ? '清晨' : 'Morning', start: config.morningStart, end: config.noonStart }, tr.morning),
+            Object.assign({ id: 'noon', name: lang === 'zh' ? '正午' : 'Noon', start: config.noonStart, end: config.duskStart }, tr.noon),
+            Object.assign({ id: 'dusk', name: lang === 'zh' ? '黄昏' : 'Dusk', start: config.duskStart, end: config.nightStart }, tr.dusk),
+            Object.assign({ id: 'night', name: lang === 'zh' ? '深夜' : 'Night', start: config.nightStart, end: config.morningStart }, tr.night)
+          ]
+        };
+      } else {
+        const template = {
+          type: currentEditSettings.type && currentEditSettings.type !== 'none' ? currentEditSettings.type : 'none',
+          value: currentEditSettings.value || '',
+          opacity: currentEditSettings.opacity !== undefined ? currentEditSettings.opacity : 100,
+          blur: currentEditSettings.blur !== undefined ? currentEditSettings.blur : 0,
+          style: Object.assign({ fixed: true, size: 'cover', repeat: false }, currentEditSettings.style || {}),
+          colorMode: currentEditSettings.colorMode || 'solid',
+          gradient: currentEditSettings.gradient || null,
+          effect: currentEditSettings.effect || 'waves',
+          effectText: currentEditSettings.effectText || 'PageDye',
+          effectColorScheme: currentEditSettings.effectColorScheme || 'auto',
+          effectColor: currentEditSettings.effectColor || '#ffffff',
+          effectBgColor: currentEditSettings.effectBgColor || '#000000',
+          effectDensity: currentEditSettings.effectDensity !== undefined ? currentEditSettings.effectDensity : 50,
+          effectSpeed: currentEditSettings.effectSpeed !== undefined ? currentEditSettings.effectSpeed : 50,
+          filters: Object.assign({ brightness: 100, contrast: 100, grayscale: 0, hue: 0, invert: 0 }, currentEditSettings.filters || {})
+        };
+        currentEditSettings.timeRange = {
+          items: [
+            Object.assign({ id: 'morning', name: lang === 'zh' ? '清晨' : 'Morning', start: 5, end: 9 }, JSON.parse(JSON.stringify(template))),
+            Object.assign({ id: 'noon', name: lang === 'zh' ? '正午' : 'Noon', start: 9, end: 17 }, JSON.parse(JSON.stringify(template))),
+            Object.assign({ id: 'dusk', name: lang === 'zh' ? '黄昏' : 'Dusk', start: 17, end: 21 }, JSON.parse(JSON.stringify(template))),
+            Object.assign({ id: 'night', name: lang === 'zh' ? '深夜' : 'Night', start: 21, end: 5 }, JSON.parse(JSON.stringify(template)))
+          ]
+        };
+      }
+    }
+
     if (!currentEditSettings.slideshow) {
       currentEditSettings.slideshow = {
         interval: 'open',
@@ -1869,6 +1938,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function updateEditModeUI(mode) {
     els.editSchemeCardsContainer.classList.add('hidden');
+    els.editTimeCardsContainer.classList.add('hidden');
     els.editSlideshowConfigPanel.classList.add('hidden');
 
     const activeModeBadge = document.getElementById('edit-active-mode-badge');
@@ -1877,9 +1947,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         activeModeBadge.textContent = t('modeSingle');
       } else if (mode === 'auto') {
         activeModeBadge.textContent = t('modeAuto');
+      } else if (mode === 'timeRange') {
+        activeModeBadge.textContent = t('modeTimeRange');
       } else if (mode === 'slideshow') {
         activeModeBadge.textContent = t('modeSlideshow');
       }
+    }
+
+    if (els.editTimeRangePeriodEditFields) {
+      els.editTimeRangePeriodEditFields.classList.toggle('hidden', mode !== 'timeRange');
     }
 
     if (mode === 'single') {
@@ -1895,6 +1971,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         els.editCardSchemeLight.classList.add('active');
       }
       populateEditForm(currentEditSettings[editActiveScheme]);
+    } else if (mode === 'timeRange') {
+      els.editTimeCardsContainer.classList.remove('hidden');
+      const items = currentEditSettings.timeRange.items || [];
+      if (editActiveTimePeriodIndex >= items.length) {
+        editActiveTimePeriodIndex = 0;
+      }
+      renderEditTimeCards();
+      const activeItem = items[editActiveTimePeriodIndex];
+      if (activeItem) {
+        populateEditForm(activeItem);
+        populateTimeRangeEditPanel(activeItem);
+      }
     } else if (mode === 'slideshow') {
       els.editSlideshowConfigPanel.classList.remove('hidden');
       els.editSlideshowInterval.value = currentEditSettings.slideshow.interval || 'open';
@@ -1952,40 +2040,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.editWallpapersGrid.appendChild(addCard);
   }
 
+  function updateCardPreview(element, subSettings) {
+    if (!element || !subSettings) return;
+    if (subSettings.type === 'color' && subSettings.colorMode === 'gradient' && subSettings.gradient) {
+      element.style.backgroundImage = window.PageDyeGradient.buildGradientCss(subSettings.gradient);
+      element.style.backgroundColor = '';
+    } else if (subSettings.type === 'color') {
+      element.style.backgroundColor = subSettings.value || '#ffffff';
+      element.style.backgroundImage = 'none';
+    } else if (subSettings.type === 'image' && subSettings.value) {
+      element.style.backgroundImage = `url('${subSettings.value}')`;
+    } else {
+      element.style.backgroundColor = 'var(--surface-bg)';
+      element.style.backgroundImage = 'none';
+    }
+    element.style.opacity = (subSettings.opacity !== undefined ? subSettings.opacity : 100) / 100;
+  }
+
   function updateEditInteractivePreviews() {
     if (!currentEditSettings) return;
     
     const mode = currentEditSettings.mode || 'single';
     if (mode === 'auto') {
-      const light = currentEditSettings.light;
-      if (light.type === 'color' && light.colorMode === 'gradient' && light.gradient) {
-        els.editPreviewCardLight.style.backgroundImage = window.PageDyeGradient.buildGradientCss(light.gradient);
-        els.editPreviewCardLight.style.backgroundColor = '';
-      } else if (light.type === 'color') {
-        els.editPreviewCardLight.style.backgroundColor = light.value || '#ffffff';
-        els.editPreviewCardLight.style.backgroundImage = 'none';
-      } else if (light.type === 'image' && light.value) {
-        els.editPreviewCardLight.style.backgroundImage = `url('${light.value}')`;
-      } else {
-        els.editPreviewCardLight.style.backgroundColor = 'var(--surface-bg)';
-        els.editPreviewCardLight.style.backgroundImage = 'none';
+      updateCardPreview(els.editPreviewCardLight, currentEditSettings.light);
+      updateCardPreview(els.editPreviewCardDark, currentEditSettings.dark);
+    } else if (mode === 'timeRange') {
+      const activeCard = els.editTimePeriodsList ? els.editTimePeriodsList.querySelector(`.scheme-card.active .scheme-card-preview`) : null;
+      if (activeCard) {
+        const item = currentEditSettings.timeRange.items[editActiveTimePeriodIndex];
+        if (item) {
+          updateCardPreview(activeCard, item);
+        }
       }
-      els.editPreviewCardLight.style.opacity = (light.opacity !== undefined ? light.opacity : 100) / 100;
-
-      const dark = currentEditSettings.dark;
-      if (dark.type === 'color' && dark.colorMode === 'gradient' && dark.gradient) {
-        els.editPreviewCardDark.style.backgroundImage = window.PageDyeGradient.buildGradientCss(dark.gradient);
-        els.editPreviewCardDark.style.backgroundColor = '';
-      } else if (dark.type === 'color') {
-        els.editPreviewCardDark.style.backgroundColor = dark.value || '#ffffff';
-        els.editPreviewCardDark.style.backgroundImage = 'none';
-      } else if (dark.type === 'image' && dark.value) {
-        els.editPreviewCardDark.style.backgroundImage = `url('${dark.value}')`;
-      } else {
-        els.editPreviewCardDark.style.backgroundColor = 'var(--surface-bg)';
-        els.editPreviewCardDark.style.backgroundImage = 'none';
-      }
-      els.editPreviewCardDark.style.opacity = (dark.opacity !== undefined ? dark.opacity : 100) / 100;
     } else if (mode === 'slideshow') {
       const activeCard = els.editWallpapersGrid.querySelector(`.wallpaper-grid-card.active`);
       if (activeCard) {
@@ -2329,6 +2415,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       collectEditFormTo(currentEditSettings);
     } else if (mode === 'auto') {
       collectEditFormTo(currentEditSettings[editActiveScheme]);
+    } else if (mode === 'timeRange') {
+      const activeItem = currentEditSettings.timeRange.items[editActiveTimePeriodIndex];
+      if (activeItem) {
+        collectEditFormTo(activeItem);
+        collectTimeRangeEditPanel(activeItem);
+      }
     } else if (mode === 'slideshow') {
       collectEditFormTo(currentEditSettings.slideshow.items[editActiveSlideshowIndex]);
       currentEditSettings.slideshow.interval = els.editSlideshowInterval.value;
@@ -2376,8 +2468,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       opacity: 100,
       blur: 0,
       style: { fixed: true, size: 'cover', repeat: false },
-      light: { type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
-      dark: { type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+      timeRange: {
+        items: [
+          { id: 'morning', name: lang === 'zh' ? '清晨' : 'Morning', start: 5, end: 9, type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+          { id: 'noon', name: lang === 'zh' ? '正午' : 'Noon', start: 9, end: 17, type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+          { id: 'dusk', name: lang === 'zh' ? '黄昏' : 'Dusk', start: 17, end: 21, type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+          { id: 'night', name: lang === 'zh' ? '深夜' : 'Night', start: 21, end: 5, type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } }
+        ]
+      },
       slideshow: {
         interval: 'open',
         order: 'sequential',
@@ -2394,6 +2492,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedGlass: []
     };
     editActiveScheme = 'light';
+    editActiveTimePeriodIndex = 0;
     editActiveSlideshowIndex = 0;
     
     const radio = document.querySelector('input[name="edit-wpMode"][value="single"]');
@@ -2900,6 +2999,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         collectEditFormTo(currentEditSettings);
       } else if (prevMode === 'auto') {
         collectEditFormTo(currentEditSettings[editActiveScheme]);
+      } else if (prevMode === 'timeRange') {
+        const activeItem = currentEditSettings.timeRange.items[editActiveTimePeriodIndex];
+        if (activeItem) {
+          collectEditFormTo(activeItem);
+          collectTimeRangeEditPanel(activeItem);
+        }
       } else if (prevMode === 'slideshow') {
         collectEditFormTo(currentEditSettings.slideshow.items[editActiveSlideshowIndex]);
         currentEditSettings.slideshow.interval = els.editSlideshowInterval.value;
@@ -3065,6 +3170,174 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (file) importCustomEffectFile(file);
     e.target.value = '';
   });
+
+  function renderEditTimeCards() {
+    if (!els.editTimePeriodsList || !currentEditSettings) return;
+    els.editTimePeriodsList.innerHTML = '';
+    const items = currentEditSettings.timeRange.items || [];
+    const formatHour = h => String(h).padStart(2, '0') + ':00';
+
+    items.forEach((item, idx) => {
+      const card = document.createElement('div');
+      card.className = 'scheme-card';
+      if (idx === editActiveTimePeriodIndex) card.classList.add('active');
+      card.dataset.index = idx;
+
+      const preview = document.createElement('div');
+      preview.className = 'scheme-card-preview';
+      updateCardPreview(preview, item);
+      card.appendChild(preview);
+
+      const info = document.createElement('div');
+      info.className = 'scheme-card-info';
+      
+      const icon = document.createElement('span');
+      icon.innerHTML = `<svg class="scheme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M5.22 5.22l1.42 1.42M18.78 5.22l-1.42 1.42M2 12h2M20 12h2"/></svg>`;
+      info.appendChild(icon);
+
+      const span = document.createElement('span');
+      span.textContent = `${item.name || (lang === 'zh' ? '未命名' : 'Unnamed')} (${formatHour(item.start)} - ${formatHour(item.end)})`;
+      info.appendChild(span);
+      card.appendChild(info);
+
+      if (items.length > 1) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-card-btn';
+        deleteBtn.innerHTML = '×';
+        deleteBtn.type = 'button';
+        deleteBtn.title = lang === 'zh' ? '删除此时段' : 'Delete period';
+        deleteBtn.style.cssText = 'position: absolute; top: 4px; right: 4px; border: none; background: rgba(0,0,0,0.4); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; z-index: 10;';
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (items.length <= 1) return;
+          items.splice(idx, 1);
+          if (editActiveTimePeriodIndex >= items.length) {
+            editActiveTimePeriodIndex = items.length - 1;
+          }
+          renderEditTimeCards();
+          const activeItem = items[editActiveTimePeriodIndex];
+          if (activeItem) {
+            populateEditForm(activeItem);
+            populateTimeRangeEditPanel(activeItem);
+          }
+          queueEditAutoSave();
+        });
+        card.appendChild(deleteBtn);
+      }
+
+      card.addEventListener('click', () => {
+        if (editActiveTimePeriodIndex === idx) return;
+        const prevItem = items[editActiveTimePeriodIndex];
+        if (prevItem) {
+          collectEditFormTo(prevItem);
+          collectTimeRangeEditPanel(prevItem);
+        }
+        editActiveTimePeriodIndex = idx;
+        renderEditTimeCards();
+        const activeItem = items[editActiveTimePeriodIndex];
+        if (activeItem) {
+          populateEditForm(activeItem);
+          populateTimeRangeEditPanel(activeItem);
+        }
+      });
+
+      els.editTimePeriodsList.appendChild(card);
+    });
+
+    const addCard = document.createElement('div');
+    addCard.className = 'scheme-card add-time-card';
+    addCard.style.cssText = 'border: 2px dashed var(--border-color); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--text-secondary); min-height: 80px; border-radius: var(--radius); position: relative;';
+    addCard.textContent = '+';
+    addCard.addEventListener('click', () => {
+      const template = {
+        id: 'period_' + Date.now(),
+        name: lang === 'zh' ? '新时段' : 'New Period',
+        start: 0,
+        end: 23,
+        type: 'none',
+        value: '',
+        opacity: 100,
+        blur: 0,
+        style: { fixed: true, size: 'cover', repeat: false }
+      };
+      items.push(template);
+      editActiveTimePeriodIndex = items.length - 1;
+      renderEditTimeCards();
+      const activeItem = items[editActiveTimePeriodIndex];
+      if (activeItem) {
+        populateEditForm(activeItem);
+        populateTimeRangeEditPanel(activeItem);
+      }
+      queueEditAutoSave();
+    });
+    els.editTimePeriodsList.appendChild(addCard);
+  }
+
+  function initTimeRangePeriodSelects() {
+    const selects = [els.editTimePeriodStart, els.editTimePeriodEnd];
+    selects.forEach(selectEl => {
+      if (!selectEl) return;
+      selectEl.innerHTML = '';
+      for (let h = 0; h < 24; h++) {
+        const opt = document.createElement('option');
+        opt.value = h;
+        opt.textContent = String(h).padStart(2, '0') + ':00';
+        selectEl.appendChild(opt);
+      }
+    });
+
+    if (els.editTimePeriodName) {
+      els.editTimePeriodName.addEventListener('input', () => {
+        if (!currentEditSettings || !currentEditSettings.timeRange || !currentEditSettings.timeRange.items) return;
+        const activeItem = currentEditSettings.timeRange.items[editActiveTimePeriodIndex];
+        if (activeItem) {
+          activeItem.name = els.editTimePeriodName.value.trim();
+          renderEditTimeCards();
+          queueEditAutoSave();
+        }
+      });
+    }
+
+    if (els.editTimePeriodStart) {
+      els.editTimePeriodStart.addEventListener('change', () => {
+        if (!currentEditSettings || !currentEditSettings.timeRange || !currentEditSettings.timeRange.items) return;
+        const activeItem = currentEditSettings.timeRange.items[editActiveTimePeriodIndex];
+        if (activeItem) {
+          activeItem.start = parseInt(els.editTimePeriodStart.value, 10);
+          renderEditTimeCards();
+          queueEditAutoSave();
+        }
+      });
+    }
+
+    if (els.editTimePeriodEnd) {
+      els.editTimePeriodEnd.addEventListener('change', () => {
+        if (!currentEditSettings || !currentEditSettings.timeRange || !currentEditSettings.timeRange.items) return;
+        const activeItem = currentEditSettings.timeRange.items[editActiveTimePeriodIndex];
+        if (activeItem) {
+          activeItem.end = parseInt(els.editTimePeriodEnd.value, 10);
+          renderEditTimeCards();
+          queueEditAutoSave();
+        }
+      });
+    }
+  }
+
+  function populateTimeRangeEditPanel(item) {
+    if (!item) return;
+    if (els.editTimePeriodName) els.editTimePeriodName.value = item.name || '';
+    if (els.editTimePeriodStart) els.editTimePeriodStart.value = item.start;
+    if (els.editTimePeriodEnd) els.editTimePeriodEnd.value = item.end;
+  }
+
+  function collectTimeRangeEditPanel(item) {
+    if (!item) return;
+    if (els.editTimePeriodName) item.name = els.editTimePeriodName.value.trim() || (lang === 'zh' ? '未命名' : 'Unnamed');
+    if (els.editTimePeriodStart) item.start = parseInt(els.editTimePeriodStart.value, 10);
+    if (els.editTimePeriodEnd) item.end = parseInt(els.editTimePeriodEnd.value, 10);
+  }
+
+  initTimeRangePeriodSelects();
 });
 
 // language defaults to 'css'. When Prism doesn't have a grammar for the

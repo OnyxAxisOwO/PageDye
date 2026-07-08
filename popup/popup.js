@@ -116,7 +116,20 @@ function pagedyeElementPicker(settings, domain, fieldPath) {
         }
         obj = obj[key];
       }
-      obj[path[path.length - 1]] = selector;
+      if (path[0] === 'deepCompatExclude') {
+        const oldVal = obj[path[path.length - 1]];
+        if (oldVal && oldVal.trim()) {
+          const list = oldVal.split(',').map(s => s.trim()).filter(Boolean);
+          if (!list.includes(selector)) {
+            list.push(selector);
+          }
+          obj[path[path.length - 1]] = list.join(', ');
+        } else {
+          obj[path[path.length - 1]] = selector;
+        }
+      } else {
+        obj[path[path.length - 1]] = selector;
+      }
       // frostedGlass entries need blur/opacity alongside the selector — back
       // them in with defaults if this picker call just created the entry.
       if (path[0] === 'frostedGlass' && path.length > 1) {
@@ -220,8 +233,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       pickerFailed: "Can't pick on this page",
       wallpaperMode: "Wallpaper Mode",
       modeSingle: "Single",
-      modeAuto: "Light/Dark",
-      modeSlideshow: "Slideshow",
+      modeAuto: "Auto",
+      modeTimeRange: "Time",
+      modeSlideshow: "Slide",
       rotationInterval: "Interval",
       intervalOpen: "Each Open",
       interval15m: "15 Mins",
@@ -231,6 +245,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       randomOrder: "Random Order",
       wallpapersList: "Wallpapers",
       selectSchemeToEdit: "Select background to edit",
+      selectTimeToEdit: "Select background to edit",
+      schemeMorning: "Morning",
+      schemeNoon: "Noon",
+      schemeDusk: "Dusk",
+      schemeNight: "Night",
+      timeRangeSettingsTitle: "Custom Time Ranges",
+      labelPeriodName: "Period Name:",
+      labelPeriodRange: "Time Range:",
       statusSynced: "Synced",
       statusSaving: "Saving...",
       dragOrClick: "Drag image here, or",
@@ -344,9 +366,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       customCssHint: "将注入到本网站。可用 !important 覆盖顽固样式。",
       pickerFailed: "此页面无法拾取",
       wallpaperMode: "壁纸模式",
-      modeSingle: "单一壁纸",
-      modeAuto: "昼夜联动",
-      modeSlideshow: "幻灯轮换",
+      modeSingle: "单一",
+      modeAuto: "昼夜",
+      modeTimeRange: "时段",
+      modeSlideshow: "幻灯",
       rotationInterval: "轮换间隔",
       intervalOpen: "每次打开",
       interval15m: "15分钟",
@@ -356,6 +379,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       randomOrder: "随机顺序",
       wallpapersList: "壁纸列表",
       selectSchemeToEdit: "选择要编辑的背景",
+      selectTimeToEdit: "选择要编辑的背景",
+      schemeMorning: "清晨",
+      schemeNoon: "正午",
+      schemeDusk: "黄昏",
+      schemeNight: "深夜",
+      timeRangeSettingsTitle: "自定义时段范围",
+      labelPeriodName: "时段名称:",
+      labelPeriodRange: "时间范围:",
       statusSynced: "配置已同步",
       statusSaving: "正在保存...",
       dragOrClick: "拖拽图片至此，或",
@@ -465,6 +496,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     pickBtn: document.getElementById('pick-btn'),
     deepCompatToggle: document.getElementById('deep-compat-toggle'),
     deepCompatExclude: document.getElementById('deep-compat-exclude'),
+    deepCompatPickBtn: document.getElementById('deep-compat-pick-btn'),
     frostedList: document.getElementById('frosted-list'),
     frostedAddBtn: document.getElementById('frosted-add-btn'),
     customCss: document.getElementById('custom-css'),
@@ -479,6 +511,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     cardSchemeDark: document.getElementById('card-scheme-dark'),
     previewCardLight: document.getElementById('preview-card-light'),
     previewCardDark: document.getElementById('preview-card-dark'),
+
+    timeCardsContainer: document.getElementById('time-cards-container'),
+    timePeriodsList: document.getElementById('time-periods-list'),
+    timePeriodName: document.getElementById('time-period-name'),
+    timePeriodStart: document.getElementById('time-period-start'),
+    timePeriodEnd: document.getElementById('time-period-end'),
+    timeRangePeriodEditFields: document.getElementById('time-range-period-edit-fields'),
     
     slideshowConfigPanel: document.getElementById('slideshow-config-panel'),
     slideshowInterval: document.getElementById('slideshow-interval'),
@@ -510,6 +549,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentImageBase64 = null;
   let lang = 'en';
   let activeScheme = 'light';
+  let activeTimePeriodIndex = 0;
   let activeSlideshowIndex = 0;
   let currentSettings = null;
   let saveDebounceTimer = null;
@@ -531,6 +571,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   gradientKeyframesStyle.textContent = window.PageDyeGradient.GRADIENT_KEYFRAMES_CSS;
   document.head.appendChild(gradientKeyframesStyle);
   renderGradientPresetsGrid();
+  initTimeRangePeriodSelects();
   const versionEl = document.getElementById('version');
   if (versionEl) versionEl.textContent = 'v' + chrome.runtime.getManifest().version;
   await populateCustomEffectOptions(els.effectKind);
@@ -911,6 +952,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Advanced: element picker
   els.pickBtn.addEventListener('click', startPicker);
+  els.deepCompatPickBtn.addEventListener('click', startDeepCompatPicker);
 
   // Top-level tabs: Wallpaper vs Frosted Glass sliding transition
   const panelWallpaper = document.getElementById('panel-wallpaper');
@@ -978,6 +1020,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         collectFormTo(currentSettings);
       } else if (prevMode === 'auto') {
         collectFormTo(currentSettings[activeScheme]);
+      } else if (prevMode === 'timeRange') {
+        const activeItem = currentSettings.timeRange.items[activeTimePeriodIndex];
+        if (activeItem) {
+          collectFormTo(activeItem);
+          collectTimeRangeConfigPanel(activeItem);
+        }
       } else if (prevMode === 'slideshow') {
         collectFormTo(currentSettings.slideshow.items[activeSlideshowIndex]);
         currentSettings.slideshow.interval = els.slideshowInterval.value;
@@ -1385,6 +1433,65 @@ document.addEventListener('DOMContentLoaded', async () => {
       };
     }
 
+    if (!currentSettings.timeRange) {
+      const template = {
+        type: currentSettings.type && currentSettings.type !== 'none' ? currentSettings.type : 'none',
+        value: currentSettings.value || '',
+        opacity: currentSettings.opacity !== undefined ? currentSettings.opacity : 100,
+        blur: currentSettings.blur !== undefined ? currentSettings.blur : 0,
+        style: Object.assign({ fixed: true, size: 'cover', repeat: false }, currentSettings.style || {}),
+        colorMode: currentSettings.colorMode || 'solid',
+        gradient: currentSettings.gradient || null,
+        effect: currentSettings.effect || 'waves',
+        effectText: currentSettings.effectText || 'PageDye',
+        effectColorScheme: currentSettings.effectColorScheme || 'auto',
+        effectColor: currentSettings.effectColor || '#ffffff',
+        effectBgColor: currentSettings.effectBgColor || '#000000',
+        effectDensity: currentSettings.effectDensity !== undefined ? currentSettings.effectDensity : 50,
+        effectSpeed: currentSettings.effectSpeed !== undefined ? currentSettings.effectSpeed : 50,
+        filters: Object.assign({ brightness: 100, contrast: 100, grayscale: 0, hue: 0, invert: 0 }, currentSettings.filters || {})
+      };
+    if (!currentSettings.timeRange || !Array.isArray(currentSettings.timeRange.items)) {
+      if (currentSettings.timeRange && currentSettings.timeRange.morning) {
+        const tr = currentSettings.timeRange;
+        const config = currentSettings.timeRangeConfig || { morningStart: 5, noonStart: 9, duskStart: 17, nightStart: 21 };
+        currentSettings.timeRange = {
+          items: [
+            Object.assign({ id: 'morning', name: lang === 'zh' ? '清晨' : 'Morning', start: config.morningStart, end: config.noonStart }, tr.morning),
+            Object.assign({ id: 'noon', name: lang === 'zh' ? '正午' : 'Noon', start: config.noonStart, end: config.duskStart }, tr.noon),
+            Object.assign({ id: 'dusk', name: lang === 'zh' ? '黄昏' : 'Dusk', start: config.duskStart, end: config.nightStart }, tr.dusk),
+            Object.assign({ id: 'night', name: lang === 'zh' ? '深夜' : 'Night', start: config.nightStart, end: config.morningStart }, tr.night)
+          ]
+        };
+      } else {
+        const template = {
+          type: currentSettings.type && currentSettings.type !== 'none' ? currentSettings.type : 'none',
+          value: currentSettings.value || '',
+          opacity: currentSettings.opacity !== undefined ? currentSettings.opacity : 100,
+          blur: currentSettings.blur !== undefined ? currentSettings.blur : 0,
+          style: Object.assign({ fixed: true, size: 'cover', repeat: false }, currentSettings.style || {}),
+          colorMode: currentSettings.colorMode || 'solid',
+          gradient: currentSettings.gradient || null,
+          effect: currentSettings.effect || 'waves',
+          effectText: currentSettings.effectText || 'PageDye',
+          effectColorScheme: currentSettings.effectColorScheme || 'auto',
+          effectColor: currentSettings.effectColor || '#ffffff',
+          effectBgColor: currentSettings.effectBgColor || '#000000',
+          effectDensity: currentSettings.effectDensity !== undefined ? currentSettings.effectDensity : 50,
+          effectSpeed: currentSettings.effectSpeed !== undefined ? currentSettings.effectSpeed : 50,
+          filters: Object.assign({ brightness: 100, contrast: 100, grayscale: 0, hue: 0, invert: 0 }, currentSettings.filters || {})
+        };
+        currentSettings.timeRange = {
+          items: [
+            Object.assign({ id: 'morning', name: lang === 'zh' ? '清晨' : 'Morning', start: 5, end: 9 }, JSON.parse(JSON.stringify(template))),
+            Object.assign({ id: 'noon', name: lang === 'zh' ? '正午' : 'Noon', start: 9, end: 17 }, JSON.parse(JSON.stringify(template))),
+            Object.assign({ id: 'dusk', name: lang === 'zh' ? '黄昏' : 'Dusk', start: 17, end: 21 }, JSON.parse(JSON.stringify(template))),
+            Object.assign({ id: 'night', name: lang === 'zh' ? '深夜' : 'Night', start: 21, end: 5 }, JSON.parse(JSON.stringify(template)))
+          ]
+        };
+      }
+    }
+
     if (!currentSettings.slideshow) {
       currentSettings.slideshow = {
         interval: 'open',
@@ -1432,6 +1539,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const slider = document.getElementById('wp-mode-slider');
     const singlePanel = document.getElementById('mode-panel-single');
     const autoPanel = document.getElementById('scheme-cards-container');
+    const timePanel = document.getElementById('time-cards-container');
     const slideshowPanel = document.getElementById('slideshow-config-panel');
 
     if (slider && !isInitialLoad) {
@@ -1440,6 +1548,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (singlePanel) singlePanel.classList.toggle('inactive', mode !== 'single');
     if (autoPanel) autoPanel.classList.toggle('inactive', mode !== 'auto');
+    if (timePanel) timePanel.classList.toggle('inactive', mode !== 'timeRange');
     if (slideshowPanel) slideshowPanel.classList.toggle('inactive', mode !== 'slideshow');
 
     if (slider) {
@@ -1447,8 +1556,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         slider.style.transition = 'none';
       }
       if (mode === 'single') slider.style.transform = 'translateX(0)';
-      else if (mode === 'auto') slider.style.transform = 'translateX(-33.333%)';
-      else if (mode === 'slideshow') slider.style.transform = 'translateX(-66.666%)';
+      else if (mode === 'auto') slider.style.transform = 'translateX(-25%)';
+      else if (mode === 'timeRange') slider.style.transform = 'translateX(-50%)';
+      else if (mode === 'slideshow') slider.style.transform = 'translateX(-75%)';
       if (isInitialLoad) {
         slider.offsetHeight; // trigger reflow
         slider.style.transition = '';
@@ -1461,9 +1571,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         activeModeBadge.textContent = t('modeSingle');
       } else if (mode === 'auto') {
         activeModeBadge.textContent = t('modeAuto');
+      } else if (mode === 'timeRange') {
+        activeModeBadge.textContent = t('modeTimeRange');
       } else if (mode === 'slideshow') {
         activeModeBadge.textContent = t('modeSlideshow');
       }
+    }
+
+    if (els.timeRangePeriodEditFields) {
+      els.timeRangePeriodEditFields.classList.toggle('hidden', mode !== 'timeRange');
     }
 
     if (mode === 'single') {
@@ -1478,6 +1594,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         els.cardSchemeLight.classList.add('active');
       }
       populateForm(currentSettings[activeScheme]);
+    } else if (mode === 'timeRange') {
+      const items = currentSettings.timeRange.items || [];
+      if (activeTimePeriodIndex >= items.length) {
+        activeTimePeriodIndex = 0;
+      }
+      renderTimeCards();
+      const activeItem = items[activeTimePeriodIndex];
+      if (activeItem) {
+        populateForm(activeItem);
+        populateTimeRangeConfigPanel(activeItem);
+      }
     } else if (mode === 'slideshow') {
       els.slideshowInterval.value = currentSettings.slideshow.interval || 'open';
       els.slideshowRandom.checked = currentSettings.slideshow.order === 'random';
@@ -1534,40 +1661,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.wallpapersGrid.appendChild(addCard);
   }
 
+  function updateCardPreview(element, subSettings) {
+    if (!element || !subSettings) return;
+    if (subSettings.type === 'color' && subSettings.colorMode === 'gradient' && subSettings.gradient) {
+      element.style.backgroundImage = window.PageDyeGradient.buildGradientCss(subSettings.gradient);
+      element.style.backgroundColor = '';
+    } else if (subSettings.type === 'color') {
+      element.style.backgroundColor = subSettings.value || '#ffffff';
+      element.style.backgroundImage = 'none';
+    } else if (subSettings.type === 'image' && subSettings.value) {
+      element.style.backgroundImage = `url('${subSettings.value}')`;
+    } else {
+      element.style.backgroundColor = 'var(--surface-bg)';
+      element.style.backgroundImage = 'none';
+    }
+    element.style.opacity = (subSettings.opacity !== undefined ? subSettings.opacity : 100) / 100;
+  }
+
   function updateInteractivePreviews() {
     if (!currentSettings) return;
     
     const mode = currentSettings.mode || 'single';
     if (mode === 'auto') {
-      const light = currentSettings.light;
-      if (light.type === 'color' && light.colorMode === 'gradient' && light.gradient) {
-        els.previewCardLight.style.backgroundImage = window.PageDyeGradient.buildGradientCss(light.gradient);
-        els.previewCardLight.style.backgroundColor = '';
-      } else if (light.type === 'color') {
-        els.previewCardLight.style.backgroundColor = light.value || '#ffffff';
-        els.previewCardLight.style.backgroundImage = 'none';
-      } else if (light.type === 'image' && light.value) {
-        els.previewCardLight.style.backgroundImage = `url('${light.value}')`;
-      } else {
-        els.previewCardLight.style.backgroundColor = 'var(--surface-bg)';
-        els.previewCardLight.style.backgroundImage = 'none';
+      updateCardPreview(els.previewCardLight, currentSettings.light);
+      updateCardPreview(els.previewCardDark, currentSettings.dark);
+    } else if (mode === 'timeRange') {
+      const activeCard = els.timePeriodsList ? els.timePeriodsList.querySelector(`.scheme-card.active .scheme-card-preview`) : null;
+      if (activeCard) {
+        const item = currentSettings.timeRange.items[activeTimePeriodIndex];
+        if (item) {
+          updateCardPreview(activeCard, item);
+        }
       }
-      els.previewCardLight.style.opacity = (light.opacity !== undefined ? light.opacity : 100) / 100;
-
-      const dark = currentSettings.dark;
-      if (dark.type === 'color' && dark.colorMode === 'gradient' && dark.gradient) {
-        els.previewCardDark.style.backgroundImage = window.PageDyeGradient.buildGradientCss(dark.gradient);
-        els.previewCardDark.style.backgroundColor = '';
-      } else if (dark.type === 'color') {
-        els.previewCardDark.style.backgroundColor = dark.value || '#ffffff';
-        els.previewCardDark.style.backgroundImage = 'none';
-      } else if (dark.type === 'image' && dark.value) {
-        els.previewCardDark.style.backgroundImage = `url('${dark.value}')`;
-      } else {
-        els.previewCardDark.style.backgroundColor = 'var(--surface-bg)';
-        els.previewCardDark.style.backgroundImage = 'none';
-      }
-      els.previewCardDark.style.opacity = (dark.opacity !== undefined ? dark.opacity : 100) / 100;
     } else if (mode === 'slideshow') {
       const activeCard = els.wallpapersGrid.querySelector(`.wallpaper-grid-card.active`);
       if (activeCard) {
@@ -1964,6 +2089,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       collectFormTo(currentSettings);
     } else if (mode === 'auto') {
       collectFormTo(currentSettings[activeScheme]);
+    } else if (mode === 'timeRange') {
+      const activeItem = currentSettings.timeRange.items[activeTimePeriodIndex];
+      if (activeItem) {
+        collectFormTo(activeItem);
+        collectTimeRangeConfigPanel(activeItem);
+      }
     } else if (mode === 'slideshow') {
       collectFormTo(currentSettings.slideshow.items[activeSlideshowIndex]);
       currentSettings.slideshow.interval = els.slideshowInterval.value;
@@ -2043,8 +2174,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       opacity: 100,
       blur: 0,
       style: { fixed: true, size: 'cover', repeat: false },
-      light: { type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
-      dark: { type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+      timeRange: {
+        items: [
+          { id: 'morning', name: lang === 'zh' ? '清晨' : 'Morning', start: 5, end: 9, type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+          { id: 'noon', name: lang === 'zh' ? '正午' : 'Noon', start: 9, end: 17, type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+          { id: 'dusk', name: lang === 'zh' ? '黄昏' : 'Dusk', start: 17, end: 21, type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+          { id: 'night', name: lang === 'zh' ? '深夜' : 'Night', start: 21, end: 5, type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } }
+        ]
+      },
       slideshow: {
         interval: 'open',
         order: 'sequential',
@@ -2061,6 +2198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedGlass: []
     };
     activeScheme = 'light';
+    activeTimePeriodIndex = 0;
     activeSlideshowIndex = 0;
     
     const radio = document.querySelector('input[name="wpMode"][value="single"]');
@@ -2158,6 +2296,197 @@ document.addEventListener('DOMContentLoaded', async () => {
       els.statusText.textContent = t('pickerFailed');
     }
   }
+
+  // Same flow as startPicker(), but writes the picked selector into
+  // deepCompatExclude selector list.
+  async function startDeepCompatPicker() {
+    const settings = collectSettings();
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) return;
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/content.js']
+      });
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: pagedyeElementPicker,
+        args: [settings, currentDomain, ['deepCompatExclude']]
+      });
+      window.close();
+    } catch (err) {
+      console.log('Cannot start picker on this page', err);
+      setSavingState();
+      els.statusText.textContent = t('pickerFailed');
+    }
+  }
+
+  function renderTimeCards() {
+    if (!els.timePeriodsList || !currentSettings) return;
+    els.timePeriodsList.innerHTML = '';
+    const items = currentSettings.timeRange.items || [];
+    const formatHour = h => String(h).padStart(2, '0') + ':00';
+
+    items.forEach((item, idx) => {
+      const card = document.createElement('div');
+      card.className = 'scheme-card';
+      if (idx === activeTimePeriodIndex) card.classList.add('active');
+      card.dataset.index = idx;
+
+      const preview = document.createElement('div');
+      preview.className = 'scheme-card-preview';
+      updateCardPreview(preview, item);
+      card.appendChild(preview);
+
+      const info = document.createElement('div');
+      info.className = 'scheme-card-info';
+      
+      const icon = document.createElement('span');
+      icon.innerHTML = `<svg class="scheme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M5.22 5.22l1.42 1.42M18.78 5.22l-1.42 1.42M2 12h2M20 12h2"/></svg>`;
+      info.appendChild(icon);
+
+      const span = document.createElement('span');
+      span.textContent = `${item.name || (lang === 'zh' ? '未命名' : 'Unnamed')} (${formatHour(item.start)} - ${formatHour(item.end)})`;
+      info.appendChild(span);
+      card.appendChild(info);
+
+      if (items.length > 1) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-card-btn';
+        deleteBtn.innerHTML = '×';
+        deleteBtn.type = 'button';
+        deleteBtn.title = lang === 'zh' ? '删除此时段' : 'Delete period';
+        deleteBtn.style.cssText = 'position: absolute; top: 4px; right: 4px; border: none; background: rgba(0,0,0,0.4); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; z-index: 10;';
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (items.length <= 1) return;
+          items.splice(idx, 1);
+          if (activeTimePeriodIndex >= items.length) {
+            activeTimePeriodIndex = items.length - 1;
+          }
+          renderTimeCards();
+          const activeItem = items[activeTimePeriodIndex];
+          if (activeItem) {
+            populateForm(activeItem);
+            populateTimeRangeConfigPanel(activeItem);
+          }
+          triggerImmediateSave();
+        });
+        card.appendChild(deleteBtn);
+      }
+
+      card.addEventListener('click', () => {
+        if (activeTimePeriodIndex === idx) return;
+        const prevItem = items[activeTimePeriodIndex];
+        if (prevItem) {
+          collectFormTo(prevItem);
+          collectTimeRangeConfigPanel(prevItem);
+        }
+        activeTimePeriodIndex = idx;
+        renderTimeCards();
+        const activeItem = items[activeTimePeriodIndex];
+        if (activeItem) {
+          populateForm(activeItem);
+          populateTimeRangeConfigPanel(activeItem);
+        }
+      });
+
+      els.timePeriodsList.appendChild(card);
+    });
+
+    const addCard = document.createElement('div');
+    addCard.className = 'scheme-card add-time-card';
+    addCard.style.cssText = 'border: 2px dashed var(--border-color); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--text-secondary); min-height: 80px; border-radius: var(--radius); position: relative;';
+    addCard.textContent = '+';
+    addCard.addEventListener('click', () => {
+      const template = {
+        id: 'period_' + Date.now(),
+        name: lang === 'zh' ? '新时段' : 'New Period',
+        start: 0,
+        end: 23,
+        type: 'none',
+        value: '',
+        opacity: 100,
+        blur: 0,
+        style: { fixed: true, size: 'cover', repeat: false }
+      };
+      items.push(template);
+      activeTimePeriodIndex = items.length - 1;
+      renderTimeCards();
+      const activeItem = items[activeTimePeriodIndex];
+      if (activeItem) {
+        populateForm(activeItem);
+        populateTimeRangeConfigPanel(activeItem);
+      }
+      triggerImmediateSave();
+    });
+    els.timePeriodsList.appendChild(addCard);
+  }
+
+  function initTimeRangePeriodSelects() {
+    const selects = [els.timePeriodStart, els.timePeriodEnd];
+    selects.forEach(selectEl => {
+      if (!selectEl) return;
+      selectEl.innerHTML = '';
+      for (let h = 0; h < 24; h++) {
+        const opt = document.createElement('option');
+        opt.value = h;
+        opt.textContent = String(h).padStart(2, '0') + ':00';
+        selectEl.appendChild(opt);
+      }
+    });
+
+    if (els.timePeriodName) {
+      els.timePeriodName.addEventListener('input', () => {
+        if (!currentSettings || !currentSettings.timeRange || !currentSettings.timeRange.items) return;
+        const activeItem = currentSettings.timeRange.items[activeTimePeriodIndex];
+        if (activeItem) {
+          activeItem.name = els.timePeriodName.value.trim();
+          renderTimeCards();
+          triggerImmediateSave();
+        }
+      });
+    }
+
+    if (els.timePeriodStart) {
+      els.timePeriodStart.addEventListener('change', () => {
+        if (!currentSettings || !currentSettings.timeRange || !currentSettings.timeRange.items) return;
+        const activeItem = currentSettings.timeRange.items[activeTimePeriodIndex];
+        if (activeItem) {
+          activeItem.start = parseInt(els.timePeriodStart.value, 10);
+          renderTimeCards();
+          triggerImmediateSave();
+        }
+      });
+    }
+
+    if (els.timePeriodEnd) {
+      els.timePeriodEnd.addEventListener('change', () => {
+        if (!currentSettings || !currentSettings.timeRange || !currentSettings.timeRange.items) return;
+        const activeItem = currentSettings.timeRange.items[activeTimePeriodIndex];
+        if (activeItem) {
+          activeItem.end = parseInt(els.timePeriodEnd.value, 10);
+          renderTimeCards();
+          triggerImmediateSave();
+        }
+      });
+    }
+  }
+
+  function populateTimeRangeConfigPanel(item) {
+    if (!item) return;
+    if (els.timePeriodName) els.timePeriodName.value = item.name || '';
+    if (els.timePeriodStart) els.timePeriodStart.value = item.start;
+    if (els.timePeriodEnd) els.timePeriodEnd.value = item.end;
+  }
+
+  function collectTimeRangeConfigPanel(item) {
+    if (!item) return;
+    if (els.timePeriodName) item.name = els.timePeriodName.value.trim() || (lang === 'zh' ? '未命名' : 'Unnamed');
+    if (els.timePeriodStart) item.start = parseInt(els.timePeriodStart.value, 10);
+    if (els.timePeriodEnd) item.end = parseInt(els.timePeriodEnd.value, 10);
+  }
+
   isInitialLoad = false;
 });
 
