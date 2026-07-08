@@ -129,7 +129,7 @@
 
       const activeSettings = currentActiveSettings;
       let customEffect = null;
-      if (activeSettings && activeSettings.type === 'effect' && activeSettings.effect && activeSettings.effect.startsWith('custom:')) {
+      if (activeSettings && activeSettings.effectEnabled && activeSettings.effect && activeSettings.effect.startsWith('custom:')) {
         const customId = activeSettings.effect.replace('custom:', '');
         customEffect = currentCustomEffects.find((eff) => eff.id === customId);
       }
@@ -149,7 +149,7 @@
       if (e.key === 'Alt') {
         const activeSettings = currentActiveSettings;
         let customEffect = null;
-        if (activeSettings && activeSettings.type === 'effect' && activeSettings.effect && activeSettings.effect.startsWith('custom:')) {
+        if (activeSettings && activeSettings.effectEnabled && activeSettings.effect && activeSettings.effect.startsWith('custom:')) {
           const customId = activeSettings.effect.replace('custom:', '');
           customEffect = currentCustomEffects.find((eff) => eff.id === customId);
         }
@@ -254,6 +254,21 @@
     }
   }
 
+  // Upgrades a legacy sub-settings object (saved before Effects became an
+  // independent overlay toggle) in place: the old type:'effect' was a 4th
+  // mutually-exclusive background choice; it's now equivalent to type:'none'
+  // with the overlay toggled on. All effect* fields already on the object are
+  // left untouched. Idempotent — safe to call on already-migrated data.
+  function migrateBgType(obj) {
+    if (!obj) return;
+    if (obj.type === 'effect') {
+      obj.type = 'none';
+      obj.effectEnabled = true;
+    } else {
+      obj.effectEnabled = !!obj.effectEnabled;
+    }
+  }
+
   function applyBackground(settings) {
     settings = settings || { type: 'none' };
 
@@ -304,17 +319,21 @@
       setupSlideshowTimer(settings);
     }
 
+    migrateBgType(activeSettings);
     currentActiveSettings = activeSettings;
 
-    // Custom CSS and the frosted-glass container effect are both applied
-    // independently of the background type/mode.
+    // Custom CSS, the frosted-glass container effect and the custom cursor
+    // are all applied independently of the background type/mode.
     applyCustomCss(activeSettings.customCss);
     applyFrostedGlass(settings.frostedGlass);
+    applyCustomCursor(settings.cursor);
 
-    const hasBackground = activeSettings.type === 'color' || activeSettings.type === 'image' || activeSettings.type === 'effect';
-    // Effects are rendered on a full-viewport canvas; a per-element selector
-    // doesn't apply to them, so always fall back to overlay mode.
-    const selector = activeSettings.type !== 'effect' && activeSettings.targetSelector && activeSettings.targetSelector.trim();
+    const hasBackground = activeSettings.type === 'color' || activeSettings.type === 'image' || activeSettings.effectEnabled;
+    // The effect overlay is rendered on a full-viewport canvas; a per-element
+    // selector doesn't apply to it, so effectEnabled always forces overlay
+    // mode for the whole background (base layer included), same as a bare
+    // effect background always did before overlays existed.
+    const selector = !activeSettings.effectEnabled && activeSettings.targetSelector && activeSettings.targetSelector.trim();
 
     if (!hasBackground) {
       removeBackdrop();
@@ -517,62 +536,28 @@
 
     root.style.zIndex = '-2147483648';
 
-    let customEffect = null;
-    if (settings.type === 'effect' && settings.effect && settings.effect.startsWith('custom:')) {
-      const customId = settings.effect.replace('custom:', '');
-      customEffect = currentCustomEffects.find((e) => e.id === customId);
-    }
+    paintBaseLayer(root, layer, settings);
+    applyEffectOverlay(canvas, iframe, settings);
+  }
 
-    if (settings.type === 'effect') {
-      // Effects always fill the viewport, fixed in place — a leftover
-      // absolute/100%-height root from a previous non-fixed image (see
-      // below) would otherwise clip or scroll the canvas away.
+  // Paints the base background (none/color/image) onto `layer`, independent
+  // of whether an effect overlay (see applyEffectOverlay below) is also
+  // active. Root position/height follows the base type's own rules exactly
+  // as before overlays existed (color/none -> fixed/full-viewport; image ->
+  // its own "Fixed Position" checkbox) — the effect canvas is sized 100%/100%
+  // of root regardless, so it rides along with whatever positioning the base
+  // layer picked; no extra coordination needed between the two.
+  function paintBaseLayer(root, layer, settings) {
+    if (settings.type === 'none') {
       root.style.position = 'fixed';
       root.style.height = '100vh';
       layer.style.backgroundImage = 'none';
       layer.style.backgroundColor = 'transparent';
-
-      if (customEffect && customEffect.type === 'url') {
-        window.PageDyeEffects.stopEffect();
-        canvas.style.display = 'none';
-
-        iframe.style.display = 'block';
-        iframe.style.opacity = ((typeof settings.opacity === 'number' ? settings.opacity : 100) / 100).toString();
-        iframe.style.pointerEvents = customEffect.interactive ? 'auto' : 'none';
-
-        let targetUrl = customEffect.url || '';
-        if (targetUrl && !/^https?:\/\//i.test(targetUrl)) {
-          targetUrl = 'https://' + targetUrl;
-        }
-        if (iframe.src !== targetUrl) {
-          iframe.src = targetUrl;
-        }
-        return;
-      }
-
-      if (iframe) {
-        iframe.style.display = 'none';
-        iframe.style.pointerEvents = 'none';
-        iframe.src = '';
-      }
-
-      const resolvedColors = resolveEffectColors(settings);
-      window.PageDyeEffects.startEffect(canvas, settings.effect || 'waves', settings.opacity, {
-        color: resolvedColors.color,
-        bgColor: resolvedColors.bgColor,
-        density: settings.effectDensity,
-        speed: settings.effectSpeed,
-        text: settings.effectText
-      }, currentCustomEffects);
+      layer.style.filter = 'none';
+      layer.style.transform = 'none';
+      layer.style.backgroundSize = 'auto';
+      layer.style.animation = 'none';
       return;
-    }
-
-    window.PageDyeEffects.stopEffect();
-    canvas.style.display = 'none';
-    if (iframe) {
-      iframe.style.display = 'none';
-      iframe.style.pointerEvents = 'none';
-      iframe.src = '';
     }
 
     const style = {
@@ -637,6 +622,64 @@
     }
 
     Object.assign(layer.style, style);
+  }
+
+  // Starts/stops the animated-effect canvas (or an interactive custom-URL
+  // iframe), independent of the base layer paintBaseLayer() paints above.
+  // `transparent: settings.type !== 'none'` tells built-in canvas engines
+  // (see clearFrame() in effects.js) to clear each frame instead of painting
+  // their own opaque background, so the base layer shows through underneath.
+  function applyEffectOverlay(canvas, iframe, settings) {
+    if (!settings.effectEnabled) {
+      window.PageDyeEffects.stopEffect();
+      canvas.style.display = 'none';
+      if (iframe) {
+        iframe.style.display = 'none';
+        iframe.style.pointerEvents = 'none';
+        iframe.src = '';
+      }
+      return;
+    }
+
+    let customEffect = null;
+    if (settings.effect && settings.effect.startsWith('custom:')) {
+      const customId = settings.effect.replace('custom:', '');
+      customEffect = currentCustomEffects.find((e) => e.id === customId);
+    }
+
+    if (customEffect && customEffect.type === 'url') {
+      window.PageDyeEffects.stopEffect();
+      canvas.style.display = 'none';
+
+      iframe.style.display = 'block';
+      iframe.style.opacity = ((typeof settings.opacity === 'number' ? settings.opacity : 100) / 100).toString();
+      iframe.style.pointerEvents = customEffect.interactive ? 'auto' : 'none';
+
+      let targetUrl = customEffect.url || '';
+      if (targetUrl && !/^https?:\/\//i.test(targetUrl)) {
+        targetUrl = 'https://' + targetUrl;
+      }
+      if (iframe.src !== targetUrl) {
+        iframe.src = targetUrl;
+      }
+      return;
+    }
+
+    if (iframe) {
+      iframe.style.display = 'none';
+      iframe.style.pointerEvents = 'none';
+      iframe.src = '';
+    }
+
+    const resolvedColors = resolveEffectColors(settings);
+    window.PageDyeEffects.startEffect(canvas, settings.effect || 'waves', settings.opacity, {
+      color: resolvedColors.color,
+      bgColor: resolvedColors.bgColor,
+      density: settings.effectDensity,
+      speed: settings.effectSpeed,
+      text: settings.effectText,
+      transparent: settings.type !== 'none'
+    }, currentCustomEffects);
   }
 
   // Selector mode: applies the chosen color/image directly to the matched
@@ -859,6 +902,22 @@
 
   function removeFrostedGlass() {
     document.querySelectorAll(`style[id^="${FROSTED_STYLE_ID}"]`).forEach((style) => style.remove());
+  }
+
+  // Replaces the native pointer with a custom cursor shape (and optional
+  // trail). Fully delegated to scripts/cursor.js, which owns its own root
+  // element and lifecycle independent of the background overlay — a custom
+  // cursor should keep working even when no background/effect is active.
+  function applyCustomCursor(cfg) {
+    if (cfg && cfg.enabled) {
+      window.PageDyeCursor.start(cfg);
+    } else {
+      removeCustomCursor();
+    }
+  }
+
+  function removeCustomCursor() {
+    window.PageDyeCursor.stop();
   }
 
   // Builds a CSS filter string from a settings object.

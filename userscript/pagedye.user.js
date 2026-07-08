@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PageDye Lite
 // @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.7.12
+// @version      0.7.14
 // @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
 // @author       PageDye
 // @match        *://*/*
@@ -40,7 +40,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.7.12';
+  const VERSION = '0.7.14';
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
@@ -1711,6 +1711,7 @@
   // --------------------------------------------------------------------
   let saveTimer = null;
   let panelHost = null, shadow = null, panelEl = null, gearEl = null;
+  let tabContentAnim = null;
   const ui = {
     open: false, tab: 'wallpaper', scheme: 'light', slideIndex: 0, timePeriodIndex: 0,
     accordions: { mode: true, bg: true, target: false, deepcompat: false, frosted: true, buttonAppearance: true, movement: false, backup: false }
@@ -2124,19 +2125,9 @@
     return '';
   }
 
-  function renderPanel() {
-    if (!shadow) return;
-    const body = shadow.getElementById('pd-body');
-    if (!body) return;
-
-    let html = `<div class="pd-seg pd-target-seg">
-      <button class="${panelTarget === 'site' ? 'active' : ''}" data-action="set-target" data-value="site">此网站</button>
-      <button class="${panelTarget === 'default' ? 'active' : ''}" data-action="set-target" data-value="default">全站默认</button>
-    </div>`;
-    html += renderTargetHint();
-
+  function renderTabContent() {
     if (ui.tab === 'wallpaper') {
-      html += accordion('mode', '壁纸模式', renderModeControls(), { badge: MODE_LABEL[settings.mode] });
+      let html = accordion('mode', '壁纸模式', renderModeControls(), { badge: MODE_LABEL[settings.mode] });
       html += accordion('bg', '背景设置', renderEditableSection(getEditable()));
       const deepCompatBody =
         checkboxRow('为此网站启用', 'deepCompat', !!settings.deepCompat, { scope: 'root' }) +
@@ -2147,7 +2138,9 @@
           <button class="pd-btn-secondary" data-action="pick-deepcompat" style="margin:0;">${svgIcon(ICON.target, 14)}<span>拾取元素</span></button>
         </div>`;
       html += accordion('deepcompat', '深度兼容模式', deepCompatBody, { badge: '顽固网站专用' });
-    } else if (ui.tab === 'frosted') {
+      return html;
+    }
+    if (ui.tab === 'frosted') {
       const frostedItemsHtml = settings.frostedGlass.map((entry, i) => `
         <div class="pd-frosted-item">
           <div class="pd-frosted-item-head">
@@ -2159,38 +2152,86 @@
           ${rangeRow('模糊强度', `frostedGlass.${i}.blur`, 0, 30, entry.blur, 'px', { scope: 'root', step: 0.1 })}
           ${rangeRow('底色不透明度', `frostedGlass.${i}.opacity`, 0, 100, entry.opacity, '%', { scope: 'root' })}
         </div>`).join('');
-      const frostedBody = frostedItemsHtml + `<button class="pd-btn-secondary" data-action="add-frosted">${svgIcon(ICON.plus, 14)}<span>添加元素</span></button>`;
-      html += frostedBody;
-    } else if (ui.tab === 'advanced') {
-      html += renderAdvancedSection();
+      return frostedItemsHtml + `<button class="pd-btn-secondary" data-action="add-frosted">${svgIcon(ICON.plus, 14)}<span>添加元素</span></button>`;
+    }
+    if (ui.tab === 'advanced') return renderAdvancedSection();
+    return '';
+  }
+
+  // The seg control, footer and bottom nav are built once and afterwards
+  // only patched in place (class toggles / innerHTML on their own small
+  // sub-nodes) instead of being torn down and rebuilt on every call. That
+  // full `#pd-body` replace + fade used to run on every tab switch too, so
+  // the bottom nav button the user had just tapped was itself destroyed
+  // and faded back in — the source of the tab-switch flicker. Rebuilding
+  // is now confined to `#pd-tab-content`, which also avoids re-rendering
+  // (and re-animating) the whole accordion tree on every field tweak.
+  function renderPanel() {
+    if (!shadow) return;
+    const body = shadow.getElementById('pd-body');
+    if (!body) return;
+
+    if (!body.dataset.shellReady) {
+      body.innerHTML = `
+        <div class="pd-seg pd-target-seg" id="pd-target-seg">
+          <button data-action="set-target" data-value="site">此网站</button>
+          <button data-action="set-target" data-value="default">全站默认</button>
+        </div>
+        <div id="pd-target-hint"></div>
+        <div id="pd-tab-content"></div>
+        <div class="pd-footer">
+          <div id="pd-status">已同步</div>
+        </div>
+        <div class="pd-bottom-nav">
+          <button data-action="set-tab" data-value="wallpaper">
+            <div class="pd-nav-icon-container">${svgIcon(ICON.layers, 20)}</div>
+            <span class="pd-nav-label">壁纸</span>
+          </button>
+          <button data-action="set-tab" data-value="frosted">
+            <div class="pd-nav-icon-container">${svgIcon(ICON.grid, 20)}</div>
+            <span class="pd-nav-label">磨砂玻璃</span>
+          </button>
+          <button data-action="set-tab" data-value="advanced">
+            <div class="pd-nav-icon-container">${svgIcon(ICON.gear, 20)}</div>
+            <span class="pd-nav-label">高级设置</span>
+          </button>
+        </div>
+      `;
+      body.dataset.shellReady = '1';
     }
 
-    html += `
-      <div class="pd-footer">
-        <div id="pd-status">已同步</div>
-      </div>
-      <div class="pd-bottom-nav">
-        <button class="${ui.tab === 'wallpaper' ? 'active' : ''}" data-action="set-tab" data-value="wallpaper">
-          <div class="pd-nav-icon-container">${svgIcon(ICON.layers, 20)}</div>
-          <span class="pd-nav-label">壁纸</span>
-        </button>
-        <button class="${ui.tab === 'frosted' ? 'active' : ''}" data-action="set-tab" data-value="frosted">
-          <div class="pd-nav-icon-container">${svgIcon(ICON.grid, 20)}</div>
-          <span class="pd-nav-label">磨砂玻璃</span>
-        </button>
-        <button class="${ui.tab === 'advanced' ? 'active' : ''}" data-action="set-tab" data-value="advanced">
-          <div class="pd-nav-icon-container">${svgIcon(ICON.gear, 20)}</div>
-          <span class="pd-nav-label">高级设置</span>
-        </button>
-      </div>
-    `;
+    const seg = body.querySelector('#pd-target-seg');
+    if (seg) {
+      seg.querySelectorAll('button[data-value]').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.value === panelTarget);
+      });
+    }
+    const hint = body.querySelector('#pd-target-hint');
+    if (hint) hint.innerHTML = renderTargetHint();
 
-    body.innerHTML = html;
-    if (body.animate) {
-      body.animate(
-        [{ opacity: 0, transform: 'translateY(3px)' }, { opacity: 1, transform: 'translateY(0)' }],
-        { duration: 140, easing: 'ease-out' }
-      );
+    const nav = body.querySelector('.pd-bottom-nav');
+    if (nav) {
+      nav.querySelectorAll('button[data-value]').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.value === ui.tab);
+      });
+    }
+
+    const tabContent = body.querySelector('#pd-tab-content');
+    if (tabContent) {
+      tabContent.innerHTML = renderTabContent();
+      if (tabContent.animate) {
+        // Cancel any still-tracked previous run explicitly — this element
+        // persists across renders, and repeated .animate() calls on it
+        // otherwise pile up in getAnimations() instead of being GC'd (seen
+        // in testing: the list grows by one on every renderPanel() call,
+        // even well after each animation has finished), which matters here
+        // since renderPanel() fires on nearly every settings tweak.
+        if (tabContentAnim) tabContentAnim.cancel();
+        tabContentAnim = tabContent.animate(
+          [{ opacity: 0, transform: 'translateY(3px)' }, { opacity: 1, transform: 'translateY(0)' }],
+          { duration: 140, easing: 'ease-out' }
+        );
+      }
     }
   }
 

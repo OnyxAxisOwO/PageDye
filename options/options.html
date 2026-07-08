@@ -483,7 +483,40 @@
                   </div>
                 </div>
               </div>
-              <div class="control-group">
+              <div class="control-group" style="margin-bottom: 12px;">
+                <div class="bg-style-facade" id="edit-bg-style-facade">
+                  <input type="radio" name="edit-bgStyleFacade" value="none" id="edit-style-facade-none" checked>
+                  <label for="edit-style-facade-none">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="style-icon"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                    <span data-i18n="typeNone">None</span>
+                  </label>
+
+                  <input type="radio" name="edit-bgStyleFacade" value="solid" id="edit-style-facade-solid">
+                  <label for="edit-style-facade-solid">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="style-icon"><line x1="18" y1="6" x2="6" y2="18"/><line x1="10" y1="6" x2="6" y2="10"/><line x1="18" y1="14" x2="14" y2="18"/></svg>
+                    <span data-i18n="colorModeSolid">Solid</span>
+                  </label>
+
+                  <input type="radio" name="edit-bgStyleFacade" value="gradient" id="edit-style-facade-gradient">
+                  <label for="edit-style-facade-gradient">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="style-icon"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+                    <span data-i18n="colorModeGradient">Gradient</span>
+                  </label>
+
+                  <input type="radio" name="edit-bgStyleFacade" value="image" id="edit-style-facade-image">
+                  <label for="edit-style-facade-image">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="style-icon"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <span data-i18n="typeImage">Image</span>
+                  </label>
+
+                  <input type="radio" name="edit-bgStyleFacade" value="effect" id="edit-style-facade-effect">
+                  <label for="edit-style-facade-effect">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="style-icon"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <span data-i18n="typeEffect">Effect</span>
+                  </label>
+                </div>
+              </div>
+              <div class="control-group" style="display: none;">
                 <div class="segmented-control">
                   <input type="radio" name="edit-bgType" value="none" id="edit-type-none" checked>
                   <label for="edit-type-none" data-i18n="typeNone">None</label>

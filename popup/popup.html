@@ -216,8 +216,8 @@
 
               <input type="radio" name="bgStyleFacade" value="effect" id="style-facade-effect">
               <label for="style-facade-effect">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="style-icon"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.07-7.07l-.7.7M6.63 17.37l-.7.7m11.44 0l-.7-.7M6.63 6.63l-.7-.7M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
-                <span data-i18n="typeEffect">Effects</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="style-icon"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <span data-i18n="typeEffect">Effect</span>
               </label>
             </div>
           </div>
@@ -231,19 +231,16 @@
               
               <input type="radio" name="bgType" value="image" id="type-image">
               <label for="type-image" data-i18n="typeImage">Image</label>
-
-              <input type="radio" name="bgType" value="effect" id="type-effect">
-              <label for="type-effect" data-i18n="typeEffect">Effects</label>
             </div>
           </div>
 
           <div class="editor-panels-slider-viewport">
-            <div class="editor-panels-slider slider-4-panels" id="bg-type-slider">
+            <div class="editor-panels-slider slider-3-panels" id="bg-type-slider">
               <!-- Panel 1: None Mode (empty placeholder) -->
-              <div id="section-none" class="editor-panel-slide slide-4-panels"></div>
+              <div id="section-none" class="editor-panel-slide slide-3-panels"></div>
 
               <!-- Panel 2: Color Section -->
-              <div id="section-color" class="editor-panel-slide slide-4-panels inactive section">
+              <div id="section-color" class="editor-panel-slide slide-3-panels inactive section">
             <div class="control-group" style="margin-bottom: 10px; display: none;">
               <div class="segmented-control" id="color-mode-toggle">
                 <input type="radio" name="colorMode" value="solid" id="colormode-solid" checked>
@@ -394,7 +391,7 @@
           </div>
 
           <!-- Image Section -->
-          <div id="section-image" class="editor-panel-slide slide-4-panels inactive section">
+          <div id="section-image" class="editor-panel-slide slide-3-panels inactive section">
             <div class="control-group">
               <div class="file-drop-area" id="drop-area">
                 <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px; margin-bottom: 8px; color: var(--text-secondary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -421,9 +418,22 @@
                </div>
             </div>
           </div>
+          </div>
+          </div>
+
+          <!-- Effects Overlay Toggle: independent of the Background facade
+               above, so an animated effect can be layered on top of None/
+               Solid/Gradient/Image instead of replacing it. -->
+          <div class="control-group" id="effect-overlay-container" style="margin-top: 14px; margin-bottom: 0; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+            <label class="checkbox-label">
+              <input type="checkbox" id="effect-overlay-toggle">
+              <span data-i18n="effectOverlayEnable">Layer an animated effect</span>
+            </label>
+            <p class="hint" data-i18n="effectOverlayHint" style="margin-top: 6px; margin-bottom: 0;">Adds an animated Canvas wallpaper on top — combine with Solid, Gradient or Image, or use alone.</p>
+          </div>
 
           <!-- Effects Section -->
-          <div id="section-effects" class="editor-panel-slide slide-4-panels inactive section">
+          <div id="section-effects" class="section hidden" style="margin-top: 12px;">
             <div class="control-group">
               <label for="effect-kind" data-i18n="effectKind">Effect</label>
               <p class="hint" data-i18n="effectKindHint">A minimalist black &amp; white animated wallpaper, rendered locally with Canvas — no external assets.</p>
@@ -473,7 +483,7 @@
                 </div>
               </div>
 
-              <div class="control-group">
+              <div class="control-group" id="effect-bg-color-group">
                 <label for="effect-bg-color" data-i18n="effectBgColor">Background Color</label>
                 <div class="color-input-wrapper">
                   <input type="color" id="effect-bg-color" value="#000000">
@@ -497,8 +507,6 @@
               </div>
               <input type="range" id="effect-speed" min="0" max="100" value="50">
             </div>
-          </div>
-          </div>
           </div>
 
           <!-- Common Styles -->
@@ -618,6 +626,92 @@
           </div>
         </div>
       </details>
+
+      <details class="accordion" id="accordion-cursor">
+        <summary class="accordion-summary">
+          <span data-i18n="customCursor">Custom Cursor</span>
+          <span class="badge-new">Beta</span>
+          <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="accordion-content">
+          <div class="control-group" style="margin-bottom: 12px;">
+            <label class="checkbox-label">
+              <input type="checkbox" id="cursor-toggle">
+              <span data-i18n="cursorEnable">Enable for this site</span>
+            </label>
+            <p class="hint" data-i18n="cursorHint" style="margin-top: 6px; margin-bottom: 0;">Replace the page pointer with a custom shape. Desktop with a mouse only.</p>
+          </div>
+
+          <div class="control-group">
+            <label data-i18n="cursorPreset">Shape</label>
+            <div class="cursor-presets-grid" id="cursor-presets-grid"></div>
+          </div>
+
+          <div class="control-group">
+            <label for="cursor-color" data-i18n="cursorColor">Color</label>
+            <div class="color-input-wrapper">
+              <input type="color" id="cursor-color" value="#ff5fa2">
+              <input type="text" id="cursor-color-text" value="#ff5fa2">
+            </div>
+          </div>
+
+          <div class="control-group">
+            <div class="label-row">
+              <label for="cursor-size" data-i18n="cursorSize">Size</label>
+              <span id="cursor-size-val" class="val-badge">24px</span>
+            </div>
+            <input type="range" id="cursor-size" min="12" max="48" value="24">
+          </div>
+
+          <div class="control-group" style="margin-bottom: 0;">
+            <div class="label-row">
+              <label for="cursor-hover-scale" data-i18n="cursorHoverScale">Hover Enlarge</label>
+              <span id="cursor-hover-scale-val" class="val-badge">1.6x</span>
+            </div>
+            <input type="range" id="cursor-hover-scale" min="1" max="3" step="0.1" value="1.6">
+          </div>
+
+          <div class="control-group" style="margin-bottom: 0;">
+            <label class="checkbox-label">
+              <input type="checkbox" id="cursor-smoothing-toggle">
+              <span data-i18n="cursorSmoothing">Smooth Movement</span>
+            </label>
+            <p class="hint" data-i18n="cursorSmoothingHint" style="margin-top: 6px; margin-bottom: 0;">Cursor eases toward the pointer instead of tracking it exactly. Off by default for precise clicking.</p>
+          </div>
+
+          <div class="control-group" style="margin-top: 14px; margin-bottom: 0; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+            <label class="checkbox-label">
+              <input type="checkbox" id="cursor-trail-toggle">
+              <span data-i18n="cursorTrailEnable">Mouse Trail</span>
+            </label>
+          </div>
+
+          <div id="cursor-trail-options" class="hidden">
+            <div class="control-group">
+              <label for="cursor-trail-style" data-i18n="cursorTrailStyle">Trail Style</label>
+              <select id="cursor-trail-style">
+                <option value="fade" data-i18n="cursorTrailFade">Fade</option>
+                <option value="comet" data-i18n="cursorTrailComet">Comet</option>
+                <option value="sparkle" data-i18n="cursorTrailSparkle">Sparkle</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <div class="label-row">
+                <label for="cursor-trail-length" data-i18n="cursorTrailLength">Length</label>
+                <span id="cursor-trail-length-val" class="val-badge">12</span>
+              </div>
+              <input type="range" id="cursor-trail-length" min="4" max="40" value="12">
+            </div>
+            <div class="control-group" style="margin-bottom: 0;">
+              <div class="label-row">
+                <label for="cursor-trail-speed" data-i18n="cursorTrailSpeed">Speed</label>
+                <span id="cursor-trail-speed-val" class="val-badge">50%</span>
+              </div>
+              <input type="range" id="cursor-trail-speed" min="0" max="100" value="50">
+            </div>
+          </div>
+        </div>
+      </details>
       </div>
 
       <div id="panel-frosted" class="editor-panel-slide inactive">
@@ -681,6 +775,7 @@
     </div>
   </div>
   <script src="../scripts/gradient.js"></script>
+  <script src="../scripts/cursor.js"></script>
   <script src="../lib/prism.js"></script>
   <script src="popup.js"></script>
 </body>

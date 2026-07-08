@@ -29,7 +29,12 @@ window.PageDyeEffects = (function () {
       bgColor: (cfg && cfg.bgColor) || '#000000',
       density: clampPercent(cfg && cfg.density, 50),
       speed: clampPercent(cfg && cfg.speed, 50),
-      text: (cfg && typeof cfg.text === 'string' && cfg.text.trim()) ? cfg.text : 'PageDye'
+      text: (cfg && typeof cfg.text === 'string' && cfg.text.trim()) ? cfg.text : 'PageDye',
+      // When true, the effect is layered on top of another background (color/
+      // gradient/image) instead of being the sole background — every engine's
+      // per-frame clear must leave that background visible instead of
+      // painting its own opaque bgColor. See clearFrame() below.
+      transparent: !!(cfg && cfg.transparent)
     };
   }
 
@@ -53,6 +58,32 @@ window.PageDyeEffects = (function () {
       wobbleSpeed: 0.5 + Math.random() * 1.2,
       wobbleAmp: 8 + Math.random() * 16
     };
+  }
+
+  // Clears/fades the canvas at the start of a frame. In standalone mode
+  // (cfg.transparent false) this is the classic opaque fillRect — optionally
+  // at partial alpha to leave a fading motion trail (matrix/rain). In overlay
+  // mode (cfg.transparent true) an opaque fill would hide whatever background
+  // this effect is layered on top of, so a plain clearRect is used instead;
+  // for trail effects, 'destination-out' fades the existing canvas content's
+  // *alpha* by the same amount an opaque trailAlpha fill would have covered
+  // it, without ever painting an opaque color — the layer beneath keeps
+  // showing through.
+  function clearFrame(ctx, width, height, cfg, trailAlpha) {
+    if (cfg.transparent) {
+      if (trailAlpha == null) {
+        ctx.clearRect(0, 0, width, height);
+      } else {
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = `rgba(0, 0, 0, ${trailAlpha})`;
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+      }
+    } else {
+      ctx.fillStyle = trailAlpha == null ? cfg.bgColor : hexToRgba(cfg.bgColor, trailAlpha);
+      ctx.fillRect(0, 0, width, height);
+    }
   }
 
   function spawnConfetti(width, height, initial, speedMul) {
@@ -90,8 +121,7 @@ window.PageDyeEffects = (function () {
         const { width, height, fontSize, columns, cfg } = state;
         if (!width || !height) return;
         const speedMul = effectSpeedMultiplier(cfg.speed);
-        ctx.fillStyle = hexToRgba(cfg.bgColor, 0.12);
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg, 0.12);
         ctx.font = `${fontSize}px monospace`;
         ctx.textBaseline = 'top';
         ctx.fillStyle = hexToRgba(cfg.color, 0.85);
@@ -133,8 +163,7 @@ window.PageDyeEffects = (function () {
       draw(ctx, canvas, state, dt) {
         const { width, height, particles, mouse, cfg } = state;
         if (!width || !height) return;
-        ctx.fillStyle = cfg.bgColor;
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg);
 
         const dtSec = dt / 1000;
         const repelRadius = 90;
@@ -205,8 +234,7 @@ window.PageDyeEffects = (function () {
         if (!width || !height) return;
         state.phase += dt * 0.0006 * effectSpeedMultiplier(cfg.speed);
 
-        ctx.fillStyle = cfg.bgColor;
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg);
 
         for (let i = 0; i < lineCount; i++) {
           const t = i / (lineCount - 1 || 1);
@@ -254,8 +282,7 @@ window.PageDyeEffects = (function () {
         const cy = height / 2;
         const dtSec = dt / 1000;
 
-        ctx.fillStyle = cfg.bgColor;
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg);
         ctx.fillStyle = cfg.color;
 
         stars.forEach((s) => {
@@ -298,8 +325,7 @@ window.PageDyeEffects = (function () {
         const spawnInterval = 1400 - (cfg.density / 100) * 1150;
         const maxRadius = Math.max(width, height) * 0.5;
 
-        ctx.fillStyle = cfg.bgColor;
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg);
 
         state.spawnTimer -= dt;
         if (state.spawnTimer <= 0) {
@@ -337,8 +363,7 @@ window.PageDyeEffects = (function () {
         if (!width || !height) return;
         state.phase += dt * 0.00035 * effectSpeedMultiplier(cfg.speed);
 
-        ctx.fillStyle = cfg.bgColor;
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg);
         ctx.globalCompositeOperation = 'lighter';
 
         for (let i = 0; i < bandCount; i++) {
@@ -392,8 +417,7 @@ window.PageDyeEffects = (function () {
         const speedMul = effectSpeedMultiplier(cfg.speed);
         const dtSec = dt / 1000;
 
-        ctx.fillStyle = cfg.bgColor;
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg);
         ctx.fillStyle = cfg.color;
 
         flakes.forEach((f) => {
@@ -434,8 +458,7 @@ window.PageDyeEffects = (function () {
         const speedMul = effectSpeedMultiplier(cfg.speed);
         const dtSec = dt / 1000;
 
-        ctx.fillStyle = cfg.bgColor;
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg);
         ctx.strokeStyle = cfg.color;
         ctx.lineWidth = 1.2;
 
@@ -479,8 +502,7 @@ window.PageDyeEffects = (function () {
         if (!width || !height) return;
         const dtSec = dt / 1000;
 
-        ctx.fillStyle = cfg.bgColor;
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg);
 
         nodes.forEach((n) => {
           n.x += n.vx * dtSec;
@@ -549,8 +571,7 @@ window.PageDyeEffects = (function () {
         if (!width || !height) return;
         const dtSec = dt / 1000;
 
-        ctx.fillStyle = cfg.bgColor;
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg);
 
         flies.forEach((f) => {
           f.angle += f.turnSpeed * dtSec;
@@ -596,8 +617,7 @@ window.PageDyeEffects = (function () {
         if (!width || !height) return;
         state.phase += dt * 0.0004 * effectSpeedMultiplier(cfg.speed);
 
-        ctx.fillStyle = cfg.bgColor;
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg);
 
         const cycle = state.phase % 1;
         const waveX = cycle * (width + cell * 6) - cell * 3;
@@ -650,8 +670,7 @@ window.PageDyeEffects = (function () {
         if (!width || !height) return;
         const dtSec = dt / 1000;
         // Partial-opacity clear leaves a short motion trail behind each drop.
-        ctx.fillStyle = hexToRgba(cfg.bgColor, 0.25);
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg, 0.25);
         ctx.strokeStyle = hexToRgba(cfg.color, 0.5);
         ctx.lineWidth = 1;
 
@@ -688,8 +707,7 @@ window.PageDyeEffects = (function () {
         const speedMul = effectSpeedMultiplier(cfg.speed);
         const dtSec = dt / 1000;
 
-        ctx.fillStyle = cfg.bgColor;
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg);
         ctx.fillStyle = cfg.color;
 
         pieces.forEach((p) => {
@@ -734,8 +752,7 @@ window.PageDyeEffects = (function () {
         if (!width || !height) return;
         state.phase += dt * 0.0005 * effectSpeedMultiplier(cfg.speed);
 
-        ctx.fillStyle = cfg.bgColor;
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg);
         ctx.globalCompositeOperation = 'lighter';
 
         blobs.forEach((b) => {
@@ -779,8 +796,7 @@ window.PageDyeEffects = (function () {
         const cy = height / 2;
         const maxR = Math.max(width, height) * 0.55;
 
-        ctx.fillStyle = cfg.bgColor;
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg);
         ctx.fillStyle = cfg.color;
 
         particles.forEach((p) => {
@@ -826,8 +842,7 @@ window.PageDyeEffects = (function () {
         const charInterval = 160 / speedMul;
         const holdDuration = 1400;
 
-        ctx.fillStyle = cfg.bgColor;
-        ctx.fillRect(0, 0, width, height);
+        clearFrame(ctx, width, height, cfg);
 
         state.timer += dt;
         if (state.phase === 'typing') {

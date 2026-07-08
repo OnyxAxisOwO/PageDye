@@ -209,6 +209,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       effectBgColor: "Background Color",
       effectDensity: "Density",
       effectSpeed: "Speed",
+      effectOverlayEnable: "Layer an animated effect",
+      effectOverlayHint: "Adds an animated Canvas wallpaper on top — combine with Solid, Gradient or Image, or use alone.",
       color: "Color",
       selectColor: "Select Color",
       opacity: "Opacity",
@@ -251,6 +253,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedOpacity: "Tint",
       frostedCustomColor: "Custom Color",
       frostedAddBtn: "+ Add element",
+      customCursor: "Custom Cursor",
+      cursorEnable: "Enable for this site",
+      cursorHint: "Replace the page pointer with a custom shape. Desktop with a mouse only.",
+      cursorPreset: "Shape",
+      cursorPresetBall: "Ball",
+      cursorPresetRing: "Ring",
+      cursorPresetGlow: "Glow Orb",
+      cursorPresetDotRing: "Dot & Ring",
+      cursorColor: "Color",
+      cursorSize: "Size",
+      cursorHoverScale: "Hover Enlarge",
+      cursorSmoothing: "Smooth Movement",
+      cursorSmoothingHint: "Cursor eases toward the pointer instead of tracking it exactly. Off by default for precise clicking.",
+      cursorTrailEnable: "Mouse Trail",
+      cursorTrailStyle: "Trail Style",
+      cursorTrailFade: "Fade",
+      cursorTrailComet: "Comet",
+      cursorTrailSparkle: "Sparkle",
+      cursorTrailLength: "Length",
+      cursorTrailSpeed: "Speed",
       customCss: "Custom CSS",
       customCssHint: "Injected into this site. Use !important to override stubborn styles.",
       pickerFailed: "Can't pick on this page",
@@ -352,6 +374,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       effectBgColor: "背景颜色",
       effectDensity: "密度",
       effectSpeed: "速度",
+      effectOverlayEnable: "叠加动效",
+      effectOverlayHint: "在背景上叠加一层动画 Canvas 壁纸——可以和纯色、渐变、图片任意组合，也可以单独使用。",
       color: "颜色",
       selectColor: "选择颜色",
       opacity: "不透明度",
@@ -394,6 +418,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedOpacity: "透明度",
       frostedCustomColor: "自定义颜色",
       frostedAddBtn: "+ 添加元素",
+      customCursor: "自定义光标",
+      cursorEnable: "为此网站启用",
+      cursorHint: "用自定义形状替换页面指针。仅在使用鼠标的桌面设备上生效。",
+      cursorPreset: "形状",
+      cursorPresetBall: "实心球",
+      cursorPresetRing: "空心环",
+      cursorPresetGlow: "发光球",
+      cursorPresetDotRing: "点环组合",
+      cursorColor: "颜色",
+      cursorSize: "大小",
+      cursorHoverScale: "悬停放大",
+      cursorSmoothing: "平滑跟随",
+      cursorSmoothingHint: "光标会缓动跟随指针，而非精确对齐。默认关闭以保证点击精准。",
+      cursorTrailEnable: "鼠标拖尾",
+      cursorTrailStyle: "拖尾样式",
+      cursorTrailFade: "渐隐",
+      cursorTrailComet: "彗星",
+      cursorTrailSparkle: "闪烁",
+      cursorTrailLength: "长度",
+      cursorTrailSpeed: "速度",
       customCss: "自定义 CSS",
       customCssHint: "将注入到本网站。可用 !important 覆盖顽固样式。",
       pickerFailed: "此页面无法拾取",
@@ -466,6 +510,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     sectionColor: document.getElementById('section-color'),
     sectionImage: document.getElementById('section-image'),
     sectionEffects: document.getElementById('section-effects'),
+    effectOverlayToggle: document.getElementById('effect-overlay-toggle'),
     effectKind: document.getElementById('effect-kind'),
     manageCustomEffectsLink: document.getElementById('manage-custom-effects-link'),
     effectTextControl: document.getElementById('effect-text-control'),
@@ -476,6 +521,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     effectColorText: document.getElementById('effect-color-text'),
     effectBgColor: document.getElementById('effect-bg-color'),
     effectBgColorText: document.getElementById('effect-bg-color-text'),
+    effectBgColorGroup: document.getElementById('effect-bg-color-group'),
     effectDensity: document.getElementById('effect-density'),
     effectDensityVal: document.getElementById('effect-density-val'),
     effectSpeed: document.getElementById('effect-speed'),
@@ -534,6 +580,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     deepCompatPickBtn: document.getElementById('deep-compat-pick-btn'),
     frostedList: document.getElementById('frosted-list'),
     frostedAddBtn: document.getElementById('frosted-add-btn'),
+    cursorToggle: document.getElementById('cursor-toggle'),
+    cursorPresetsGrid: document.getElementById('cursor-presets-grid'),
+    cursorColor: document.getElementById('cursor-color'),
+    cursorColorText: document.getElementById('cursor-color-text'),
+    cursorSize: document.getElementById('cursor-size'),
+    cursorSizeVal: document.getElementById('cursor-size-val'),
+    cursorHoverScale: document.getElementById('cursor-hover-scale'),
+    cursorHoverScaleVal: document.getElementById('cursor-hover-scale-val'),
+    cursorSmoothingToggle: document.getElementById('cursor-smoothing-toggle'),
+    cursorTrailToggle: document.getElementById('cursor-trail-toggle'),
+    cursorTrailOptions: document.getElementById('cursor-trail-options'),
+    cursorTrailStyle: document.getElementById('cursor-trail-style'),
+    cursorTrailLength: document.getElementById('cursor-trail-length'),
+    cursorTrailLengthVal: document.getElementById('cursor-trail-length-val'),
+    cursorTrailSpeed: document.getElementById('cursor-trail-speed'),
+    cursorTrailSpeedVal: document.getElementById('cursor-trail-speed-val'),
     customCss: document.getElementById('custom-css'),
     settingsBtn: document.getElementById('settings-btn'),
 
@@ -567,7 +629,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // while the tab stayed open). Requires the "scripting" permission.
   async function sendToTab(tabId, message) {
     try {
-      await chrome.scripting.executeScript({ target: { tabId }, files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/content.js'] });
+      await chrome.scripting.executeScript({ target: { tabId }, files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/cursor.js', 'scripts/content.js'] });
     } catch (e) {
       // Injection can fail on restricted pages (chrome://, Web Store, etc.).
     }
@@ -590,6 +652,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let saveDebounceTimer = null;
   let gradientStopsState = [];
   let frostedGlassState = [];
+  let cursorPresetState = 'ball';
   let cssEditorController = null;
   let isInitialLoad = true;
 
@@ -664,16 +727,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Background Type Switch
   els.bgTypes.forEach(radio => {
     radio.addEventListener('change', () => {
-      // Full opacity makes an effect's flat bgColor look harsh; nudge a
-      // still-untouched (100%) slider down when switching into this type.
-      if (radio.value === 'effect' && els.opacity.value === '100') {
-        els.opacity.value = 85;
-        els.opacityVal.textContent = '85%';
-      }
       updateUI(radio.value);
       updateInteractivePreviews();
       triggerImmediateSave();
     });
+  });
+
+  // Effects Overlay toggle — independent of the Background type above, so an
+  // animated effect can be layered on top of None/Solid/Gradient/Image.
+  els.effectOverlayToggle.addEventListener('change', () => {
+    // Full opacity makes an effect's flat bgColor look harsh; nudge a
+    // still-untouched (100%) slider down the moment the overlay is turned on.
+    if (els.effectOverlayToggle.checked && els.opacity.value === '100') {
+      els.opacity.value = 85;
+      els.opacityVal.textContent = '85%';
+    }
+    els.sectionEffects.classList.toggle('hidden', !els.effectOverlayToggle.checked);
+    updateEffectOverlayUI();
+    updateInteractivePreviews();
+    triggerImmediateSave();
+    if (window.syncFacadeUI) window.syncFacadeUI();
   });
 
   // Effect kind / color / density / speed
@@ -998,6 +1071,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     triggerImmediateSave();
   });
 
+  // Custom cursor
+  els.cursorToggle.addEventListener('change', () => triggerImmediateSave());
+  els.cursorPresetsGrid.addEventListener('click', (e) => {
+    const swatch = e.target.closest('.cursor-preset-swatch');
+    if (!swatch) return;
+    cursorPresetState = swatch.dataset.preset;
+    els.cursorPresetsGrid.querySelectorAll('.cursor-preset-swatch').forEach((el) => {
+      el.classList.toggle('active', el.dataset.preset === cursorPresetState);
+    });
+    triggerImmediateSave();
+  });
+  els.cursorColor.addEventListener('input', (e) => {
+    els.cursorColorText.value = e.target.value;
+    queueAutoSave();
+  });
+  els.cursorColorText.addEventListener('input', (e) => {
+    els.cursorColor.value = e.target.value;
+    queueAutoSave();
+  });
+  els.cursorSize.addEventListener('input', (e) => {
+    els.cursorSizeVal.textContent = `${e.target.value}px`;
+    queueAutoSave();
+  });
+  els.cursorHoverScale.addEventListener('input', (e) => {
+    els.cursorHoverScaleVal.textContent = `${parseFloat(e.target.value).toFixed(1)}x`;
+    queueAutoSave();
+  });
+  els.cursorSmoothingToggle.addEventListener('change', () => triggerImmediateSave());
+  els.cursorTrailToggle.addEventListener('change', (e) => {
+    els.cursorTrailOptions.classList.toggle('hidden', !e.target.checked);
+    triggerImmediateSave();
+  });
+  els.cursorTrailStyle.addEventListener('change', () => queueAutoSave());
+  els.cursorTrailLength.addEventListener('input', (e) => {
+    els.cursorTrailLengthVal.textContent = e.target.value;
+    queueAutoSave();
+  });
+  els.cursorTrailSpeed.addEventListener('input', (e) => {
+    els.cursorTrailSpeedVal.textContent = `${e.target.value}%`;
+    queueAutoSave();
+  });
+
   // Advanced: element picker
   els.pickBtn.addEventListener('click', startPicker);
   els.deepCompatPickBtn.addEventListener('click', startDeepCompatPicker);
@@ -1310,6 +1425,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function populateForm(subSettings) {
     document.querySelector(`input[name="bgType"][value="${subSettings.type || 'none'}"]`).checked = true;
+
+    // Set before updateUI() runs below: it reads effectOverlayToggle.checked
+    // to decide whether the Opacity section should show for a bare "None +
+    // effect" background.
+    els.effectOverlayToggle.checked = !!subSettings.effectEnabled;
+    els.sectionEffects.classList.toggle('hidden', !subSettings.effectEnabled);
+
     updateUI(subSettings.type || 'none');
 
     currentImageBase64 = null;
@@ -1330,25 +1452,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentImageBase64 = subSettings.value;
         els.dropArea.classList.add('hidden');
         els.fileInfo.classList.remove('hidden');
-        els.fileName.textContent = t('savedImage'); 
+        els.fileName.textContent = t('savedImage');
       } else {
         els.imageUrl.value = subSettings.value || '';
       }
-    } else if (subSettings.type === 'effect') {
-      els.effectKind.value = subSettings.effect || 'waves';
-      els.effectText.value = subSettings.effectText || 'PageDye';
-      els.effectTextControl.classList.toggle('hidden', els.effectKind.value !== 'typewriter');
-      els.effectColorScheme.value = subSettings.effectColorScheme || 'auto';
-      els.effectColorCustomControl.classList.toggle('hidden', els.effectColorScheme.value !== 'custom');
-      els.effectColor.value = subSettings.effectColor || '#ffffff';
-      els.effectColorText.value = subSettings.effectColor || '#ffffff';
-      els.effectBgColor.value = subSettings.effectBgColor || '#000000';
-      els.effectBgColorText.value = subSettings.effectBgColor || '#000000';
-      els.effectDensity.value = subSettings.effectDensity !== undefined ? subSettings.effectDensity : 50;
-      els.effectDensityVal.textContent = `${els.effectDensity.value}%`;
-      els.effectSpeed.value = subSettings.effectSpeed !== undefined ? subSettings.effectSpeed : 50;
-      els.effectSpeedVal.textContent = `${els.effectSpeed.value}%`;
     }
+
+    // Remaining effect-overlay fields — also independent of `type`, always
+    // populated so switching Background type doesn't lose the configured
+    // effect. (effectOverlayToggle/sectionEffects are already set above.)
+    els.effectKind.value = subSettings.effect || 'waves';
+    els.effectText.value = subSettings.effectText || 'PageDye';
+    els.effectTextControl.classList.toggle('hidden', els.effectKind.value !== 'typewriter');
+    els.effectColorScheme.value = subSettings.effectColorScheme || 'auto';
+    els.effectColorCustomControl.classList.toggle('hidden', els.effectColorScheme.value !== 'custom');
+    els.effectColor.value = subSettings.effectColor || '#ffffff';
+    els.effectColorText.value = subSettings.effectColor || '#ffffff';
+    els.effectBgColor.value = subSettings.effectBgColor || '#000000';
+    els.effectBgColorText.value = subSettings.effectBgColor || '#000000';
+    els.effectDensity.value = subSettings.effectDensity !== undefined ? subSettings.effectDensity : 50;
+    els.effectDensityVal.textContent = `${els.effectDensity.value}%`;
+    els.effectSpeed.value = subSettings.effectSpeed !== undefined ? subSettings.effectSpeed : 50;
+    els.effectSpeedVal.textContent = `${els.effectSpeed.value}%`;
+    updateEffectOverlayUI();
 
     els.opacity.value = subSettings.opacity !== undefined ? subSettings.opacity : 100;
     els.opacityVal.textContent = `${els.opacity.value}%`;
@@ -1392,15 +1518,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       dest.gradient = collectGradientFromForm();
     } else if (type === 'image') {
       value = currentImageBase64 || els.imageUrl.value;
-    } else if (type === 'effect') {
-      dest.effect = els.effectKind.value;
-      dest.effectText = els.effectText.value || 'PageDye';
-      dest.effectColorScheme = els.effectColorScheme.value;
-      dest.effectColor = els.effectColor.value;
-      dest.effectBgColor = els.effectBgColor.value;
-      dest.effectDensity = parseInt(els.effectDensity.value, 10);
-      dest.effectSpeed = parseInt(els.effectSpeed.value, 10);
     }
+
+    // Effect-overlay fields are independent of `type` — always collected
+    // (same tier as opacity/blur/filters/style below) so they persist across
+    // Background type switches instead of only while type === 'effect'.
+    dest.effectEnabled = els.effectOverlayToggle.checked;
+    dest.effect = els.effectKind.value;
+    dest.effectText = els.effectText.value || 'PageDye';
+    dest.effectColorScheme = els.effectColorScheme.value;
+    dest.effectColor = els.effectColor.value;
+    dest.effectBgColor = els.effectBgColor.value;
+    dest.effectDensity = parseInt(els.effectDensity.value, 10);
+    dest.effectSpeed = parseInt(els.effectSpeed.value, 10);
 
     dest.type = type;
     dest.value = value;
@@ -1437,6 +1567,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentDomain = target === 'default' ? DEFAULT_BG_KEY : siteDomain;
     els.domainBadge.textContent = target === 'default' ? t('targetDefault') : siteDomain;
     await loadSettings(currentDomain);
+  }
+
+  // Upgrades a legacy sub-settings object (saved before Effects became an
+  // independent overlay toggle) in place: the old type:'effect' was a 4th
+  // mutually-exclusive background choice; it's now equivalent to type:'none'
+  // with the overlay toggled on. All effect* fields already on the object are
+  // left untouched. Idempotent — safe to call on already-migrated data.
+  function migrateBgType(obj) {
+    if (!obj) return;
+    if (obj.type === 'effect') {
+      obj.type = 'none';
+      obj.effectEnabled = true;
+    } else {
+      obj.effectEnabled = !!obj.effectEnabled;
+    }
   }
 
   async function loadSettings(domain) {
@@ -1502,6 +1647,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           style: Object.assign({ fixed: true, size: 'cover', repeat: false }, currentSettings.style || {}),
           colorMode: currentSettings.colorMode || 'solid',
           gradient: currentSettings.gradient || null,
+          effectEnabled: !!currentSettings.effectEnabled,
           effect: currentSettings.effect || 'waves',
           effectText: currentSettings.effectText || 'PageDye',
           effectColorScheme: currentSettings.effectColorScheme || 'auto',
@@ -1540,6 +1686,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       };
     }
 
+    // Upgrade any legacy type:'effect' entries (saved before Effects became
+    // an independent overlay toggle) across every mode's sub-settings.
+    migrateBgType(currentSettings);
+    migrateBgType(currentSettings.light);
+    migrateBgType(currentSettings.dark);
+    (currentSettings.timeRange.items || []).forEach(migrateBgType);
+    (currentSettings.slideshow.items || []).forEach(migrateBgType);
+
     const mode = currentSettings.mode || 'single';
     const radio = document.querySelector(`input[name="wpMode"][value="${mode}"]`);
     if (radio) radio.checked = true;
@@ -1553,6 +1707,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     renderFrostedList(normalizeFrostedGlassList(currentSettings.frostedGlass));
 
+    const cursorCfg = window.PageDyeCursor.normalizeCursorConfig(currentSettings.cursor);
+    els.cursorToggle.checked = !!(currentSettings.cursor && currentSettings.cursor.enabled);
+    cursorPresetState = cursorCfg.preset;
+    renderCursorPresetsGrid();
+    els.cursorColor.value = cursorCfg.color;
+    els.cursorColorText.value = cursorCfg.color;
+    els.cursorSize.value = cursorCfg.size;
+    els.cursorSizeVal.textContent = `${cursorCfg.size}px`;
+    els.cursorHoverScale.value = cursorCfg.hoverScale;
+    els.cursorHoverScaleVal.textContent = `${cursorCfg.hoverScale.toFixed(1)}x`;
+    els.cursorSmoothingToggle.checked = cursorCfg.smoothing;
+    els.cursorTrailToggle.checked = cursorCfg.trail.enabled;
+    els.cursorTrailOptions.classList.toggle('hidden', !cursorCfg.trail.enabled);
+    els.cursorTrailStyle.value = cursorCfg.trail.style;
+    els.cursorTrailLength.value = cursorCfg.trail.length;
+    els.cursorTrailLengthVal.textContent = cursorCfg.trail.length;
+    els.cursorTrailSpeed.value = cursorCfg.trail.speed;
+    els.cursorTrailSpeedVal.textContent = `${cursorCfg.trail.speed}%`;
+
     // Auto expand accordion if target selector or custom css has values.
     // Deep Compatibility Mode now has its own always-expanded accordion.
     const accordionAdvanced = document.getElementById('accordion-advanced');
@@ -1561,7 +1734,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       if (accordionAdvanced) accordionAdvanced.open = false;
     }
-    
+
+    const accordionCursor = document.getElementById('accordion-cursor');
+    if (accordionCursor) accordionCursor.open = els.cursorToggle.checked;
+
     updateInteractivePreviews();
   }
 
@@ -1657,7 +1833,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const card = document.createElement('div');
       card.className = 'wallpaper-grid-card';
       if (idx === activeSlideshowIndex) card.classList.add('active');
-      
+      card.classList.toggle('has-effect-badge', !!item.effectEnabled);
+
       if (item.type === 'color' && item.colorMode === 'gradient' && item.gradient) {
         card.style.backgroundImage = window.PageDyeGradient.buildGradientCss(item.gradient);
       } else if (item.type === 'color') {
@@ -1665,7 +1842,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         card.style.backgroundImage = 'none';
       } else if (item.type === 'image' && item.value) {
         card.style.backgroundImage = `url('${item.value}')`;
-      } else if (item.type === 'effect') {
+      } else if (item.effectEnabled) {
         card.classList.add('type-none');
         card.textContent = t('typeEffect');
       } else {
@@ -1693,6 +1870,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function updateCardPreview(element, subSettings) {
     if (!element || !subSettings) return;
+    element.classList.toggle('has-effect-badge', !!subSettings.effectEnabled);
     if (subSettings.type === 'color' && subSettings.colorMode === 'gradient' && subSettings.gradient) {
       element.style.backgroundImage = window.PageDyeGradient.buildGradientCss(subSettings.gradient);
       element.style.backgroundColor = '';
@@ -1731,17 +1909,21 @@ document.addEventListener('DOMContentLoaded', async () => {
           activeCard.textContent = '';
           activeCard.style.backgroundColor = '';
           activeCard.style.backgroundImage = '';
+          const baseClass = 'wallpaper-grid-card active' + (item.effectEnabled ? ' has-effect-badge' : '');
           if (item.type === 'color' && item.colorMode === 'gradient' && item.gradient) {
             activeCard.style.backgroundImage = window.PageDyeGradient.buildGradientCss(item.gradient);
-            activeCard.className = 'wallpaper-grid-card active';
+            activeCard.className = baseClass;
           } else if (item.type === 'color') {
             activeCard.style.backgroundColor = item.value || '#ffffff';
-            activeCard.className = 'wallpaper-grid-card active';
+            activeCard.className = baseClass;
           } else if (item.type === 'image' && item.value) {
             activeCard.style.backgroundImage = `url('${item.value}')`;
-            activeCard.className = 'wallpaper-grid-card active';
+            activeCard.className = baseClass;
+          } else if (item.effectEnabled) {
+            activeCard.className = baseClass + ' type-none';
+            activeCard.textContent = t('typeEffect');
           } else {
-            activeCard.className = 'wallpaper-grid-card active type-none';
+            activeCard.className = baseClass + ' type-none';
             activeCard.textContent = 'None';
           }
           
@@ -1765,7 +1947,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sectionNone = document.getElementById('section-none');
     const sectionColor = document.getElementById('section-color');
     const sectionImage = document.getElementById('section-image');
-    const sectionEffects = document.getElementById('section-effects');
 
     if (bgTypeSlider && !isInitialLoad) {
       bgTypeSlider.classList.add('transitioning');
@@ -1774,38 +1955,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (sectionNone) sectionNone.classList.toggle('inactive', type !== 'none');
     if (sectionColor) sectionColor.classList.toggle('inactive', type !== 'color');
     if (sectionImage) sectionImage.classList.toggle('inactive', type !== 'image');
-    if (sectionEffects) sectionEffects.classList.toggle('inactive', type !== 'effect');
 
     if (bgTypeSlider) {
       if (isInitialLoad) {
         bgTypeSlider.style.transition = 'none';
       }
       if (type === 'none') bgTypeSlider.style.transform = 'translateX(0)';
-      else if (type === 'color') bgTypeSlider.style.transform = 'translateX(-25%)';
-      else if (type === 'image') bgTypeSlider.style.transform = 'translateX(-50%)';
-      else if (type === 'effect') bgTypeSlider.style.transform = 'translateX(-75%)';
+      else if (type === 'color') bgTypeSlider.style.transform = 'translateX(-33.333%)';
+      else if (type === 'image') bgTypeSlider.style.transform = 'translateX(-66.667%)';
       if (isInitialLoad) {
         bgTypeSlider.offsetHeight; // trigger reflow
         bgTypeSlider.style.transition = '';
       }
     }
 
-    els.sectionStyles.classList.add('hidden');
+    // Opacity (and, for image, blur/filters) show whenever there's anything
+    // to fade — a base type, or the effect overlay on its own over "None".
+    els.sectionStyles.classList.toggle('hidden', type === 'none' && !els.effectOverlayToggle.checked);
     els.blurControl.classList.add('hidden');
     const advFilters = document.getElementById('advanced-filters');
     if (advFilters) advFilters.classList.add('hidden');
 
     if (type === 'color') {
-      els.sectionStyles.classList.remove('hidden');
       const checkedColorMode = document.querySelector('input[name="colorMode"]:checked');
       updateColorModeUI(checkedColorMode ? checkedColorMode.value : 'solid');
     } else if (type === 'image') {
-      els.sectionStyles.classList.remove('hidden');
       els.blurControl.classList.remove('hidden');
       if (advFilters) advFilters.classList.remove('hidden');
       updatePreview();
-    } else if (type === 'effect') {
-      els.sectionStyles.classList.remove('hidden');
     }
 
     // Toggle image position options if image is active
@@ -1817,6 +1994,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         imgOptions.classList.add('hidden');
       }
     }
+
+    updateEffectOverlayUI();
+  }
+
+  // Hides the effect overlay's own "Background Color" field when a Background
+  // type is active underneath — that field only matters in standalone/opaque
+  // mode (type none), since layered mode clears the canvas transparently each
+  // frame instead of painting it (see clearFrame() in scripts/effects.js).
+  function updateEffectOverlayUI() {
+    if (!els.effectBgColorGroup) return;
+    const checked = document.querySelector('input[name="bgType"]:checked');
+    const type = checked ? checked.value : 'none';
+    els.effectBgColorGroup.classList.toggle('hidden', type !== 'none');
   }
 
   function updateColorModeUI(colorMode) {
@@ -2135,6 +2325,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  function renderCursorPresetsGrid() {
+    els.cursorPresetsGrid.innerHTML = '';
+    Object.keys(window.PageDyeCursor.PRESETS).forEach((id) => {
+      const preset = window.PageDyeCursor.PRESETS[id];
+      const swatch = document.createElement('div');
+      swatch.className = 'cursor-preset-swatch' + (id === cursorPresetState ? ' active' : '');
+      swatch.title = lang === 'zh' ? preset.name_zh : preset.name_en;
+      swatch.dataset.preset = id;
+      const shape = document.createElement('div');
+      shape.className = 'cursor-preset-swatch-shape preset-' + id;
+      swatch.appendChild(shape);
+      els.cursorPresetsGrid.appendChild(swatch);
+    });
+  }
+
   function updateGradientExtractButtonState() {
     const hasImage = !!(currentImageBase64 || els.imageUrl.value);
     els.gradientExtractBtn.disabled = !hasImage;
@@ -2210,6 +2415,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       opacity: f.opacity,
       color: f.color || null
     }));
+    currentSettings.cursor = {
+      enabled: els.cursorToggle.checked,
+      preset: cursorPresetState,
+      color: els.cursorColor.value,
+      size: parseInt(els.cursorSize.value, 10),
+      hoverScale: parseFloat(els.cursorHoverScale.value),
+      smoothing: els.cursorSmoothingToggle.checked,
+      trail: {
+        enabled: els.cursorTrailToggle.checked,
+        style: els.cursorTrailStyle.value,
+        length: parseInt(els.cursorTrailLength.value, 10),
+        speed: parseInt(els.cursorTrailSpeed.value, 10)
+      }
+    };
     currentSettings.timestamp = Date.now();
 
     return currentSettings;
@@ -2295,7 +2514,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       deepCompat: false,
       deepCompatExclude: '',
       customCss: '',
-      frostedGlass: []
+      frostedGlass: [],
+      cursor: Object.assign({ enabled: false }, window.PageDyeCursor.normalizeCursorConfig())
     };
     activeScheme = 'light';
     activeTimePeriodIndex = 0;
@@ -2332,6 +2552,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderDeepCompatExcludes();
     els.customCss.value = '';
     renderFrostedList([]);
+    els.cursorToggle.checked = false;
+    cursorPresetState = 'ball';
+    renderCursorPresetsGrid();
+    els.cursorColor.value = '#ff5fa2';
+    els.cursorColorText.value = '#ff5fa2';
+    els.cursorSize.value = 24;
+    els.cursorSizeVal.textContent = '24px';
+    els.cursorHoverScale.value = 1.6;
+    els.cursorHoverScaleVal.textContent = '1.6x';
+    els.cursorSmoothingToggle.checked = false;
+    els.cursorTrailToggle.checked = false;
+    els.cursorTrailOptions.classList.add('hidden');
+    els.cursorTrailStyle.value = 'fade';
+    els.cursorTrailLength.value = 12;
+    els.cursorTrailLengthVal.textContent = '12';
+    els.cursorTrailSpeed.value = 50;
+    els.cursorTrailSpeedVal.textContent = '50%';
     if (cssEditorController) cssEditorController.update();
 
     document.querySelector('input[value="none"]').click();
@@ -2356,7 +2593,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/content.js']
+        files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/cursor.js', 'scripts/content.js']
       });
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
@@ -2382,7 +2619,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/content.js']
+        files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/cursor.js', 'scripts/content.js']
       });
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
@@ -2406,7 +2643,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/content.js']
+        files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/cursor.js', 'scripts/content.js']
       });
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
@@ -2719,15 +2956,23 @@ document.addEventListener('DOMContentLoaded', () => {
   function syncFacadeUI() {
     const activeType = document.querySelector('input[name="bgType"]:checked')?.value || 'none';
     const activeColorMode = document.querySelector('input[name="colorMode"]:checked')?.value || 'solid';
+    const effectToggle = document.getElementById('effect-overlay-toggle');
     
     let facadeValue = activeType;
     if (activeType === 'color') {
       facadeValue = activeColorMode; // 'solid' or 'gradient'
+    } else if (activeType === 'none' && effectToggle && effectToggle.checked) {
+      facadeValue = 'effect';
     }
     
     const facadeInput = document.querySelector(`input[name="bgStyleFacade"][value="${facadeValue}"]`);
     if (facadeInput) {
       facadeInput.checked = true;
+    }
+    
+    const effectContainer = document.getElementById('effect-overlay-container');
+    if (effectContainer) {
+       effectContainer.style.display = (facadeValue === 'effect') ? 'none' : '';
     }
   }
 
@@ -2739,10 +2984,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const val = e.target.value;
       let targetType = val;
       let targetColorMode = null;
+      let targetEffect = null;
       
       if (val === 'solid' || val === 'gradient') {
         targetType = 'color';
         targetColorMode = val;
+      } else if (val === 'effect') {
+        targetType = 'none';
+        targetEffect = true;
+      } else if (val === 'none') {
+        targetType = 'none';
+        targetEffect = false;
       }
       
       const typeInput = document.querySelector(`input[name="bgType"][value="${targetType}"]`);
@@ -2758,6 +3010,16 @@ document.addEventListener('DOMContentLoaded', () => {
           modeInput.dispatchEvent(new Event('change', { bubbles: true }));
         }
       }
+      
+      if (targetEffect !== null) {
+        const effectToggle = document.getElementById('effect-overlay-toggle');
+        if (effectToggle && effectToggle.checked !== targetEffect) {
+            effectToggle.checked = targetEffect;
+            effectToggle.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+      
+      syncFacadeUI();
     });
   });
 
