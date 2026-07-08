@@ -9,14 +9,6 @@
 </head>
 <body>
 
-<!-- Native background layer for the demo widget — see site/style.css and
-     pagedye-widget.js. Declared here (not JS-created) since this is our own
-     page, not an arbitrary third-party site the widget needs to inject into. -->
-<div id="pagedye-embed-root" aria-hidden="true">
-  <div id="pagedye-embed-layer"></div>
-  <canvas id="pagedye-embed-effect-canvas"></canvas>
-</div>
-
 <header class="hero">
   <div class="wrap">
     <div class="badge">v0.7.10</div>
@@ -26,20 +18,14 @@
       <a class="btn btn-primary" href="#desktop-install">下载扩展版</a>
       <a class="btn btn-outline" href="#lite-install">安装 PageDye Lite（手机 / 平板）</a>
     </div>
-    <p class="hint" style="margin-top:18px;">👉 不想安装？页面右下角就有一个可以直接试用的 PageDye，改的就是这个网站自己的背景。</p>
   </div>
 </header>
 
 <section id="editions" class="editions">
   <div class="wrap">
-    <h2>三种使用方式</h2>
-    <p class="hint">核心渲染逻辑三者共享，设置也能互相导入备份，选一种最适合你的场景就行。</p>
+    <h2>两种使用方式</h2>
+    <p class="hint">核心渲染逻辑两者共享，设置也能互相导入备份，选一种最适合你的场景就行。</p>
     <div class="grid">
-      <div class="card">
-        <h3>体验版<span class="edition-tag">网页里，即开即用</span></h3>
-        <p>基于 PageDye Lite 实现，嵌在这个网站里——右下角悬浮按钮点开就是完整设置面板，改的是本页面自己的背景，不用装任何东西。刷新页面后设置会还原，适合先看看效果长什么样。</p>
-        <a class="btn btn-outline" id="try-demo-btn" href="#">👉 现在就试试</a>
-      </div>
       <div class="card">
         <h3>PageDye Lite<span class="edition-tag">手机 / 平板 / Safari</span></h3>
         <p>单文件用户脚本，通过 Tampermonkey 等脚本管理器安装，每个网站的设置都会独立保存下来，长期用、切网站都记得住。不含完整版的多站点管理页面和跨标签页实时同步。</p>
@@ -158,18 +144,5 @@
   </div>
 </footer>
 
-<script src="pagedye-widget.js" defer></script>
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('try-demo-btn');
-    if (!btn) return;
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const host = document.getElementById('pagedye-embed-panel-host');
-      const gear = host && host.shadowRoot && host.shadowRoot.querySelector('[data-action="toggle-panel"]');
-      if (gear) gear.click();
-    });
-  });
-</script>
 </body>
 </html>

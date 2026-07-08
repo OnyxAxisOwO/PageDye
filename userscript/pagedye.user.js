@@ -1677,7 +1677,7 @@
 
   // --------------------------------------------------------------------
   // Icons — inline Feather-style SVGs, matching the outline icon set
-  // used by popup/popup.html and the site's demo widget.
+  // used by popup/popup.html.
   // --------------------------------------------------------------------
   function svgIcon(paths, size) {
     size = size || 14;
@@ -1705,7 +1705,7 @@
   // --------------------------------------------------------------------
   // Settings panel UI — floating gear button + slide-up panel, built once
   // inside its own shadow root (isolated from the host page's CSS).
-  // Visually matches the site demo widget's design language: accordion
+  // Uses the same design language as the rest of PageDye: accordion
   // sections with rotating chevrons, pill segmented controls and outline
   // icons instead of flat tabs / emoji.
   // --------------------------------------------------------------------
