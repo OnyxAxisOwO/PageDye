@@ -17,7 +17,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.7.9';
+  const VERSION = '0.7.10';
   const domain = window.location.hostname;
   const STORAGE_KEY = 'pagedye-embed:' + domain;
   const GLOBAL_KEY = 'pagedye-embed:global-ui';
