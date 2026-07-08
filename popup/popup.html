@@ -46,15 +46,19 @@
           <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </summary>
         <div class="accordion-content">
-          <div class="control-group" style="margin-bottom: 0;">
+          <div class="control-group" style="margin-bottom: 12px;">
             <label class="checkbox-label">
               <input type="checkbox" id="deep-compat-toggle">
               <span data-i18n="deepCompatEnable">Enable for this site</span>
             </label>
-            <p class="hint" data-i18n="deepCompatHint">For stubborn sites (e.g. Google's mobile pages) where several stacked opaque containers hide the background no matter what. Automatically detects and neutralizes full-viewport opaque layers — including a mosaic of many small opaque cards, not just one big wrapper. May occasionally strip a background some element needed for contrast — use the exclude field below if so.</p>
-            <div class="selector-row">
-              <input type="text" id="deep-compat-exclude" placeholder=".modal, [role=dialog]" data-i18n-placeholder="deepCompatExcludePlaceholder">
-              <button type="button" id="deep-compat-pick-btn" class="secondary pick-btn" data-i18n="pickElement">Pick</button>
+            <p class="hint" data-i18n="deepCompatHint" style="margin-top: 6px; margin-bottom: 0;">Force background on stubborn sites with opaque layers.</p>
+          </div>
+          <div class="control-group" style="margin-bottom: 0;">
+            <label data-i18n="excludeControls" style="display: block; font-size: 12px; margin-bottom: 6px; color: var(--text-secondary);">Exclude elements:</label>
+            <div id="deep-compat-exclude-list"></div>
+            <div class="control-group row" style="margin-top: 8px;">
+              <button type="button" id="deep-compat-add-btn" class="secondary pick-btn" style="flex: 1;" data-i18n="addExclude">+ Add Manual</button>
+              <button type="button" id="deep-compat-pick-btn" class="secondary pick-btn" style="flex: 1; margin-left: 8px;" data-i18n="pickExclude">Pick</button>
             </div>
           </div>
         </div>
@@ -69,18 +73,26 @@
         </summary>
         <div class="accordion-content">
           <div class="control-group">
-            <div class="segmented-control" id="wallpaper-mode" style="margin-bottom: 0;">
+            <div class="mode-pill-group" id="wallpaper-mode">
               <input type="radio" name="wpMode" value="single" id="mode-single" checked>
-              <label for="mode-single" data-i18n="modeSingle">Single</label>
+              <label for="mode-single" title="Single">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+              </label>
               
               <input type="radio" name="wpMode" value="auto" id="mode-auto">
-              <label for="mode-auto" data-i18n="modeAuto">Light/Dark</label>
+              <label for="mode-auto" title="Auto Light/Dark">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/><path d="M10 15L12 9l2 3"/></svg>
+              </label>
               
               <input type="radio" name="wpMode" value="timeRange" id="mode-timerange">
-              <label for="mode-timerange" data-i18n="modeTimeRange">Time</label>
+              <label for="mode-timerange" title="Time">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </label>
 
               <input type="radio" name="wpMode" value="slideshow" id="mode-slideshow">
-              <label for="mode-slideshow" data-i18n="modeSlideshow">Slideshow</label>
+              <label for="mode-slideshow" title="Slideshow">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+              </label>
             </div>
           </div>
 
@@ -114,8 +126,23 @@
               <!-- Panel 3: Time Range Mode Cards -->
               <div id="time-cards-container" class="editor-panel-slide slide-4-panels inactive control-group" style="margin-bottom: 0;">
                 <label data-i18n="selectTimeToEdit" style="margin-bottom: 8px; display: block; font-size: 13px; font-weight: 500; color: var(--text-color);">Select background to edit</label>
-                <div class="scheme-cards-grid" id="time-periods-list">
+                <div class="scheme-cards-grid" id="time-periods-list" style="margin-bottom: 12px;">
                   <!-- Dynamically populated -->
+                </div>
+                <!-- Period Editing Fields (Time Mode only) -->
+                <div id="time-range-period-edit-fields" style="display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <span data-i18n="labelPeriodName" style="font-size: 13px; font-weight: 500;">Period Name:</span>
+                    <input type="text" id="time-period-name" style="width: 140px;" />
+                  </div>
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <span data-i18n="labelPeriodRange" style="font-size: 13px; font-weight: 500;">Time Range:</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <select id="time-period-start" style="width: 80px; padding: 6px 8px;"></select>
+                      <span style="color: var(--text-secondary); font-size: 12px;">-</span>
+                      <select id="time-period-end" style="width: 80px; padding: 6px 8px;"></select>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -160,21 +187,7 @@
           <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </summary>
         <div class="accordion-content">
-          <!-- Period Editing Fields (Time Mode only) -->
-          <div id="time-range-period-edit-fields" class="hidden" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px dashed var(--border-color); padding-bottom: 12px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-              <span data-i18n="labelPeriodName" style="font-size: 13px; font-weight: 500;">Period Name:</span>
-              <input type="text" id="time-period-name" style="padding: 4px 8px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--surface-bg); color: var(--text-color); width: 140px;" />
-            </div>
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-              <span data-i18n="labelPeriodRange" style="font-size: 13px; font-weight: 500;">Time Range:</span>
-              <div style="display: flex; align-items: center; gap: 4px;">
-                <select id="time-period-start" style="padding: 2px 4px; font-size: 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--surface-bg); color: var(--text-color); width: 68px;"></select>
-                <span style="color: var(--text-secondary); font-size: 12px;">-</span>
-                <select id="time-period-end" style="padding: 2px 4px; font-size: 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--surface-bg); color: var(--text-color); width: 68px;"></select>
-              </div>
-            </div>
-          </div>
+
           <div class="control-group" style="margin-bottom: 12px;">
             <div class="bg-style-facade" id="bg-style-facade">
               <input type="radio" name="bgStyleFacade" value="none" id="style-facade-none" checked>

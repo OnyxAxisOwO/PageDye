@@ -237,7 +237,7 @@ label {
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 /* Inputs */
@@ -1301,6 +1301,8 @@ footer {
   width: 50%;
   flex-shrink: 0;
   transition: opacity 0.3s ease;
+  padding: 0 2px;
+  box-sizing: border-box;
 }
 
 .editor-panel-slide.inactive {
@@ -1494,6 +1496,48 @@ h1, .accordion-summary, .card-label, .nav-label {
   color: #10B981;
   border-color: #10B981;
   background: rgba(16, 185, 129, 0.1);
+}
+
+/* Mode Pill Group */
+.mode-pill-group {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 8px;
+  padding-bottom: 6px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  justify-content: center;
+}
+.mode-pill-group::-webkit-scrollbar {
+  display: none;
+}
+.mode-pill-group input {
+  display: none;
+}
+.mode-pill-group label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 24px;
+  border-radius: 20px;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.mode-pill-group label svg {
+  stroke-width: 2px;
+}
+.mode-pill-group input:checked + label {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #ffffff;
 }
 
 /* Bottom Nav (Material You Fixed Style) */

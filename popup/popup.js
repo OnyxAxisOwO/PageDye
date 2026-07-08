@@ -5,7 +5,7 @@
 // (current form state + the picked selector) straight to storage for this
 // domain. The content script's storage listener then paints that element
 // immediately — no popup reopen required.
-function pagedyeElementPicker(settings, domain, fieldPath) {
+function pagedyeElementPicker(settings, domain, fieldPath, tipTextMultiple, tipTextSingle) {
   if (window.__pagedyePicking) return;
   window.__pagedyePicking = true;
 
@@ -27,7 +27,9 @@ function pagedyeElementPicker(settings, domain, fieldPath) {
   });
 
   const tip = document.createElement('div');
-  tip.textContent = 'PageDye: click an element to apply your background to it · Esc to cancel';
+  tip.textContent = (fieldPath && fieldPath[0] === 'deepCompatExclude')
+    ? (tipTextMultiple || 'PageDye: click elements to exclude them · Esc to finish')
+    : (tipTextSingle || 'PageDye: click an element to apply your background to it · Esc to cancel');
   Object.assign(tip.style, {
     position: 'fixed', zIndex: '2147483647', pointerEvents: 'none',
     top: '12px', left: '50%', transform: 'translateX(-50%)',
@@ -138,6 +140,16 @@ function pagedyeElementPicker(settings, domain, fieldPath) {
       }
       chrome.storage.local.set({ [domain]: next });
     } catch (err) { /* storage unavailable */ }
+    
+    if (fieldPath && fieldPath[0] === 'deepCompatExclude') {
+      box.style.borderColor = '#10b981';
+      box.style.background = 'rgba(16,185,129,0.2)';
+      setTimeout(() => {
+        box.style.borderColor = '#2563eb';
+        box.style.background = 'rgba(37,99,235,0.2)';
+      }, 400);
+      return;
+    }
     cleanup();
   }
 
@@ -220,10 +232,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetSelectorHint: "Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.",
       pickElement: "Pick",
       deepCompat: "Deep Compatibility Mode",
+      pickerTipMultiple: "PageDye: click elements to exclude them · Esc to finish",
+      pickerTipSingle: "PageDye: click an element to apply your background to it · Esc to cancel",
       deepCompatBadge: "For stubborn sites",
       deepCompatEnable: "Enable for this site",
-      deepCompatHint: "For stubborn sites (e.g. Google's mobile pages) where several stacked opaque containers hide the background no matter what. Automatically detects and neutralizes full-viewport opaque layers — including a mosaic of many small opaque cards, not just one big wrapper. May occasionally strip a background some element needed for contrast — use the exclude field below if so.",
-      deepCompatExcludePlaceholder: "Exclude selector (optional): .modal, [role=dialog]",
+      deepCompatHint: "Force display on stubborn sites with opaque layers (e.g. Google Search).",
+      excludeControls: "Exclude elements:",
+      addExclude: "+ Add Manual",
+      pickExclude: "Pick Elements",
+      deepCompatExcludePlaceholder: ".modal, [role=dialog]",
       frostedGlass: "Frosted Glass",
       frostedGlassHint: "Pick a card/container element and PageDye makes its background semi-transparent and blurred, so your wallpaper shows through underneath it.",
       frostedBlur: "Blur",
@@ -355,10 +372,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetSelectorHint: "拾取一个元素（或手动输入 CSS 选择器），PageDye 会把颜色/图片直接应用到该元素，而不是整页。留空则为整页背景。",
       pickElement: "拾取",
       deepCompat: "深度兼容模式",
+      pickerTipMultiple: "PageDye: 点击多个元素以排除它们 · 按 Esc 完成",
+      pickerTipSingle: "PageDye: 点击一个元素以应用背景 · 按 Esc 取消",
       deepCompatBadge: "顽固网站专用",
       deepCompatEnable: "为此网站启用",
-      deepCompatHint: "适用于顽固网站（例如 Google 移动端页面）：多层不透明容器叠在一起，导致无论怎么设置背景都被遮住。开启后会自动检测并清除铺满视口的不透明背景层——包括由许多小块不透明卡片拼成的情况，不只是单个大容器。可能偶尔误伤某些依赖背景色做对比度的元素，遇到这种情况可在下方填入排除选择器。",
-      deepCompatExcludePlaceholder: "排除选择器（可选）：.modal, [role=dialog]",
+      deepCompatHint: "强制在存在不透明遮挡的顽固网页上显示壁纸（如 Google 搜索页）。",
+      excludeControls: "排除以下元素：",
+      addExclude: "+ 手动添加",
+      pickExclude: "拾取元素",
+      deepCompatExcludePlaceholder: ".modal, [role=dialog]",
       frostedGlass: "磨砂玻璃",
       frostedGlassHint: "拾取一个卡片/容器元素，PageDye 会让它的背景变为半透明并加上模糊效果，让底层的壁纸若隐若现地透上来。",
       frostedBlur: "模糊度",
@@ -497,7 +519,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     targetSelector: document.getElementById('target-selector'),
     pickBtn: document.getElementById('pick-btn'),
     deepCompatToggle: document.getElementById('deep-compat-toggle'),
-    deepCompatExclude: document.getElementById('deep-compat-exclude'),
+    deepCompatExcludeList: document.getElementById('deep-compat-exclude-list'),
+    deepCompatAddBtn: document.getElementById('deep-compat-add-btn'),
     deepCompatPickBtn: document.getElementById('deep-compat-pick-btn'),
     frostedList: document.getElementById('frosted-list'),
     frostedAddBtn: document.getElementById('frosted-add-btn'),
@@ -909,7 +932,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Advanced inputs
   els.targetSelector.addEventListener('input', () => queueAutoSave());
   els.deepCompatToggle.addEventListener('change', () => triggerImmediateSave());
-  els.deepCompatExclude.addEventListener('input', () => queueAutoSave());
+  els.deepCompatAddBtn.addEventListener('click', () => {
+    const items = (currentSettings.deepCompatExclude || '').split(',').map(s => s.trim()).filter(Boolean);
+    items.push('');
+    currentSettings.deepCompatExclude = items.join(', ');
+    renderDeepCompatExcludes();
+    const inputs = els.deepCompatExcludeList.querySelectorAll('input');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  });
   els.customCss.addEventListener('input', () => queueAutoSave());
 
   // Frosted glass entries are rebuilt on every render, so listeners are
@@ -1501,7 +1531,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     els.targetSelector.value = currentSettings.targetSelector || '';
     els.deepCompatToggle.checked = !!currentSettings.deepCompat;
-    els.deepCompatExclude.value = currentSettings.deepCompatExclude || '';
+    renderDeepCompatExcludes();
     els.customCss.value = currentSettings.customCss || '';
     if (cssEditorController) cssEditorController.update();
 
@@ -1899,6 +1929,48 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Rebuilds the frosted-entry list from scratch, one card per element, so
   // applying frosted glass to a new element never clobbers the others.
+  function renderDeepCompatExcludes() {
+    if (!els.deepCompatExcludeList) return;
+    els.deepCompatExcludeList.innerHTML = '';
+    const str = currentSettings.deepCompatExclude || '';
+    const items = str.split(',').map(s => s.trim()).filter(Boolean);
+    
+    items.forEach((item, index) => {
+      const row = document.createElement('div');
+      row.className = 'selector-row';
+      row.style.marginBottom = '6px';
+      
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = item;
+      input.placeholder = t('deepCompatExcludePlaceholder') || '.modal, [role=dialog]';
+      input.addEventListener('input', () => {
+        items[index] = input.value.trim();
+        currentSettings.deepCompatExclude = items.filter(Boolean).join(',');
+        queueAutoSave();
+      });
+      
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'pick-btn delete-btn';
+      delBtn.style.padding = '8px';
+      delBtn.style.display = 'flex';
+      delBtn.style.alignItems = 'center';
+      delBtn.style.justifyContent = 'center';
+      delBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>';
+      delBtn.addEventListener('click', () => {
+        items.splice(index, 1);
+        currentSettings.deepCompatExclude = items.filter(Boolean).join(',');
+        queueAutoSave();
+        renderDeepCompatExcludes();
+      });
+      
+      row.appendChild(input);
+      row.appendChild(delBtn);
+      els.deepCompatExcludeList.appendChild(row);
+    });
+  }
+
   function renderFrostedList(list) {
     frostedGlassState = list.map(f => ({
       selector: f.selector || '',
@@ -2089,7 +2161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     currentSettings.targetSelector = els.targetSelector.value.trim();
     currentSettings.deepCompat = els.deepCompatToggle.checked;
-    currentSettings.deepCompatExclude = els.deepCompatExclude.value.trim();
+    // deepCompatExclude is saved automatically on input change, but we could re-gather here just in case.
     currentSettings.customCss = els.customCss.value;
     currentSettings.frostedGlass = frostedGlassState.map(f => ({
       selector: f.selector.trim(),
@@ -2215,7 +2287,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.imageUrl.value = '';
     els.targetSelector.value = '';
     els.deepCompatToggle.checked = false;
-    els.deepCompatExclude.value = '';
+    renderDeepCompatExcludes();
     els.customCss.value = '';
     renderFrostedList([]);
     if (cssEditorController) cssEditorController.update();
@@ -2247,7 +2319,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: pagedyeElementPicker,
-        args: [settings, currentDomain, ['targetSelector']]
+        args: [settings, currentDomain, ['targetSelector'], t('pickerTipMultiple'), t('pickerTipSingle')]
       });
       window.close();
     } catch (err) {
@@ -2273,7 +2345,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: pagedyeElementPicker,
-        args: [settings, currentDomain, ['frostedGlass', index, 'selector']]
+        args: [settings, currentDomain, ['frostedGlass', index, 'selector'], t('pickerTipMultiple'), t('pickerTipSingle')]
       });
       window.close();
     } catch (err) {
@@ -2297,7 +2369,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: pagedyeElementPicker,
-        args: [settings, currentDomain, ['deepCompatExclude']]
+        args: [settings, currentDomain, ['deepCompatExclude'], t('pickerTipMultiple'), t('pickerTipSingle')]
       });
       window.close();
     } catch (err) {
