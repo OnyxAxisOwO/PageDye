@@ -18,7 +18,7 @@
 
   let enabled = false;
   let host = null, shadow = null;
-  let ui = { open: false, tab: 'state' };
+  let ui = { open: false, tab: 'state', perfCollapsed: false };
   let position = { side: 'right', topPercent: 88 };
   let dragState = null;
   let suppressClick = false;
@@ -719,19 +719,27 @@
     const mem = lastOf(memHistory);
     const longTaskPct = lastOf(longTaskPctHistory);
 
-    let html = '<div class="pd-dbg-perf-grid">';
+    let html = `
+      <div class="pd-dbg-log-toolbar">
+        <button type="button" class="pd-dbg-btn-secondary" data-action="toggle-perf-collapse">${ui.perfCollapsed ? '展开图表' : '折叠图表'}</button>
+      </div>
+    `;
+
+    html += '<div class="pd-dbg-perf-grid">';
     html += `<div class="pd-dbg-perf-card"><span class="pd-dbg-perf-value">${fps != null ? Math.round(fps) : '--'}</span><span class="pd-dbg-perf-label">FPS</span></div>`;
     html += `<div class="pd-dbg-perf-card"><span class="pd-dbg-perf-value">${frameMs != null ? frameMs.toFixed(1) : '--'}</span><span class="pd-dbg-perf-label">帧耗时(ms)</span></div>`;
     if (performance.memory) html += `<div class="pd-dbg-perf-card"><span class="pd-dbg-perf-value">${mem != null ? mem.toFixed(1) : '--'}</span><span class="pd-dbg-perf-label">JS 堆内存(MB)</span></div>`;
     if (longTaskObserver) html += `<div class="pd-dbg-perf-card"><span class="pd-dbg-perf-value">${longTaskPct != null ? Math.round(longTaskPct) : '--'}%</span><span class="pd-dbg-perf-label">主线程繁忙度</span></div>`;
     html += '</div>';
 
-    html += '<div class="pd-dbg-subhead">FPS</div>' + sparkline(fpsHistory, 'var(--pd-info)', 60);
-    html += '<div class="pd-dbg-subhead">帧耗时 (ms)</div>' + sparkline(frameMsHistory, 'var(--pd-warn)');
-    if (performance.memory) html += '<div class="pd-dbg-subhead">JS 堆内存 (MB)</div>' + sparkline(memHistory, '#16a34a');
-    if (longTaskObserver) html += '<div class="pd-dbg-subhead">主线程繁忙度 (%)</div>' + sparkline(longTaskPctHistory, 'var(--pd-danger)', 100);
+    if (!ui.perfCollapsed) {
+      html += '<div class="pd-dbg-subhead">FPS</div>' + sparkline(fpsHistory, 'var(--pd-info)', 60);
+      html += '<div class="pd-dbg-subhead">帧耗时 (ms)</div>' + sparkline(frameMsHistory, 'var(--pd-warn)');
+      if (performance.memory) html += '<div class="pd-dbg-subhead">JS 堆内存 (MB)</div>' + sparkline(memHistory, '#16a34a');
+      if (longTaskObserver) html += '<div class="pd-dbg-subhead">主线程繁忙度 (%)</div>' + sparkline(longTaskPctHistory, 'var(--pd-danger)', 100);
 
-    html += `<p class="pd-dbg-hint">FPS/帧耗时基于 requestAnimationFrame 采样;繁忙度基于 Long Tasks API(主线程被单个任务连续占用超过 50ms 的时间占比,是不需要额外权限时最接近"CPU 有多忙"的替代指标,浏览器扩展拿不到系统级 CPU 占用率)。每 0.5 秒采样一次,图表窗口 ${PERF_HISTORY_SIZE * 0.5} 秒。${performance.memory ? '' : ' 此浏览器不支持 JS 堆内存读数。'}${longTaskObserver ? '' : ' 此浏览器不支持 Long Tasks API,已隐藏繁忙度。'}</p>`;
+      html += `<p class="pd-dbg-hint">FPS/帧耗时基于 requestAnimationFrame 采样;繁忙度基于 Long Tasks API(主线程被单个任务连续占用超过 50ms 的时间占比,是不需要额外权限时最接近"CPU 有多忙"的替代指标,浏览器扩展拿不到系统级 CPU 占用率)。每 0.5 秒采样一次,图表窗口 ${PERF_HISTORY_SIZE * 0.5} 秒。${performance.memory ? '' : ' 此浏览器不支持 JS 堆内存读数。'}${longTaskObserver ? '' : ' 此浏览器不支持 Long Tasks API,已隐藏繁忙度。'}</p>`;
+    }
 
     body.innerHTML = html;
   }
@@ -927,6 +935,10 @@
         updateNetworkCaptureState();
         renderTabBody();
       }
+    } else if (name === 'toggle-perf-collapse') {
+      ui.perfCollapsed = !ui.perfCollapsed;
+      renderTabBody();
+      positionPanel();
     }
   }
 

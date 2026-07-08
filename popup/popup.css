@@ -1326,3 +1326,10 @@ footer {
   width: 25% !important;
 }
 
+.pagedye-no-animation *,
+.pagedye-no-animation *::before,
+.pagedye-no-animation *::after {
+  animation: none !important;
+  transition: none !important;
+}
+

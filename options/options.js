@@ -31,6 +31,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       appearanceReset: "Reset to Default",
       appearanceSaved: "Appearance updated!",
       appearanceResetDone: "Appearance reset!",
+      disableThemeAnimation: "Disable dashboard animations",
+      disableThemeAnimationHint: "Turns off transitions, fade-ins, and animations in the extension panel/popup interface.",
       dragOrClick: "Drag image here, or",
       chooseFile: "choose file",
       savedImage: "Saved image",
@@ -246,6 +248,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       appearanceReset: "恢复默认",
       appearanceSaved: "外观已更新!",
       appearanceResetDone: "外观已重置!",
+      disableThemeAnimation: "禁用控制面板动画效果",
+      disableThemeAnimationHint: "关闭扩展控制面板与弹出窗口（Popup）界面中的过渡、淡入等动画效果，提升响应性能。",
       dragOrClick: "拖拽图片至此，或",
       chooseFile: "选择文件",
       savedImage: "已保存的图片",
@@ -438,7 +442,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
   const DEBUG_MODE_KEY = '__pagedye_debug_mode__';
   const DEFAULT_BG_KEY = '__pagedye_default_background__';
-  const UI_THEME_DEFAULTS = { pageBg: '#f1f5f9', containerBg: '#ffffff', pageBgImage: null, containerBgImage: null };
+  const UI_THEME_DEFAULTS = { pageBg: '#f1f5f9', containerBg: '#ffffff', pageBgImage: null, containerBgImage: null, disableAnimation: false };
   let currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS);
 
   // Elements
@@ -1442,6 +1446,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupThemeImageUpload('page', els.themePageBgDrop, els.themePageBgFile, els.themePageBgFileInfo, els.themePageBgFilename, els.themePageBgRemove);
     setupThemeImageUpload('container', els.themeContainerBgDrop, els.themeContainerBgFile, els.themeContainerBgFileInfo, els.themeContainerBgFilename, els.themeContainerBgRemove);
 
+    const themeDisableAnim = document.getElementById('theme-disable-animation');
+    if (themeDisableAnim) {
+      themeDisableAnim.addEventListener('change', (e) => {
+        saveUiTheme({ disableAnimation: e.target.checked });
+      });
+    }
+
     els.themeResetBtn.addEventListener('click', async () => {
       await chrome.storage.local.remove(UI_THEME_KEY);
       currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS);
@@ -1498,6 +1509,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     syncThemeImageUi(theme.pageBgImage, els.themePageBgDrop, els.themePageBgFileInfo, els.themePageBgFilename);
     syncThemeImageUi(theme.containerBgImage, els.themeContainerBgDrop, els.themeContainerBgFileInfo, els.themeContainerBgFilename);
+
+    const themeDisableAnim = document.getElementById('theme-disable-animation');
+    if (themeDisableAnim) {
+      themeDisableAnim.checked = !!theme.disableAnimation;
+    }
   }
 
   function syncThemeImageUi(image, dropEl, fileInfoEl, filenameEl) {
@@ -1521,6 +1537,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyThemeBgImage(document.body, theme.pageBgImage);
     applyThemeBgImage(document.querySelector('.dashboard-container'), theme.containerBgImage);
     applyThemeBgImage(document.querySelector('.sidebar'), theme.containerBgImage);
+
+    if (theme.disableAnimation) {
+      document.documentElement.classList.add('pagedye-no-animation');
+    } else {
+      document.documentElement.classList.remove('pagedye-no-animation');
+    }
   }
 
   function applyThemeBgImage(el, image) {

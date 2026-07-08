@@ -2218,5 +2218,12 @@ input:checked + .slider.round:before {
   border: 0 !important;
 }
 
+.pagedye-no-animation *,
+.pagedye-no-animation *::before,
+.pagedye-no-animation *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
 
 

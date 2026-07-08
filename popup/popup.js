@@ -519,6 +519,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   let isInitialLoad = true;
 
   // Init
+  chrome.storage.local.get('__pagedye_ui_theme__', (data) => {
+    const theme = data['__pagedye_ui_theme__'];
+    if (theme && theme.disableAnimation) {
+      document.documentElement.classList.add('pagedye-no-animation');
+    }
+  });
   initI18n();
   cssEditorController = initCustomCssEditor('custom-css', 'custom-css-editor');
   const gradientKeyframesStyle = document.createElement('style');
