@@ -247,6 +247,7 @@ select {
   padding: 8px 12px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
+  font-family: inherit;
   font-size: 13px;
   width: 100%;
   box-sizing: border-box;
@@ -1391,16 +1392,40 @@ h1, .accordion-summary, .card-label, .nav-label {
   margin-bottom: 12px;
 }
 
+.preset-scheme-group {
+  margin-bottom: 14px;
+}
+.preset-scheme-group:last-of-type {
+  margin-bottom: 16px;
+}
+
+.preset-scheme-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+}
+.preset-scheme-header span {
+  font-size: 12px;
+  font-weight: 500;
+}
+.preset-scheme-header .add-color-btn {
+  margin-left: auto;
+}
+
 /* Preset Colors */
 .preset-colors-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 10px;
   gap: 8px;
-  margin-bottom: 16px;
 }
 .preset-color-dot {
   width: 24px;
   height: 24px;
+  flex-shrink: 0;
   border-radius: 50%;
   border: none;
   cursor: pointer;
@@ -1421,15 +1446,28 @@ h1, .accordion-summary, .card-label, .nav-label {
   border: 2px solid var(--primary-color);
   border-radius: 50%;
 }
-.preset-divider {
-  width: 1px;
-  height: 16px;
-  background: var(--border-color);
-  margin: 0 4px;
+.preset-color-dot-delete {
+  display: none;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #fff;
+  font-size: 11px;
+  line-height: 14px;
+  text-align: center;
+  cursor: pointer;
+}
+.preset-color-dot-custom:hover .preset-color-dot-delete {
+  display: block;
 }
 .add-color-btn {
   width: 24px;
   height: 24px;
+  flex-shrink: 0;
   border-radius: 50%;
   border: 1px dashed var(--text-secondary);
   background: transparent;
@@ -1467,7 +1505,7 @@ h1, .accordion-summary, .card-label, .nav-label {
   background: transparent;
   padding: 0;
   width: 100%;
-  font-family: monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 13px;
   color: var(--text-color);
 }

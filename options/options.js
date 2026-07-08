@@ -465,6 +465,54 @@ document.addEventListener('DOMContentLoaded', async () => {
   const UI_THEME_DEFAULTS = { pageBg: '#f1f5f9', containerBg: '#ffffff', pageBgImage: null, containerBgImage: null, disableAnimation: false };
   let currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS);
 
+  // The base stylesheet only themes text/border/badge colors via
+  // `@media (prefers-color-scheme: dark)`, so once the user picks a custom
+  // page/container background here, those colors can end up fighting the OS
+  // scheme (e.g. a light custom background with a dark OS scheme renders
+  // white text and badges on white). Deriving the rest of the palette from
+  // the chosen background's lightness keeps everything readable regardless
+  // of what the OS prefers.
+  const UI_THEME_LIGHT_PALETTE = {
+    '--text-color': '#18181b', '--text-secondary': '#52525b', '--border-color': '#e4e4e7',
+    '--surface-bg': '#f4f4f5', '--primary-color': '#18181b', '--primary-color-text': '#ffffff',
+    '--primary-hover': '#3f3f46', '--input-focus-shadow': 'rgba(24, 24, 27, 0.1)',
+    '--shadow-sm': '0 1px 2px rgba(0,0,0,0.05)', '--shadow-md': '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)',
+    '--shadow-lg': '0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.03)',
+    '--danger-bg': 'rgba(239, 68, 68, 0.08)', '--danger-text': '#dc2626', '--danger-border': '#fecaca',
+    '--primary-gradient': 'linear-gradient(135deg, #18181b 0%, #71717a 100%)',
+    '--accent-glow': '0 0 12px rgba(24, 24, 27, 0.25)', '--accent-glow-large': '0 8px 24px rgba(24, 24, 27, 0.25)',
+    '--table-hover-bg': 'rgba(24, 24, 27, 0.03)',
+    '--badge-color-bg': 'rgba(24, 24, 27, 0.1)', '--badge-color-text': '#18181b',
+    '--badge-image-bg': 'rgba(113, 113, 122, 0.15)', '--badge-image-text': '#52525b',
+    '--badge-effect-bg': 'rgba(99, 102, 241, 0.12)', '--badge-effect-text': '#4f46e5',
+    '--toast-bg': 'rgba(15, 23, 42, 0.9)', '--toast-text': '#ffffff',
+  };
+  const UI_THEME_DARK_PALETTE = {
+    '--text-color': '#ffffff', '--text-secondary': '#a0a0a0', '--border-color': '#222222',
+    '--surface-bg': '#121212', '--primary-color': '#ffffff', '--primary-color-text': '#000000',
+    '--primary-hover': '#e5e5e5', '--input-focus-shadow': 'rgba(255, 255, 255, 0.15)',
+    '--shadow-sm': '0 1px 2px rgba(0,0,0,0.5)', '--shadow-md': '0 4px 12px rgba(0,0,0,0.8)',
+    '--shadow-lg': '0 12px 24px rgba(0,0,0,0.9)',
+    '--danger-bg': 'rgba(239, 68, 68, 0.12)', '--danger-text': '#fca5a5', '--danger-border': 'rgba(239, 68, 68, 0.3)',
+    '--primary-gradient': 'linear-gradient(135deg, #ffffff 0%, #888888 100%)',
+    '--accent-glow': '0 0 12px rgba(255, 255, 255, 0.2)', '--accent-glow-large': '0 8px 24px rgba(255, 255, 255, 0.2)',
+    '--table-hover-bg': 'rgba(255, 255, 255, 0.04)',
+    '--badge-color-bg': 'rgba(255, 255, 255, 0.1)', '--badge-color-text': '#ffffff',
+    '--badge-image-bg': 'rgba(255, 255, 255, 0.15)', '--badge-image-text': '#e5e5e5',
+    '--badge-effect-bg': 'rgba(129, 140, 248, 0.18)', '--badge-effect-text': '#a5b4fc',
+    '--toast-bg': 'rgba(255, 255, 255, 0.95)', '--toast-text': '#000000',
+  };
+
+  function colorIsLight(color) {
+    const hex = (color || '').trim().replace('#', '');
+    const full = hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex;
+    if (!/^[0-9a-fA-F]{6}$/.test(full)) return true;
+    const r = parseInt(full.slice(0, 2), 16);
+    const g = parseInt(full.slice(2, 4), 16);
+    const b = parseInt(full.slice(4, 6), 16);
+    return (0.299 * r + 0.587 * g + 0.114 * b) >= 140;
+  }
+
   // Elements
   const els = {
     navItems: document.querySelectorAll('.nav-item'),
@@ -1560,6 +1608,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     root.setProperty('--bg-color', theme.pageBg);
     root.setProperty('--surface-card', theme.containerBg);
     root.setProperty('--sidebar-bg', theme.containerBg);
+
+    const palette = colorIsLight(theme.containerBg) ? UI_THEME_LIGHT_PALETTE : UI_THEME_DARK_PALETTE;
+    Object.keys(palette).forEach(name => root.setProperty(name, palette[name]));
 
     applyThemeBgImage(document.body, theme.pageBgImage);
     applyThemeBgImage(document.querySelector('.dashboard-container'), theme.containerBgImage);

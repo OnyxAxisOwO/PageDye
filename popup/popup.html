@@ -259,18 +259,55 @@
                 <div id="solid-color-panel" class="editor-panel-slide control-group" style="margin-bottom: 0;">
                   <div class="select-color-card">
                     <label class="card-label" data-i18n="selectColor">Select Color</label>
-                    <div class="preset-colors-row">
-                      <button type="button" class="preset-color-dot active" data-color="#F4F9FA" style="background-color: #F4F9FA;"></button>
-                      <button type="button" class="preset-color-dot" data-color="#F0F4E6" style="background-color: #F0F4E6;"></button>
-                      <button type="button" class="preset-color-dot" data-color="#FDF6E3" style="background-color: #FDF6E3;"></button>
-                      <button type="button" class="preset-color-dot" data-color="#FFF0F0" style="background-color: #FFF0F0;"></button>
-                      <button type="button" class="preset-color-dot" data-color="#F0EDF5" style="background-color: #F0EDF5;"></button>
-                      <button type="button" class="preset-color-dot" data-color="#E8F0FE" style="background-color: #E8F0FE;"></button>
-                      <button type="button" class="preset-color-dot" data-color="#EAEAEA" style="background-color: #EAEAEA;"></button>
-                      <div class="preset-divider"></div>
-                      <button type="button" class="add-color-btn" id="add-color-btn" title="Add color">+</button>
+
+                    <div class="preset-scheme-group">
+                      <div class="preset-scheme-header">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                        <span data-i18n="presetSchemeLight">Light</span>
+                        <button type="button" class="add-color-btn" id="add-color-btn" title="Add color">+</button>
+                      </div>
+                      <div class="preset-colors-row" id="preset-colors-light">
+                        <button type="button" class="preset-color-dot active" data-color="#F4F9FA" style="background-color: #F4F9FA;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#F0F4E6" style="background-color: #F0F4E6;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#FDF6E3" style="background-color: #FDF6E3;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#FFF0F0" style="background-color: #FFF0F0;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#F0EDF5" style="background-color: #F0EDF5;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#E8F0FE" style="background-color: #E8F0FE;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#EAEAEA" style="background-color: #EAEAEA;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#FFF4E0" style="background-color: #FFF4E0;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#E8F5E9" style="background-color: #E8F5E9;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#FCE4EC" style="background-color: #FCE4EC;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#E0F7FA" style="background-color: #E0F7FA;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#F3E5F5" style="background-color: #F3E5F5;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#FFFDE7" style="background-color: #FFFDE7;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#ECEFF1" style="background-color: #ECEFF1;"></button>
+                      </div>
                     </div>
-                    
+
+                    <div class="preset-scheme-group">
+                      <div class="preset-scheme-header">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                        <span data-i18n="presetSchemeDark">Dark</span>
+                        <button type="button" class="add-color-btn" id="add-color-btn-dark" title="Add color">+</button>
+                      </div>
+                      <div class="preset-colors-row" id="preset-colors-dark">
+                        <button type="button" class="preset-color-dot" data-color="#12181A" style="background-color: #12181A;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#171C14" style="background-color: #171C14;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#1C1810" style="background-color: #1C1810;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#1F1315" style="background-color: #1F1315;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#181420" style="background-color: #181420;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#11151F" style="background-color: #11151F;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#1C1C1E" style="background-color: #1C1C1E;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#201808" style="background-color: #201808;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#0F1F13" style="background-color: #0F1F13;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#200D14" style="background-color: #200D14;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#0A1F22" style="background-color: #0A1F22;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#1D0F21" style="background-color: #1D0F21;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#1F1C08" style="background-color: #1F1C08;"></button>
+                        <button type="button" class="preset-color-dot" data-color="#14181C" style="background-color: #14181C;"></button>
+                      </div>
+                    </div>
+
                     <div class="color-picker-row">
                       <div class="color-preview-container">
                         <input type="color" id="color-picker" value="#005F73">
@@ -357,7 +394,7 @@
           </div>
 
           <!-- Image Section -->
-          <div id="section-image" class="section hidden">
+          <div id="section-image" class="editor-panel-slide slide-4-panels inactive section">
             <div class="control-group">
               <div class="file-drop-area" id="drop-area">
                 <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px; margin-bottom: 8px; color: var(--text-secondary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -386,7 +423,7 @@
           </div>
 
           <!-- Effects Section -->
-          <div id="section-effects" class="section hidden">
+          <div id="section-effects" class="editor-panel-slide slide-4-panels inactive section">
             <div class="control-group">
               <label for="effect-kind" data-i18n="effectKind">Effect</label>
               <p class="hint" data-i18n="effectKindHint">A minimalist black &amp; white animated wallpaper, rendered locally with Canvas — no external assets.</p>

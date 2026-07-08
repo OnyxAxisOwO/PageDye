@@ -162,6 +162,10 @@ function pagedyeElementPicker(settings, domain, fieldPath, tipTextMultiple, tipT
   document.addEventListener('keydown', onKey, true);
 }
 
+// Shared across both DOMContentLoaded listeners below (they're independent,
+// sibling closures — not nested — so this can't live inside either one).
+const CUSTOM_PRESET_COLORS_KEY = '__pagedye_custom_preset_colors__';
+
 document.addEventListener('DOMContentLoaded', async () => {
   // Translations
   const i18n = {
@@ -288,6 +292,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       filterInvert: "Invert",
       colorModeSolid: "Solid",
       colorModeGradient: "Gradient",
+      presetSchemeLight: "Light",
+      presetSchemeDark: "Dark",
       gradientLinear: "Linear",
       gradientRadial: "Radial",
       gradientAngle: "Angle",
@@ -428,6 +434,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       filterInvert: "反色",
       colorModeSolid: "纯色",
       colorModeGradient: "渐变",
+      presetSchemeLight: "浅色",
+      presetSchemeDark: "深色",
       gradientLinear: "线性",
       gradientRadial: "径向",
       gradientAngle: "角度",
@@ -2670,7 +2678,6 @@ function initCustomCssEditor(textareaId, containerId) {
 document.addEventListener('DOMContentLoaded', () => {
   // --- New UI Enhancements (Facade & Preset Colors) ---
   const facadeRadios = document.querySelectorAll('input[name="bgStyleFacade"]');
-  const presetDots = document.querySelectorAll('.preset-color-dot');
   const colorPicker = document.getElementById('color-picker');
   const colorText = document.getElementById('color-text');
   const copyBtn = document.getElementById('copy-color-btn');
@@ -2720,20 +2727,106 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  presetDots.forEach(dot => {
-    dot.addEventListener('click', (e) => {
-      const color = e.target.getAttribute('data-color');
-      presetDots.forEach(d => d.classList.remove('active'));
-      e.target.classList.add('active');
-      
-      if (colorPicker) {
-        colorPicker.value = color;
-        colorPicker.dispatchEvent(new Event('input', { bubbles: true }));
-        colorPicker.dispatchEvent(new Event('change', { bubbles: true }));
+  function selectPresetColor(color, dotEl) {
+    document.querySelectorAll('.preset-color-dot').forEach(d => d.classList.remove('active'));
+    if (dotEl) dotEl.classList.add('active');
+    if (colorPicker) {
+      colorPicker.value = color;
+      colorPicker.dispatchEvent(new Event('input', { bubbles: true }));
+      colorPicker.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (colorText) {
+      colorText.value = color;
+    }
+  }
+
+  // Light preset colors read comfortably on light pages but are jarring as
+  // an actual dark-room background, so light and dark are two permanently
+  // visible, separately labeled groups, each with its own "+" button.
+  const presetColorsLight = document.getElementById('preset-colors-light');
+  const presetColorsDark = document.getElementById('preset-colors-dark');
+
+  // Delegated so it covers both the built-in dots and any custom ones added
+  // via the "+" button below, without re-binding listeners after each add.
+  [presetColorsLight, presetColorsDark].filter(Boolean).forEach(row => {
+    row.addEventListener('click', (e) => {
+      const delBtn = e.target.closest('.preset-color-dot-delete');
+      if (delBtn) {
+        e.stopPropagation();
+        const dot = delBtn.closest('.preset-color-dot');
+        const color = dot.getAttribute('data-color');
+        const scheme = row === presetColorsDark ? 'dark' : 'light';
+        dot.remove();
+        removeCustomPresetColor(scheme, color);
+        return;
       }
-      if (colorText) {
-        colorText.value = color;
-      }
+      const dot = e.target.closest('.preset-color-dot');
+      if (dot) selectPresetColor(dot.getAttribute('data-color'), dot);
+    });
+  });
+
+  function createCustomPresetDot(color) {
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.className = 'preset-color-dot preset-color-dot-custom';
+    dot.style.backgroundColor = color;
+    dot.setAttribute('data-color', color);
+    const del = document.createElement('span');
+    del.className = 'preset-color-dot-delete';
+    del.title = 'Remove';
+    del.textContent = '×';
+    dot.appendChild(del);
+    return dot;
+  }
+
+  async function loadCustomPresetColors() {
+    const data = await chrome.storage.local.get(CUSTOM_PRESET_COLORS_KEY);
+    return Object.assign({ light: [], dark: [] }, data[CUSTOM_PRESET_COLORS_KEY] || {});
+  }
+
+  async function removeCustomPresetColor(scheme, color) {
+    const custom = await loadCustomPresetColors();
+    custom[scheme] = (custom[scheme] || []).filter(c => c !== color);
+    await chrome.storage.local.set({ [CUSTOM_PRESET_COLORS_KEY]: custom });
+  }
+
+  async function addCustomPresetColor(scheme, color) {
+    const custom = await loadCustomPresetColors();
+    if (!custom[scheme].includes(color)) {
+      custom[scheme].push(color);
+      await chrome.storage.local.set({ [CUSTOM_PRESET_COLORS_KEY]: custom });
+    }
+  }
+
+  loadCustomPresetColors().then(custom => {
+    if (presetColorsLight) custom.light.forEach(color => presetColorsLight.appendChild(createCustomPresetDot(color)));
+    if (presetColorsDark) custom.dark.forEach(color => presetColorsDark.appendChild(createCustomPresetDot(color)));
+  });
+
+  [
+    { btn: document.getElementById('add-color-btn'), row: presetColorsLight, scheme: 'light' },
+    { btn: document.getElementById('add-color-btn-dark'), row: presetColorsDark, scheme: 'dark' },
+  ].forEach(({ btn, row, scheme }) => {
+    if (!btn || !row) return;
+    btn.addEventListener('click', () => {
+      const tempPicker = document.createElement('input');
+      tempPicker.type = 'color';
+      tempPicker.value = (colorText && colorText.value) || (scheme === 'dark' ? '#1c1c1e' : '#ffffff');
+      Object.assign(tempPicker.style, { position: 'fixed', top: '0', left: '0', opacity: '0', pointerEvents: 'none' });
+      document.body.appendChild(tempPicker);
+      tempPicker.addEventListener('change', async () => {
+        const color = tempPicker.value.toUpperCase();
+        tempPicker.remove();
+        if (!row.querySelector(`[data-color="${color}"]`)) {
+          const dot = createCustomPresetDot(color);
+          row.appendChild(dot);
+          await addCustomPresetColor(scheme, color);
+          selectPresetColor(color, dot);
+        } else {
+          selectPresetColor(color, row.querySelector(`[data-color="${color}"]`));
+        }
+      });
+      tempPicker.click();
     });
   });
 
