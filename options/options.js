@@ -705,6 +705,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       badge.className = 'bg-type-badge slideshow';
       const count = settings.slideshow && settings.slideshow.items ? settings.slideshow.items.length : 0;
       typeText = `${t('modeSlideshow')} (${count})`;
+    } else if (settings.mode === 'timeRange') {
+      badge.className = 'bg-type-badge slideshow';
+      const count = settings.timeRange && settings.timeRange.items ? settings.timeRange.items.length : 0;
+      typeText = `${t('modeTimeRange')} (${count})`;
     } else {
       badge.className = `bg-type-badge ${settings.type}`;
       if (settings.type === 'color') typeText = t('bgTypeColor');
@@ -750,6 +754,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       stack.className = 'preview-swatch-stack';
 
       const items = settings.slideshow.items.slice(0, 3);
+      items.forEach((item) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'stack-item';
+        if (item.type === 'color' && item.colorMode === 'gradient' && item.gradient) {
+          itemEl.style.backgroundImage = window.PageDyeGradient.buildGradientCss(item.gradient);
+        } else if (item.type === 'color') {
+          itemEl.style.backgroundColor = item.value;
+        } else if (item.type === 'image' && item.value) {
+          itemEl.style.backgroundImage = `url('${item.value}')`;
+        }
+        itemEl.style.opacity = (item.opacity !== undefined ? item.opacity : 100) / 100;
+        stack.appendChild(itemEl);
+      });
+      return stack;
+    } else if (settings.mode === 'timeRange' && settings.timeRange && settings.timeRange.items) {
+      const stack = document.createElement('div');
+      stack.className = 'preview-swatch-stack';
+
+      const items = settings.timeRange.items.slice(0, 3);
       items.forEach((item) => {
         const itemEl = document.createElement('div');
         itemEl.className = 'stack-item';
