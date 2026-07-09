@@ -321,6 +321,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       deepCompatBadge: "For stubborn sites",
       deepCompatEnable: "Enable for this site",
       deepCompatHint: "Force display on stubborn sites with opaque layers (e.g. Google Search).",
+      deepCompatAggressiveEnable: "Forceful compatibility mode",
+      deepCompatAggressiveHint: "More aggressive: checks DOM/style changes very frequently and restores PageDye overrides. Use only on hostile sites; it may use more CPU.",
       excludeControls: "Exclude elements:",
       addExclude: "+ Add Manual",
       pickExclude: "Pick Elements",
@@ -655,6 +657,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     targetSelector: document.getElementById('target-selector'),
     pickBtn: document.getElementById('pick-btn'),
     deepCompatToggle: document.getElementById('deep-compat-toggle'),
+    deepCompatAggressiveToggle: document.getElementById('deep-compat-aggressive-toggle'),
     deepCompatExcludeList: document.getElementById('deep-compat-exclude-list'),
     deepCompatAddBtn: document.getElementById('deep-compat-add-btn'),
     deepCompatPickBtn: document.getElementById('deep-compat-pick-btn'),
@@ -753,6 +756,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onCustomAccentChange(e.target.value);
       });
     }
+  }
+
+  function syncDeepCompatAggressiveAvailability() {
+    if (!els.deepCompatAggressiveToggle) return;
+    const disabled = !els.deepCompatToggle.checked;
+    els.deepCompatAggressiveToggle.disabled = disabled;
+    const group = els.deepCompatAggressiveToggle.closest('.control-group');
+    if (group) group.classList.toggle('control-group-disabled', disabled);
   }
 
   // Sends a message to the tab's content script, injecting it first if it is
@@ -1180,7 +1191,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Advanced inputs
   els.targetSelector.addEventListener('input', () => queueAutoSave());
-  els.deepCompatToggle.addEventListener('change', () => triggerImmediateSave());
+  els.deepCompatToggle.addEventListener('change', () => {
+    syncDeepCompatAggressiveAvailability();
+    triggerImmediateSave();
+  });
+  els.deepCompatAggressiveToggle.addEventListener('change', () => triggerImmediateSave());
   els.deepCompatAddBtn.addEventListener('click', () => {
     const items = (currentSettings.deepCompatExclude || '').split(',').map(s => s.trim()).filter(Boolean);
     items.push('');
@@ -1515,7 +1530,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   function t(key) {
     const zhFallback = {
       uiThemeColor: "\u754c\u9762\u4e3b\u9898\u8272",
-      uiThemeColorHint: "\u53ea\u6539\u53d8 PageDye \u8bbe\u7f6e\u9875\u548c\u5f39\u7a97\u989c\u8272\uff0c\u4e0d\u4f1a\u5f71\u54cd\u7f51\u7ad9\u989c\u8272\u3002"
+      uiThemeColorHint: "\u53ea\u6539\u53d8 PageDye \u8bbe\u7f6e\u9875\u548c\u5f39\u7a97\u989c\u8272\uff0c\u4e0d\u4f1a\u5f71\u54cd\u7f51\u7ad9\u989c\u8272\u3002",
+      deepCompatAggressiveEnable: "\u5f3a\u517c\u6a21\u5f0f",
+      deepCompatAggressiveHint: "\u66f4\u6fc0\u8fdb\uff1a\u9ad8\u9891\u68c0\u6d4b DOM/\u6837\u5f0f\u53d8\u5316\u5e76\u53cd\u590d\u6062\u590d PageDye \u8986\u76d6\u3002\u53ea\u5efa\u8bae\u5728\u9632\u5fa1\u5f88\u5f3a\u7684\u7f51\u7ad9\u4f7f\u7528\uff0c\u53ef\u80fd\u660e\u663e\u589e\u52a0\u6027\u80fd\u6d88\u8017\u3002"
     };
     if (lang === 'zh' && zhFallback[key]) return zhFallback[key];
     return i18n[lang][key] || i18n.en[key] || key;
@@ -1868,6 +1885,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     els.targetSelector.value = currentSettings.targetSelector || '';
     els.deepCompatToggle.checked = !!currentSettings.deepCompat;
+    els.deepCompatAggressiveToggle.checked = !!currentSettings.deepCompatAggressive;
+    syncDeepCompatAggressiveAvailability();
     renderDeepCompatExcludes();
     els.customCss.value = currentSettings.customCss || '';
     if (cssEditorController) cssEditorController.update();
@@ -2574,6 +2593,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     currentSettings.targetSelector = els.targetSelector.value.trim();
     currentSettings.deepCompat = els.deepCompatToggle.checked;
+    currentSettings.deepCompatAggressive = els.deepCompatAggressiveToggle.checked;
     // deepCompatExclude is saved automatically on input change, but we could re-gather here just in case.
     currentSettings.customCss = els.customCss.value;
     currentSettings.frostedGlass = frostedGlassState.map(f => ({
@@ -2679,6 +2699,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       },
       targetSelector: '',
       deepCompat: false,
+      deepCompatAggressive: false,
       deepCompatExclude: '',
       customCss: '',
       frostedGlass: [],
@@ -2716,6 +2737,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.imageUrl.value = '';
     els.targetSelector.value = '';
     els.deepCompatToggle.checked = false;
+    els.deepCompatAggressiveToggle.checked = false;
+    syncDeepCompatAggressiveAvailability();
     renderDeepCompatExcludes();
     els.customCss.value = '';
     renderFrostedList([]);

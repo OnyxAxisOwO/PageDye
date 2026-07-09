@@ -4,6 +4,8 @@
   const TARGET_STYLE_ID = 'pagedye-target-style';
   const CUSTOM_STYLE_ID = 'pagedye-custom-css';
   const FROSTED_STYLE_ID = 'pagedye-frosted-glass';
+  const DEEP_COMPAT_STYLE_ID = 'pagedye-deep-compat-style';
+  const DEEP_COMPAT_ATTR = 'data-pagedye-deep-compat';
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
   const DEFAULT_BG_KEY = '__pagedye_default_background__';
   let currentSettings = null;
@@ -295,6 +297,7 @@
         targetSelector: settings.targetSelector,
         customCss: settings.customCss,
         deepCompat: settings.deepCompat,
+        deepCompatAggressive: settings.deepCompatAggressive,
         deepCompatExclude: settings.deepCompatExclude
       });
     } else if (settings.mode === 'timeRange') {
@@ -305,6 +308,7 @@
           targetSelector: settings.targetSelector,
           customCss: settings.customCss,
           deepCompat: settings.deepCompat,
+          deepCompatAggressive: settings.deepCompatAggressive,
           deepCompatExclude: settings.deepCompatExclude
         });
       } else {
@@ -320,6 +324,7 @@
         targetSelector: settings.targetSelector,
         customCss: settings.customCss,
         deepCompat: settings.deepCompat,
+        deepCompatAggressive: settings.deepCompatAggressive,
         deepCompatExclude: settings.deepCompatExclude
       });
       setupSlideshowTimer(settings);
@@ -353,7 +358,7 @@
     // the negative-z-index overlay and a selector-targeted element's own
     // ::before layer (e.g. Google's mobile app shell), hiding the background
     // no matter which mode painted it.
-    updateDeepCompat(!!activeSettings.deepCompat, activeSettings.deepCompatExclude);
+    updateDeepCompat(!!activeSettings.deepCompat, activeSettings.deepCompatExclude, !!activeSettings.deepCompatAggressive);
 
     if (selector) {
       // Selector mode: paint the chosen element(s) directly via their own CSS
@@ -978,31 +983,50 @@
   const DEEP_COMPAT_TILED_POINT_RATIO = 0.6; // fraction of grid points that must hit an opaque element
   const DEEP_COMPAT_SCAN_DEBOUNCE_MS = 400;
   const DEEP_COMPAT_SAFETY_INTERVAL_MS = 3000;
+  const DEEP_COMPAT_AGGRESSIVE_SCAN_DEBOUNCE_MS = 40;
+  const DEEP_COMPAT_AGGRESSIVE_INTERVAL_MS = 120;
+  const DEEP_COMPAT_AGGRESSIVE_BOOST_MS = 5000;
+  const DEEP_COMPAT_AGGRESSIVE_BOOST_INTERVAL_MS = 50;
   const DEEP_COMPAT_SKIP_TAGS = new Set([
     'HTML', 'BODY', 'SCRIPT', 'STYLE', 'SVG', 'PATH', 'IMG', 'VIDEO', 'CANVAS',
     'IFRAME', 'BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'A'
   ]);
 
   let deepCompatEnabled = false;
+  let deepCompatAggressiveEnabled = false;
   let deepCompatExcludeSelector = '';
   let deepCompatObserver = null;
   let deepCompatScanTimer = null;
   let deepCompatIntervalTimer = null;
+  let deepCompatBoostTimer = null;
   const deepCompatNeutralized = new Set();
   const deepCompatOriginalStyleAttrs = new WeakMap();
+  const deepCompatOriginalAttrs = new WeakMap();
 
   // Called on every applyBackground() pass with the desired enabled state.
   // Starts/stops the watchers on an enabled-state transition, and re-scans
   // immediately if only the exclude selector changed while already running.
-  function updateDeepCompat(enabled, excludeSelector) {
+  function updateDeepCompat(enabled, excludeSelector, aggressive) {
     deepCompatExcludeSelector = excludeSelector || '';
-    if (enabled === deepCompatEnabled) {
+    const nextAggressive = !!aggressive;
+    if (enabled === deepCompatEnabled && nextAggressive === deepCompatAggressiveEnabled) {
       if (enabled) scheduleDeepCompatScan();
       return;
     }
     deepCompatEnabled = enabled;
+    const aggressiveChanged = deepCompatAggressiveEnabled !== nextAggressive;
+    deepCompatAggressiveEnabled = nextAggressive;
+    if (aggressiveChanged && !deepCompatAggressiveEnabled) {
+      removeDeepCompatSupportStyle();
+      if (deepCompatBoostTimer) {
+        clearInterval(deepCompatBoostTimer);
+        deepCompatBoostTimer = null;
+      }
+    }
     if (enabled) {
+      if (aggressiveChanged) restartDeepCompatWatchers();
       startDeepCompat();
+      if (deepCompatAggressiveEnabled) startDeepCompatBoost();
     } else {
       stopDeepCompat();
     }
@@ -1012,7 +1036,10 @@
     scheduleDeepCompatScan();
     if (!deepCompatObserver) {
       deepCompatObserver = new MutationObserver(scheduleDeepCompatScan);
-      deepCompatObserver.observe(document.documentElement, { childList: true, subtree: true });
+      const observerOptions = deepCompatAggressiveEnabled
+        ? { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] }
+        : { childList: true, subtree: true };
+      deepCompatObserver.observe(document.documentElement, observerOptions);
     }
     window.addEventListener('scroll', scheduleDeepCompatScan, { passive: true });
     window.addEventListener('resize', scheduleDeepCompatScan, { passive: true });
@@ -1022,7 +1049,22 @@
       // or removing any nodes.
       deepCompatIntervalTimer = setInterval(() => {
         if (document.visibilityState === 'visible') scanForOpaqueCovers();
-      }, DEEP_COMPAT_SAFETY_INTERVAL_MS);
+      }, deepCompatAggressiveEnabled ? DEEP_COMPAT_AGGRESSIVE_INTERVAL_MS : DEEP_COMPAT_SAFETY_INTERVAL_MS);
+    }
+  }
+
+  function restartDeepCompatWatchers() {
+    if (deepCompatObserver) {
+      deepCompatObserver.disconnect();
+      deepCompatObserver = null;
+    }
+    if (deepCompatIntervalTimer) {
+      clearInterval(deepCompatIntervalTimer);
+      deepCompatIntervalTimer = null;
+    }
+    if (deepCompatBoostTimer) {
+      clearInterval(deepCompatBoostTimer);
+      deepCompatBoostTimer = null;
     }
   }
 
@@ -1037,11 +1079,29 @@
       clearInterval(deepCompatIntervalTimer);
       deepCompatIntervalTimer = null;
     }
+    if (deepCompatBoostTimer) {
+      clearInterval(deepCompatBoostTimer);
+      deepCompatBoostTimer = null;
+    }
     if (deepCompatScanTimer) {
       clearTimeout(deepCompatScanTimer);
       deepCompatScanTimer = null;
     }
     revertAllDeepCompat();
+    removeDeepCompatSupportStyle();
+  }
+
+  function startDeepCompatBoost() {
+    if (deepCompatBoostTimer) return;
+    const endAt = Date.now() + DEEP_COMPAT_AGGRESSIVE_BOOST_MS;
+    deepCompatBoostTimer = setInterval(() => {
+      if (!deepCompatEnabled || !deepCompatAggressiveEnabled || document.visibilityState !== 'visible' || Date.now() > endAt) {
+        clearInterval(deepCompatBoostTimer);
+        deepCompatBoostTimer = null;
+        return;
+      }
+      scanForOpaqueCovers();
+    }, DEEP_COMPAT_AGGRESSIVE_BOOST_INTERVAL_MS);
   }
 
   function scheduleDeepCompatScan() {
@@ -1049,7 +1109,7 @@
     deepCompatScanTimer = setTimeout(() => {
       deepCompatScanTimer = null;
       scanForOpaqueCovers();
-    }, DEEP_COMPAT_SCAN_DEBOUNCE_MS);
+    }, deepCompatAggressiveEnabled ? DEEP_COMPAT_AGGRESSIVE_SCAN_DEBOUNCE_MS : DEEP_COMPAT_SCAN_DEBOUNCE_MS);
   }
 
   function parseAlpha(colorStr) {
@@ -1070,6 +1130,10 @@
 
   function scanForOpaqueCovers() {
     if (!deepCompatEnabled) return;
+    if (deepCompatAggressiveEnabled) {
+      ensureAggressivePageDyeStructures();
+      ensureDeepCompatSupportStyle();
+    }
 
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -1154,6 +1218,8 @@
       if (!deepCompatNeutralized.has(el)) {
         neutralizeDeepCompatElement(el);
         deepCompatNeutralized.add(el);
+      } else if (deepCompatAggressiveEnabled) {
+        neutralizeDeepCompatElement(el);
       }
     }
   }
@@ -1162,8 +1228,16 @@
     if (!deepCompatOriginalStyleAttrs.has(el)) {
       deepCompatOriginalStyleAttrs.set(el, el.getAttribute('style'));
     }
+    if (!deepCompatOriginalAttrs.has(el)) {
+      deepCompatOriginalAttrs.set(el, el.getAttribute(DEEP_COMPAT_ATTR));
+    }
     el.style.setProperty('background-color', 'transparent', 'important');
     el.style.setProperty('background-image', 'none', 'important');
+    if (deepCompatAggressiveEnabled) {
+      el.style.setProperty('box-shadow', 'none', 'important');
+      el.style.setProperty('filter', 'none', 'important');
+      el.setAttribute(DEEP_COMPAT_ATTR, '');
+    }
   }
 
   function revertDeepCompatElement(el) {
@@ -1174,11 +1248,63 @@
       el.setAttribute('style', original);
     }
     deepCompatOriginalStyleAttrs.delete(el);
+    const originalAttr = deepCompatOriginalAttrs.get(el);
+    if (originalAttr === null || originalAttr === undefined) {
+      el.removeAttribute(DEEP_COMPAT_ATTR);
+    } else {
+      el.setAttribute(DEEP_COMPAT_ATTR, originalAttr);
+    }
+    deepCompatOriginalAttrs.delete(el);
   }
 
   function revertAllDeepCompat() {
     for (const el of deepCompatNeutralized) revertDeepCompatElement(el);
     deepCompatNeutralized.clear();
+  }
+
+  function ensureDeepCompatSupportStyle() {
+    if (document.getElementById(DEEP_COMPAT_STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = DEEP_COMPAT_STYLE_ID;
+    style.textContent = `
+      [${DEEP_COMPAT_ATTR}]::before,
+      [${DEEP_COMPAT_ATTR}]::after {
+        background: transparent !important;
+        background-color: transparent !important;
+        background-image: none !important;
+        box-shadow: none !important;
+        filter: none !important;
+      }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  function removeDeepCompatSupportStyle() {
+    const style = document.getElementById(DEEP_COMPAT_STYLE_ID);
+    if (style) style.remove();
+  }
+
+  function ensureAggressivePageDyeStructures() {
+    const active = currentActiveSettings;
+    if (!active) return;
+    const hasBackground = active.type === 'color' || active.type === 'image' || active.effectEnabled;
+    if (!hasBackground) return;
+
+    const selector = !active.effectEnabled && active.targetSelector && active.targetSelector.trim();
+    if (selector) {
+      if (!document.getElementById(TARGET_STYLE_ID)) {
+        applyTargetBackground(selector, active);
+      }
+      return;
+    }
+
+    if (!document.getElementById(STYLE_ID)) {
+      enforceTransparency();
+    }
+    const root = document.getElementById(ROOT_ID);
+    if (!root || !root.shadowRoot || !root.shadowRoot.getElementById('pagedye-layer')) {
+      applyOverlay(active);
+    }
   }
 
 })();

@@ -1851,13 +1851,30 @@ body {
     radial-gradient(circle at 12% -8%, var(--badge-color-bg), transparent 34%),
     var(--bg-color);
   letter-spacing: 0;
+  overflow: hidden;
 }
 
 .container {
+  height: 580px;
+  max-height: 580px;
   min-height: 0;
   box-sizing: border-box;
   gap: 10px;
   position: relative;
+  overflow: hidden;
+}
+
+main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+main::-webkit-scrollbar {
+  display: none;
 }
 
 header {
@@ -1914,6 +1931,29 @@ label {
 .hint {
   color: var(--text-secondary);
   opacity: 0.86;
+}
+
+.warning-hint {
+  color: #8B5000;
+}
+
+.control-group-disabled {
+  opacity: 0.42;
+}
+
+.control-group-disabled,
+.control-group-disabled * {
+  cursor: not-allowed !important;
+}
+
+.control-group-disabled .hint {
+  color: var(--text-secondary);
+}
+
+@media (prefers-color-scheme: dark) {
+  .warning-hint {
+    color: #FFB95C;
+  }
 }
 
 .segmented-control,
@@ -1984,8 +2024,8 @@ label {
 }
 
 .accordion {
-  border-radius: 24px;
-  margin: 0 8px 10px;
+  border-radius: 18px;
+  margin: 0 2px 8px;
 }
 
 .accordion[open] {
@@ -1994,17 +2034,25 @@ label {
 }
 
 .accordion-summary {
-  min-height: 48px;
-  padding: 8px 16px;
-  font-size: 14px;
+  min-height: 40px;
+  padding: 5px 14px;
+  font-size: 13px;
+  line-height: 1.25;
+  gap: 8px;
 }
 
 .accordion-summary:hover {
   background: var(--state-layer-hover);
 }
 
+.accordion-summary .chevron {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}
+
 .accordion-content {
-  padding: 14px 16px 16px;
+  padding: 12px 14px 14px;
   border-top: 1px solid var(--outline-variant);
   background: var(--surface-container-low);
 }
@@ -2018,14 +2066,15 @@ label {
   background: var(--badge-color-bg);
   color: var(--badge-color-text);
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 2px 7px;
+  font-size: 10px;
 }
 
 .active-mode-badge,
 .val-badge {
   background: var(--surface-container-highest);
   color: var(--text-secondary);
-  padding: 3px 8px;
+  padding: 2px 7px;
 }
 
 input[type="text"],
@@ -2208,6 +2257,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 footer {
+  flex: 0 0 auto;
   margin-top: 8px;
   padding: 8px 4px 0;
   border-top: none;
@@ -2219,6 +2269,9 @@ footer {
 }
 
 .bottom-nav {
+  flex: 0 0 auto;
+  position: relative;
+  bottom: auto;
   margin: 8px -16px -16px;
   padding: 8px 16px 14px;
   background: var(--surface-container);
