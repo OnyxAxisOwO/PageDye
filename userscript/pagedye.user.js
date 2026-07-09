@@ -254,7 +254,8 @@
 
     return {
       MIN_STOPS, MAX_STOPS, GRADIENT_PRESETS, GRADIENT_KEYFRAMES_CSS,
-      buildGradientCss, clampStops, defaultGradient, generateTonalPalette, normalizeToStopObjects
+      buildGradientCss, clampStops, defaultGradient, generateTonalPalette, normalizeToStopObjects,
+      isValidCssHexColor, hexToRgb
     };
   })();
 
@@ -442,6 +443,15 @@
     style.textContent = css;
   }
 
+  function buildFrostedInnerSelector(sel) {
+    return [
+      `${sel} > :not(img):not(video):not(canvas):not(svg):not(picture):not(input):not(textarea):not(select):not(button)`,
+      `${sel} :is(header, main, section, aside, nav, article, form, [role="main"], [role="navigation"], [class*="container"], [class*="content"], [class*="panel"], [class*="sidebar"], [class*="drawer"], [class*="header"], [class*="footer"], [class*="bar"], [class*="box"], [class*="wrap"], [class*="layout"])`,
+      `${sel}::before`,
+      `${sel}::after`
+    ].join(', ');
+  }
+
   function applyFrostedGlass(cfg) {
     removeFrostedGlass();
     const list = normalizeFrostedGlassList(cfg);
@@ -450,17 +460,28 @@
       const sel = scopeSelector(entry.selector);
       const blur = typeof entry.blur === 'number' ? entry.blur : 12;
       const alpha = (typeof entry.opacity === 'number' ? entry.opacity : 55) / 100;
-      const css =
-        `${sel} {` +
-          'background-image: none !important;' +
-          `backdrop-filter: blur(${blur}px) !important;` +
-          `-webkit-backdrop-filter: blur(${blur}px) !important;` +
-        '}' +
-        '@media (prefers-color-scheme: dark) {' +
+      const hasCustomColor = Gradient.isValidCssHexColor(entry.color);
+      const rgb = hasCustomColor ? Gradient.hexToRgb(entry.color) : null;
+      const colorRule = hasCustomColor
+        ? `${sel} { background-color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha}) !important; }`
+        : '@media (prefers-color-scheme: dark) {' +
           `${sel} { background-color: rgba(20, 20, 20, ${alpha}) !important; }` +
         '}' +
         '@media (prefers-color-scheme: light) {' +
           `${sel} { background-color: rgba(255, 255, 255, ${alpha}) !important; }` +
+        '}';
+      const css =
+        `${sel} {` +
+          'background-image: none !important;' +
+          'background-clip: padding-box !important;' +
+          'isolation: isolate !important;' +
+          `backdrop-filter: blur(${blur}px) saturate(1.35) !important;` +
+          `-webkit-backdrop-filter: blur(${blur}px) saturate(1.35) !important;` +
+        '}' +
+        colorRule +
+        `${buildFrostedInnerSelector(sel)} {` +
+          'background-color: transparent !important;' +
+          'background-image: none !important;' +
         '}';
       const style = document.createElement('style');
       style.id = `${FROSTED_STYLE_ID}-${i}`;
