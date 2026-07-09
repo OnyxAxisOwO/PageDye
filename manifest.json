@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PageDye - Custom Website Backgrounds",
-  "version": "0.7.15",
+  "version": "0.7.16",
   "description": "Customize the background of any website with images or colors.",
   "browser_specific_settings": {
     "gecko": {
