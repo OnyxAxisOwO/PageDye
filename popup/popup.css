@@ -22,6 +22,8 @@
   --badge-color-text: #006A6A;
   --shadow-sm: 0 1px 2px rgba(23, 29, 28, 0.10);
   --shadow-md: 0 4px 12px rgba(23, 29, 28, 0.12);
+  --popup-corner-shadow-strong: rgba(23, 29, 28, 0.16);
+  --popup-corner-shadow-soft: rgba(23, 29, 28, 0.07);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -47,6 +49,8 @@
     --badge-color-text: #80D5D1;
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
     --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.32);
+    --popup-corner-shadow-strong: rgba(0, 0, 0, 0.34);
+    --popup-corner-shadow-soft: rgba(0, 0, 0, 0.18);
   }
 }
 
@@ -738,6 +742,11 @@ input[type="range"]::-moz-range-thumb {
   padding: 12px 14px;
   border-top: 1px solid var(--border-color);
   background: var(--surface-bg);
+  will-change: height, opacity;
+}
+
+.accordion-animating > .accordion-content {
+  overflow: hidden;
 }
 
 .accordion-content .control-group:last-child {
@@ -1807,6 +1816,24 @@ h1, .accordion-summary, .card-label, .nav-label {
   line-height: 1.5;
 }
 
+.restricted-enable-btn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary-color);
+  color: var(--primary-color-text);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.restricted-enable-btn:hover {
+  background: var(--primary-hover);
+}
+
 .pagedye-restricted-page .container > :not(.restricted-page-overlay) {
   filter: grayscale(1);
   opacity: 0.42;
@@ -1852,6 +1879,20 @@ body {
     var(--bg-color);
   letter-spacing: 0;
   overflow: hidden;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at -18px -22px,
+      var(--popup-corner-shadow-strong) 0,
+      var(--popup-corner-shadow-soft) 96px,
+      transparent 210px);
 }
 
 .container {
@@ -1883,7 +1924,7 @@ header {
 }
 
 h1 {
-  color: var(--text-color);
+  color: var(--primary-color);
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 0;
@@ -1921,6 +1962,99 @@ h1 {
   background: var(--primary-color);
   color: var(--primary-color-text);
   box-shadow: var(--shadow-sm);
+}
+
+.extension-power-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  background: var(--surface-container-low);
+  box-shadow: none;
+}
+
+.extension-power-copy {
+  min-width: 0;
+}
+
+.extension-power-kicker {
+  display: block;
+  margin-bottom: 1px;
+  color: var(--primary-color);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.extension-power-copy strong {
+  display: block;
+  color: var(--text-color);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.extension-power-copy p {
+  margin: 1px 0 0;
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.power-switch {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.power-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.power-switch-track {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 42px;
+  height: 24px;
+  border: 2px solid var(--outline-variant);
+  border-radius: 999px;
+  background: var(--surface-container-highest);
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.power-switch-thumb {
+  position: absolute;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.22s cubic-bezier(.2, .8, .2, 1), background 0.2s ease;
+}
+
+.power-switch input:checked + .power-switch-track {
+  border-color: var(--primary-color);
+  background: var(--primary-color);
+  box-shadow: var(--accent-glow);
+}
+
+.power-switch input:checked + .power-switch-track .power-switch-thumb {
+  transform: translateX(18px);
+  background: var(--primary-color-text);
+}
+
+.power-switch input:focus-visible + .power-switch-track {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 3px;
 }
 
 label {

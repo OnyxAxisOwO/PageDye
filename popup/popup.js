@@ -165,6 +165,7 @@ function pagedyeElementPicker(settings, domain, fieldPath, tipTextMultiple, tipT
 // Shared across both DOMContentLoaded listeners below (they're independent,
 // sibling closures — not nested — so this can't live inside either one).
 const CUSTOM_PRESET_COLORS_KEY = '__pagedye_custom_preset_colors__';
+const EXTENSION_ENABLED_KEY = '__pagedye_extension_enabled__';
 const UI_THEME_KEY = '__pagedye_ui_theme__';
 const UI_THEME_DEFAULTS = { accent: 'neutral', customAccent: '#18181b', disableAnimation: false };
 const UI_THEME_ACCENTS = {
@@ -210,6 +211,88 @@ function shiftHexColor(color, amount) {
   return '#' + next.join('').toUpperCase();
 }
 
+function hexToHsl(color) {
+  const hex = normalizeHexColor(color, '#18181B').replace('#', '');
+  const r = parseInt(hex.slice(0, 2), 16) / 255;
+  const g = parseInt(hex.slice(2, 4), 16) / 255;
+  const b = parseInt(hex.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  let h = 0;
+  let s = 0;
+  if (d !== 0) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    switch (max) {
+      case r: h = 60 * (((g - b) / d) % 6); break;
+      case g: h = 60 * ((b - r) / d + 2); break;
+      default: h = 60 * ((r - g) / d + 4); break;
+    }
+    if (h < 0) h += 360;
+  }
+  return { h, s: s * 100, l: l * 100 };
+}
+
+function hslToHex(h, s, l) {
+  const sat = s / 100;
+  const light = l / 100;
+  const c = (1 - Math.abs(2 * light - 1)) * sat;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = light - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) { r = c; g = x; b = 0; }
+  else if (h < 120) { r = x; g = c; b = 0; }
+  else if (h < 180) { r = 0; g = c; b = x; }
+  else if (h < 240) { r = 0; g = x; b = c; }
+  else if (h < 300) { r = x; g = 0; b = c; }
+  else { r = c; g = 0; b = x; }
+  const toHex = (v) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+  return ('#' + toHex(r) + toHex(g) + toHex(b)).toUpperCase();
+}
+
+// Real Material You dynamic color doesn't just tint buttons — the surfaces
+// (backgrounds, cards, containers, borders) are their own tonal palette
+// derived from the same seed color's hue, at low chroma. Scaling the tint's
+// saturation by the accent's own saturation (rather than a flat constant)
+// keeps a near-gray accent (the default "neutral" preset) rendering as true
+// neutral gray, while a vivid accent (purple, teal, etc.) visibly tints the
+// whole interface — not just the accent color itself.
+function getNeutralSurfaceTones(accentHex, isDark) {
+  const { h, s: accentSat } = hexToHsl(accentHex);
+  const surfaceSat = Math.min(45, accentSat * 1.0);
+  const outlineSat = Math.min(30, accentSat * 0.8);
+  const textSat = Math.min(12, accentSat * 0.3);
+  if (isDark) {
+    return {
+      '--bg-color': hslToHex(h, surfaceSat, 6),
+      '--surface-bg': hslToHex(h, surfaceSat, 11),
+      '--surface-card': hslToHex(h, surfaceSat, 13),
+      '--surface-container-low': hslToHex(h, surfaceSat, 10),
+      '--surface-container': hslToHex(h, surfaceSat, 13),
+      '--surface-container-high': hslToHex(h, surfaceSat, 17),
+      '--surface-container-highest': hslToHex(h, surfaceSat, 22),
+      '--outline-variant': hslToHex(h, outlineSat, 28),
+      '--border-color': hslToHex(h, outlineSat, 28),
+      '--text-color': hslToHex(h, textSat, 88),
+      '--text-secondary': hslToHex(h, textSat, 76)
+    };
+  }
+  return {
+    '--bg-color': hslToHex(h, surfaceSat, 99),
+    '--surface-bg': hslToHex(h, surfaceSat, 93),
+    '--surface-card': hslToHex(h, surfaceSat, 97),
+    '--surface-container-low': hslToHex(h, surfaceSat, 97),
+    '--surface-container': hslToHex(h, surfaceSat, 95),
+    '--surface-container-high': hslToHex(h, surfaceSat, 93),
+    '--surface-container-highest': hslToHex(h, surfaceSat, 91),
+    '--outline-variant': hslToHex(h, outlineSat, 76),
+    '--border-color': hslToHex(h, outlineSat, 86),
+    '--text-color': hslToHex(h, textSat, 10),
+    '--text-secondary': hslToHex(h, textSat, 28)
+  };
+}
+
 function getUiAccentColor(theme) {
   if (theme.accent === 'custom') {
     return normalizeHexColor(theme.customAccent, UI_THEME_ACCENTS.neutral);
@@ -233,6 +316,9 @@ function applyUiTheme(theme) {
   root.setProperty('--badge-color-text', accent);
   root.setProperty('--badge-image-bg', hexToRgba(accent, 0.14));
   root.setProperty('--badge-image-text', accent);
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const surfaces = getNeutralSurfaceTones(accent, isDark);
+  Object.keys(surfaces).forEach((name) => root.setProperty(name, surfaces[name]));
   if (theme.disableAnimation) {
     document.documentElement.classList.add('pagedye-no-animation');
   } else {
@@ -303,6 +389,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       invalidUrl: "Invalid URL",
       restrictedTitle: "PageDye can't run here",
       restrictedMessage: "This page is blocked by browser security restrictions. PageDye has been disabled for this tab.",
+      disabledTitle: "PageDye is turned off",
+      disabledMessage: "Turn PageDye back on to use wallpapers, frosted glass, custom cursor, Deep Compatibility Mode, and debug tools.",
+      disabledEnableButton: "Turn PageDye back on",
+      extensionPowerKicker: "Extension power",
+      extensionPowerTitle: "PageDye is on",
+      extensionPowerHint: "Turn it off to stop all PageDye features on every page.",
       targetSite: "This Site",
       targetDefault: "Default (All Sites)",
       targetHintInherited: "This site has no settings of its own — showing the global default. Editing will save a config just for this site.",
@@ -708,8 +800,78 @@ document.addEventListener('DOMContentLoaded', async () => {
     wallpapersGrid: document.getElementById('wallpapers-grid'),
     statusDot: document.getElementById('status-dot'),
     statusText: document.getElementById('status-text'),
-    restrictedOverlay: document.getElementById('restricted-page-overlay')
+    restrictedOverlay: document.getElementById('restricted-page-overlay'),
+    restrictedEnableBtn: document.getElementById('restricted-enable-btn'),
+    extensionEnabledToggle: document.getElementById('extension-enabled-toggle')
   };
+
+  function setAccordionOpen(details, open, animate = true) {
+    const content = details && details.querySelector(':scope > .accordion-content');
+    if (!details || !content) return;
+
+    if (details.open === open && !details.classList.contains('accordion-animating')) return;
+    details._pagedyeAccordionOpenTarget = open;
+
+    if (details._pagedyeAccordionAnimation) {
+      details._pagedyeAccordionAnimation.cancel();
+      details._pagedyeAccordionAnimation = null;
+    }
+
+    const shouldAnimate = animate && !document.documentElement.classList.contains('pagedye-no-animation') && content.animate;
+    if (!shouldAnimate) {
+      details.open = open;
+      content.style.height = '';
+      content.style.overflow = '';
+      content.style.opacity = '';
+      details.classList.remove('accordion-animating');
+      return;
+    }
+
+    details.classList.add('accordion-animating');
+
+    if (open) {
+      content.style.height = '0px';
+      content.style.overflow = 'hidden';
+      details.open = true;
+      const targetHeight = content.scrollHeight;
+      details._pagedyeAccordionAnimation = content.animate(
+        [{ height: '0px', opacity: 0.35 }, { height: targetHeight + 'px', opacity: 1 }],
+        { duration: 220, easing: 'cubic-bezier(.22,1,.36,1)' }
+      );
+    } else {
+      const startHeight = content.scrollHeight;
+      content.style.height = startHeight + 'px';
+      content.style.overflow = 'hidden';
+      details._pagedyeAccordionAnimation = content.animate(
+        [{ height: startHeight + 'px', opacity: 1 }, { height: '0px', opacity: 0.35 }],
+        { duration: 170, easing: 'ease' }
+      );
+    }
+
+    details._pagedyeAccordionAnimation.onfinish = () => {
+      details.open = open;
+      content.style.height = '';
+      content.style.overflow = '';
+      content.style.opacity = '';
+      details.classList.remove('accordion-animating');
+      details._pagedyeAccordionAnimation = null;
+      details._pagedyeAccordionOpenTarget = open;
+    };
+  }
+
+  function handleAccordionSummaryClick(e) {
+    const summary = e.target.closest('.accordion-summary');
+    if (!summary) return;
+    const details = summary.closest('.accordion');
+    if (!details || !details.contains(summary)) return;
+    e.preventDefault();
+    const currentTarget = typeof details._pagedyeAccordionOpenTarget === 'boolean'
+      ? details._pagedyeAccordionOpenTarget
+      : details.open;
+    setAccordionOpen(details, !currentTarget);
+  }
+
+  document.addEventListener('click', handleAccordionSummaryClick);
 
   function syncUiThemeControls() {
     if (els.uiThemeCustomColor) {
@@ -796,6 +958,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function showRestrictedPageState() {
+    setOverlayMessage(t('restrictedTitle'), t('restrictedMessage'), false);
     document.body.classList.add('pagedye-restricted-page');
     if (els.restrictedOverlay) {
       els.restrictedOverlay.classList.remove('hidden');
@@ -808,6 +971,46 @@ document.addEventListener('DOMContentLoaded', async () => {
       els.statusText.textContent = t('restrictedTitle');
     }
     disableAll();
+  }
+
+  function setOverlayMessage(title, message, canEnable) {
+    if (!els.restrictedOverlay) return;
+    const titleEl = els.restrictedOverlay.querySelector('strong');
+    const messageEl = els.restrictedOverlay.querySelector('p');
+    if (titleEl) titleEl.textContent = title;
+    if (messageEl) messageEl.textContent = message;
+    if (els.restrictedEnableBtn) {
+      els.restrictedEnableBtn.classList.toggle('hidden', !canEnable);
+      els.restrictedEnableBtn.textContent = t('disabledEnableButton');
+    }
+  }
+
+  function showExtensionDisabledState() {
+    setOverlayMessage(t('disabledTitle'), t('disabledMessage'), true);
+    document.body.classList.add('pagedye-restricted-page');
+    if (els.restrictedOverlay) {
+      els.restrictedOverlay.classList.remove('hidden');
+    }
+    if (els.extensionEnabledToggle) {
+      els.extensionEnabledToggle.checked = false;
+    }
+    if (els.statusDot) {
+      els.statusDot.classList.remove('saving');
+      els.statusDot.classList.add('blocked');
+    }
+    if (els.statusText) {
+      els.statusText.textContent = t('disabledTitle');
+    }
+    disableAll();
+  }
+
+  async function setExtensionEnabled(enabled) {
+    await chrome.storage.local.set({ [EXTENSION_ENABLED_KEY]: !!enabled });
+    if (!enabled) {
+      showExtensionDisabledState();
+      return;
+    }
+    window.location.reload();
   }
 
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
@@ -845,6 +1048,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   initTimeRangePeriodSelects();
   const versionEl = document.getElementById('version');
   if (versionEl) versionEl.textContent = 'v' + chrome.runtime.getManifest().version;
+  if (els.extensionEnabledToggle) {
+    els.extensionEnabledToggle.addEventListener('change', () => {
+      setExtensionEnabled(els.extensionEnabledToggle.checked);
+    });
+  }
+  if (els.restrictedEnableBtn) {
+    els.restrictedEnableBtn.addEventListener('click', () => {
+      setExtensionEnabled(true);
+    });
+  }
+  const extensionState = await chrome.storage.local.get(EXTENSION_ENABLED_KEY);
+  const extensionEnabled = extensionState[EXTENSION_ENABLED_KEY] !== false;
+  if (els.extensionEnabledToggle) {
+    els.extensionEnabledToggle.checked = extensionEnabled;
+  }
+  if (!extensionEnabled) {
+    showExtensionDisabledState();
+    return;
+  }
   await populateCustomEffectOptions(els.effectKind);
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && Object.prototype.hasOwnProperty.call(changes, CUSTOM_EFFECTS_KEY)) {
@@ -1532,7 +1754,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       uiThemeColor: "\u754c\u9762\u4e3b\u9898\u8272",
       uiThemeColorHint: "\u53ea\u6539\u53d8 PageDye \u8bbe\u7f6e\u9875\u548c\u5f39\u7a97\u989c\u8272\uff0c\u4e0d\u4f1a\u5f71\u54cd\u7f51\u7ad9\u989c\u8272\u3002",
       deepCompatAggressiveEnable: "\u5f3a\u517c\u6a21\u5f0f",
-      deepCompatAggressiveHint: "\u66f4\u6fc0\u8fdb\uff1a\u9ad8\u9891\u68c0\u6d4b DOM/\u6837\u5f0f\u53d8\u5316\u5e76\u53cd\u590d\u6062\u590d PageDye \u8986\u76d6\u3002\u53ea\u5efa\u8bae\u5728\u9632\u5fa1\u5f88\u5f3a\u7684\u7f51\u7ad9\u4f7f\u7528\uff0c\u53ef\u80fd\u660e\u663e\u589e\u52a0\u6027\u80fd\u6d88\u8017\u3002"
+      deepCompatAggressiveHint: "\u66f4\u6fc0\u8fdb\uff1a\u9ad8\u9891\u68c0\u6d4b DOM/\u6837\u5f0f\u53d8\u5316\u5e76\u53cd\u590d\u6062\u590d PageDye \u8986\u76d6\u3002\u53ea\u5efa\u8bae\u5728\u9632\u5fa1\u5f88\u5f3a\u7684\u7f51\u7ad9\u4f7f\u7528\uff0c\u53ef\u80fd\u660e\u663e\u589e\u52a0\u6027\u80fd\u6d88\u8017\u3002",
+      disabledTitle: "PageDye \u5df2\u5173\u95ed",
+      disabledMessage: "\u9700\u8981\u6253\u5f00\u63d2\u4ef6\u540e\uff0c\u58c1\u7eb8\u3001\u78e8\u7802\u73bb\u7483\u3001\u81ea\u5b9a\u4e49\u5149\u6807\u3001\u6df1\u5ea6\u517c\u5bb9\u6a21\u5f0f\u548c\u8c03\u8bd5\u5de5\u5177\u624d\u4f1a\u6062\u590d\u3002",
+      disabledEnableButton: "\u6253\u5f00 PageDye",
+      extensionPowerKicker: "\u63d2\u4ef6\u603b\u5f00\u5173",
+      extensionPowerTitle: "PageDye \u5df2\u5f00\u542f",
+      extensionPowerHint: "\u5173\u95ed\u540e\u4f1a\u505c\u6b62\u6240\u6709\u9875\u9762\u4e0a\u7684 PageDye \u529f\u80fd\u3002"
     };
     if (lang === 'zh' && zhFallback[key]) return zhFallback[key];
     return i18n[lang][key] || i18n.en[key] || key;
@@ -1916,13 +2144,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Deep Compatibility Mode now has its own always-expanded accordion.
     const accordionAdvanced = document.getElementById('accordion-advanced');
     if (els.targetSelector.value || els.customCss.value) {
-      if (accordionAdvanced) accordionAdvanced.open = true;
+      if (accordionAdvanced) setAccordionOpen(accordionAdvanced, true, false);
     } else {
-      if (accordionAdvanced) accordionAdvanced.open = false;
+      if (accordionAdvanced) setAccordionOpen(accordionAdvanced, false, false);
     }
 
     const accordionCursor = document.getElementById('accordion-cursor');
-    if (accordionCursor) accordionCursor.open = els.cursorToggle.checked;
+    if (accordionCursor) setAccordionOpen(accordionCursor, els.cursorToggle.checked, false);
 
     updateInteractivePreviews();
   }
@@ -2642,6 +2870,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function setSyncedState() {
     els.statusDot.classList.remove('saving');
+    els.statusDot.classList.remove('blocked');
     els.statusText.textContent = t('statusSynced');
   }
 

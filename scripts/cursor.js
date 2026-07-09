@@ -85,7 +85,6 @@ window.PageDyeCursor = (function () {
       top: '0',
       left: '0',
       borderRadius: '50%',
-      transition: 'transform 0.15s ease',
       willChange: 'transform'
     });
     if (preset === 'ring') {
@@ -137,7 +136,6 @@ window.PageDyeCursor = (function () {
       borderRadius: '50%',
       background: 'transparent',
       border: `1.5px solid ${hexToRgba(color, 0.7)}`,
-      transition: 'transform 0.15s ease',
       willChange: 'transform'
     });
   }
@@ -270,8 +268,6 @@ window.PageDyeCursor = (function () {
 
     function hoverInHandler(e) {
       if (e.target && e.target.closest && e.target.closest(HOVER_SELECTOR)) {
-        dot.style.transform = `translate3d(${dotX}px, ${dotY}px, 0) scale(${config.preset === 'dot-ring' ? 1 : config.hoverScale})`;
-        if (ring) ring.style.transform = `translate3d(${ringX}px, ${ringY}px, 0) scale(${config.hoverScale})`;
         root.dataset.hover = '1';
       }
     }
@@ -308,8 +304,14 @@ window.PageDyeCursor = (function () {
         dotX = mouseX;
         dotY = mouseY;
       }
-      const scale = root.dataset.hover ? (config.preset === 'dot-ring' ? 1 : config.hoverScale) : 1;
-      dot.style.transform = `translate3d(${dotX}px, ${dotY}px, 0) scale(${scale})`;
+      // Scale (hover grow/shrink) snaps instantly, same as position — the
+      // cursor shape is the real pointer, not a separately-animated object
+      // trailing behind it. This used to be a CSS `transition: transform`,
+      // which (since it shares the `transform` property with translate3d)
+      // eased the position too and made the cursor visibly lag behind the
+      // real pointer even with smoothing off.
+      const dotScale = root.dataset.hover ? (config.preset === 'dot-ring' ? 1 : config.hoverScale) : 1;
+      dot.style.transform = `translate3d(${dotX}px, ${dotY}px, 0) scale(${dotScale})`;
 
       if (ring) {
         if (config.smoothing) {

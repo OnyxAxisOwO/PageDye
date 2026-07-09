@@ -6,6 +6,7 @@
   const FROSTED_STYLE_ID = 'pagedye-frosted-glass';
   const DEEP_COMPAT_STYLE_ID = 'pagedye-deep-compat-style';
   const DEEP_COMPAT_ATTR = 'data-pagedye-deep-compat';
+  const EXTENSION_ENABLED_KEY = '__pagedye_extension_enabled__';
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
   const DEFAULT_BG_KEY = '__pagedye_default_background__';
   let currentSettings = null;
@@ -14,6 +15,7 @@
   let timePeriodCheckInterval = null;
   let lastTimePeriod = null;
   let currentCustomEffects = [];
+  let extensionEnabled = true;
   // Whether currentSettings for this page came from DEFAULT_BG_KEY rather
   // than the page's own domain entry — decides where slideshow rotation
   // writes back to, and whether a DEFAULT_BG_KEY storage change should
@@ -59,14 +61,20 @@
     // Load initial settings
     const domain = window.location.hostname;
     try {
-      chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY, DEFAULT_BG_KEY], (data) => {
+      chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY, DEFAULT_BG_KEY, EXTENSION_ENABLED_KEY], (data) => {
         if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
           return;
         }
+        extensionEnabled = data[EXTENSION_ENABLED_KEY] !== false;
         currentCustomEffects = data[CUSTOM_EFFECTS_KEY] || [];
         lastKnownDefault = data[DEFAULT_BG_KEY] || null;
         usingDefault = !data[domain] && !!lastKnownDefault;
         const settings = data[domain] || lastKnownDefault;
+        if (!extensionEnabled) {
+          currentSettings = settings || null;
+          disablePageDyeFeatures();
+          return;
+        }
         if (settings) {
           currentSettings = settings;
           if (settings.mode === 'slideshow' && settings.slideshow && settings.slideshow.items && settings.slideshow.items.length > 1) {
@@ -183,7 +191,7 @@
   function onMediaSchemeChanged() {
     // Re-applying also lets an "auto" effect color preset (independent of
     // the wallpaper light/dark MODE) pick up the new OS scheme live.
-    if (currentSettings) {
+    if (extensionEnabled && currentSettings) {
       applyBackground(currentSettings);
     }
   }
@@ -213,7 +221,11 @@
     }
     if (message.action === 'updateBackground') {
       currentSettings = message.settings;
-      applyBackground(message.settings);
+      if (extensionEnabled) {
+        applyBackground(message.settings);
+      } else {
+        disablePageDyeFeatures();
+      }
     }
     // Reply so the sender's awaited sendMessage resolves cleanly.
     try {
@@ -229,6 +241,29 @@
     if (typeof chrome === 'undefined' || !chrome.runtime?.id) return;
     if (area !== 'local') return;
     const domain = window.location.hostname;
+
+    if (Object.prototype.hasOwnProperty.call(changes, EXTENSION_ENABLED_KEY)) {
+      extensionEnabled = changes[EXTENSION_ENABLED_KEY].newValue !== false;
+      if (!extensionEnabled) {
+        disablePageDyeFeatures();
+        return;
+      }
+      if (currentSettings) {
+        applyBackground(currentSettings);
+      } else {
+        try {
+          chrome.storage.local.get([domain, DEFAULT_BG_KEY], (data) => {
+            if (typeof chrome === 'undefined' || !chrome.runtime?.id || !extensionEnabled) return;
+            lastKnownDefault = data[DEFAULT_BG_KEY] || null;
+            usingDefault = !data[domain] && !!lastKnownDefault;
+            currentSettings = data[domain] || lastKnownDefault || { type: 'none' };
+            applyBackground(currentSettings);
+          });
+        } catch (e) {}
+      }
+    }
+
+    if (!extensionEnabled) return;
 
     if (Object.prototype.hasOwnProperty.call(changes, CUSTOM_EFFECTS_KEY)) {
       currentCustomEffects = changes[CUSTOM_EFFECTS_KEY].newValue || [];
@@ -278,6 +313,11 @@
   }
 
   function applyBackground(settings) {
+    if (!extensionEnabled) {
+      disablePageDyeFeatures();
+      return;
+    }
+    ensurePageDyeEngineListeners();
     settings = settings || { type: 'none' };
 
     if (slideshowTimer) {
@@ -929,6 +969,70 @@
 
   function removeCustomCursor() {
     window.PageDyeCursor.stop();
+  }
+
+  function disablePageDyeFeatures() {
+    if (slideshowTimer) {
+      clearTimeout(slideshowTimer);
+      slideshowTimer = null;
+    }
+    if (timePeriodCheckInterval) {
+      clearInterval(timePeriodCheckInterval);
+      timePeriodCheckInterval = null;
+    }
+    removeBackdrop();
+    removeTargetStyle();
+    applyCustomCss('');
+    removeFrostedGlass();
+    removeCustomCursor();
+    updateDeepCompat(false, '');
+    removePageDyeEngineListeners();
+    removeAnyPageDyeArtifacts();
+    currentActiveSettings = null;
+  }
+
+  function removePageDyeEngineListeners() {
+    if (window.__pagedyeMediaListener) {
+      try {
+        window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', window.__pagedyeMediaListener);
+      } catch (e) {}
+      window.__pagedyeMediaListener = null;
+    }
+    if (window.__pagedyeKeydownListener) {
+      window.removeEventListener('keydown', window.__pagedyeKeydownListener);
+      window.__pagedyeKeydownListener = null;
+    }
+    if (window.__pagedyeKeyupListener) {
+      window.removeEventListener('keyup', window.__pagedyeKeyupListener);
+      window.__pagedyeKeyupListener = null;
+    }
+    if (window.__pagedyeBlurListener) {
+      window.removeEventListener('blur', window.__pagedyeBlurListener);
+      window.__pagedyeBlurListener = null;
+    }
+  }
+
+  function ensurePageDyeEngineListeners() {
+    if (!window.__pagedyeMediaListener) {
+      window.__pagedyeMediaListener = onMediaSchemeChanged;
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onMediaSchemeChanged);
+    }
+  }
+
+  function removeAnyPageDyeArtifacts() {
+    [
+      ROOT_ID,
+      STYLE_ID,
+      TARGET_STYLE_ID,
+      CUSTOM_STYLE_ID,
+      DEEP_COMPAT_STYLE_ID,
+      'pagedye-cursor-root',
+      'pagedye-cursor-hide-style'
+    ].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+    document.querySelectorAll(`style[id^="${FROSTED_STYLE_ID}"]`).forEach((style) => style.remove());
   }
 
   // Builds a CSS filter string from a settings object.

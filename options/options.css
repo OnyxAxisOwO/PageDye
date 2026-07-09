@@ -2088,6 +2088,11 @@ input:checked + .slider.round:before {
   padding: 16px;
   border-top: 1px solid var(--border-color);
   background: var(--surface-bg);
+  will-change: height, opacity;
+}
+
+.accordion-animating > .accordion-content {
+  overflow: hidden;
 }
 
 .accordion-content .control-group:last-child {

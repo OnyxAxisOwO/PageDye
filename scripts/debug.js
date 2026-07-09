@@ -4,6 +4,7 @@
 // keeps its own state, so it can be dropped without touching the renderer.
 (() => {
   const DEBUG_MODE_KEY = '__pagedye_debug_mode__';
+  const EXTENSION_ENABLED_KEY = '__pagedye_extension_enabled__';
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
   const POSITION_KEY = '__pagedye_debug_position__';
   const HOST_ID = 'pagedye-debug-host';
@@ -17,6 +18,7 @@
   const domain = window.location.hostname;
 
   let enabled = false;
+  let extensionEnabled = true;
   let host = null, shadow = null;
   let ui = { open: false, tab: 'state', perfCollapsed: false };
   let position = { side: 'right', topPercent: 88 };
@@ -64,15 +66,16 @@
     if (typeof chrome === 'undefined' || !chrome.runtime?.id) return;
     try {
       chrome.storage.onChanged.addListener(onStorageChanged);
-      chrome.storage.local.get([DEBUG_MODE_KEY, POSITION_KEY], (data) => {
+      chrome.storage.local.get([DEBUG_MODE_KEY, POSITION_KEY, EXTENSION_ENABLED_KEY], (data) => {
         if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
           teardown();
           return;
         }
+        extensionEnabled = data[EXTENSION_ENABLED_KEY] !== false;
         if (data[POSITION_KEY]) {
           position = data[POSITION_KEY];
         }
-        if (data[DEBUG_MODE_KEY]) enable();
+        if (extensionEnabled && data[DEBUG_MODE_KEY]) enable();
       });
     } catch (e) {
       teardown();
@@ -97,8 +100,19 @@
     }
     if (area !== 'local') return;
 
+    if (Object.prototype.hasOwnProperty.call(changes, EXTENSION_ENABLED_KEY)) {
+      extensionEnabled = changes[EXTENSION_ENABLED_KEY].newValue !== false;
+      if (!extensionEnabled) {
+        disable();
+        return;
+      }
+      chrome.storage.local.get(DEBUG_MODE_KEY, (data) => {
+        if (data[DEBUG_MODE_KEY]) enable();
+      });
+    }
+
     if (Object.prototype.hasOwnProperty.call(changes, DEBUG_MODE_KEY)) {
-      if (changes[DEBUG_MODE_KEY].newValue) enable();
+      if (extensionEnabled && changes[DEBUG_MODE_KEY].newValue) enable();
       else disable();
     }
 

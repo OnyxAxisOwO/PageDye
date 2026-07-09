@@ -494,9 +494,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // white text and badges on white). Deriving the rest of the palette from
   // the chosen background's lightness keeps everything readable regardless
   // of what the OS prefers.
+  // --text-color, --text-secondary, --border-color and --surface-bg used to
+  // live here as flat neutral grays. They're now derived from the accent hue
+  // instead (see getMaterialYouSurfaceTones) so PageDye's own background and
+  // control surfaces pick up a subtle tint of the chosen theme color, the way
+  // real Material You derives its whole neutral palette from one seed color
+  // instead of just tinting buttons.
   const UI_THEME_LIGHT_PALETTE = {
-    '--text-color': '#18181b', '--text-secondary': '#52525b', '--border-color': '#e4e4e7',
-    '--surface-bg': '#f4f4f5', '--primary-color': '#18181b', '--primary-color-text': '#ffffff',
+    '--primary-color': '#18181b', '--primary-color-text': '#ffffff',
     '--primary-hover': '#3f3f46', '--input-focus-shadow': 'rgba(24, 24, 27, 0.1)',
     '--shadow-sm': '0 1px 2px rgba(0,0,0,0.05)', '--shadow-md': '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)',
     '--shadow-lg': '0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.03)',
@@ -510,8 +515,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     '--toast-bg': 'rgba(15, 23, 42, 0.9)', '--toast-text': '#ffffff',
   };
   const UI_THEME_DARK_PALETTE = {
-    '--text-color': '#ffffff', '--text-secondary': '#a0a0a0', '--border-color': '#222222',
-    '--surface-bg': '#121212', '--primary-color': '#ffffff', '--primary-color-text': '#000000',
+    '--primary-color': '#ffffff', '--primary-color-text': '#000000',
     '--primary-hover': '#e5e5e5', '--input-focus-shadow': 'rgba(255, 255, 255, 0.15)',
     '--shadow-sm': '0 1px 2px rgba(0,0,0,0.5)', '--shadow-md': '0 4px 12px rgba(0,0,0,0.8)',
     '--shadow-lg': '0 12px 24px rgba(0,0,0,0.9)',
@@ -557,6 +561,102 @@ document.addEventListener('DOMContentLoaded', async () => {
     return '#' + next.join('').toUpperCase();
   }
 
+  function hexToHsl(color) {
+    const hex = normalizeHexColor(color, '#18181B').replace('#', '');
+    const r = parseInt(hex.slice(0, 2), 16) / 255;
+    const g = parseInt(hex.slice(2, 4), 16) / 255;
+    const b = parseInt(hex.slice(4, 6), 16) / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    const d = max - min;
+    let h = 0;
+    let s = 0;
+    if (d !== 0) {
+      s = d / (1 - Math.abs(2 * l - 1));
+      switch (max) {
+        case r: h = 60 * (((g - b) / d) % 6); break;
+        case g: h = 60 * ((b - r) / d + 2); break;
+        default: h = 60 * ((r - g) / d + 4); break;
+      }
+      if (h < 0) h += 360;
+    }
+    return { h, s: s * 100, l: l * 100 };
+  }
+
+  function hslToHex(h, s, l) {
+    const sat = s / 100;
+    const light = l / 100;
+    const c = (1 - Math.abs(2 * light - 1)) * sat;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = light - c / 2;
+    let r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; b = 0; }
+    else if (h < 120) { r = x; g = c; b = 0; }
+    else if (h < 180) { r = 0; g = c; b = x; }
+    else if (h < 240) { r = 0; g = x; b = c; }
+    else if (h < 300) { r = x; g = 0; b = c; }
+    else { r = c; g = 0; b = x; }
+    const toHex = (v) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+    return ('#' + toHex(r) + toHex(g) + toHex(b)).toUpperCase();
+  }
+
+  // Real Material You dynamic color derives its whole neutral tonal palette
+  // (surfaces, containers, outlines, on-surface text) from the seed color's
+  // hue at low chroma — not just the primary/accent color itself. Scaling
+  // the tint's saturation by the accent's OWN saturation (rather than a flat
+  // constant) keeps the near-gray "neutral" preset rendering as true neutral
+  // gray, while a vivid accent (purple, teal, etc.) visibly tints the whole
+  // dashboard — background, sidebar, cards, borders — not just buttons.
+  // Tone (lightness) targets mirror the existing static palette/CSS values
+  // so contrast relationships stay the same; only the hue/chroma shifts.
+  function getMaterialYouSurfaceTones(accentHex, isDark) {
+    const { h, s: accentSat } = hexToHsl(accentHex);
+    const surfaceSat = Math.min(45, accentSat * 1.0);
+    const outlineSat = Math.min(30, accentSat * 0.8);
+    const textSat = Math.min(12, accentSat * 0.3);
+    if (isDark) {
+      return {
+        '--text-color': hslToHex(h, textSat, 88),
+        '--text-secondary': hslToHex(h, textSat, 76),
+        '--border-color': hslToHex(h, outlineSat, 28),
+        '--surface-bg': hslToHex(h, surfaceSat, 11),
+        '--md-sys-color-surface': hslToHex(h, surfaceSat, 6),
+        '--md-sys-color-surface-dim': hslToHex(h, surfaceSat, 6),
+        '--md-sys-color-surface-container-lowest': hslToHex(h, surfaceSat, 5),
+        '--md-sys-color-surface-container-low': hslToHex(h, surfaceSat, 9),
+        '--md-sys-color-surface-container': hslToHex(h, surfaceSat, 11),
+        '--md-sys-color-surface-container-high': hslToHex(h, surfaceSat, 16),
+        '--md-sys-color-surface-container-highest': hslToHex(h, surfaceSat, 21),
+        '--md-sys-color-on-surface': hslToHex(h, textSat, 89),
+        '--md-sys-color-on-surface-variant': hslToHex(h, textSat, 76),
+        '--md-sys-color-outline': hslToHex(h, outlineSat, 58),
+        '--md-sys-color-outline-variant': hslToHex(h, outlineSat, 28),
+        '--md-sys-color-inverse-surface': hslToHex(h, surfaceSat, 89),
+        '--md-sys-color-inverse-on-surface': hslToHex(h, textSat, 19)
+      };
+    }
+    return {
+      '--text-color': hslToHex(h, textSat, 10),
+      '--text-secondary': hslToHex(h, textSat, 28),
+      '--border-color': hslToHex(h, outlineSat, 76),
+      '--surface-bg': hslToHex(h, surfaceSat, 95),
+      '--md-sys-color-surface': hslToHex(h, surfaceSat, 97),
+      '--md-sys-color-surface-dim': hslToHex(h, surfaceSat, 86),
+      '--md-sys-color-surface-container-lowest': hslToHex(h, surfaceSat, 99),
+      '--md-sys-color-surface-container-low': hslToHex(h, surfaceSat, 95),
+      '--md-sys-color-surface-container': hslToHex(h, surfaceSat, 93),
+      '--md-sys-color-surface-container-high': hslToHex(h, surfaceSat, 91),
+      '--md-sys-color-surface-container-highest': hslToHex(h, surfaceSat, 89),
+      '--md-sys-color-on-surface': hslToHex(h, textSat, 9),
+      '--md-sys-color-on-surface-variant': hslToHex(h, textSat, 28),
+      '--md-sys-color-outline': hslToHex(h, outlineSat, 47),
+      '--md-sys-color-outline-variant': hslToHex(h, outlineSat, 76),
+      '--md-sys-color-inverse-surface': hslToHex(h, surfaceSat, 19),
+      '--md-sys-color-inverse-on-surface': hslToHex(h, textSat, 95)
+    };
+  }
+
   function getUiAccentColor(theme) {
     if (theme.accent === 'custom') {
       return normalizeHexColor(theme.customAccent, UI_THEME_ACCENTS.neutral);
@@ -590,6 +690,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     root.setProperty('--md-state-hover', hexToRgba(accent, 0.08));
     root.setProperty('--md-state-focus', hexToRgba(accent, 0.14));
     root.setProperty('--md-state-press', hexToRgba(accent, 0.14));
+
+    const isDark = !colorIsLight(theme.containerBg);
+    const surfaces = getMaterialYouSurfaceTones(accent, isDark);
+    Object.keys(surfaces).forEach((name) => root.setProperty(name, surfaces[name]));
   }
 
   // Elements
@@ -667,6 +771,74 @@ document.addEventListener('DOMContentLoaded', async () => {
     editCustomEffectDeleteBtn: document.getElementById('edit-custom-effect-delete-btn'),
     editCustomEffectSaveBtn: document.getElementById('edit-custom-effect-save-btn')
   };
+
+  function setAccordionOpen(details, open, animate = true) {
+    const content = details && details.querySelector(':scope > .accordion-content');
+    if (!details || !content) return;
+
+    if (details.open === open && !details.classList.contains('accordion-animating')) return;
+    details._pagedyeAccordionOpenTarget = open;
+
+    if (details._pagedyeAccordionAnimation) {
+      details._pagedyeAccordionAnimation.cancel();
+      details._pagedyeAccordionAnimation = null;
+    }
+
+    const shouldAnimate = animate && !document.documentElement.classList.contains('pagedye-no-animation') && content.animate;
+    if (!shouldAnimate) {
+      details.open = open;
+      content.style.height = '';
+      content.style.overflow = '';
+      content.style.opacity = '';
+      details.classList.remove('accordion-animating');
+      return;
+    }
+
+    details.classList.add('accordion-animating');
+
+    if (open) {
+      content.style.height = '0px';
+      content.style.overflow = 'hidden';
+      details.open = true;
+      const targetHeight = content.scrollHeight;
+      details._pagedyeAccordionAnimation = content.animate(
+        [{ height: '0px', opacity: 0.35 }, { height: targetHeight + 'px', opacity: 1 }],
+        { duration: 220, easing: 'cubic-bezier(.22,1,.36,1)' }
+      );
+    } else {
+      const startHeight = content.scrollHeight;
+      content.style.height = startHeight + 'px';
+      content.style.overflow = 'hidden';
+      details._pagedyeAccordionAnimation = content.animate(
+        [{ height: startHeight + 'px', opacity: 1 }, { height: '0px', opacity: 0.35 }],
+        { duration: 170, easing: 'ease' }
+      );
+    }
+
+    details._pagedyeAccordionAnimation.onfinish = () => {
+      details.open = open;
+      content.style.height = '';
+      content.style.overflow = '';
+      content.style.opacity = '';
+      details.classList.remove('accordion-animating');
+      details._pagedyeAccordionAnimation = null;
+      details._pagedyeAccordionOpenTarget = open;
+    };
+  }
+
+  function handleAccordionSummaryClick(e) {
+    const summary = e.target.closest('.accordion-summary');
+    if (!summary) return;
+    const details = summary.closest('.accordion');
+    if (!details || !details.contains(summary)) return;
+    e.preventDefault();
+    const currentTarget = typeof details._pagedyeAccordionOpenTarget === 'boolean'
+      ? details._pagedyeAccordionOpenTarget
+      : details.open;
+    setAccordionOpen(details, !currentTarget);
+  }
+
+  document.addEventListener('click', handleAccordionSummaryClick);
 
   // Init translations & versions
   initI18n();
@@ -1334,7 +1506,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-custom-effect-url-control').classList.add('hidden');
     document.getElementById('edit-custom-effect-url').value = '';
     document.getElementById('edit-custom-effect-interactive').checked = false;
-    document.getElementById('edit-accordion-custom-effect-advanced').open = false;
+    setAccordionOpen(document.getElementById('edit-accordion-custom-effect-advanced'), false, false);
 
     els.editCustomEffectTemplateControl.classList.remove('hidden');
     els.editCustomEffectTemplate.value = 'blank';
@@ -1376,7 +1548,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     document.getElementById('edit-custom-effect-interactive').checked = !!entry.interactive;
-    document.getElementById('edit-accordion-custom-effect-advanced').open = !!entry.interactive;
+    setAccordionOpen(document.getElementById('edit-accordion-custom-effect-advanced'), !!entry.interactive, false);
 
     els.editCustomEffectTemplateControl.classList.add('hidden');
     els.editCustomEffectCode.value = entry.code || '';
@@ -2122,7 +2294,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Deep Compatibility Mode now has its own always-expanded accordion.
     const editAccordionAdvanced = document.getElementById('edit-accordion-advanced');
     if (editAccordionAdvanced) {
-      editAccordionAdvanced.open = !!(currentEditSettings.targetSelector || currentEditSettings.customCss);
+      setAccordionOpen(editAccordionAdvanced, !!(currentEditSettings.targetSelector || currentEditSettings.customCss), false);
     }
   }
 
