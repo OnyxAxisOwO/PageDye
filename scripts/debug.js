@@ -674,6 +674,7 @@
           html += kvRow('模式', escapeHtml(settings.mode || 'single'));
           html += kvRow('类型', escapeHtml(settings.type || 'none'));
           html += kvRow('深度兼容模式', settings.deepCompat ? '开启' : '关闭');
+          html += kvRow('强兼模式', settings.deepCompatAggressive ? '开启' : '关闭');
           html += kvRow('磨砂玻璃元素数', String(frosted.length));
         }
         html += kvRow('自定义动效数(全局)', String(effects.length));

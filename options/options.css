@@ -1490,6 +1490,16 @@ input[type="range"]::-moz-range-thumb {
   color: var(--text-secondary);
 }
 
+.warning-hint {
+  color: #8B5000;
+}
+
+@media (prefers-color-scheme: dark) {
+  .warning-hint {
+    color: #FFB95C;
+  }
+}
+
 .selector-row {
   display: flex;
   gap: 8px;

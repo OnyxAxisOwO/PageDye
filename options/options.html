@@ -390,6 +390,15 @@
                   <span data-i18n="deepCompatEnable">Enable for this site</span>
                 </label>
                 <p class="hint" data-i18n="deepCompatHint">For stubborn sites (e.g. Google's mobile pages) where several stacked opaque containers hide the background no matter what. Automatically detects and neutralizes full-viewport opaque layers — including a mosaic of many small opaque cards, not just one big wrapper. May occasionally strip a background some element needed for contrast — use the exclude field below if so.</p>
+              </div>
+              <div class="control-group" style="margin-bottom: 12px;">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="edit-deep-compat-aggressive-toggle">
+                  <span data-i18n="deepCompatAggressiveEnable">Forceful compatibility mode</span>
+                </label>
+                <p class="hint warning-hint" data-i18n="deepCompatAggressiveHint">More aggressive: checks DOM/style changes very frequently and restores PageDye overrides. Use only on hostile sites; it may use more CPU.</p>
+              </div>
+              <div class="control-group" style="margin-bottom: 0;">
                 <input type="text" id="edit-deep-compat-exclude" placeholder=".modal, [role=dialog]" data-i18n-placeholder="deepCompatExcludePlaceholder">
               </div>
             </div>
