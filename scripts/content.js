@@ -860,6 +860,15 @@
     return [];
   }
 
+  function buildFrostedInnerSelector(sel) {
+    return [
+      `${sel} > :not(img):not(video):not(canvas):not(svg):not(picture):not(input):not(textarea):not(select):not(button)`,
+      `${sel} :is(header, main, section, aside, nav, article, form, [role="main"], [role="navigation"], [class*="container"], [class*="content"], [class*="panel"], [class*="sidebar"], [class*="drawer"], [class*="header"], [class*="footer"], [class*="bar"], [class*="box"], [class*="wrap"], [class*="layout"])`,
+      `${sel}::before`,
+      `${sel}::after`
+    ].join(', ');
+  }
+
   function applyFrostedGlass(cfg) {
     removeFrostedGlass();
     const list = normalizeFrostedGlassList(cfg);
@@ -888,10 +897,16 @@
       const css =
         `${sel} {` +
           'background-image: none !important;' +
-          `backdrop-filter: blur(${blur}px) !important;` +
-          `-webkit-backdrop-filter: blur(${blur}px) !important;` +
+          'background-clip: padding-box !important;' +
+          'isolation: isolate !important;' +
+          `backdrop-filter: blur(${blur}px) saturate(1.35) !important;` +
+          `-webkit-backdrop-filter: blur(${blur}px) saturate(1.35) !important;` +
         '}' +
-        colorRule;
+        colorRule +
+        `${buildFrostedInnerSelector(sel)} {` +
+          'background-color: transparent !important;' +
+          'background-image: none !important;' +
+        '}';
 
       const style = document.createElement('style');
       style.id = `${FROSTED_STYLE_ID}-${i}`;
