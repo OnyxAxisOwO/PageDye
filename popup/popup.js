@@ -301,6 +301,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       error: "Error saving!",
       noTab: "No Active Tab",
       invalidUrl: "Invalid URL",
+      restrictedTitle: "PageDye can't run here",
+      restrictedMessage: "This page is blocked by browser security restrictions. PageDye has been disabled for this tab.",
       targetSite: "This Site",
       targetDefault: "Default (All Sites)",
       targetHintInherited: "This site has no settings of its own — showing the global default. Editing will save a config just for this site.",
@@ -468,6 +470,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       error: "保存失败!",
       noTab: "无活动标签页",
       invalidUrl: "无效的链接",
+      restrictedTitle: "PageDye 无法在此页面运行",
+      restrictedMessage: "由于浏览器安全限制，PageDye 无法作用于当前标签页，已自动禁用。",
       targetSite: "此网站",
       targetDefault: "全站默认",
       targetHintInherited: "当前网站没有单独设置，正在使用全局默认背景。修改后将为此网站单独保存。",
@@ -700,7 +704,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     slideshowRandom: document.getElementById('slideshow-random'),
     wallpapersGrid: document.getElementById('wallpapers-grid'),
     statusDot: document.getElementById('status-dot'),
-    statusText: document.getElementById('status-text')
+    statusText: document.getElementById('status-text'),
+    restrictedOverlay: document.getElementById('restricted-page-overlay')
   };
 
   function syncUiThemeControls() {
@@ -762,6 +767,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     return await chrome.tabs.sendMessage(tabId, message);
   }
 
+  async function canRunOnTab(tab) {
+    if (!tab || !tab.id || !tab.url) return false;
+    let url;
+    try {
+      url = new URL(tab.url);
+    } catch (e) {
+      return false;
+    }
+    if (!['http:', 'https:', 'file:'].includes(url.protocol)) return false;
+    try {
+      await sendToTab(tab.id, { action: 'pagedyePing' });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function showRestrictedPageState() {
+    document.body.classList.add('pagedye-restricted-page');
+    if (els.restrictedOverlay) {
+      els.restrictedOverlay.classList.remove('hidden');
+    }
+    if (els.statusDot) {
+      els.statusDot.classList.remove('saving');
+      els.statusDot.classList.add('blocked');
+    }
+    if (els.statusText) {
+      els.statusText.textContent = t('restrictedTitle');
+    }
+    disableAll();
+  }
+
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
   const DEFAULT_BG_KEY = '__pagedye_default_background__';
 
@@ -811,6 +848,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       currentDomain = siteDomain;
       els.domainBadge.textContent = currentDomain;
       els.domainBadge.title = lang === 'zh' ? '点击复制域名' : 'Click to copy domain';
+      if (!(await canRunOnTab(tab))) {
+        showRestrictedPageState();
+        return;
+      }
       await loadSettings(currentDomain);
 
       // Restore last active tab on popup startup

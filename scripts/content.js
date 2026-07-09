@@ -203,6 +203,12 @@
 
   function onMessage(message, sender, sendResponse) {
     if (typeof chrome === 'undefined' || !chrome.runtime?.id) return;
+    if (message.action === 'pagedyePing') {
+      try {
+        sendResponse({ ok: true });
+      } catch (e) {}
+      return false;
+    }
     if (message.action === 'updateBackground') {
       currentSettings = message.settings;
       applyBackground(message.settings);

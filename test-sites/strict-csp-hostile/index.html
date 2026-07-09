@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'none'; base-uri 'none'; object-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'none'; connect-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'self'; require-trusted-types-for 'script'; trusted-types cspHostile;">
+  <title>Northbank Console - Strict CSP Test</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="site-shell">
+    <header class="topbar">
+      <a class="brand" href="/">
+        <span class="brand-mark">N</span>
+        <span>
+          <strong>Northbank Console</strong>
+          <small>Security Operations Portal</small>
+        </span>
+      </a>
+
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#overview">Overview</a>
+        <a href="#policies">Policies</a>
+        <a href="#events">Events</a>
+        <a href="#audit">Audit</a>
+      </nav>
+
+      <div class="user-chip" aria-label="Signed in user">
+        <span class="status-dot"></span>
+        <span>Tenant: Alpha</span>
+      </div>
+    </header>
+
+    <main class="dashboard" id="overview">
+      <section class="hero-panel">
+        <div>
+          <p class="eyebrow">Strict CSP simulation</p>
+          <h1>Production-like dashboard with hostile background layers</h1>
+          <p class="lead">
+            This local page is designed to make visual override extensions work hard:
+            no external resources, no frames, no inline styles, and several opaque
+            containers stacked above the document background.
+          </p>
+        </div>
+        <div class="score-card">
+          <span>Risk score</span>
+          <strong>87</strong>
+          <small>Elevated because all policy gates are locked down.</small>
+        </div>
+      </section>
+
+      <section class="metric-grid" aria-label="Security metrics">
+        <article class="metric-card">
+          <span class="metric-label">Blocked requests</span>
+          <strong>1,284</strong>
+          <small>Last 24 hours</small>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">CSP reports</span>
+          <strong>316</strong>
+          <small>Inline style/script attempts rejected</small>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Frame policy</span>
+          <strong>None</strong>
+          <small>All child frames are denied</small>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">DOM guard</span>
+          <strong id="guard-status">Starting</strong>
+          <small>Watching for visual injection nodes</small>
+        </article>
+      </section>
+
+      <section class="content-grid">
+        <article class="panel" id="policies">
+          <div class="panel-header">
+            <h2>Active policy</h2>
+            <span class="pill">Enforced</span>
+          </div>
+          <ul class="policy-list">
+            <li><strong>default-src</strong><span>'none'</span></li>
+            <li><strong>script-src</strong><span>'self'</span></li>
+            <li><strong>style-src</strong><span>'self'</span></li>
+            <li><strong>img-src</strong><span>'self'</span></li>
+            <li><strong>frame-src</strong><span>'none'</span></li>
+            <li><strong>connect-src</strong><span>'none'</span></li>
+          </ul>
+        </article>
+
+        <article class="panel" id="events">
+          <div class="panel-header">
+            <h2>Recent events</h2>
+            <span class="pill subtle">Live</span>
+          </div>
+          <div class="event-feed">
+            <p><time>09:12</time> Inline style rejected by policy.</p>
+            <p><time>09:18</time> Unknown visual layer removed from document.</p>
+            <p><time>09:26</time> Frame creation blocked by `frame-src`.</p>
+            <p><time>09:31</time> Opaque app surface repainted.</p>
+          </div>
+        </article>
+
+        <article class="panel wide" id="audit">
+          <div class="panel-header">
+            <h2>Audit workspace</h2>
+            <span class="pill">Read only</span>
+          </div>
+          <div class="audit-layout">
+            <div class="audit-table" role="table" aria-label="Audit rows">
+              <div role="row">
+                <span role="cell">CSP Header</span>
+                <span role="cell">Enforced</span>
+                <span role="cell">High confidence</span>
+              </div>
+              <div role="row">
+                <span role="cell">Opaque Shell</span>
+                <span role="cell">Enabled</span>
+                <span role="cell">Covers body background</span>
+              </div>
+              <div role="row">
+                <span role="cell">Mutation Guard</span>
+                <span role="cell">Enabled</span>
+                <span role="cell">Removes known extension nodes</span>
+              </div>
+            </div>
+            <aside class="note-box">
+              <strong>Tester note</strong>
+              <p>
+                Try PageDye solid colors, gradients, image backgrounds, deep compatibility mode,
+                target selectors, frosted glass, custom CSS, and URL-based custom effects here.
+              </p>
+            </aside>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script src="site.js"></script>
+</body>
+</html>

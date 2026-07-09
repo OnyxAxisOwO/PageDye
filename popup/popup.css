@@ -1759,6 +1759,69 @@ h1, .accordion-summary, .card-label, .nav-label {
   background: var(--badge-color-bg);
   color: var(--badge-color-text);
 }
+
+.restricted-page-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(238, 242, 241, 0.72);
+  backdrop-filter: grayscale(1) blur(2px);
+}
+
+.restricted-page-card {
+  width: min(280px, 100%);
+  padding: 22px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 24px;
+  background: var(--surface-container-low);
+  color: var(--text-color);
+  text-align: center;
+  box-shadow: var(--shadow-md);
+}
+
+.restricted-page-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 12px;
+  border-radius: 24px;
+  background: var(--surface-container-highest);
+  color: var(--text-secondary);
+}
+
+.restricted-page-card strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.restricted-page-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pagedye-restricted-page .container > :not(.restricted-page-overlay) {
+  filter: grayscale(1);
+  opacity: 0.42;
+  pointer-events: none;
+  user-select: none;
+}
+
+body.pagedye-restricted-page {
+  overflow: hidden;
+}
+
+.status-dot.blocked {
+  background-color: #6b7280;
+  box-shadow: 0 0 0 4px rgba(107, 114, 128, 0.14);
+}
 @media (prefers-color-scheme: dark) {
   .bottom-nav input:checked + label .nav-icon-container {
     background: var(--badge-color-bg);
@@ -1794,6 +1857,7 @@ body {
   min-height: 0;
   box-sizing: border-box;
   gap: 10px;
+  position: relative;
 }
 
 header {
