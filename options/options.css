@@ -1079,6 +1079,24 @@ input[type="color"]::-webkit-color-swatch {
   margin-top: 4px;
 }
 
+.shortcut-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.shortcut-row input {
+  flex: 1;
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 600;
+}
+
+.shortcut-row .btn {
+  width: auto;
+  flex: 0 0 auto;
+}
+
 /* File Drop Area */
 .file-drop-area {
   border: 2px dashed var(--border-color);

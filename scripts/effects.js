@@ -947,9 +947,10 @@ window.PageDyeEffects = (function () {
 
   // Starts (or restarts) the animated-canvas wallpaper. Battery/perf
   // safeguards: prefers-reduced-motion renders a single static frame and
-  // never starts the loop; otherwise the loop keeps running but skips
-  // drawing while the tab is hidden (rAF itself is already throttled by the
-  // browser in background tabs, this just avoids wasted engine work too).
+  // never starts the loop.  Hidden tabs cancel their animation frame entirely
+  // and resume with one fresh draw when visible again.  Auto mode also caps
+  // animation to 30 FPS on devices that advertise constrained hardware or
+  // data-saver mode; a saved `performanceMode: 'low'` caps it everywhere.
   //
   // `customEffects` (optional) is the user's saved custom-effect library —
   // only consulted when `kind` is a "custom:<id>" reference. Built-in
@@ -1016,24 +1017,49 @@ window.PageDyeEffects = (function () {
     }
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const constrained = !!(connection && connection.saveData)
+      || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)
+      || (navigator.deviceMemory && navigator.deviceMemory <= 4);
+    const lowPower = effectConfig && (effectConfig.performanceMode === 'low'
+      || (effectConfig.performanceMode !== 'high' && constrained));
+    const minFrameMs = lowPower ? 1000 / 30 : 0;
     let frameId = null;
+    let last = null;
+    let lastDrawAt = 0;
+    let visibilityHandler = null;
     if (!reduceMotion) {
-      let last = null;
       const loop = (t) => {
         if (stopped) return;
-        frameId = requestAnimationFrame(loop);
-        if (document.hidden) return;
+        if (document.hidden) { frameId = null; return; }
         const dt = last === null ? 16 : Math.min(t - last, 100);
         last = t;
-        safeCall('draw', ctx, canvas, state, dt);
+        if (!lastDrawAt || t - lastDrawAt >= minFrameMs) {
+          lastDrawAt = t;
+          safeCall('draw', ctx, canvas, state, dt);
+        }
+        frameId = requestAnimationFrame(loop);
       };
-      frameId = requestAnimationFrame(loop);
+      visibilityHandler = () => {
+        if (document.hidden) {
+          if (frameId) cancelAnimationFrame(frameId);
+          frameId = null;
+          return;
+        }
+        last = null;
+        lastDrawAt = 0;
+        safeCall('draw', ctx, canvas, state, 0);
+        if (!frameId && !stopped) frameId = requestAnimationFrame(loop);
+      };
+      document.addEventListener('visibilitychange', visibilityHandler);
+      if (!document.hidden) frameId = requestAnimationFrame(loop);
     }
 
     effectCleanup = () => {
       if (frameId) cancelAnimationFrame(frameId);
       window.removeEventListener('resize', resize);
       if (mouseHandler) window.removeEventListener('mousemove', mouseHandler);
+      if (visibilityHandler) document.removeEventListener('visibilitychange', visibilityHandler);
     };
   }
 

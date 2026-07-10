@@ -295,6 +295,43 @@
     });
   }
 
+  // Match the extension's storage-friendly upload behavior in the standalone
+  // userscript: resize oversized local wallpapers and prefer WebP when it is
+  // actually smaller.  Falling back to the source file keeps uncommon but
+  // browser-supported image formats usable.
+  function readFileAsDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error('Unable to read image'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function prepareLocalImage(file) {
+    const original = { dataUrl: await readFileAsDataUrl(file), name: file.name };
+    try {
+      const url = URL.createObjectURL(file);
+      const image = await new Promise((resolve, reject) => {
+        const element = new Image();
+        element.onload = () => resolve(element);
+        element.onerror = reject;
+        element.src = url;
+      });
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, 2560 / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
+      canvas.height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+      const webp = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.86));
+      if (!webp || webp.size >= file.size) return original;
+      return { dataUrl: await readFileAsDataUrl(webp), name: `${file.name.replace(/\.[^.]+$/, '') || 'wallpaper'}.webp` };
+    } catch (error) {
+      return original;
+    }
+  }
+
   function normalizeTimeRange(s) {
     if (!s.timeRange || !Array.isArray(s.timeRange.items)) {
       if (s.timeRange && s.timeRange.morning) {
@@ -347,6 +384,7 @@
   }
 
   let settings = null;
+  let temporarilyPaused = false;
   // Which key the panel is currently editing/saving to: 'site' (this
   // domain, the default) or 'default' (DEFAULT_BG_KEY, applies to every
   // site without its own override). Independent from `usingDefault` above,
@@ -520,6 +558,7 @@
   }
 
   function startDeepCompat() {
+    if (document.hidden) return;
     scheduleDeepCompatScan();
     if (!deepCompatObserver) {
       deepCompatObserver = new MutationObserver(scheduleDeepCompatScan);
@@ -544,6 +583,7 @@
   }
 
   function scheduleDeepCompatScan() {
+    if (document.hidden) return;
     if (deepCompatScanTimer) clearTimeout(deepCompatScanTimer);
     deepCompatScanTimer = setTimeout(() => {
       deepCompatScanTimer = null;
@@ -568,7 +608,7 @@
   }
 
   function scanForOpaqueCovers() {
-    if (!deepCompatEnabled) return;
+    if (!deepCompatEnabled || document.hidden) return;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     if (!vw || !vh) return;
@@ -760,7 +800,7 @@
       layer.style.backgroundImage = 'none';
       layer.style.backgroundColor = 'transparent';
       const resolvedColors = resolveEffectColors(s);
-      startEffect(canvas, s.effect || 'waves', s.opacity, { color: resolvedColors.color, bgColor: resolvedColors.bgColor, density: s.effectDensity, speed: s.effectSpeed, text: s.effectText });
+      startEffect(canvas, s.effect || 'waves', s.opacity, { color: resolvedColors.color, bgColor: resolvedColors.bgColor, density: s.effectDensity, speed: s.effectSpeed, text: s.effectText, performanceMode: s.performanceMode || 'auto' });
       return;
     }
 
@@ -881,6 +921,11 @@
 
     applyCustomCss(active.customCss);
     applyFrostedGlass(s.frostedGlass);
+
+    if (temporarilyPaused) {
+      removeBackdrop(); removeTargetStyle(); updateDeepCompat(false, '');
+      return;
+    }
 
     const hasBackground = active.type === 'color' || active.type === 'image' || active.type === 'effect';
     const selector = active.type !== 'effect' && active.targetSelector && active.targetSelector.trim();
@@ -1526,23 +1571,48 @@
     }
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const constrained = !!(connection && connection.saveData)
+      || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)
+      || (navigator.deviceMemory && navigator.deviceMemory <= 4);
+    const lowPower = effectConfig.performanceMode === 'low'
+      || (effectConfig.performanceMode !== 'high' && constrained);
+    const minFrameMs = lowPower ? 1000 / 30 : 0;
     let frameId = null;
+    let visibilityHandler = null;
     if (!reduceMotion) {
       let last = null;
+      let lastDrawAt = 0;
       const loop = (t) => {
-        frameId = requestAnimationFrame(loop);
-        if (document.hidden) return;
+        if (document.hidden) { frameId = null; return; }
         const dt = last === null ? 16 : Math.min(t - last, 100);
         last = t;
-        engine.draw(ctx, canvas, state, dt);
+        if (!lastDrawAt || t - lastDrawAt >= minFrameMs) {
+          lastDrawAt = t;
+          engine.draw(ctx, canvas, state, dt);
+        }
+        frameId = requestAnimationFrame(loop);
       };
-      frameId = requestAnimationFrame(loop);
+      visibilityHandler = () => {
+        if (document.hidden) {
+          if (frameId) cancelAnimationFrame(frameId);
+          frameId = null;
+        } else if (!frameId) {
+          last = null;
+          lastDrawAt = 0;
+          engine.draw(ctx, canvas, state, 0);
+          frameId = requestAnimationFrame(loop);
+        }
+      };
+      document.addEventListener('visibilitychange', visibilityHandler);
+      if (!document.hidden) frameId = requestAnimationFrame(loop);
     }
 
     effectCleanup = () => {
       if (frameId) cancelAnimationFrame(frameId);
       window.removeEventListener('resize', resize);
       if (mouseHandler) window.removeEventListener('mousemove', mouseHandler);
+      if (visibilityHandler) document.removeEventListener('visibilitychange', visibilityHandler);
     };
   }
 
@@ -2241,22 +2311,20 @@
       if (e.type !== 'change') return;
       const file = el.files && el.files[0];
       if (!file || !file.type.startsWith('image/')) return;
-      const reader = new FileReader();
       if (el.dataset.file === 'button-image') {
-        reader.onload = (ev) => {
-          globalConfig.buttonImage = ev.target.result;
+        prepareLocalImage(file).then((image) => {
+          globalConfig.buttonImage = image.dataUrl;
           applyGearStyle();
           scheduleSaveGlobal();
           renderPanel();
-        };
+        });
       } else {
-        reader.onload = (ev) => {
+        prepareLocalImage(file).then((image) => {
           const editable = getEditable();
-          editable.value = ev.target.result;
+          editable.value = image.dataUrl;
           liveApply(); scheduleSave(); renderPanel();
-        };
+        });
       }
-      reader.readAsDataURL(file);
       return;
     }
     if (!el.dataset || !el.dataset.path) return;
@@ -3031,6 +3099,28 @@
       // Also lets an "auto" effect color preset track the OS scheme live,
       // independent of the wallpaper light/dark MODE.
       if (settings) applyBackground(settings);
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (!deepCompatEnabled) return;
+      if (document.hidden) {
+        if (deepCompatObserver) { deepCompatObserver.disconnect(); deepCompatObserver = null; }
+        if (deepCompatIntervalTimer) { clearInterval(deepCompatIntervalTimer); deepCompatIntervalTimer = null; }
+        if (deepCompatScanTimer) { clearTimeout(deepCompatScanTimer); deepCompatScanTimer = null; }
+      } else {
+        startDeepCompat();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (!event.altKey || !event.shiftKey || event.code !== 'KeyP') return;
+      event.preventDefault();
+      temporarilyPaused = !temporarilyPaused;
+      if (temporarilyPaused) {
+        removeBackdrop(); removeTargetStyle(); updateDeepCompat(false, '');
+      } else if (settings) {
+        applyBackground(settings);
+      }
     });
 
     const start = () => buildUI();

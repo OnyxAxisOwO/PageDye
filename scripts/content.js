@@ -7,6 +7,8 @@
   const DEEP_COMPAT_STYLE_ID = 'pagedye-deep-compat-style';
   const DEEP_COMPAT_ATTR = 'data-pagedye-deep-compat';
   const EXTENSION_ENABLED_KEY = '__pagedye_extension_enabled__';
+  const PAUSE_SHORTCUT_KEY = '__pagedye_pause_shortcut__';
+  const DEFAULT_PAUSE_SHORTCUT = { code: 'KeyP', altKey: true, shiftKey: true, ctrlKey: false, metaKey: false };
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
   const DEFAULT_BG_KEY = '__pagedye_default_background__';
   let currentSettings = null;
@@ -16,6 +18,8 @@
   let lastTimePeriod = null;
   let currentCustomEffects = [];
   let extensionEnabled = true;
+  let temporarilyPaused = false;
+  let pauseShortcut = { ...DEFAULT_PAUSE_SHORTCUT };
   // Whether currentSettings for this page came from DEFAULT_BG_KEY rather
   // than the page's own domain entry — decides where slideshow rotation
   // writes back to, and whether a DEFAULT_BG_KEY storage change should
@@ -61,11 +65,12 @@
     // Load initial settings
     const domain = window.location.hostname;
     try {
-      chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY, DEFAULT_BG_KEY, EXTENSION_ENABLED_KEY], (data) => {
+      chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY, DEFAULT_BG_KEY, EXTENSION_ENABLED_KEY, PAUSE_SHORTCUT_KEY], (data) => {
         if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
           return;
         }
         extensionEnabled = data[EXTENSION_ENABLED_KEY] !== false;
+        pauseShortcut = normalizePauseShortcut(data[PAUSE_SHORTCUT_KEY]);
         currentCustomEffects = data[CUSTOM_EFFECTS_KEY] || [];
         lastKnownDefault = data[DEFAULT_BG_KEY] || null;
         usingDefault = !data[domain] && !!lastKnownDefault;
@@ -156,6 +161,22 @@
     }
 
     window.__pagedyeKeydownListener = (e) => {
+      // This state intentionally lives only in the current document.  It is a
+      // quick per-tab pause, not a surprising persistent change to the site's
+      // saved wallpaper configuration.
+      if (matchesPauseShortcut(e)) {
+        e.preventDefault();
+        temporarilyPaused = !temporarilyPaused;
+        if (temporarilyPaused) {
+          removeBackdrop();
+          removeTargetStyle();
+          updateDeepCompat(false, '');
+        } else if (extensionEnabled && currentSettings) {
+          applyBackground(currentSettings);
+        }
+        showTemporaryPauseNotice(temporarilyPaused);
+        return;
+      }
       if (e.key === 'Alt') {
         const activeSettings = currentActiveSettings;
         let customEffect = null;
@@ -194,6 +215,44 @@
     if (extensionEnabled && currentSettings) {
       applyBackground(currentSettings);
     }
+  }
+
+  function showTemporaryPauseNotice(paused) {
+    const id = 'pagedye-temporary-pause-notice';
+    const old = document.getElementById(id);
+    if (old) old.remove();
+    const notice = document.createElement('div');
+    notice.id = id;
+    notice.textContent = paused ? 'PageDye 已在此标签页暂时暂停（再次按快捷键恢复）' : 'PageDye 已恢复';
+    Object.assign(notice.style, {
+      position: 'fixed', zIndex: '2147483647', right: '16px', bottom: '16px',
+      padding: '9px 12px', borderRadius: '8px', background: 'rgba(17,24,39,.94)',
+      color: '#fff', font: '13px/1.35 system-ui, sans-serif', boxShadow: '0 4px 18px rgba(0,0,0,.25)'
+    });
+    document.documentElement.appendChild(notice);
+    window.setTimeout(() => notice.remove(), 2600);
+  }
+
+  function normalizePauseShortcut(value) {
+    if (!value || typeof value.code !== 'string' || !value.code) return { ...DEFAULT_PAUSE_SHORTCUT };
+    const shortcut = {
+      code: value.code,
+      altKey: !!value.altKey,
+      shiftKey: !!value.shiftKey,
+      ctrlKey: !!value.ctrlKey,
+      metaKey: !!value.metaKey
+    };
+    return (shortcut.altKey || shortcut.shiftKey || shortcut.ctrlKey || shortcut.metaKey)
+      ? shortcut
+      : { ...DEFAULT_PAUSE_SHORTCUT };
+  }
+
+  function matchesPauseShortcut(event) {
+    return event.code === pauseShortcut.code
+      && event.altKey === pauseShortcut.altKey
+      && event.shiftKey === pauseShortcut.shiftKey
+      && event.ctrlKey === pauseShortcut.ctrlKey
+      && event.metaKey === pauseShortcut.metaKey;
   }
 
   // Presets an "effect" wallpaper's color/bgColor can follow instead of a
@@ -261,6 +320,10 @@
           });
         } catch (e) {}
       }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(changes, PAUSE_SHORTCUT_KEY)) {
+      pauseShortcut = normalizePauseShortcut(changes[PAUSE_SHORTCUT_KEY].newValue);
     }
 
     if (!extensionEnabled) return;
@@ -335,6 +398,7 @@
       const subSettings = isDark ? settings.dark : settings.light;
       activeSettings = Object.assign({}, subSettings || { type: 'none' }, {
         targetSelector: settings.targetSelector,
+        performanceMode: settings.performanceMode,
         customCss: settings.customCss,
         deepCompat: settings.deepCompat,
         deepCompatAggressive: settings.deepCompatAggressive,
@@ -346,6 +410,7 @@
         lastTimePeriod = activeItem.id || 'first';
         activeSettings = Object.assign({}, activeItem, {
           targetSelector: settings.targetSelector,
+          performanceMode: settings.performanceMode,
           customCss: settings.customCss,
           deepCompat: settings.deepCompat,
           deepCompatAggressive: settings.deepCompatAggressive,
@@ -362,6 +427,7 @@
       const subSettings = sh.items[index];
       activeSettings = Object.assign({}, subSettings || { type: 'none' }, {
         targetSelector: settings.targetSelector,
+        performanceMode: settings.performanceMode,
         customCss: settings.customCss,
         deepCompat: settings.deepCompat,
         deepCompatAggressive: settings.deepCompatAggressive,
@@ -372,6 +438,13 @@
 
     migrateBgType(activeSettings);
     currentActiveSettings = activeSettings;
+
+    if (temporarilyPaused) {
+      removeBackdrop();
+      removeTargetStyle();
+      updateDeepCompat(false, '');
+      return;
+    }
 
     // Custom CSS, the frosted-glass container effect and the custom cursor
     // are all applied independently of the background type/mode.
@@ -727,6 +800,7 @@
       color: resolvedColors.color,
       bgColor: resolvedColors.bgColor,
       density: settings.effectDensity,
+      performanceMode: settings.performanceMode || 'auto',
       speed: settings.effectSpeed,
       text: settings.effectText,
       transparent: settings.type !== 'none'
@@ -1000,15 +1074,16 @@
     }
     if (window.__pagedyeKeydownListener) {
       window.removeEventListener('keydown', window.__pagedyeKeydownListener);
-      window.__pagedyeKeydownListener = null;
     }
     if (window.__pagedyeKeyupListener) {
       window.removeEventListener('keyup', window.__pagedyeKeyupListener);
-      window.__pagedyeKeyupListener = null;
     }
     if (window.__pagedyeBlurListener) {
       window.removeEventListener('blur', window.__pagedyeBlurListener);
-      window.__pagedyeBlurListener = null;
+    }
+    if (window.__pagedyeVisibilityListener) {
+      document.removeEventListener('visibilitychange', window.__pagedyeVisibilityListener);
+      window.__pagedyeVisibilityListener = null;
     }
   }
 
@@ -1017,6 +1092,22 @@
       window.__pagedyeMediaListener = onMediaSchemeChanged;
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onMediaSchemeChanged);
     }
+    if (!window.__pagedyeVisibilityListener) {
+      window.__pagedyeVisibilityListener = onPageVisibilityChanged;
+      document.addEventListener('visibilitychange', onPageVisibilityChanged);
+    }
+    if (window.__pagedyeKeydownListener) window.addEventListener('keydown', window.__pagedyeKeydownListener);
+    if (window.__pagedyeKeyupListener) window.addEventListener('keyup', window.__pagedyeKeyupListener);
+    if (window.__pagedyeBlurListener) window.addEventListener('blur', window.__pagedyeBlurListener);
+  }
+
+  function onPageVisibilityChanged() {
+    if (!deepCompatEnabled) return;
+    if (document.hidden) {
+      pauseDeepCompatWatchers();
+      return;
+    }
+    resumeDeepCompatWatchers();
   }
 
   function removeAnyPageDyeArtifacts() {
@@ -1137,6 +1228,7 @@
   }
 
   function startDeepCompat() {
+    if (document.hidden) return;
     scheduleDeepCompatScan();
     if (!deepCompatObserver) {
       deepCompatObserver = new MutationObserver(scheduleDeepCompatScan);
@@ -1155,6 +1247,31 @@
         if (document.visibilityState === 'visible') scanForOpaqueCovers();
       }, deepCompatAggressiveEnabled ? DEEP_COMPAT_AGGRESSIVE_INTERVAL_MS : DEEP_COMPAT_SAFETY_INTERVAL_MS);
     }
+  }
+
+  function pauseDeepCompatWatchers() {
+    if (deepCompatObserver) {
+      deepCompatObserver.disconnect();
+      deepCompatObserver = null;
+    }
+    if (deepCompatIntervalTimer) {
+      clearInterval(deepCompatIntervalTimer);
+      deepCompatIntervalTimer = null;
+    }
+    if (deepCompatBoostTimer) {
+      clearInterval(deepCompatBoostTimer);
+      deepCompatBoostTimer = null;
+    }
+    if (deepCompatScanTimer) {
+      clearTimeout(deepCompatScanTimer);
+      deepCompatScanTimer = null;
+    }
+  }
+
+  function resumeDeepCompatWatchers() {
+    if (!deepCompatEnabled || document.hidden) return;
+    startDeepCompat();
+    if (deepCompatAggressiveEnabled) startDeepCompatBoost();
   }
 
   function restartDeepCompatWatchers() {
@@ -1209,6 +1326,7 @@
   }
 
   function scheduleDeepCompatScan() {
+    if (document.hidden) return;
     if (deepCompatScanTimer) clearTimeout(deepCompatScanTimer);
     deepCompatScanTimer = setTimeout(() => {
       deepCompatScanTimer = null;
@@ -1233,7 +1351,7 @@
   }
 
   function scanForOpaqueCovers() {
-    if (!deepCompatEnabled) return;
+    if (!deepCompatEnabled || document.hidden) return;
     if (deepCompatAggressiveEnabled) {
       ensureAggressivePageDyeStructures();
       ensureDeepCompatSupportStyle();

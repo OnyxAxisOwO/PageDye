@@ -242,6 +242,18 @@
           </div>
         </div>
 
+        <div class="card">
+          <div class="control-group" style="margin-bottom: 0;">
+            <label for="pause-shortcut-input" data-i18n="pauseShortcut">Temporary Pause Shortcut</label>
+            <p class="hint" data-i18n="pauseShortcutHint">Click the field, then press a key combination. It pauses or restores PageDye only in the current tab.</p>
+            <div class="shortcut-row">
+              <input id="pause-shortcut-input" type="text" readonly aria-describedby="pause-shortcut-hint">
+              <button type="button" id="pause-shortcut-reset" class="btn secondary-btn" data-i18n="pauseShortcutReset">Reset</button>
+            </div>
+            <p class="hint" id="pause-shortcut-hint" style="margin-bottom: 0;" data-i18n="pauseShortcutRequirement">Use at least one modifier key (Ctrl, Alt, Shift, or ⌘).</p>
+          </div>
+        </div>
+
         <button type="button" id="theme-reset-btn" class="btn secondary-btn" style="width: auto;" data-i18n="appearanceReset">Reset to Default</button>
       </section>
 
@@ -1022,6 +1034,7 @@
     </div>
   </div>
   <script src="../scripts/gradient.js"></script>
+  <script src="../scripts/image.js"></script>
   <script src="../scripts/effects.js"></script>
   <script src="../lib/prism.js"></script>
   <script src="options.js"></script>

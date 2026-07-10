@@ -27,6 +27,14 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Releasing $VERSION"
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run extension checks
+        run: npm test
+
       - name: Verify tag matches manifest version
         if: github.ref_type == 'tag'
         run: |
@@ -41,7 +49,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           ZIP="pagedye-${VERSION}.zip"
-          FILES="manifest.json popup options scripts icons lib"
+          FILES="manifest.json popup options scripts icons lib Designer.png"
           [ -d images ] && FILES="$FILES images"
           zip -r "$ZIP" $FILES
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"

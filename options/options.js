@@ -33,6 +33,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       appearanceResetDone: "Appearance reset!",
       disableThemeAnimation: "Disable dashboard animations",
       disableThemeAnimationHint: "Turns off transitions, fade-ins, and animations in the extension panel/popup interface.",
+      pauseShortcut: "Temporary Pause Shortcut",
+      pauseShortcutHint: "Click the field, then press a key combination. It pauses or restores PageDye only in the current tab.",
+      pauseShortcutReset: "Reset",
+      pauseShortcutRequirement: "Use at least one modifier key (Ctrl, Alt, Shift, or ⌘).",
+      pauseShortcutInvalid: "Add a modifier key to the shortcut.",
       uiThemeColor: "Interface Theme Color",
       uiThemeColorHint: "Changes PageDye popup and settings colors only. Websites stay unchanged.",
       dragOrClick: "Drag image here, or",
@@ -271,6 +276,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       appearanceResetDone: "外观已重置!",
       disableThemeAnimation: "禁用控制面板动画效果",
       disableThemeAnimationHint: "关闭扩展控制面板与弹出窗口（Popup）界面中的过渡、淡入等动画效果，提升响应性能。",
+      pauseShortcut: "临时暂停快捷键",
+      pauseShortcutHint: "点击输入框后按下组合键；它只会暂停或恢复当前标签页中的 PageDye。",
+      pauseShortcutReset: "重置",
+      pauseShortcutRequirement: "请至少使用一个修饰键（Ctrl、Alt、Shift 或 ⌘）。",
+      pauseShortcutInvalid: "请为快捷键添加一个修饰键。",
       dragOrClick: "拖拽图片至此，或",
       chooseFile: "选择文件",
       savedImage: "已保存的图片",
@@ -479,6 +489,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   let lang = 'en';
 
   const UI_THEME_KEY = '__pagedye_ui_theme__';
+  const PAUSE_SHORTCUT_KEY = '__pagedye_pause_shortcut__';
+  const DEFAULT_PAUSE_SHORTCUT = { code: 'KeyP', altKey: true, shiftKey: true, ctrlKey: false, metaKey: false };
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
   const DEBUG_MODE_KEY = '__pagedye_debug_mode__';
   const DEFAULT_BG_KEY = '__pagedye_default_background__';
@@ -738,6 +750,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     uiThemeColorGrid: document.getElementById('ui-theme-color-grid'),
     uiThemeCustomColor: document.getElementById('ui-theme-custom-color'),
     uiThemeCustomColorText: document.getElementById('ui-theme-custom-color-text'),
+    pauseShortcutInput: document.getElementById('pause-shortcut-input'),
+    pauseShortcutReset: document.getElementById('pause-shortcut-reset'),
     debugModeToggle: document.getElementById('debug-mode-toggle'),
 
     // Edit site controls
@@ -895,6 +909,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load & wire up dashboard appearance (page/container background colors)
   await initUiTheme();
+  await initPauseShortcut();
 
   // Sidebar navigation switching
   els.navItems.forEach(item => {
@@ -1711,6 +1726,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const data = await chrome.storage.local.get(null);
       delete data[UI_THEME_KEY];
+      delete data[PAUSE_SHORTCUT_KEY];
       const jsonString = JSON.stringify(data, null, 2);
       const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -1748,7 +1764,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // wiped by an unconditional clear() with nothing to replace it.
         const existing = await chrome.storage.local.get(null);
         await chrome.storage.local.set(importedData);
-        const staleKeys = Object.keys(existing).filter((key) => key !== UI_THEME_KEY && !(key in importedData));
+        const staleKeys = Object.keys(existing).filter((key) => key !== UI_THEME_KEY && key !== PAUSE_SHORTCUT_KEY && !(key in importedData));
         if (staleKeys.length) await chrome.storage.local.remove(staleKeys);
 
         await loadSitesList();
@@ -1767,7 +1783,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!(await showConfirm(t('clearAllConfirm')))) return;
     // The default background isn't a "site config" — it has no domain of
     // its own — so it's preserved the same way UI_THEME_KEY is.
-    const preserved = await chrome.storage.local.get([UI_THEME_KEY, DEFAULT_BG_KEY]);
+    const preserved = await chrome.storage.local.get([UI_THEME_KEY, DEFAULT_BG_KEY, PAUSE_SHORTCUT_KEY]);
     await chrome.storage.local.clear();
     if (preserved[UI_THEME_KEY]) {
       await chrome.storage.local.set({ [UI_THEME_KEY]: preserved[UI_THEME_KEY] });
@@ -1775,11 +1791,79 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (preserved[DEFAULT_BG_KEY]) {
       await chrome.storage.local.set({ [DEFAULT_BG_KEY]: preserved[DEFAULT_BG_KEY] });
     }
+    if (preserved[PAUSE_SHORTCUT_KEY]) {
+      await chrome.storage.local.set({ [PAUSE_SHORTCUT_KEY]: preserved[PAUSE_SHORTCUT_KEY] });
+    }
     await loadSitesList();
     showStatus(t('clearAllDone'));
   }
 
   // Dashboard Appearance (page/container background colors & images)
+  function normalizePauseShortcut(value) {
+    if (!value || typeof value.code !== 'string' || !value.code || !/^(Key|Digit|F\d{1,2}|Numpad|Arrow|Space|Home|End|Page|Insert|Delete|Escape)/.test(value.code)) {
+      return { ...DEFAULT_PAUSE_SHORTCUT };
+    }
+    const shortcut = {
+      code: value.code,
+      altKey: !!value.altKey,
+      shiftKey: !!value.shiftKey,
+      ctrlKey: !!value.ctrlKey,
+      metaKey: !!value.metaKey
+    };
+    return (shortcut.altKey || shortcut.shiftKey || shortcut.ctrlKey || shortcut.metaKey)
+      ? shortcut
+      : { ...DEFAULT_PAUSE_SHORTCUT };
+  }
+
+  function formatPauseShortcut(shortcut) {
+    const labels = [];
+    if (shortcut.ctrlKey) labels.push('Ctrl');
+    if (shortcut.altKey) labels.push('Alt');
+    if (shortcut.shiftKey) labels.push('Shift');
+    if (shortcut.metaKey) labels.push('⌘');
+    let key = shortcut.code
+      .replace(/^Key/, '')
+      .replace(/^Digit/, '')
+      .replace(/^Numpad/, 'Num ')
+      .replace(/^Arrow/, 'Arrow ')
+      .replace(/^Space$/, 'Space');
+    labels.push(key);
+    return labels.join(' + ');
+  }
+
+  async function initPauseShortcut() {
+    if (!els.pauseShortcutInput || !els.pauseShortcutReset) return;
+    const data = await chrome.storage.local.get(PAUSE_SHORTCUT_KEY);
+    let shortcut = normalizePauseShortcut(data[PAUSE_SHORTCUT_KEY]);
+    const render = () => { els.pauseShortcutInput.value = formatPauseShortcut(shortcut); };
+    render();
+
+    els.pauseShortcutInput.addEventListener('keydown', async (event) => {
+      event.preventDefault();
+      if (['Control', 'Alt', 'Shift', 'Meta'].includes(event.key)) return;
+      if (!(event.ctrlKey || event.altKey || event.shiftKey || event.metaKey)) {
+        showStatus(t('pauseShortcutInvalid'));
+        return;
+      }
+      shortcut = normalizePauseShortcut({
+        code: event.code,
+        altKey: event.altKey,
+        shiftKey: event.shiftKey,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey
+      });
+      render();
+      await chrome.storage.local.set({ [PAUSE_SHORTCUT_KEY]: shortcut });
+      showStatus(t('appearanceSaved'));
+    });
+    els.pauseShortcutReset.addEventListener('click', async () => {
+      shortcut = { ...DEFAULT_PAUSE_SHORTCUT };
+      render();
+      await chrome.storage.local.set({ [PAUSE_SHORTCUT_KEY]: shortcut });
+      showStatus(t('appearanceSaved'));
+    });
+  }
+
   async function initUiTheme() {
     const data = await chrome.storage.local.get(UI_THEME_KEY);
     currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS, data[UI_THEME_KEY] || {});
@@ -1865,17 +1949,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (e.target.files.length) handleThemeImageFile(e.target.files[0]);
     });
 
-    function handleThemeImageFile(file) {
+    async function handleThemeImageFile(file) {
       if (!file.type.startsWith('image/')) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const image = { data: e.target.result, name: file.name };
+      try {
+        const prepared = await window.PageDyeImage.prepareImage(file);
+        const image = { data: prepared.dataUrl, name: prepared.name };
         dropEl.classList.add('hidden');
         fileInfoEl.classList.remove('hidden');
-        filenameEl.textContent = file.name;
+        filenameEl.textContent = prepared.name;
         saveUiTheme({ [imageKey]: image });
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Failed to prepare theme image:', error);
+      }
     }
 
     removeEl.addEventListener('click', () => {
@@ -3241,20 +3326,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  function handleEditFile(file) {
+  async function handleEditFile(file) {
     if (!file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      editCurrentImageBase64 = e.target.result;
+    try {
+      const prepared = await window.PageDyeImage.prepareImage(file);
+      editCurrentImageBase64 = prepared.dataUrl;
       document.getElementById('edit-image-url').value = '';
       editDropArea.classList.add('hidden');
       document.getElementById('edit-file-info').classList.remove('hidden');
-      document.getElementById('edit-filename').textContent = file.name;
+      document.getElementById('edit-filename').textContent = prepared.name;
       updateEditPreview();
       updateEditInteractivePreviews();
       triggerEditImmediateSave();
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Failed to prepare image:', error);
+    }
   }
 
   document.getElementById('edit-remove-file').addEventListener('click', () => {

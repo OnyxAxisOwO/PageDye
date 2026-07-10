@@ -407,6 +407,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       uiThemeColorHint: "Changes PageDye popup and settings colors only. Websites stay unchanged.",
       targetSelector: "Background Selector",
       targetSelectorHint: "Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.",
+      performanceMode: "Performance",
+      performanceModeHint: "Auto reduces animation work on low-power devices. Low caps effects at 30 FPS.",
+      performanceAuto: "Auto",
+      performanceLow: "Low power (30 FPS)",
+      performanceHigh: "Full frame rate",
+      temporaryPauseHint: "Tip: Use your configured shortcut to temporarily pause PageDye in this tab. It resets when the page reloads.",
       pickElement: "Pick",
       deepCompat: "Deep Compatibility Mode",
       runMode: "Run Mode",
@@ -581,6 +587,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       advanced: "高级设置",
       targetSelector: "背景选择器",
       targetSelectorHint: "拾取一个元素（或手动输入 CSS 选择器），PageDye 会把颜色/图片直接应用到该元素，而不是整页。留空则为整页背景。",
+      performanceMode: "性能",
+      performanceModeHint: "自动模式会在低性能设备上降低动画开销；低功耗模式会把动效限制为 30 FPS。",
+      performanceAuto: "自动",
+      performanceLow: "低功耗（30 FPS）",
+      performanceHigh: "完整帧率",
+      temporaryPauseHint: "提示：使用你设置的快捷键可在当前标签页临时暂停 PageDye；刷新页面后会自动恢复。",
       pickElement: "拾取",
       deepCompat: "深度兼容模式",
       runMode: "运行模式",
@@ -757,6 +769,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Advanced
     targetSelector: document.getElementById('target-selector'),
+    performanceMode: document.getElementById('performance-mode'),
     pickBtn: document.getElementById('pick-btn'),
     deepCompatModes: document.getElementsByName('deepCompatMode'),
     runModeBadge: document.getElementById('run-mode-badge'),
@@ -1442,6 +1455,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Advanced inputs
   els.targetSelector.addEventListener('input', () => queueAutoSave());
+  els.performanceMode.addEventListener('change', () => triggerImmediateSave());
   Array.from(els.deepCompatModes || []).forEach((radio) => {
     radio.addEventListener('change', () => {
       syncDeepCompatRunMode(radio.value);
@@ -2143,6 +2157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateModeUI(mode);
 
     els.targetSelector.value = currentSettings.targetSelector || '';
+    els.performanceMode.value = currentSettings.performanceMode || 'auto';
     syncDeepCompatRunMode(deepCompatModeFromSettings(currentSettings));
     renderDeepCompatExcludes();
     els.customCss.value = currentSettings.customCss || '';
@@ -2801,21 +2816,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  function handleFile(file) {
+  async function handleFile(file) {
     if (!file.type.startsWith('image/')) return;
-    
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      currentImageBase64 = e.target.result;
+    try {
+      const image = await window.PageDyeImage.prepareImage(file);
+      currentImageBase64 = image.dataUrl;
       els.imageUrl.value = ''; // Clear URL if choosing file
       els.dropArea.classList.add('hidden');
       els.fileInfo.classList.remove('hidden');
-      els.fileName.textContent = file.name;
+      const saved = image.compressed ? ` · ${formatBytes(image.originalBytes)} → ${formatBytes(image.storedBytes)}` : '';
+      els.fileName.textContent = image.name + saved;
       updatePreview();
       updateInteractivePreviews();
       triggerImmediateSave();
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Failed to prepare image:', error);
+    }
+  }
+
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes)) return '';
+    return bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   function clearFile() {
@@ -2849,6 +2870,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     currentSettings.targetSelector = els.targetSelector.value.trim();
+    currentSettings.performanceMode = els.performanceMode.value;
     collectDeepCompatRunMode();
     // deepCompatExclude is saved automatically on input change, but we could re-gather here just in case.
     currentSettings.customCss = els.customCss.value;
@@ -2993,6 +3015,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.effectSpeedVal.textContent = '50%';
     els.imageUrl.value = '';
     els.targetSelector.value = '';
+    els.performanceMode.value = 'auto';
     syncDeepCompatRunMode('normal');
     renderDeepCompatExcludes();
     els.customCss.value = '';

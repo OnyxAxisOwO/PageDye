@@ -638,6 +638,17 @@
             </div>
           </div>
 
+          <div class="control-group">
+            <label for="performance-mode" data-i18n="performanceMode">Performance</label>
+            <p class="hint" data-i18n="performanceModeHint">Auto reduces animation work on low-power devices. Low caps effects at 30 FPS.</p>
+            <select id="performance-mode">
+              <option value="auto" data-i18n="performanceAuto">Auto</option>
+              <option value="low" data-i18n="performanceLow">Low power (30 FPS)</option>
+              <option value="high" data-i18n="performanceHigh">Full frame rate</option>
+            </select>
+            <p class="hint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="temporaryPauseHint">Tip: Use your configured shortcut to temporarily pause PageDye in this tab. It resets when the page reloads.</p>
+          </div>
+
           <div class="control-group" style="margin-bottom: 0;">
             <label for="custom-css" data-i18n="customCss">Custom CSS</label>
             <p class="hint" data-i18n="customCssHint">Injected into this site. Use !important to override stubborn styles.</p>
@@ -827,6 +838,7 @@
     </div>
   </div>
   <script src="../scripts/gradient.js"></script>
+  <script src="../scripts/image.js"></script>
   <script src="../scripts/cursor.js"></script>
   <script src="../lib/prism.js"></script>
   <script src="popup.js"></script>
