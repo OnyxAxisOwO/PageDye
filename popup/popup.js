@@ -379,6 +379,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       sizeCover: "Cover",
       sizeContain: "Contain",
       sizeAuto: "Auto",
+      sizeStretch: "Stretch",
       repeat: "Repeat",
       reset: "Reset",
       save: "Save",
@@ -408,6 +409,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetSelectorHint: "Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.",
       pickElement: "Pick",
       deepCompat: "Deep Compatibility Mode",
+      runMode: "Run Mode",
+      runModeNormal: "Normal",
+      runModeEnhanced: "Enhanced",
+      runModeStrong: "Strong",
       pickerTipMultiple: "PageDye: click elements to exclude them · Esc to finish",
       pickerTipSingle: "PageDye: click an element to apply your background to it · Esc to cancel",
       deepCompatBadge: "For stubborn sites",
@@ -556,6 +561,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       sizeCover: "覆盖 (Cover)",
       sizeContain: "包含 (Contain)",
       sizeAuto: "自动 (Auto)",
+      sizeStretch: "拉伸 (Stretch)",
       repeat: "平铺",
       reset: "重置",
       save: "保存",
@@ -577,6 +583,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetSelectorHint: "拾取一个元素（或手动输入 CSS 选择器），PageDye 会把颜色/图片直接应用到该元素，而不是整页。留空则为整页背景。",
       pickElement: "拾取",
       deepCompat: "深度兼容模式",
+      runMode: "运行模式",
+      runModeNormal: "普通",
+      runModeEnhanced: "增强",
+      runModeStrong: "强兼",
       pickerTipMultiple: "PageDye: 点击多个元素以排除它们 · 按 Esc 完成",
       pickerTipSingle: "PageDye: 点击一个元素以应用背景 · 按 Esc 取消",
       deepCompatBadge: "顽固网站专用",
@@ -748,8 +758,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Advanced
     targetSelector: document.getElementById('target-selector'),
     pickBtn: document.getElementById('pick-btn'),
-    deepCompatToggle: document.getElementById('deep-compat-toggle'),
-    deepCompatAggressiveToggle: document.getElementById('deep-compat-aggressive-toggle'),
+    deepCompatModes: document.getElementsByName('deepCompatMode'),
+    runModeBadge: document.getElementById('run-mode-badge'),
     deepCompatExcludeList: document.getElementById('deep-compat-exclude-list'),
     deepCompatAddBtn: document.getElementById('deep-compat-add-btn'),
     deepCompatPickBtn: document.getElementById('deep-compat-pick-btn'),
@@ -920,12 +930,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  function syncDeepCompatAggressiveAvailability() {
-    if (!els.deepCompatAggressiveToggle) return;
-    const disabled = !els.deepCompatToggle.checked;
-    els.deepCompatAggressiveToggle.disabled = disabled;
-    const group = els.deepCompatAggressiveToggle.closest('.control-group');
-    if (group) group.classList.toggle('control-group-disabled', disabled);
+  function deepCompatModeFromSettings(settings) {
+    if (settings && settings.deepCompatAggressive) return 'strong';
+    if (settings && settings.deepCompat) return 'enhanced';
+    return 'normal';
+  }
+
+  function syncDeepCompatRunMode(mode) {
+    const nextMode = mode || 'normal';
+    const radio = document.querySelector(`input[name="deepCompatMode"][value="${nextMode}"]`);
+    if (radio) radio.checked = true;
+    if (els.runModeBadge) {
+      const labelKey = nextMode === 'strong' ? 'runModeStrong' : nextMode === 'enhanced' ? 'runModeEnhanced' : 'runModeNormal';
+      els.runModeBadge.textContent = t(labelKey);
+    }
+  }
+
+  function collectDeepCompatRunMode() {
+    const checked = document.querySelector('input[name="deepCompatMode"]:checked');
+    const mode = checked ? checked.value : 'normal';
+    currentSettings.deepCompat = mode !== 'normal';
+    currentSettings.deepCompatAggressive = mode === 'strong';
+    syncDeepCompatRunMode(mode);
   }
 
   // Sends a message to the tab's content script, injecting it first if it is
@@ -1408,16 +1434,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Style Toggles
   els.bgFixed.addEventListener('change', () => triggerImmediateSave());
-  els.bgSize.addEventListener('change', () => triggerImmediateSave());
+  els.bgSize.addEventListener('change', () => {
+    updatePreview();
+    triggerImmediateSave();
+  });
   els.bgRepeat.addEventListener('change', () => triggerImmediateSave());
 
   // Advanced inputs
   els.targetSelector.addEventListener('input', () => queueAutoSave());
-  els.deepCompatToggle.addEventListener('change', () => {
-    syncDeepCompatAggressiveAvailability();
-    triggerImmediateSave();
+  Array.from(els.deepCompatModes || []).forEach((radio) => {
+    radio.addEventListener('change', () => {
+      syncDeepCompatRunMode(radio.value);
+      triggerImmediateSave();
+    });
   });
-  els.deepCompatAggressiveToggle.addEventListener('change', () => triggerImmediateSave());
   els.deepCompatAddBtn.addEventListener('click', () => {
     const items = (currentSettings.deepCompatExclude || '').split(',').map(s => s.trim()).filter(Boolean);
     items.push('');
@@ -1811,6 +1841,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       imageUrl = `url('${els.imageUrl.value}')`;
     }
     els.imagePreviewBg.style.backgroundImage = imageUrl;
+    els.imagePreviewBg.style.backgroundSize = els.bgSize.value === 'stretch' ? '100% 100%' : els.bgSize.value;
 
     const blur       = parseInt(els.blur.value, 10) || 0;
     const brightness = parseInt(document.getElementById('filter-brightness').value, 10);
@@ -2112,9 +2143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateModeUI(mode);
 
     els.targetSelector.value = currentSettings.targetSelector || '';
-    els.deepCompatToggle.checked = !!currentSettings.deepCompat;
-    els.deepCompatAggressiveToggle.checked = !!currentSettings.deepCompatAggressive;
-    syncDeepCompatAggressiveAvailability();
+    syncDeepCompatRunMode(deepCompatModeFromSettings(currentSettings));
     renderDeepCompatExcludes();
     els.customCss.value = currentSettings.customCss || '';
     if (cssEditorController) cssEditorController.update();
@@ -2820,8 +2849,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     currentSettings.targetSelector = els.targetSelector.value.trim();
-    currentSettings.deepCompat = els.deepCompatToggle.checked;
-    currentSettings.deepCompatAggressive = els.deepCompatAggressiveToggle.checked;
+    collectDeepCompatRunMode();
     // deepCompatExclude is saved automatically on input change, but we could re-gather here just in case.
     currentSettings.customCss = els.customCss.value;
     currentSettings.frostedGlass = frostedGlassState.map(f => ({
@@ -2965,9 +2993,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.effectSpeedVal.textContent = '50%';
     els.imageUrl.value = '';
     els.targetSelector.value = '';
-    els.deepCompatToggle.checked = false;
-    els.deepCompatAggressiveToggle.checked = false;
-    syncDeepCompatAggressiveAvailability();
+    syncDeepCompatRunMode('normal');
     renderDeepCompatExcludes();
     els.customCss.value = '';
     renderFrostedList([]);

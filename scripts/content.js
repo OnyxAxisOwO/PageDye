@@ -659,7 +659,7 @@
 
       if (settings.style) {
         style.backgroundPosition = 'center center';
-        style.backgroundSize = settings.style.size || 'cover';
+        style.backgroundSize = settings.style.size === 'stretch' ? '100% 100%' : (settings.style.size || 'cover');
         style.backgroundRepeat = settings.style.repeat ? 'repeat' : 'no-repeat';
 
         if (settings.style.fixed) {

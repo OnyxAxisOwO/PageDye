@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PageDye Lite
 // @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.7.20
+// @version      0.7.21
 // @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
 // @author       PageDye
 // @match        *://*/*
@@ -40,7 +40,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.7.20';
+  const VERSION = '0.7.21';
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
@@ -798,7 +798,7 @@
       style.animation = 'none';
       if (s.style) {
         style.backgroundPosition = 'center center';
-        style.backgroundSize = s.style.size || 'cover';
+        style.backgroundSize = s.style.size === 'stretch' ? '100% 100%' : (s.style.size || 'cover');
         style.backgroundRepeat = s.style.repeat ? 'repeat' : 'no-repeat';
         if (s.style.fixed) { root.style.position = 'fixed'; root.style.height = '100vh'; }
         else { root.style.position = 'absolute'; root.style.height = '100%'; }
@@ -1948,7 +1948,7 @@
         <p>拖拽图片到此处,或点击选择文件</p>
       </div>`;
       if (e.value) body += `<button class="pd-btn-secondary" data-action="clear-image">${svgIcon(ICON.xCircle, 14)}<span>删除当前图片</span></button>`;
-      body += selectRow('尺寸', 'style.size', [['cover', '铺满(cover)'], ['contain', '完整显示(contain)'], ['auto', '原始大小']], (e.style && e.style.size) || 'cover');
+      body += selectRow('尺寸', 'style.size', [['cover', '铺满(cover)'], ['contain', '完整显示(contain)'], ['auto', '原始大小'], ['stretch', '拉伸(stretch)']], (e.style && e.style.size) || 'cover');
       body += checkboxRow('平铺重复', 'style.repeat', !!(e.style && e.style.repeat));
       body += checkboxRow('固定不随页面滚动', 'style.fixed', !!(e.style && e.style.fixed));
       body += rangeRow('不透明度', 'opacity', 0, 100, e.opacity, '%');

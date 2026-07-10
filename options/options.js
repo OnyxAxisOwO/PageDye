@@ -127,6 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       sizeCover: "Cover",
       sizeContain: "Contain",
       sizeAuto: "Auto",
+      sizeStretch: "Stretch",
       repeat: "Repeat",
       reset: "Reset",
       save: "Save",
@@ -139,6 +140,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetSelector: "Background Selector",
       targetSelectorHint: "Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.",
       deepCompat: "Deep Compatibility Mode",
+      runMode: "Run Mode",
+      runModeNormal: "Normal",
+      runModeEnhanced: "Enhanced",
+      runModeStrong: "Strong",
       deepCompatBadge: "For stubborn sites",
       deepCompatEnable: "Enable for this site",
       deepCompatHint: "For stubborn sites (e.g. Google's mobile pages) where several stacked opaque containers hide the background no matter what. Automatically detects and neutralizes full-viewport opaque layers — including a mosaic of many small opaque cards, not just one big wrapper. May occasionally strip a background some element needed for contrast — use the exclude field below if so.",
@@ -358,6 +363,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       sizeCover: "覆盖 (Cover)",
       sizeContain: "包含 (Contain)",
       sizeAuto: "自动 (Auto)",
+      sizeStretch: "拉伸 (Stretch)",
       repeat: "平铺",
       reset: "重置",
       save: "保存",
@@ -370,6 +376,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetSelector: "背景选择器",
       targetSelectorHint: "拾取一个元素（或手动输入 CSS 选择器），PageDye 会把颜色/图片直接应用到该元素，而不是整页。留空则为整页背景。",
       deepCompat: "深度兼容模式",
+      runMode: "运行模式",
+      runModeNormal: "普通",
+      runModeEnhanced: "增强",
+      runModeStrong: "强兼",
       deepCompatBadge: "顽固网站专用",
       deepCompatEnable: "为此网站启用",
       deepCompatHint: "适用于顽固网站（例如 Google 移动端页面）：多层不透明容器叠在一起，导致无论怎么设置背景都被遮住。开启后会自动检测并清除铺满视口的不透明背景层——包括由许多小块不透明卡片拼成的情况，不只是单个大容器。可能偶尔误伤某些依赖背景色做对比度的元素，遇到这种情况可在下方填入排除选择器。",
@@ -2282,9 +2292,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateEditModeUI(mode);
 
     document.getElementById('edit-target-selector').value = currentEditSettings.targetSelector || '';
-    document.getElementById('edit-deep-compat-toggle').checked = !!currentEditSettings.deepCompat;
-    document.getElementById('edit-deep-compat-aggressive-toggle').checked = !!currentEditSettings.deepCompatAggressive;
-    syncEditDeepCompatAggressiveAvailability();
+    syncEditDeepCompatRunMode(editDeepCompatModeFromSettings(currentEditSettings));
     document.getElementById('edit-deep-compat-exclude').value = currentEditSettings.deepCompatExclude || '';
     document.getElementById('edit-custom-css').value = currentEditSettings.customCss || '';
     if (editCssEditorController) editCssEditorController.update();
@@ -2298,11 +2306,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  function syncEditDeepCompatAggressiveAvailability() {
-    const aggressiveToggle = document.getElementById('edit-deep-compat-aggressive-toggle');
-    const baseToggle = document.getElementById('edit-deep-compat-toggle');
-    if (!aggressiveToggle || !baseToggle) return;
-    aggressiveToggle.disabled = !baseToggle.checked;
+  function editDeepCompatModeFromSettings(settings) {
+    if (settings && settings.deepCompatAggressive) return 'strong';
+    if (settings && settings.deepCompat) return 'enhanced';
+    return 'normal';
+  }
+
+  function syncEditDeepCompatRunMode(mode) {
+    const nextMode = mode || 'normal';
+    const radio = document.querySelector(`input[name="edit-deepCompatMode"][value="${nextMode}"]`);
+    if (radio) radio.checked = true;
+    const badge = document.getElementById('edit-run-mode-badge');
+    if (badge) {
+      const labelKey = nextMode === 'strong' ? 'runModeStrong' : nextMode === 'enhanced' ? 'runModeEnhanced' : 'runModeNormal';
+      badge.textContent = t(labelKey);
+    }
+  }
+
+  function collectEditDeepCompatRunMode() {
+    const checked = document.querySelector('input[name="edit-deepCompatMode"]:checked');
+    const mode = checked ? checked.value : 'normal';
+    currentEditSettings.deepCompat = mode !== 'normal';
+    currentEditSettings.deepCompatAggressive = mode === 'strong';
+    syncEditDeepCompatRunMode(mode);
   }
 
   function updateEditModeUI(mode) {
@@ -2777,6 +2803,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const bgPreview = document.getElementById('edit-image-preview-bg');
     bgPreview.style.backgroundImage = imageUrl;
+    const imageSize = document.getElementById('edit-bg-size').value;
+    bgPreview.style.backgroundSize = imageSize === 'stretch' ? '100% 100%' : imageSize;
 
     const blur       = parseInt(document.getElementById('edit-blur').value, 10) || 0;
     const brightness = parseInt(document.getElementById('edit-filter-brightness').value, 10);
@@ -2822,8 +2850,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     currentEditSettings.targetSelector = document.getElementById('edit-target-selector').value.trim();
-    currentEditSettings.deepCompat = document.getElementById('edit-deep-compat-toggle').checked;
-    currentEditSettings.deepCompatAggressive = document.getElementById('edit-deep-compat-aggressive-toggle').checked;
+    collectEditDeepCompatRunMode();
     currentEditSettings.deepCompatExclude = document.getElementById('edit-deep-compat-exclude').value.trim();
     currentEditSettings.customCss = document.getElementById('edit-custom-css').value;
     currentEditSettings.frostedGlass = editFrostedGlassState.map(f => ({
@@ -2921,9 +2948,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-file-info').classList.add('hidden');
     document.getElementById('edit-image-url').value = '';
     document.getElementById('edit-target-selector').value = '';
-    document.getElementById('edit-deep-compat-toggle').checked = false;
-    document.getElementById('edit-deep-compat-aggressive-toggle').checked = false;
-    syncEditDeepCompatAggressiveAvailability();
+    syncEditDeepCompatRunMode('normal');
     document.getElementById('edit-deep-compat-exclude').value = '';
     document.getElementById('edit-custom-css').value = '';
     renderEditFrostedList([]);
@@ -3307,14 +3332,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Toggles and inputs on edit view
   document.getElementById('edit-bg-fixed').addEventListener('change', () => triggerEditImmediateSave());
-  document.getElementById('edit-bg-size').addEventListener('change', () => triggerEditImmediateSave());
-  document.getElementById('edit-bg-repeat').addEventListener('change', () => triggerEditImmediateSave());
-  document.getElementById('edit-target-selector').addEventListener('input', () => queueEditAutoSave());
-  document.getElementById('edit-deep-compat-toggle').addEventListener('change', () => {
-    syncEditDeepCompatAggressiveAvailability();
+  document.getElementById('edit-bg-size').addEventListener('change', () => {
+    updateEditPreview();
     triggerEditImmediateSave();
   });
-  document.getElementById('edit-deep-compat-aggressive-toggle').addEventListener('change', () => triggerEditImmediateSave());
+  document.getElementById('edit-bg-repeat').addEventListener('change', () => triggerEditImmediateSave());
+  document.getElementById('edit-target-selector').addEventListener('input', () => queueEditAutoSave());
+  Array.from(document.getElementsByName('edit-deepCompatMode')).forEach((radio) => {
+    radio.addEventListener('change', () => {
+      syncEditDeepCompatRunMode(radio.value);
+      triggerEditImmediateSave();
+    });
+  });
   document.getElementById('edit-deep-compat-exclude').addEventListener('input', () => queueEditAutoSave());
   document.getElementById('edit-custom-css').addEventListener('input', () => queueEditAutoSave());
   // Frosted glass entries are rebuilt on every render, so listeners are
