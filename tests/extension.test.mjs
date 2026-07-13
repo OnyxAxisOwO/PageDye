@@ -37,3 +37,15 @@ test('performance safeguards cancel hidden-page work and retain the temporary sh
   assert.match(content, /matchesPauseShortcut/);
   assert.match(read('options/options.js'), /PAUSE_SHORTCUT_KEY/);
 });
+
+test('release versions stay synchronized and Lite defines the time-range icon', () => {
+  const manifest = JSON.parse(read('manifest.json'));
+  const packageJson = JSON.parse(read('package.json'));
+  const userscript = read('userscript/pagedye.user.js');
+
+  assert.equal(packageJson.version, manifest.version);
+  assert.match(userscript, new RegExp(`^// @version\\s+${manifest.version.replaceAll('.', '\\.')}\\s*$`, 'm'));
+  assert.match(userscript, new RegExp(`const VERSION = '${manifest.version.replaceAll('.', '\\.')}';`));
+  assert.match(userscript, /clock:\s*'<circle[^']+<polyline/);
+  assert.match(userscript, /svgIcon\(ICON\.clock, 14\)/);
+});

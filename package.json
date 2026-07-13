@@ -1,7 +1,7 @@
 {
   "name": "pagedye",
   "private": true,
-  "version": "0.7.22",
+  "version": "0.7.23",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "check": "npm test"
