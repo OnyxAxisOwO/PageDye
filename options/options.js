@@ -686,9 +686,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     return UI_THEME_ACCENTS[theme.accent] || UI_THEME_ACCENTS.neutral;
   }
 
+  // The accent is also used directly as foreground text/icon color (badges,
+  // "on-container" text), not just as a button fill. Its raw hue/sat is kept,
+  // but lightness is remapped so it stays legible against the current
+  // dark/light container background — otherwise the default near-black
+  // "neutral" accent renders as near-black text on a dark container.
+  function getDisplayAccentColor(accentHex, isDark) {
+    const { h, s, l } = hexToHsl(accentHex);
+    const targetL = isDark ? Math.max(l, 70) : Math.min(l, 45);
+    return hslToHex(h, s, targetL);
+  }
+
   function applyUiThemeAccent(theme) {
     const root = document.documentElement.style;
-    const accent = getUiAccentColor(theme);
+    const isDark = !colorIsLight(theme.containerBg);
+    const rawAccent = getUiAccentColor(theme);
+    const accent = getDisplayAccentColor(rawAccent, isDark);
     const onAccent = colorIsLight(accent) ? '#000000' : '#ffffff';
     const hover = shiftHexColor(accent, colorIsLight(accent) ? -32 : 24);
     root.setProperty('--primary-color', accent);
@@ -713,8 +726,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     root.setProperty('--md-state-focus', hexToRgba(accent, 0.14));
     root.setProperty('--md-state-press', hexToRgba(accent, 0.14));
 
-    const isDark = !colorIsLight(theme.containerBg);
-    const surfaces = getMaterialYouSurfaceTones(accent, isDark);
+    const surfaces = getMaterialYouSurfaceTones(rawAccent, isDark);
     Object.keys(surfaces).forEach((name) => root.setProperty(name, surfaces[name]));
   }
 

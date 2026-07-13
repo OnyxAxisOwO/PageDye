@@ -300,9 +300,22 @@ function getUiAccentColor(theme) {
   return UI_THEME_ACCENTS[theme.accent] || UI_THEME_ACCENTS.neutral;
 }
 
+// The accent is also used directly as foreground text/icon color (badges,
+// the active bottom-nav tab), not just as a button fill. Its raw hue/sat is
+// kept, but lightness is remapped so it stays legible against the current
+// dark/light surface — otherwise the default near-black "neutral" accent
+// renders as near-black text on the dark surface in dark mode.
+function getDisplayAccentColor(accentHex, isDark) {
+  const { h, s, l } = hexToHsl(accentHex);
+  const targetL = isDark ? Math.max(l, 70) : Math.min(l, 45);
+  return hslToHex(h, s, targetL);
+}
+
 function applyUiTheme(theme) {
   const root = document.documentElement.style;
-  const accent = getUiAccentColor(theme);
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const rawAccent = getUiAccentColor(theme);
+  const accent = getDisplayAccentColor(rawAccent, isDark);
   const onAccent = colorIsLight(accent) ? '#000000' : '#ffffff';
   const hover = shiftHexColor(accent, colorIsLight(accent) ? -32 : 24);
   root.setProperty('--primary-color', accent);
@@ -316,8 +329,7 @@ function applyUiTheme(theme) {
   root.setProperty('--badge-color-text', accent);
   root.setProperty('--badge-image-bg', hexToRgba(accent, 0.14));
   root.setProperty('--badge-image-text', accent);
-  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const surfaces = getNeutralSurfaceTones(accent, isDark);
+  const surfaces = getNeutralSurfaceTones(rawAccent, isDark);
   Object.keys(surfaces).forEach((name) => root.setProperty(name, surfaces[name]));
   if (theme.disableAnimation) {
     document.documentElement.classList.add('pagedye-no-animation');

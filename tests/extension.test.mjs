@@ -48,4 +48,17 @@ test('release versions stay synchronized and Lite defines the time-range icon', 
   assert.match(userscript, new RegExp(`const VERSION = '${manifest.version.replaceAll('.', '\\.')}';`));
   assert.match(userscript, /clock:\s*'<circle[^']+<polyline/);
   assert.match(userscript, /svgIcon\(ICON\.clock, 14\)/);
+  for (const page of ['popup/popup.html', 'options/options.html', 'site/index.html']) {
+    assert.match(read(page), new RegExp(`v${manifest.version.replaceAll('.', '\\.')}\\b`));
+  }
+});
+
+test('Lite mode and time-period controls use responsive layout classes', () => {
+  const userscript = read('userscript/pagedye.user.js');
+
+  assert.match(userscript, /class="pd-mode-switch"/);
+  assert.match(userscript, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(userscript, /class="pd-period-item /);
+  assert.match(userscript, /class="pd-period-actions /);
+  assert.match(userscript, /\.pd-btn-secondary\.pd-period-action/);
 });

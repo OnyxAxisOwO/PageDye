@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PageDye Lite
 // @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.7.23
+// @version      0.7.24
 // @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
 // @author       PageDye
 // @match        *://*/*
@@ -40,7 +40,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.7.23';
+  const VERSION = '0.7.24';
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
@@ -2060,18 +2060,18 @@
   const MODE_LABEL = { single: '单一', auto: '昼夜自动', timeRange: '时段多态', slideshow: '幻灯轮播' };
 
   function renderModeControls() {
-    let html = `<div class="pd-seg" style="margin-bottom: 12px; padding: 4px; background: var(--pd-input-bg); border-radius: var(--pd-radius-md);">
-      <button class="${settings.mode === 'single' ? 'active' : ''}" data-action="set-mode" data-value="single" title="单一" style="flex-direction: row; gap: 6px;">
-        ${svgIcon(ICON.layers, 14)} 单一
+    let html = `<div class="pd-mode-switch" role="group" aria-label="壁纸模式">
+      <button class="pd-mode-button ${settings.mode === 'single' ? 'active' : ''}" data-action="set-mode" data-value="single" title="单一" aria-pressed="${settings.mode === 'single'}">
+        ${svgIcon(ICON.layers, 14)}<span>单一</span>
       </button>
-      <button class="${settings.mode === 'auto' ? 'active' : ''}" data-action="set-mode" data-value="auto" title="昼夜自动" style="flex-direction: row; gap: 6px;">
-        ${svgIcon(ICON.sun, 14)} 昼夜自动
+      <button class="pd-mode-button ${settings.mode === 'auto' ? 'active' : ''}" data-action="set-mode" data-value="auto" title="昼夜自动" aria-pressed="${settings.mode === 'auto'}">
+        ${svgIcon(ICON.sun, 14)}<span>昼夜自动</span>
       </button>
-      <button class="${settings.mode === 'timeRange' ? 'active' : ''}" data-action="set-mode" data-value="timeRange" title="时段多态" style="flex-direction: row; gap: 6px;">
-        ${svgIcon(ICON.clock, 14)} 时段多态
+      <button class="pd-mode-button ${settings.mode === 'timeRange' ? 'active' : ''}" data-action="set-mode" data-value="timeRange" title="时段多态" aria-pressed="${settings.mode === 'timeRange'}">
+        ${svgIcon(ICON.clock, 14)}<span>时段多态</span>
       </button>
-      <button class="${settings.mode === 'slideshow' ? 'active' : ''}" data-action="set-mode" data-value="slideshow" title="幻灯轮播" style="flex-direction: row; gap: 6px;">
-        ${svgIcon(ICON.image, 14)} 幻灯轮播
+      <button class="pd-mode-button ${settings.mode === 'slideshow' ? 'active' : ''}" data-action="set-mode" data-value="slideshow" title="幻灯轮播" aria-pressed="${settings.mode === 'slideshow'}">
+        ${svgIcon(ICON.image, 14)}<span>幻灯轮播</span>
       </button>
     </div>`;
 
@@ -2091,18 +2091,24 @@
       
       const periodButtons = items.map((item, idx) => {
         const isActive = idx === ui.timePeriodIndex;
-        return `<button class="${isActive ? 'active' : ''}" data-action="select-user-period" data-index="${idx}" style="font-size: 11px; padding: 4px 6px;">
-          <span>${item.name || '未命名'} (${formatHour(item.start)}-${formatHour(item.end)})</span>
+        const periodName = escapeAttr(item.name || '未命名');
+        return `<button class="pd-period-item ${isActive ? 'active' : ''}" data-action="select-user-period" data-index="${idx}" aria-pressed="${isActive}">
+          <span class="pd-period-name">${periodName}</span>
+          <span class="pd-period-time">${formatHour(item.start)}–${formatHour(item.end)}</span>
         </button>`;
       }).join('');
 
-      html += `<div style="display: flex; flex-direction: column; gap: 6px;">
-        <div style="display: grid; grid-template-columns: 1fr; gap: 4px;">
+      html += `<div class="pd-time-range-panel">
+        <div class="pd-period-grid" role="group" aria-label="选择时段">
           ${periodButtons}
         </div>
-        <div style="display: flex; gap: 4px; margin-top: 4px;">
-          <button class="pd-btn-secondary" data-action="add-user-period" style="flex: 1; padding: 4px; font-size: 11px;">+ 添加新时段</button>
-          ${items.length > 1 ? `<button class="pd-btn-secondary pd-danger" data-action="delete-user-period" style="padding: 4px 8px; font-size: 11px;">删除当前时段</button>` : ''}
+        <div class="pd-period-actions ${items.length > 1 ? '' : 'pd-period-actions-single'}">
+          <button class="pd-btn-secondary pd-period-action" data-action="add-user-period">
+            ${svgIcon(ICON.plus, 14)}<span>添加新时段</span>
+          </button>
+          ${items.length > 1 ? `<button class="pd-btn-secondary pd-period-action pd-period-delete" data-action="delete-user-period">
+            ${svgIcon(ICON.trash, 14)}<span>删除当前时段</span>
+          </button>` : ''}
         </div>
       </div>`;
 
@@ -2112,11 +2118,11 @@
           hourOptions.push([String(h), String(h).padStart(2, '0') + ':00']);
         }
 
-        html += `<div style="margin-top: 8px; border-top: 1px dashed var(--pd-border); padding-top: 8px;">
-          <div style="font-size: 11px; font-weight: bold; margin-bottom: 4px;">时段属性编辑</div>
+        html += `<div class="pd-time-editor">
+          <div class="pd-time-editor-title">${svgIcon(ICON.clock, 13)}<span>时段属性</span></div>
           <div class="pd-row">
             <div class="pd-row-head"><span>时段名称</span></div>
-            <input type="text" data-path="timeRange.items.${ui.timePeriodIndex}.name" data-scope="root" data-structural="1" value="${escapeAttr(activeItem.name || '')}" style="padding: 2px 4px; font-size: 12px; width: 100px; text-align: right;" />
+            <input class="pd-time-name-input" type="text" data-path="timeRange.items.${ui.timePeriodIndex}.name" data-scope="root" data-structural="1" value="${escapeAttr(activeItem.name || '')}" />
           </div>
           ${selectRow('起始时间', `timeRange.items.${ui.timePeriodIndex}.start`, hourOptions, String(activeItem.start), { scope: 'root' })}
           ${selectRow('结束时间', `timeRange.items.${ui.timePeriodIndex}.end`, hourOptions, String(activeItem.end), { scope: 'root' })}
@@ -2886,6 +2892,28 @@
       .pd-seg-main { margin-bottom: 14px; }
       .pd-target-seg { margin-bottom: 8px; border: 1px solid var(--pd-border); }
 
+      .pd-mode-switch {
+        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px;
+        padding: 4px; margin-bottom: 12px; border-radius: var(--pd-radius-md);
+        background: var(--pd-input-bg); border: 1px solid transparent;
+      }
+      .pd-mode-button {
+        min-width: 0; min-height: 36px; padding: 7px 5px; border: 1px solid transparent;
+        border-radius: calc(var(--pd-radius-md) - 3px); background: transparent;
+        color: var(--pd-text-secondary); cursor: pointer; display: flex; align-items: center;
+        justify-content: center; gap: 4px; font-size: 11.5px; line-height: 1;
+        transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .pd-mode-button svg { flex: 0 0 auto; }
+      .pd-mode-button span {
+        min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .pd-mode-button:hover { background: var(--pd-surface); color: var(--pd-text); }
+      .pd-mode-button.active {
+        background: var(--pd-card); color: var(--pd-text); border-color: var(--pd-border);
+        box-shadow: 0 1px 3px var(--pd-shadow); font-weight: 600;
+      }
+
       .pd-scheme-switch { display: flex; gap: 8px; margin-bottom: 10px; }
       .pd-scheme-switch button {
         flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -2999,6 +3027,57 @@
         background: var(--pd-btn-bg); color: var(--pd-text); font-size: 12.5px; cursor: pointer; transition: all 0.15s ease;
       }
       .pd-btn-secondary:hover { background: var(--pd-focus); }
+
+      .pd-time-range-panel { display: grid; gap: 9px; margin-bottom: 10px; }
+      .pd-period-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+      .pd-period-item {
+        min-width: 0; min-height: 50px; padding: 8px 10px; border: 1px solid var(--pd-border);
+        border-radius: var(--pd-radius-md); background: var(--pd-card); color: var(--pd-text-secondary);
+        display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px;
+        cursor: pointer; text-align: left;
+        transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+      }
+      .pd-period-item:hover {
+        background: var(--pd-surface); color: var(--pd-text); border-color: var(--pd-text-secondary);
+        transform: translateY(-1px);
+      }
+      .pd-period-item.active {
+        background: var(--pd-accent-bg); color: var(--pd-accent-text); border-color: var(--pd-accent-bg);
+        box-shadow: 0 3px 10px var(--pd-shadow);
+      }
+      .pd-period-name {
+        display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        font-size: 12.5px; line-height: 1.25; font-weight: 650;
+      }
+      .pd-period-time {
+        font-size: 10.5px; line-height: 1.2; opacity: 0.72; font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .pd-period-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+      .pd-period-actions-single { grid-template-columns: minmax(0, 1fr); }
+      .pd-btn-secondary.pd-period-action {
+        width: auto; min-width: 0; min-height: 34px; margin: 0; padding: 7px 9px;
+        border-radius: var(--pd-radius-sm); font-size: 11.5px; line-height: 1.2; white-space: nowrap;
+      }
+      .pd-period-action svg { flex: 0 0 auto; }
+      .pd-period-action span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+      .pd-btn-secondary.pd-period-delete { color: var(--pd-danger); }
+      .pd-btn-secondary.pd-period-delete:hover { border-color: var(--pd-danger); color: var(--pd-danger); }
+      .pd-time-editor {
+        margin-top: 4px; padding: 11px; border: 1px solid var(--pd-border);
+        border-radius: var(--pd-radius-md); background: var(--pd-surface);
+      }
+      .pd-time-editor-title {
+        display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+        color: var(--pd-text); font-size: 12px; font-weight: 650;
+      }
+      .pd-time-editor-title svg { color: var(--pd-text-secondary); }
+      .pd-time-name-input { text-align: left; }
+
+      @media (max-width: 420px) {
+        .pd-mode-switch { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .pd-period-actions { grid-template-columns: minmax(0, 1fr); }
+      }
 
       .pd-footer-btns { display: flex; gap: 6px; }
       .pd-footer-btns button {
