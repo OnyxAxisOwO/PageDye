@@ -66,10 +66,13 @@ jobs:
           # CHANGELOG.md headers look like "### ✨ v0.7.13 更新日志" (not the
           # keepachangelog "## [x.y.z]" style this originally matched).
           VERSION="${{ steps.version.outputs.version }}"
-          awk -v marker="$VERSION " '
+          awk -v version="$VERSION" '
             /^### / {
               if (found) exit
-              if (index($0, marker) > 0) found=1
+              pos = index($0, version)
+              before = pos > 1 ? substr($0, pos - 1, 1) : ""
+              after = pos > 0 ? substr($0, pos + length(version), 1) : ""
+              if (pos > 0 && before ~ /[[:space:]]/ && (after == "" || after ~ /[[:space:]]/)) found=1
             }
             found { print }
           ' CHANGELOG.md > release_notes.md
