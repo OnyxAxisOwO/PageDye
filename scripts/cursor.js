@@ -13,8 +13,8 @@
 // hover-capable pointer (matchMedia('(hover: hover) and (pointer: fine)')).
 // Tear down any previous instance before replacing window.PageDyeCursor —
 // this file can be re-injected on top of an already-running content script
-// (the popup re-injects gradient/effects/cursor/content on every settings
-// save), and without this the old instance's root, rAF loop and listeners
+// (for example after an extension reload and on-demand runtime restore),
+// and without this the old instance's root, rAF loop and listeners
 // are simply orphaned rather than replaced, so overlays pile up and visibly
 // overlap.
 if (window.PageDyeCursor && typeof window.PageDyeCursor.stop === 'function') {

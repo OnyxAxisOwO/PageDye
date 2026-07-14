@@ -1,9 +1,9 @@
 {
   "name": "pagedye",
   "private": true,
-  "version": "0.7.24",
+  "version": "0.8.0",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "npm test"
+    "check": "npm test && node tools/check.mjs"
   }
 }

@@ -1,14 +1,16 @@
 {
   "manifest_version": 3,
   "name": "PageDye - Custom Website Backgrounds",
-  "version": "0.7.24",
+  "version": "0.8.0",
   "description": "Customize the background of any website with images or colors.",
   "browser_specific_settings": {
     "gecko": {
       "id": "pagedye@onyxaxisowo.github.io",
       "strict_min_version": "140.0",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": [
+          "none"
+        ]
       }
     },
     "gecko_android": {
@@ -18,7 +20,6 @@
   "permissions": [
     "storage",
     "unlimitedStorage",
-    "activeTab",
     "scripting"
   ],
   "host_permissions": [
@@ -27,12 +28,16 @@
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "PageDye Settings",
-    "default_icon": "Designer.png"
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "icons": {
-    "16": "Designer.png",
-    "48": "Designer.png",
-    "128": "Designer.png"
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   },
   "options_ui": {
     "page": "options/options.html",
@@ -40,21 +45,42 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["scripts/gradient.js", "scripts/effects.js", "scripts/cursor.js", "scripts/content.js", "scripts/debug.js"],
-      "run_at": "document_start"
-    },
-    {
-      "matches": ["<all_urls>"],
-      "js": ["scripts/debug-network.js"],
-      "world": "MAIN",
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "scripts/storage-schema.js",
+        "scripts/gradient.js",
+        "scripts/effects.js",
+        "scripts/cursor.js",
+        "scripts/custom-effect-sandbox.js",
+        "scripts/content.js"
+      ],
       "run_at": "document_start"
     }
   ],
+  "background": {
+    "service_worker": "scripts/background.js"
+  },
+  "sandbox": {
+    "pages": [
+      "sandbox/effect.html"
+    ]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';",
+    "sandbox": "sandbox allow-scripts; default-src 'none'; script-src 'self' 'unsafe-eval'; object-src 'none'; connect-src 'none'; img-src data: blob:; style-src 'self' 'unsafe-inline'; base-uri 'none'; form-action 'none';"
+  },
   "web_accessible_resources": [
     {
-      "resources": ["images/*"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "sandbox/effect.html",
+        "sandbox/effect-runtime.js",
+        "scripts/effects.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

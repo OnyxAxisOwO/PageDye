@@ -33,7 +33,7 @@ jobs:
           node-version: 22
 
       - name: Run extension checks
-        run: npm test
+        run: npm run check
 
       - name: Verify tag matches manifest version
         if: github.ref_type == 'tag'
@@ -49,7 +49,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           ZIP="pagedye-${VERSION}.zip"
-          FILES="manifest.json popup options scripts icons lib Designer.png"
+          FILES="manifest.json popup options scripts sandbox icons lib"
           [ -d images ] && FILES="$FILES images"
           zip -r "$ZIP" $FILES
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PageDye Lite
 // @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.7.24
+// @version      0.8.0
 // @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
 // @author       PageDye
 // @match        *://*/*
@@ -40,7 +40,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.7.24';
+  const VERSION = '0.8.0';
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
@@ -2061,17 +2061,17 @@
 
   function renderModeControls() {
     let html = `<div class="pd-mode-switch" role="group" aria-label="壁纸模式">
-      <button class="pd-mode-button ${settings.mode === 'single' ? 'active' : ''}" data-action="set-mode" data-value="single" title="单一" aria-pressed="${settings.mode === 'single'}">
-        ${svgIcon(ICON.layers, 14)}<span>单一</span>
+      <button class="pd-mode-button ${settings.mode === 'single' ? 'active' : ''}" data-action="set-mode" data-value="single" title="单一" aria-label="单一" aria-pressed="${settings.mode === 'single'}">
+        ${svgIcon(ICON.layers, 14)}
       </button>
-      <button class="pd-mode-button ${settings.mode === 'auto' ? 'active' : ''}" data-action="set-mode" data-value="auto" title="昼夜自动" aria-pressed="${settings.mode === 'auto'}">
-        ${svgIcon(ICON.sun, 14)}<span>昼夜自动</span>
+      <button class="pd-mode-button ${settings.mode === 'auto' ? 'active' : ''}" data-action="set-mode" data-value="auto" title="昼夜自动" aria-label="昼夜自动" aria-pressed="${settings.mode === 'auto'}">
+        ${svgIcon(ICON.sun, 14)}
       </button>
-      <button class="pd-mode-button ${settings.mode === 'timeRange' ? 'active' : ''}" data-action="set-mode" data-value="timeRange" title="时段多态" aria-pressed="${settings.mode === 'timeRange'}">
-        ${svgIcon(ICON.clock, 14)}<span>时段多态</span>
+      <button class="pd-mode-button ${settings.mode === 'timeRange' ? 'active' : ''}" data-action="set-mode" data-value="timeRange" title="时段多态" aria-label="时段多态" aria-pressed="${settings.mode === 'timeRange'}">
+        ${svgIcon(ICON.clock, 14)}
       </button>
-      <button class="pd-mode-button ${settings.mode === 'slideshow' ? 'active' : ''}" data-action="set-mode" data-value="slideshow" title="幻灯轮播" aria-pressed="${settings.mode === 'slideshow'}">
-        ${svgIcon(ICON.image, 14)}<span>幻灯轮播</span>
+      <button class="pd-mode-button ${settings.mode === 'slideshow' ? 'active' : ''}" data-action="set-mode" data-value="slideshow" title="幻灯轮播" aria-label="幻灯轮播" aria-pressed="${settings.mode === 'slideshow'}">
+        ${svgIcon(ICON.image, 14)}
       </button>
     </div>`;
 
@@ -2277,14 +2277,19 @@
       body.dataset.shellReady = '1';
     }
 
+    const hideTargetControls = ui.tab === 'advanced';
     const seg = body.querySelector('#pd-target-seg');
     if (seg) {
+      seg.hidden = hideTargetControls;
       seg.querySelectorAll('button[data-value]').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.value === panelTarget);
       });
     }
     const hint = body.querySelector('#pd-target-hint');
-    if (hint) hint.innerHTML = renderTargetHint();
+    if (hint) {
+      hint.hidden = hideTargetControls;
+      hint.innerHTML = hideTargetControls ? '' : renderTargetHint();
+    }
 
     const nav = body.querySelector('.pd-bottom-nav');
     if (nav) {
@@ -2891,6 +2896,7 @@
       .pd-seg button.active { background: var(--pd-card); color: var(--pd-text); box-shadow: 0 1px 3px var(--pd-shadow); font-weight: 600; }
       .pd-seg-main { margin-bottom: 14px; }
       .pd-target-seg { margin-bottom: 8px; border: 1px solid var(--pd-border); }
+      .pd-target-seg[hidden], #pd-target-hint[hidden] { display: none; }
 
       .pd-mode-switch {
         display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px;
@@ -2905,9 +2911,6 @@
         transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
       }
       .pd-mode-button svg { flex: 0 0 auto; }
-      .pd-mode-button span {
-        min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      }
       .pd-mode-button:hover { background: var(--pd-surface); color: var(--pd-text); }
       .pd-mode-button.active {
         background: var(--pd-card); color: var(--pd-text); border-color: var(--pd-border);
@@ -3075,7 +3078,6 @@
       .pd-time-name-input { text-align: left; }
 
       @media (max-width: 420px) {
-        .pd-mode-switch { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .pd-period-actions { grid-template-columns: minmax(0, 1fr); }
       }
 

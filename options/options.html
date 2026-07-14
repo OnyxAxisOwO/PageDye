@@ -76,7 +76,7 @@
       </nav>
       
       <div class="sidebar-footer">
-        <span id="version" class="version-label">v0.7.24</span>
+        <span id="version" class="version-label">v0.8.0</span>
       </div>
     </aside>
     
@@ -342,7 +342,7 @@
           <div class="about-logo">
             <div class="logo-circle"></div>
             <h3>PageDye</h3>
-            <span class="badge" id="about-version">v0.7.24</span>
+            <span class="badge" id="about-version">v0.8.0</span>
           </div>
           
           <p class="about-desc" data-i18n="aboutText">PageDye is a browser extension that allows you to dye any webpage's background with your choice of color or custom image. You can adjust opacity, blur, repetition, element selector, and even inject custom CSS for complete control over readability and design.</p>
@@ -910,8 +910,8 @@
             <span class="status-text" id="edit-status-text" data-i18n="statusSynced">Synced</span>
           </div>
           <div class="edit-actions-right">
-            <button id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
-            <span class="version-text" id="edit-version">v0.7.24</span>
+            <button type="button" id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
+            <span class="version-text" id="edit-version">v0.8.0</span>
             <span class="divider">|</span>
             <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; display: block;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
@@ -974,7 +974,7 @@
           <div class="control-group hidden" id="edit-custom-effect-url-control" style="margin-bottom: 0;">
             <label for="edit-custom-effect-url" data-i18n="effectUrlLabel">Website URL</label>
             <input type="url" id="edit-custom-effect-url" placeholder="https://example.com/some-cool-wallpaper" style="width: 100%; box-sizing: border-box;">
-            <p class="hint" data-i18n="effectUrlHint">Directly embed another website via iframe as the background. Note: Some websites may block iframe embedding due to security policies (X-Frame-Options/CSP).</p>
+            <p class="hint" data-i18n="effectUrlHint">Embed an HTTPS website in a sandboxed iframe background (HTTP is allowed only for localhost). Some websites may block embedding via X-Frame-Options/CSP.</p>
 
             <details class="accordion" id="edit-accordion-custom-effect-advanced" style="margin-top: 15px;">
               <summary class="accordion-summary">
@@ -999,7 +999,7 @@
             <label data-i18n="effectPreviewLabel">Live Preview</label>
             <div class="effect-preview-box">
               <canvas id="edit-custom-effect-preview-canvas" width="280" height="160"></canvas>
-              <iframe id="edit-custom-effect-preview-iframe" width="280" height="160" style="display: none; border: none; background: #000;"></iframe>
+              <iframe id="edit-custom-effect-preview-iframe" title="Custom URL effect preview" sandbox="allow-scripts allow-forms allow-pointer-lock" referrerpolicy="no-referrer" allow="" width="280" height="160" style="display: none; border: none; background: #000;"></iframe>
             </div>
           </div>
         </div>
@@ -1018,7 +1018,7 @@
     <div id="status-msg" class="status-msg hidden"></div>
 
     <!-- Custom Confirm Modal -->
-    <div id="confirm-modal" class="modal-backdrop hidden">
+    <div id="confirm-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" aria-describedby="confirm-modal-message">
       <div class="modal-content">
         <div class="modal-header">
           <h3 id="confirm-modal-title">提示</h3>
@@ -1033,10 +1033,13 @@
       </div>
     </div>
   </div>
+  <script src="../scripts/storage-schema.js"></script>
   <script src="../scripts/gradient.js"></script>
   <script src="../scripts/image.js"></script>
   <script src="../scripts/effects.js"></script>
+  <script src="../scripts/custom-effect-sandbox.js"></script>
   <script src="../lib/prism.js"></script>
+  <script src="../scripts/injection.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

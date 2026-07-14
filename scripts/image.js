@@ -1,9 +1,11 @@
-// Local image preparation shared by the popup and options page.  Keeping
-// images reasonably sized before storing them as data URLs prevents a single
-// wallpaper from needlessly consuming several megabytes of extension storage.
+// Local image preparation shared by the popup and options page. Images are
+// bounded before and after compression so a decoder failure cannot fall back
+// to storing an unexpectedly huge original file.
 (() => {
   const MAX_DIMENSION = 2560;
-  const WEBP_QUALITY = 0.86;
+  const MAX_INPUT_IMAGE_BYTES = 32 * 1024 * 1024;
+  const MAX_STORED_IMAGE_BYTES = 8 * 1024 * 1024;
+  const WEBP_QUALITIES = [0.86, 0.72, 0.58];
 
   function readAsDataUrl(blob) {
     return new Promise((resolve, reject) => {
@@ -24,46 +26,79 @@
     });
   }
 
-  function canvasToBlob(canvas) {
-    return new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', WEBP_QUALITY));
+  function canvasToBlob(canvas, quality) {
+    return new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', quality));
+  }
+
+  function tooLargeError() {
+    return new Error('Image is too large to store. Please choose a smaller image.');
+  }
+
+  async function originalResult(file, error) {
+    if (file.size > MAX_STORED_IMAGE_BYTES) throw tooLargeError();
+    return {
+      dataUrl: await readAsDataUrl(file),
+      name: file.name,
+      originalBytes: file.size,
+      storedBytes: file.size,
+      compressed: false,
+      ...(error ? { error } : {})
+    };
   }
 
   async function prepareImage(file) {
     if (!file || !file.type || !file.type.startsWith('image/')) {
       throw new Error('Please choose an image file');
     }
+    if (!Number.isFinite(file.size) || file.size <= 0 || file.size > MAX_INPUT_IMAGE_BYTES) {
+      throw tooLargeError();
+    }
 
     try {
       const image = await loadImage(file);
-      const scale = Math.min(1, MAX_DIMENSION / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
-      const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
-      const height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+      const naturalWidth = image.naturalWidth || image.width;
+      const naturalHeight = image.naturalHeight || image.height;
+      if (!naturalWidth || !naturalHeight) throw new Error('Unable to decode image dimensions');
+      const scale = Math.min(1, MAX_DIMENSION / Math.max(naturalWidth, naturalHeight));
+      const width = Math.max(1, Math.round(naturalWidth * scale));
+      const height = Math.max(1, Math.round(naturalHeight * scale));
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       const context = canvas.getContext('2d', { alpha: true });
+      if (!context) throw new Error('Unable to create image canvas');
       context.drawImage(image, 0, 0, width, height);
-      const webp = await canvasToBlob(canvas);
 
-      // Some browsers can decline WebP encoding.  Also retain a smaller
-      // original file rather than making it larger just for its format.
-      if (!webp || webp.size >= file.size) {
-        return { dataUrl: await readAsDataUrl(file), name: file.name, originalBytes: file.size, storedBytes: file.size, compressed: false };
+      let bestWebp = null;
+      for (const quality of WEBP_QUALITIES) {
+        const candidate = await canvasToBlob(canvas, quality);
+        if (candidate && (!bestWebp || candidate.size < bestWebp.size)) bestWebp = candidate;
+        if (candidate && candidate.size <= MAX_STORED_IMAGE_BYTES) break;
       }
+
+      const useWebp = bestWebp && bestWebp.size <= MAX_STORED_IMAGE_BYTES &&
+        (file.size > MAX_STORED_IMAGE_BYTES || bestWebp.size < file.size);
+      if (!useWebp) return originalResult(file);
+
       const baseName = file.name.replace(/\.[^.]+$/, '') || 'wallpaper';
       return {
-        dataUrl: await readAsDataUrl(webp),
+        dataUrl: await readAsDataUrl(bestWebp),
         name: `${baseName}.webp`,
         originalBytes: file.size,
-        storedBytes: webp.size,
+        storedBytes: bestWebp.size,
         compressed: true
       };
     } catch (error) {
-      // A usable original is better than rejecting a browser-supported image
-      // because its decoder or canvas implementation has an edge case.
-      return { dataUrl: await readAsDataUrl(file), name: file.name, originalBytes: file.size, storedBytes: file.size, compressed: false, error };
+      // Decoder/canvas edge cases may retain the original only when it is
+      // independently within the stored-image limit.
+      return originalResult(file, error);
     }
   }
 
-  window.PageDyeImage = { prepareImage, MAX_DIMENSION };
+  window.PageDyeImage = {
+    prepareImage,
+    MAX_DIMENSION,
+    MAX_INPUT_IMAGE_BYTES,
+    MAX_STORED_IMAGE_BYTES
+  };
 })();

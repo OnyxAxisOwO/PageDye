@@ -1,4 +1,10 @@
 (() => {
+  // A tab can receive this bundle again after an extension reload. Tear down
+  // the previous closure before creating new private timers and observers.
+  if (typeof window.__pagedyeContentTeardown === 'function') {
+    try { window.__pagedyeContentTeardown(); } catch (_) {}
+  }
+
   const ROOT_ID = 'pagedye-extension-root';
   const STYLE_ID = 'pagedye-extension-style-override';
   const TARGET_STYLE_ID = 'pagedye-target-style';
@@ -7,6 +13,7 @@
   const DEEP_COMPAT_STYLE_ID = 'pagedye-deep-compat-style';
   const DEEP_COMPAT_ATTR = 'data-pagedye-deep-compat';
   const EXTENSION_ENABLED_KEY = '__pagedye_extension_enabled__';
+  const DEBUG_MODE_KEY = '__pagedye_debug_mode__';
   const PAUSE_SHORTCUT_KEY = '__pagedye_pause_shortcut__';
   const DEFAULT_PAUSE_SHORTCUT = { code: 'KeyP', altKey: true, shiftKey: true, ctrlKey: false, metaKey: false };
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
@@ -18,6 +25,8 @@
   let lastTimePeriod = null;
   let currentCustomEffects = [];
   let extensionEnabled = true;
+  let debugModeEnabled = false;
+  let debugRuntimeRequested = false;
   let temporarilyPaused = false;
   let pauseShortcut = { ...DEFAULT_PAUSE_SHORTCUT };
   // Whether currentSettings for this page came from DEFAULT_BG_KEY rather
@@ -28,7 +37,36 @@
   let lastKnownDefault = null;
 
   // Initialize
+  window.__pagedyeContentTeardown = teardown;
   init();
+
+  function teardown() {
+    if (slideshowTimer) {
+      clearTimeout(slideshowTimer);
+      slideshowTimer = null;
+    }
+    if (timePeriodCheckInterval) {
+      clearInterval(timePeriodCheckInterval);
+      timePeriodCheckInterval = null;
+    }
+    try { stopDeepCompat(); } catch (_) {}
+    try { removePageDyeEngineListeners(); } catch (_) {}
+    try {
+      if (window.__pagedyeListener) chrome.runtime.onMessage.removeListener(window.__pagedyeListener);
+    } catch (_) {}
+    try {
+      if (window.__pagedyeStorageListener) chrome.storage.onChanged.removeListener(window.__pagedyeStorageListener);
+    } catch (_) {}
+    try {
+      if (window.PageDyeEffects && typeof window.PageDyeEffects.stopEffect === 'function') window.PageDyeEffects.stopEffect();
+      const root = document.getElementById(ROOT_ID);
+      const iframe = root && root.shadowRoot && root.shadowRoot.getElementById('pagedye-effect-iframe');
+      if (iframe && window.PageDyeCustomSandbox) window.PageDyeCustomSandbox.release(iframe);
+    } catch (_) {}
+    try {
+      if (window.PageDyeCursor && typeof window.PageDyeCursor.stop === 'function') window.PageDyeCursor.stop();
+    } catch (_) {}
+  }
 
   function init() {
     if (typeof chrome === 'undefined' || !chrome.runtime?.id) return;
@@ -65,11 +103,13 @@
     // Load initial settings
     const domain = window.location.hostname;
     try {
-      chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY, DEFAULT_BG_KEY, EXTENSION_ENABLED_KEY, PAUSE_SHORTCUT_KEY], (data) => {
+      chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY, DEFAULT_BG_KEY, EXTENSION_ENABLED_KEY, PAUSE_SHORTCUT_KEY, DEBUG_MODE_KEY], (data) => {
         if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
           return;
         }
         extensionEnabled = data[EXTENSION_ENABLED_KEY] !== false;
+        debugModeEnabled = !!data[DEBUG_MODE_KEY];
+        if (extensionEnabled && debugModeEnabled) ensureDebugRuntime();
         pauseShortcut = normalizePauseShortcut(data[PAUSE_SHORTCUT_KEY]);
         currentCustomEffects = data[CUSTOM_EFFECTS_KEY] || [];
         lastKnownDefault = data[DEFAULT_BG_KEY] || null;
@@ -293,6 +333,20 @@
     return false;
   }
 
+  function ensureDebugRuntime() {
+    if (debugRuntimeRequested || !extensionEnabled || !debugModeEnabled) return;
+    debugRuntimeRequested = true;
+    try {
+      chrome.runtime.sendMessage({ action: 'pagedyeEnsureDebugRuntime' }, (response) => {
+        if (chrome.runtime.lastError || !response || !response.ok) {
+          debugRuntimeRequested = false;
+        }
+      });
+    } catch (_) {
+      debugRuntimeRequested = false;
+    }
+  }
+
   // Re-apply whenever this domain's settings change in storage. This makes the
   // background update even when it's written by the in-page element picker
   // (the popup is closed at that point and can't message us).
@@ -307,6 +361,7 @@
         disablePageDyeFeatures();
         return;
       }
+      if (debugModeEnabled) ensureDebugRuntime();
       if (currentSettings) {
         applyBackground(currentSettings);
       } else {
@@ -320,6 +375,11 @@
           });
         } catch (e) {}
       }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(changes, DEBUG_MODE_KEY)) {
+      debugModeEnabled = !!changes[DEBUG_MODE_KEY].newValue;
+      if (debugModeEnabled && extensionEnabled) ensureDebugRuntime();
     }
 
     if (Object.prototype.hasOwnProperty.call(changes, PAUSE_SHORTCUT_KEY)) {
@@ -524,17 +584,18 @@
     }
 
     const domain = window.location.hostname;
+    const storageKey = usingDefault ? DEFAULT_BG_KEY : domain;
     try {
-      chrome.storage.local.get(domain, (data) => {
+      chrome.storage.local.get(storageKey, (data) => {
         if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
           return;
         }
-        const stored = data[domain];
+        const stored = data[storageKey];
         if (stored && stored.mode === 'slideshow' && stored.slideshow) {
           stored.slideshow.currentIndex = nextIndex;
           stored.slideshow.lastRotationTime = Date.now();
           try {
-            chrome.storage.local.set({ [domain]: stored });
+            chrome.storage.local.set({ [storageKey]: stored });
           } catch (e) {}
         }
       });
@@ -569,6 +630,13 @@
         applyBackground(settings);
       }
     }, 60000); // Check every minute
+  }
+
+  function configureEffectIframe(iframe) {
+    iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-pointer-lock');
+    iframe.setAttribute('referrerpolicy', 'no-referrer');
+    iframe.setAttribute('allow', '');
+    iframe.setAttribute('title', 'PageDye custom URL background');
   }
 
   // Full-page background: a fixed layer behind everything, with html/body
@@ -626,6 +694,7 @@
 
       iframe = document.createElement('iframe');
       iframe.id = 'pagedye-effect-iframe';
+      configureEffectIframe(iframe);
       Object.assign(iframe.style, {
         position: 'absolute',
         top: '0',
@@ -644,6 +713,7 @@
       if (!iframe) {
         iframe = document.createElement('iframe');
         iframe.id = 'pagedye-effect-iframe';
+        configureEffectIframe(iframe);
         Object.assign(iframe.style, {
           position: 'absolute',
           top: '0',
@@ -754,14 +824,21 @@
   // (see clearFrame() in effects.js) to clear each frame instead of painting
   // their own opaque background, so the base layer shows through underneath.
   function applyEffectOverlay(canvas, iframe, settings) {
+    const releaseSandbox = () => {
+      if (iframe && window.PageDyeCustomSandbox) window.PageDyeCustomSandbox.release(iframe);
+    };
+    const hideIframe = () => {
+      if (!iframe) return;
+      releaseSandbox();
+      iframe.style.display = 'none';
+      iframe.style.pointerEvents = 'none';
+      iframe.src = 'about:blank';
+    };
+
     if (!settings.effectEnabled) {
       window.PageDyeEffects.stopEffect();
       canvas.style.display = 'none';
-      if (iframe) {
-        iframe.style.display = 'none';
-        iframe.style.pointerEvents = 'none';
-        iframe.src = '';
-      }
+      hideIframe();
       return;
     }
 
@@ -771,32 +848,8 @@
       customEffect = currentCustomEffects.find((e) => e.id === customId);
     }
 
-    if (customEffect && customEffect.type === 'url') {
-      window.PageDyeEffects.stopEffect();
-      canvas.style.display = 'none';
-
-      iframe.style.display = 'block';
-      iframe.style.opacity = ((typeof settings.opacity === 'number' ? settings.opacity : 100) / 100).toString();
-      iframe.style.pointerEvents = customEffect.interactive ? 'auto' : 'none';
-
-      let targetUrl = customEffect.url || '';
-      if (targetUrl && !/^https?:\/\//i.test(targetUrl)) {
-        targetUrl = 'https://' + targetUrl;
-      }
-      if (iframe.src !== targetUrl) {
-        iframe.src = targetUrl;
-      }
-      return;
-    }
-
-    if (iframe) {
-      iframe.style.display = 'none';
-      iframe.style.pointerEvents = 'none';
-      iframe.src = '';
-    }
-
     const resolvedColors = resolveEffectColors(settings);
-    window.PageDyeEffects.startEffect(canvas, settings.effect || 'waves', settings.opacity, {
+    const effectConfig = {
       color: resolvedColors.color,
       bgColor: resolvedColors.bgColor,
       density: settings.effectDensity,
@@ -804,7 +857,45 @@
       speed: settings.effectSpeed,
       text: settings.effectText,
       transparent: settings.type !== 'none'
-    }, currentCustomEffects);
+    };
+
+    if (customEffect && customEffect.type === 'url') {
+      window.PageDyeEffects.stopEffect();
+      canvas.style.display = 'none';
+      releaseSandbox();
+      configureEffectIframe(iframe);
+
+      iframe.style.display = 'block';
+      iframe.style.opacity = ((typeof settings.opacity === 'number' ? settings.opacity : 100) / 100).toString();
+      iframe.style.pointerEvents = customEffect.interactive ? 'auto' : 'none';
+
+      const targetUrl = window.PageDyeStorage.normalizeEffectUrl(customEffect.url);
+      if (!targetUrl) {
+        iframe.style.display = 'none';
+        iframe.style.pointerEvents = 'none';
+        iframe.src = 'about:blank';
+        return;
+      }
+      if (iframe.src !== targetUrl) iframe.src = targetUrl;
+      return;
+    }
+
+    if (customEffect && customEffect.type === 'code') {
+      window.PageDyeEffects.stopEffect();
+      canvas.style.display = 'none';
+      window.PageDyeCustomSandbox.start(iframe, customEffect, effectConfig, {
+        opacity: settings.opacity,
+        onError: (error) => console.error('[PageDye] Isolated custom effect failed:', error)
+      }).catch((error) => {
+        if (!/released/i.test(error && error.message || '')) {
+          console.error('[PageDye] Unable to start isolated custom effect:', error);
+        }
+      });
+      return;
+    }
+
+    hideIframe();
+    window.PageDyeEffects.startEffect(canvas, settings.effect || 'waves', settings.opacity, effectConfig, currentCustomEffects);
   }
 
   // Selector mode: applies the chosen color/image directly to the matched
@@ -927,7 +1018,11 @@
     window.PageDyeEffects.stopEffect();
 
     const root = document.getElementById(ROOT_ID);
-    if (root) root.remove();
+    if (root) {
+      const iframe = root.shadowRoot && root.shadowRoot.getElementById('pagedye-effect-iframe');
+      if (iframe && window.PageDyeCustomSandbox) window.PageDyeCustomSandbox.release(iframe);
+      root.remove();
+    }
 
     const style = document.getElementById(STYLE_ID);
     if (style) style.remove();
@@ -1034,15 +1129,18 @@
   // element and lifecycle independent of the background overlay — a custom
   // cursor should keep working even when no background/effect is active.
   function applyCustomCursor(cfg) {
+    if (!window.PageDyeCursor) return;
     if (cfg && cfg.enabled) {
-      window.PageDyeCursor.start(cfg);
+      if (typeof window.PageDyeCursor.start === 'function') window.PageDyeCursor.start(cfg);
     } else {
       removeCustomCursor();
     }
   }
 
   function removeCustomCursor() {
-    window.PageDyeCursor.stop();
+    if (window.PageDyeCursor && typeof window.PageDyeCursor.stop === 'function') {
+      window.PageDyeCursor.stop();
+    }
   }
 
   function disablePageDyeFeatures() {

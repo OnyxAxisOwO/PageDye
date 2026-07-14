@@ -979,16 +979,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     syncDeepCompatRunMode(mode);
   }
 
-  // Sends a message to the tab's content script, injecting it first if it is
-  // not reachable (page predates the extension, or the extension was reloaded
-  // while the tab stayed open). Requires the "scripting" permission.
+  // Reuse the existing receiver whenever possible. Re-injecting the effect and
+  // content runtimes on every autosave can orphan animation frames, observers
+  // and timers, so the shared loader only injects after a failed message.
   async function sendToTab(tabId, message) {
-    try {
-      await chrome.scripting.executeScript({ target: { tabId }, files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/cursor.js', 'scripts/content.js'] });
-    } catch (e) {
-      // Injection can fail on restricted pages (chrome://, Web Store, etc.).
-    }
-    return await chrome.tabs.sendMessage(tabId, message);
+    return window.PageDyeInjection.send(tabId, message);
   }
 
   async function canRunOnTab(tab) {
@@ -2843,6 +2838,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       triggerImmediateSave();
     } catch (error) {
       console.error('Failed to prepare image:', error);
+      if (els.statusDot) els.statusDot.classList.add('blocked');
+      if (els.statusText) els.statusText.textContent = error && error.message ? error.message : t('error');
     }
   }
 
@@ -2946,7 +2943,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (tab) {
-          await sendToTab(tab.id, { action: 'updateBackground', settings });
+          // storage.onChanged performs the live repaint. This ping only restores
+          // the content runtime for a tab that predates an install/reload.
+          await window.PageDyeInjection.ensure(tab.id);
         }
       } catch (err) {
         console.log('Content script might not be ready', err);
@@ -3071,10 +3070,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
     try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/cursor.js', 'scripts/content.js']
-      });
+      await window.PageDyeInjection.ensure(tab.id);
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: pagedyeElementPicker,
@@ -3097,10 +3093,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
     try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/cursor.js', 'scripts/content.js']
-      });
+      await window.PageDyeInjection.ensure(tab.id);
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: pagedyeElementPicker,
@@ -3121,10 +3114,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
     try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/cursor.js', 'scripts/content.js']
-      });
+      await window.PageDyeInjection.ensure(tab.id);
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: pagedyeElementPicker,

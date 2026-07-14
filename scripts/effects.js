@@ -7,6 +7,10 @@
 // content.js (via manifest.json content_scripts and every dynamic
 // re-injection call site) — must load after gradient.js and before
 // content.js.
+if (window.PageDyeEffects && typeof window.PageDyeEffects.stopEffect === 'function') {
+  try { window.PageDyeEffects.stopEffect(); } catch (_) {}
+}
+
 window.PageDyeEffects = (function () {
   let effectCleanup = null;
 
@@ -896,12 +900,10 @@ window.PageDyeEffects = (function () {
   // A custom effect is user-authored source that evaluates to an engine
   // object with the exact same shape as the EFFECT_ENGINES entries above:
   // {init(cfg), resize(state, width, height), draw(ctx, canvas, state, dt),
-  // onMouseMove(state, e, canvas)?}. Compiled locally with `new Function` —
-  // never fetched remotely, always the user's own stored code, same trust
-  // boundary as the existing Custom CSS injection. Compiled code runs in
-  // the global scope (not this module's closure), so the color/speed
-  // helpers built-in engines reach directly are re-exposed on `helpers`
-  // below for custom code to call as window.PageDyeEffects.helpers.xxx().
+  // onMouseMove(state, e, canvas)?}. `compileCustomEffect` remains available
+  // to the extension sandbox runtime, which is the only production path for
+  // user code. The sandbox has no extension APIs and its CSP blocks network
+  // access. Helpers are exposed there as PageDyeEffects.helpers.
   const customEngineCache = new Map();
 
   function compileCustomEffect(code) {
@@ -940,7 +942,7 @@ window.PageDyeEffects = (function () {
       } else {
         console.warn('[PageDye] Custom effect "' + id + '" not found, falling back to Waves.');
       }
-      return { engine: EFFECT_ENGINES.waves, isCustom: false };
+      return { engine: EFFECT_ENGINES.waves, isCustom: false, error: entry ? getCompiledCustomEngine(id, entry.code).error : 'Custom effect not found.' };
     }
     return { engine: EFFECT_ENGINES[kind] || EFFECT_ENGINES.waves, isCustom: false };
   }
@@ -959,7 +961,7 @@ window.PageDyeEffects = (function () {
   // stops the loop and freezes on the last good frame (instead of throwing
   // on every animation frame or crashing the host page) and is reported
   // once via console.error and the optional `onError` callback.
-  function startEffect(canvas, kind, opacityPct, effectConfig, customEffects, onError) {
+  function startEffect(canvas, kind, opacityPct, effectConfig, customEffects, onError, runtimeOptions) {
     stopEffect();
 
     canvas.style.display = 'block';
@@ -970,6 +972,15 @@ window.PageDyeEffects = (function () {
     const resolved = resolveEngine(kind, customEffects);
     const engine = resolved.engine;
     const isCustom = resolved.isCustom;
+    const options = runtimeOptions || {};
+    const eventTarget = options.eventTarget || window;
+
+    if (options.strictCustom && typeof kind === 'string' && kind.indexOf('custom:') === 0 && !isCustom) {
+      const error = new Error(resolved.error || 'Unable to load the custom effect.');
+      canvas.style.display = 'none';
+      if (onError) onError(error);
+      return false;
+    }
 
     let stopped = false;
     function fail(err) {
@@ -993,7 +1004,7 @@ window.PageDyeEffects = (function () {
     }
 
     const state = safeCall('init', normalizeEffectConfig(effectConfig));
-    if (stopped) return;
+    if (stopped) return false;
 
     function resize() {
       if (stopped) return;
@@ -1007,13 +1018,13 @@ window.PageDyeEffects = (function () {
       safeCall('draw', ctx, canvas, state, 0);
     }
     resize();
-    if (stopped) return;
+    if (stopped) return false;
     window.addEventListener('resize', resize);
 
     let mouseHandler = null;
     if (engine.onMouseMove) {
       mouseHandler = (e) => { if (!stopped) safeCall('onMouseMove', state, e, canvas); };
-      window.addEventListener('mousemove', mouseHandler);
+      eventTarget.addEventListener('mousemove', mouseHandler);
     }
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1058,9 +1069,10 @@ window.PageDyeEffects = (function () {
     effectCleanup = () => {
       if (frameId) cancelAnimationFrame(frameId);
       window.removeEventListener('resize', resize);
-      if (mouseHandler) window.removeEventListener('mousemove', mouseHandler);
+      if (mouseHandler) eventTarget.removeEventListener('mousemove', mouseHandler);
       if (visibilityHandler) document.removeEventListener('visibilitychange', visibilityHandler);
     };
+    return true;
   }
 
   function stopEffect() {

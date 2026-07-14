@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       customCss: "Custom CSS",
       customCssHint: "Injected into this site. Use !important to override stubborn styles.",
       customEffectsTitle: "Custom Effects",
-      customEffectsHint: "Write your own animated Canvas wallpaper and use it on any site, just like the built-in effects. Extension only — not available in PageDye Lite.",
+      customEffectsHint: "Write your own animated Canvas wallpaper and use it on any site. Custom Canvas code executes JavaScript, so only import effects from sources you trust. Extension only - not available in PageDye Lite.",
       newCustomEffect: "New Custom Effect",
       importEffectBtn: "Import",
       thEffectName: "Name",
@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       customEffectTypeCode: "Canvas Code",
       customEffectTypeUrl: "Website URL",
       effectUrlLabel: "Website URL",
-      effectUrlHint: "Directly embed another website via iframe as the background. Note: Some websites may block iframe embedding due to security policies (X-Frame-Options/CSP).",
+      effectUrlHint: "Embed an HTTPS website in a sandboxed iframe background (HTTP is allowed only for localhost). Some websites may block embedding via X-Frame-Options/CSP.",
       customEffectInteractive: "Allow background interaction (clicks/scrolls)",
       customEffectInteractiveHint: "Note: Because the background is layered behind the webpage, you need to hold the **Alt** key on your keyboard to bring the background to the front and click/interact with it.",
       effectNameLabel: "Name",
@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       templateWaves: "Waves source",
       templateParticles: "Particles source",
       effectCode: "Code",
-      effectCodeHint: "Must evaluate to an object with init(cfg), resize(state, width, height) and draw(ctx, canvas, state, dt) — the same shape as PageDye's built-in effects. cfg has color/bgColor/density/speed/text. Helpers: window.PageDyeEffects.helpers.{hexToRgba, effectSpeedMultiplier, clampPercent}.",
+      effectCodeHint: "Must evaluate to an object with init(cfg), resize(state, width, height) and draw(ctx, canvas, state, dt). The code runs in an isolated sandbox without extension APIs or network access. Helpers: window.PageDyeEffects.helpers.{hexToRgba, effectSpeedMultiplier, clampPercent}.",
       effectPreviewLabel: "Live Preview",
       exportEffectBtn: "Export",
       untitledEffect: "Untitled Effect",
@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       customCss: "自定义 CSS",
       customCssHint: "将注入到本网站。可用 !important 覆盖顽固样式。",
       customEffectsTitle: "自定义动效",
-      customEffectsHint: "编写你自己的 Canvas 动态壁纸，像内置动效一样在任意网站使用。仅浏览器扩展版支持——PageDye Lite 暂不支持。",
+      customEffectsHint: "编写你自己的 Canvas 动态壁纸并在任意网站使用。Canvas 代码会执行 JavaScript，请只导入可信来源的动效。仅浏览器扩展版支持——PageDye Lite 暂不支持。",
       newCustomEffect: "新建自定义动效",
       importEffectBtn: "导入",
       thEffectName: "名称",
@@ -416,7 +416,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       customEffectTypeCode: "Canvas 代码",
       customEffectTypeUrl: "网站 URL",
       effectUrlLabel: "网站 URL",
-      effectUrlHint: "直接通过 iframe 将其他网站嵌入为背景。注意：部分网站由于安全策略 (X-Frame-Options/CSP) 可能会阻止在 iframe 中嵌入。",
+      effectUrlHint: "通过沙箱 iframe 将 HTTPS 网站嵌入为背景（HTTP 仅允许本机地址）。部分网站可能通过 X-Frame-Options/CSP 阻止嵌入。",
       customEffectInteractive: "允许与背景交互（点击/滚动）",
       customEffectInteractiveHint: "注意：由于背景层铺在网页底层，您需要在网页上按住 **Alt** 键即可临时将背景置顶并与其交互（点击/滚动）。",
       effectNameLabel: "名称",
@@ -425,7 +425,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       templateWaves: "Waves 源码",
       templateParticles: "Particles 源码",
       effectCode: "代码",
-      effectCodeHint: "代码需要返回一个包含 init(cfg)、resize(state, width, height)、draw(ctx, canvas, state, dt) 的对象——和 PageDye 内置动效的形状完全一致。cfg 里有 color/bgColor/density/speed/text。可用的辅助函数：window.PageDyeEffects.helpers.{hexToRgba, effectSpeedMultiplier, clampPercent}。",
+      effectCodeHint: "代码需要返回包含 init(cfg)、resize(state, width, height)、draw(ctx, canvas, state, dt) 的对象。代码会在无扩展权限、禁止联网的隔离沙箱中运行。可用辅助函数：window.PageDyeEffects.helpers.{hexToRgba, effectSpeedMultiplier, clampPercent}。",
       effectPreviewLabel: "实时预览",
       exportEffectBtn: "导出",
       untitledEffect: "未命名动效",
@@ -900,8 +900,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (els.debugModeToggle) {
     const debugData = await chrome.storage.local.get([DEBUG_MODE_KEY]);
     els.debugModeToggle.checked = !!debugData[DEBUG_MODE_KEY];
-    els.debugModeToggle.addEventListener('change', () => {
-      chrome.storage.local.set({ [DEBUG_MODE_KEY]: els.debugModeToggle.checked });
+    els.debugModeToggle.addEventListener('change', async () => {
+      await chrome.storage.local.set({ [DEBUG_MODE_KEY]: els.debugModeToggle.checked });
+      const tabs = await chrome.tabs.query({});
+      await Promise.allSettled(tabs.filter((tab) => tab.id).map((tab) => window.PageDyeInjection.ensure(tab.id)));
     });
   }
 
@@ -1134,11 +1136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.sitesListBody.appendChild(buildDefaultBgRow(data[DEFAULT_BG_KEY] || null));
 
     // Filter out potential non-domain configuration keys
-    const domains = Object.keys(data).filter(key => {
-      if (key === DEFAULT_BG_KEY) return false;
-      const val = data[key];
-      return val && typeof val === 'object' && val.type !== undefined;
-    });
+    const domains = Object.keys(data).filter((key) => window.PageDyeStorage.isSiteSettingsKey(key, data[key]));
 
     if (domains.length === 0) {
       els.noSitesMsg.classList.remove('hidden');
@@ -1229,6 +1227,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let currentEditingEffectId = null;
   let effectPreviewDebounceTimer = null;
+  let effectPreviewSequence = 0;
 
   function generateEffectId() {
     return 'ce_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -1472,63 +1471,69 @@ document.addEventListener('DOMContentLoaded', async () => {
   // production startEffect() path does (that fallback is right for a real
   // site background, but would be confusing here: "why does my broken code
   // look fine?").
+  function configureCustomUrlPreviewIframe(iframe) {
+    iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-pointer-lock');
+    iframe.setAttribute('referrerpolicy', 'no-referrer');
+    iframe.setAttribute('allow', '');
+    iframe.setAttribute('title', 'Custom URL effect preview');
+  }
+
+  function showCustomEffectPreviewError(error) {
+    els.editCustomEffectError.textContent = error && error.message ? error.message : String(error);
+    els.editCustomEffectError.classList.remove('hidden');
+  }
+
+  // Preview user code in an isolated extension sandbox with no extension APIs
+  // or network access. Invalid code is reported instead of falling back.
   function updateCustomEffectPreview() {
     clearTimeout(effectPreviewDebounceTimer);
-    effectPreviewDebounceTimer = setTimeout(() => {
+    const sequence = ++effectPreviewSequence;
+    effectPreviewDebounceTimer = setTimeout(async () => {
       window.PageDyeEffects.stopEffect();
       const canvas = els.editCustomEffectPreviewCanvas;
       const iframe = document.getElementById('edit-custom-effect-preview-iframe');
       const type = document.querySelector('input[name="edit-custom-effect-type"]:checked').value;
 
       if (type === 'url') {
+        window.PageDyeCustomSandbox.release(iframe);
+        configureCustomUrlPreviewIframe(iframe);
         canvas.style.display = 'none';
         iframe.style.display = 'block';
-        const urlVal = document.getElementById('edit-custom-effect-url').value.trim();
-        if (urlVal) {
-          let targetUrl = urlVal;
-          if (!/^https?:\/\//i.test(targetUrl)) {
-            targetUrl = 'https://' + targetUrl;
-          }
-          if (iframe.src !== targetUrl) {
-            iframe.src = targetUrl;
-          }
-        } else {
-          iframe.src = 'about:blank';
-        }
-      } else {
-        if (iframe) {
-          iframe.style.display = 'none';
-          iframe.src = 'about:blank';
-        }
-        canvas.style.display = 'block';
-        const code = els.editCustomEffectCode.value;
-
-        if (!code.trim()) {
-          els.editCustomEffectError.classList.add('hidden');
-          canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-          return;
-        }
-
-        const compiled = window.PageDyeEffects.compileCustomEffect(code);
-        if (!compiled.ok) {
-          els.editCustomEffectError.textContent = compiled.error;
-          els.editCustomEffectError.classList.remove('hidden');
-          canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-          return;
-        }
-
+        iframe.style.pointerEvents = document.getElementById('edit-custom-effect-interactive').checked ? 'auto' : 'none';
+        const targetUrl = window.PageDyeStorage.normalizeEffectUrl(document.getElementById('edit-custom-effect-url').value.trim());
+        iframe.src = targetUrl || 'about:blank';
         els.editCustomEffectError.classList.add('hidden');
-        window.PageDyeEffects.startEffect(
-          canvas,
-          'custom:__preview__',
-          100,
-          { color: '#ffffff', bgColor: '#000000', density: 50, speed: 50, text: 'PageDye' },
-          [{ id: '__preview__', code }],
-          (err) => {
-            els.editCustomEffectError.textContent = (err && err.message) ? err.message : String(err);
-            els.editCustomEffectError.classList.remove('hidden');
+        return;
+      }
+
+      const code = els.editCustomEffectCode.value;
+      canvas.style.display = 'none';
+      if (!code.trim()) {
+        window.PageDyeCustomSandbox.release(iframe);
+        iframe.style.display = 'none';
+        iframe.src = 'about:blank';
+        els.editCustomEffectError.classList.add('hidden');
+        return;
+      }
+
+      els.editCustomEffectError.classList.add('hidden');
+      try {
+        const result = await window.PageDyeCustomSandbox.start(iframe, {
+          name: els.editCustomEffectName.value.trim() || t('untitledEffect'),
+          code
+        }, {
+          color: '#ffffff', bgColor: '#000000', density: 50, speed: 50, text: 'PageDye'
+        }, {
+          opacity: 100,
+          onError: (error) => {
+            if (sequence === effectPreviewSequence) showCustomEffectPreviewError(error);
           }
-        );
+        });
+        if (sequence === effectPreviewSequence && result.ok) els.editCustomEffectError.classList.add('hidden');
+      } catch (error) {
+        if (sequence === effectPreviewSequence && !/released/i.test(error && error.message || '')) {
+          showCustomEffectPreviewError(error);
+        }
       }
     }, 350);
   }
@@ -1601,42 +1606,69 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function closeCustomEffectEditor() {
     window.PageDyeEffects.stopEffect();
+    effectPreviewSequence += 1;
     const iframe = document.getElementById('edit-custom-effect-preview-iframe');
-    if (iframe) iframe.src = 'about:blank';
+    if (iframe) {
+      window.PageDyeCustomSandbox.release(iframe);
+      iframe.src = 'about:blank';
+    }
     els.sections.forEach((s) => s.classList.remove('active'));
     document.getElementById('section-custom-effects').classList.add('active');
     loadCustomEffectsList();
   }
 
   async function saveCustomEffect() {
-    const name = els.editCustomEffectName.value.trim() || t('untitledEffect');
+    const name = (els.editCustomEffectName.value.trim() || t('untitledEffect')).slice(0, window.PageDyeStorage.MAX_EFFECT_NAME_CHARS);
     const type = document.querySelector('input[name="edit-custom-effect-type"]:checked').value;
     let code = '';
     let url = '';
     const interactive = document.getElementById('edit-custom-effect-interactive').checked;
 
     if (type === 'url') {
-      url = document.getElementById('edit-custom-effect-url').value.trim();
+      url = window.PageDyeStorage.normalizeEffectUrl(document.getElementById('edit-custom-effect-url').value);
       if (!url) {
-        showStatus(t('customEffectTypeUrl') + ' is required');
+        showStatus(lang === 'zh' ? '仅支持 HTTPS URL（本机地址可使用 HTTP）' : 'Only HTTPS URLs are allowed (HTTP is allowed for localhost).');
         return;
       }
     } else {
       code = els.editCustomEffectCode.value;
-      const compiled = window.PageDyeEffects.compileCustomEffect(code);
-      if (!compiled.ok) {
-        els.editCustomEffectError.textContent = compiled.error;
+      if (code.length > window.PageDyeStorage.MAX_EFFECT_CODE_CHARS) {
+        showStatus(lang === 'zh' ? '动效代码过大' : 'Effect code is too large.');
+        return;
+      }
+      const validation = await window.PageDyeCustomSandbox.validate(code);
+      if (!validation.ok) {
+        els.editCustomEffectError.textContent = validation.error;
         els.editCustomEffectError.classList.remove('hidden');
         return;
       }
     }
 
+    if (type === 'url' && interactive) {
+      const warning = lang === 'zh'
+        ? '交互模式会让嵌入的网站接收你的点击、滚动和键盘操作。iframe 已启用沙箱，但仍应只使用可信 URL。继续保存吗？'
+        : 'Interactive mode lets the embedded site receive clicks, scrolling, and keyboard input. The iframe is sandboxed, but you should still use only trusted URLs. Save it?';
+      if (!(await showConfirm(warning))) return;
+    }
+
     const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
-    const list = data[CUSTOM_EFFECTS_KEY] || [];
+    const list = window.PageDyeStorage.normalizeCustomEffects(data[CUSTOM_EFFECTS_KEY]);
     const id = currentEditingEffectId || generateEffectId();
-    const entry = { id, name, type, code, url, interactive, updatedAt: Date.now() };
-    const idx = list.findIndex((e) => e.id === id);
-    if (idx >= 0) list[idx] = entry; else list.push(entry);
+    const entry = window.PageDyeStorage.normalizeCustomEffect({ id, name, type, code, url, interactive, updatedAt: Date.now() });
+    if (!entry) {
+      showStatus(t('importError'));
+      return;
+    }
+    const idx = list.findIndex((effect) => effect.id === id);
+    if (idx >= 0) {
+      list[idx] = entry;
+    } else {
+      if (list.length >= window.PageDyeStorage.MAX_CUSTOM_EFFECTS) {
+        showStatus(lang === 'zh' ? '自定义动效数量已达到上限' : 'The custom effect limit has been reached.');
+        return;
+      }
+      list.push(entry);
+    }
     await chrome.storage.local.set({ [CUSTOM_EFFECTS_KEY]: list });
 
     showStatus(t('saved'));
@@ -1664,34 +1696,43 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function importCustomEffectFile(file) {
+    if (file.size > window.PageDyeStorage.MAX_EFFECT_FILE_BYTES) {
+      showStatus(t('importError'));
+      return;
+    }
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
         const parsed = JSON.parse(event.target.result);
-        if (!parsed || !parsed.pagedyeCustomEffect) {
-          showStatus(t('importError'));
-          return;
-        }
-        const type = parsed.type || 'code';
-        if (type === 'code' && typeof parsed.code !== 'string') {
-          showStatus(t('importError'));
-          return;
-        }
-        if (type === 'url' && typeof parsed.url !== 'string') {
-          showStatus(t('importError'));
-          return;
-        }
-        const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
-        const list = data[CUSTOM_EFFECTS_KEY] || [];
-        list.push({
+        if (!parsed || parsed.pagedyeCustomEffect !== true) throw new Error('Invalid custom effect file.');
+        const normalized = window.PageDyeStorage.normalizeCustomEffect({
           id: generateEffectId(),
           name: parsed.name || t('untitledEffect'),
-          type,
-          code: parsed.code || '',
-          url: parsed.url || '',
-          interactive: !!parsed.interactive,
+          type: parsed.type,
+          code: parsed.code,
+          url: parsed.url,
+          interactive: parsed.interactive,
           updatedAt: Date.now()
-        });
+        }, { fallbackName: t('untitledEffect') });
+        if (!normalized) throw new Error('Invalid custom effect payload.');
+
+        const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
+        const list = window.PageDyeStorage.normalizeCustomEffects(data[CUSTOM_EFFECTS_KEY]);
+        if (list.length >= window.PageDyeStorage.MAX_CUSTOM_EFFECTS) {
+          showStatus(lang === 'zh' ? '自定义动效数量已达到上限' : 'The custom effect limit has been reached.');
+          return;
+        }
+
+        if (normalized.type === 'code') {
+          const warning = lang === 'zh'
+            ? '导入的 Canvas 动效包含 JavaScript。代码会在无扩展权限、禁止联网的隔离沙箱中运行；仍请只导入可信文件。继续吗？'
+            : 'Imported Canvas effects contain JavaScript. It runs in an isolated sandbox without extension APIs or network access; still import only trusted files. Continue?';
+          if (!(await showConfirm(warning))) return;
+          const validation = await window.PageDyeCustomSandbox.validate(normalized.code);
+          if (!validation.ok) throw new Error(validation.error || 'Invalid custom effect code.');
+        }
+
+        list.push(normalized);
         await chrome.storage.local.set({ [CUSTOM_EFFECTS_KEY]: list });
         await loadCustomEffectsList();
         showStatus(t('importSuccess'));
@@ -1737,9 +1778,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function exportConfigs() {
     try {
       const data = await chrome.storage.local.get(null);
-      delete data[UI_THEME_KEY];
-      delete data[PAUSE_SHORTCUT_KEY];
-      const jsonString = JSON.stringify(data, null, 2);
+      const backup = window.PageDyeStorage.buildBackup(data, chrome.runtime.getManifest().version);
+      const jsonString = JSON.stringify(backup, null, 2);
+      const backupBytes = new TextEncoder().encode(jsonString).byteLength;
+      if (backupBytes > window.PageDyeStorage.MAX_BACKUP_BYTES) {
+        throw new Error('Backup exceeds the maximum supported size.');
+      }
       const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1752,34 +1796,48 @@ document.addEventListener('DOMContentLoaded', async () => {
       showStatus(t('exportSuccess'));
     } catch (err) {
       console.error(err);
+      showStatus(t('importError'));
     }
   }
 
   function importConfigs(e) {
     const file = e.target.files[0];
     if (!file) return;
+    if (file.size > window.PageDyeStorage.MAX_BACKUP_BYTES) {
+      showStatus(t('importError'));
+      e.target.value = '';
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
         const importedData = JSON.parse(event.target.result);
-        if (typeof importedData !== 'object' || importedData === null) {
-          showStatus(t('importError'));
-          return;
+        const prepared = window.PageDyeStorage.prepareImport(importedData);
+        if (!(await showConfirm(t('confirmImport')))) return;
+        const importedEffects = prepared.write[CUSTOM_EFFECTS_KEY] || [];
+        const codeEffects = importedEffects.filter((effect) => effect.type === 'code');
+        if (codeEffects.length) {
+          const warning = lang === 'zh'
+            ? '此备份包含 JavaScript Canvas 动效。代码会在无扩展权限、禁止联网的隔离沙箱中运行；仍请确认备份来源可信。继续恢复吗？'
+            : 'This backup contains JavaScript Canvas effects. They run in an isolated sandbox without extension APIs or network access; still continue only if you trust the backup. Restore it?';
+          if (!(await showConfirm(warning))) return;
+          for (const effect of codeEffects) {
+            const validation = await window.PageDyeCustomSandbox.validate(effect.code);
+            if (!validation.ok) throw new Error(`Invalid custom effect ${effect.name}: ${validation.error}`);
+          }
         }
 
-        if (!(await showConfirm(t('confirmImport')))) return;
-
-        // Write the backup first, then drop only the keys it doesn't
-        // mention — if set() fails partway (quota, disk, browser crash),
-        // the existing config is left intact instead of already being
-        // wiped by an unconditional clear() with nothing to replace it.
         const existing = await chrome.storage.local.get(null);
-        await chrome.storage.local.set(importedData);
-        const staleKeys = Object.keys(existing).filter((key) => key !== UI_THEME_KEY && key !== PAUSE_SHORTCUT_KEY && !(key in importedData));
-        if (staleKeys.length) await chrome.storage.local.remove(staleKeys);
+        const staleSiteKeys = Object.keys(existing).filter((key) =>
+          window.PageDyeStorage.isSiteSettingsKey(key, existing[key]) && !prepared.siteKeys.includes(key)
+        );
+        if (Object.keys(prepared.write).length) await chrome.storage.local.set(prepared.write);
+        const keysToRemove = [...new Set([...staleSiteKeys, ...prepared.removeKeys])];
+        if (keysToRemove.length) await chrome.storage.local.remove(keysToRemove);
 
         await loadSitesList();
+        await loadCustomEffectsList();
         showStatus(t('importSuccess'));
       } catch (err) {
         console.error(err);
@@ -1793,19 +1851,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function clearAllSites() {
     if (!(await showConfirm(t('clearAllConfirm')))) return;
-    // The default background isn't a "site config" — it has no domain of
-    // its own — so it's preserved the same way UI_THEME_KEY is.
-    const preserved = await chrome.storage.local.get([UI_THEME_KEY, DEFAULT_BG_KEY, PAUSE_SHORTCUT_KEY]);
-    await chrome.storage.local.clear();
-    if (preserved[UI_THEME_KEY]) {
-      await chrome.storage.local.set({ [UI_THEME_KEY]: preserved[UI_THEME_KEY] });
-    }
-    if (preserved[DEFAULT_BG_KEY]) {
-      await chrome.storage.local.set({ [DEFAULT_BG_KEY]: preserved[DEFAULT_BG_KEY] });
-    }
-    if (preserved[PAUSE_SHORTCUT_KEY]) {
-      await chrome.storage.local.set({ [PAUSE_SHORTCUT_KEY]: preserved[PAUSE_SHORTCUT_KEY] });
-    }
+    const data = await chrome.storage.local.get(null);
+    const siteKeys = Object.keys(data).filter((key) => window.PageDyeStorage.isSiteSettingsKey(key, data[key]));
+    if (siteKeys.length) await chrome.storage.local.remove(siteKeys);
     await loadSitesList();
     showStatus(t('clearAllDone'));
   }
@@ -1972,6 +2020,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         saveUiTheme({ [imageKey]: image });
       } catch (error) {
         console.error('Failed to prepare theme image:', error);
+        showStatus(error && error.message ? error.message : t('importError'));
       }
     }
 
@@ -2079,38 +2128,51 @@ document.addEventListener('DOMContentLoaded', async () => {
       const titleEl = document.getElementById('confirm-modal-title');
       const cancelBtn = document.getElementById('confirm-modal-cancel');
       const okBtn = document.getElementById('confirm-modal-ok');
+      const previousFocus = document.activeElement;
+      let settled = false;
 
       titleEl.textContent = t('modalTitle');
       msgEl.textContent = message;
       cancelBtn.textContent = t('confirmCancel');
       okBtn.textContent = t('confirmOk');
 
-      // Clear previous listeners by replacing nodes
-      const newCancelBtn = cancelBtn.cloneNode(true);
-      const newOkBtn = okBtn.cloneNode(true);
-      cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-      okBtn.parentNode.replaceChild(newOkBtn, okBtn);
-
-      const hide = () => {
+      const finish = (result) => {
+        if (settled) return;
+        settled = true;
+        document.removeEventListener('keydown', onKeyDown, true);
+        modal.onclick = null;
+        cancelBtn.onclick = null;
+        okBtn.onclick = null;
         modal.classList.remove('active');
-        setTimeout(() => modal.classList.add('hidden'), 250);
+        setTimeout(() => {
+          modal.classList.add('hidden');
+          if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus();
+        }, 250);
+        resolve(result);
       };
 
-      newCancelBtn.addEventListener('click', () => {
-        hide();
-        resolve(false);
-      });
+      const onKeyDown = (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          finish(false);
+        } else if (event.key === 'Tab') {
+          const focusable = [cancelBtn, okBtn];
+          const index = focusable.indexOf(document.activeElement);
+          const nextIndex = event.shiftKey ? (index <= 0 ? focusable.length - 1 : index - 1) : (index + 1) % focusable.length;
+          event.preventDefault();
+          focusable[nextIndex].focus();
+        }
+      };
 
-      newOkBtn.addEventListener('click', () => {
-        hide();
-        resolve(true);
-      });
+      cancelBtn.onclick = () => finish(false);
+      okBtn.onclick = () => finish(true);
+      modal.onclick = (event) => { if (event.target === modal) finish(false); };
+      document.addEventListener('keydown', onKeyDown, true);
 
-      // Show modal
       modal.classList.remove('hidden');
-      // trigger reflow
-      modal.offsetHeight; 
+      modal.offsetHeight;
       modal.classList.add('active');
+      cancelBtn.focus();
     });
   }
 
@@ -2966,7 +3028,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await chrome.storage.local.set({ [currentEditingDomain]: currentEditSettings });
       setEditSyncedState();
-      notifyTabsOfDomain(currentEditingDomain, currentEditSettings);
+      notifyTabsOfDomain(currentEditingDomain);
     } catch (err) {
       els.editStatusText.textContent = t('error');
       console.error(err);
@@ -3051,11 +3113,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderEditFrostedList([]);
     if (editCssEditorController) editCssEditorController.update();
 
-    notifyTabsOfDomain(currentEditingDomain, { type: 'none' });
+    notifyTabsOfDomain(currentEditingDomain);
     setEditSyncedState();
   }
 
-  async function notifyTabsOfDomain(domain, settings) {
+  async function notifyTabsOfDomain(domain) {
     try {
       const tabs = await chrome.tabs.query({});
       for (const tab of tabs) {
@@ -3073,10 +3135,10 @@ document.addEventListener('DOMContentLoaded', async () => {
               shouldNotify = url.hostname.toLowerCase() === domain.toLowerCase();
             }
             if (shouldNotify) {
-              try {
-                await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['scripts/gradient.js', 'scripts/effects.js', 'scripts/content.js'] });
-              } catch (e) {}
-              chrome.tabs.sendMessage(tab.id, { action: 'updateBackground', settings });
+              // The storage mutation already tells a live content script to
+              // repaint. Ensure only restores tabs that missed the install or
+              // extension reload, and uses the complete dependency bundle.
+              await window.PageDyeInjection.ensure(tab.id);
             }
           } catch (e) {}
         }
@@ -3352,6 +3414,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       triggerEditImmediateSave();
     } catch (error) {
       console.error('Failed to prepare image:', error);
+      showStatus(error && error.message ? error.message : t('importError'));
     }
   }
 

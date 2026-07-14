@@ -1,16 +1,20 @@
-from PIL import Image, ImageDraw
+from pathlib import Path
+from PIL import Image
 
-def create_icon(size, filename):
-    img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    # Draw a blue circle
-    draw.ellipse([0, 0, size, size], fill=(37, 99, 235))
-    # Draw a white 'B'
-    # Simple rectangle for now as text might need font
-    margin = size // 4
-    draw.rectangle([margin, margin, size-margin, size-margin], fill=(255, 255, 255))
-    img.save(filename)
+ROOT = Path(__file__).resolve().parent
+SOURCE = ROOT / "Designer.png"
+OUTPUT_DIR = ROOT / "icons"
+SIZES = (16, 48, 128)
 
-create_icon(16, 'icons/icon16.png')
-create_icon(48, 'icons/icon48.png')
-create_icon(128, 'icons/icon128.png')
+
+def main():
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    with Image.open(SOURCE) as source:
+        source = source.convert("RGBA")
+        for size in SIZES:
+            icon = source.resize((size, size), Image.Resampling.LANCZOS)
+            icon.save(OUTPUT_DIR / f"icon{size}.png", format="PNG", optimize=True)
+
+
+if __name__ == "__main__":
+    main()
