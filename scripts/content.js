@@ -18,6 +18,7 @@
   const DEFAULT_PAUSE_SHORTCUT = { code: 'KeyP', altKey: true, shiftKey: true, ctrlKey: false, metaKey: false };
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
   const DEFAULT_BG_KEY = '__pagedye_default_background__';
+  const URL_RULES_KEY = '__pagedye_url_rules_v081__';
   let currentSettings = null;
   let currentActiveSettings = null;
   let slideshowTimer = null;
@@ -29,11 +30,10 @@
   let debugRuntimeRequested = false;
   let temporarilyPaused = false;
   let pauseShortcut = { ...DEFAULT_PAUSE_SHORTCUT };
-  // Whether currentSettings for this page came from DEFAULT_BG_KEY rather
-  // than the page's own domain entry — decides where slideshow rotation
-  // writes back to, and whether a DEFAULT_BG_KEY storage change should
-  // repaint this page.
+  // Tracks the resolved storage target so slideshow state is persisted back
+  // to the active URL rule, hostname setting, or global default.
   let usingDefault = false;
+  let activeRuleId = null;
   let lastKnownDefault = null;
 
   // Initialize
@@ -103,7 +103,7 @@
     // Load initial settings
     const domain = window.location.hostname;
     try {
-      chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY, DEFAULT_BG_KEY, EXTENSION_ENABLED_KEY, PAUSE_SHORTCUT_KEY, DEBUG_MODE_KEY], (data) => {
+      chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY, DEFAULT_BG_KEY, URL_RULES_KEY, EXTENSION_ENABLED_KEY, PAUSE_SHORTCUT_KEY, DEBUG_MODE_KEY], (data) => {
         if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
           return;
         }
@@ -113,8 +113,15 @@
         pauseShortcut = normalizePauseShortcut(data[PAUSE_SHORTCUT_KEY]);
         currentCustomEffects = data[CUSTOM_EFFECTS_KEY] || [];
         lastKnownDefault = data[DEFAULT_BG_KEY] || null;
-        usingDefault = !data[domain] && !!lastKnownDefault;
-        const settings = data[domain] || lastKnownDefault;
+        const resolved = window.PageDyeStorage.resolveUrlSettings(
+          window.location.href,
+          data[URL_RULES_KEY],
+          data[domain],
+          lastKnownDefault
+        );
+        usingDefault = resolved.source === 'default';
+        activeRuleId = resolved.source === 'rule' ? resolved.rule.id : null;
+        const settings = resolved.settings;
         if (!extensionEnabled) {
           currentSettings = settings || null;
           disablePageDyeFeatures();
@@ -152,7 +159,7 @@
               sh.currentIndex = nextIndex;
               sh.lastRotationTime = Date.now();
               try {
-                chrome.storage.local.set({ [usingDefault ? DEFAULT_BG_KEY : domain]: settings }, () => {
+                persistActiveSettings(settings, () => {
                   if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
                     return;
                   }
@@ -163,6 +170,9 @@
             }
           }
           applyBackground(settings);
+        } else {
+          currentSettings = null;
+          applyBackground({ type: 'none' });
         }
     // Listen to Alt key keyboard events for background interaction
     if (window.__pagedyeKeydownListener) {
@@ -362,19 +372,7 @@
         return;
       }
       if (debugModeEnabled) ensureDebugRuntime();
-      if (currentSettings) {
-        applyBackground(currentSettings);
-      } else {
-        try {
-          chrome.storage.local.get([domain, DEFAULT_BG_KEY], (data) => {
-            if (typeof chrome === 'undefined' || !chrome.runtime?.id || !extensionEnabled) return;
-            lastKnownDefault = data[DEFAULT_BG_KEY] || null;
-            usingDefault = !data[domain] && !!lastKnownDefault;
-            currentSettings = data[domain] || lastKnownDefault || { type: 'none' };
-            applyBackground(currentSettings);
-          });
-        } catch (e) {}
-      }
+      refreshResolvedSettings();
     }
 
     if (Object.prototype.hasOwnProperty.call(changes, DEBUG_MODE_KEY)) {
@@ -396,28 +394,48 @@
       if (currentSettings) applyBackground(currentSettings);
     }
 
-    let domainHandled = false;
-    if (Object.prototype.hasOwnProperty.call(changes, DEFAULT_BG_KEY)) {
-      lastKnownDefault = changes[DEFAULT_BG_KEY].newValue || null;
+    if ([domain, DEFAULT_BG_KEY, URL_RULES_KEY].some((key) => Object.prototype.hasOwnProperty.call(changes, key))) {
+      refreshResolvedSettings();
+      return;
     }
 
-    if (Object.prototype.hasOwnProperty.call(changes, domain)) {
-      domainHandled = true;
-      const newValue = changes[domain].newValue;
-      usingDefault = !newValue && !!lastKnownDefault;
-      const settings = newValue || lastKnownDefault || { type: 'none' };
-      currentSettings = settings;
-      applyBackground(settings);
-    }
+  }
 
-    // Only repaint from a default-background change if this page isn't
-    // already covered by the domain-change branch above and has no
-    // override of its own — otherwise this would clobber a site that just
-    // got (or already has) its own independent settings.
-    if (!domainHandled && Object.prototype.hasOwnProperty.call(changes, DEFAULT_BG_KEY) && usingDefault) {
-      currentSettings = lastKnownDefault || { type: 'none' };
-      applyBackground(currentSettings);
+  function refreshResolvedSettings() {
+    const domain = window.location.hostname;
+    try {
+      chrome.storage.local.get([domain, DEFAULT_BG_KEY, URL_RULES_KEY], (data) => {
+        if (typeof chrome === 'undefined' || !chrome.runtime?.id || !extensionEnabled) return;
+        lastKnownDefault = data[DEFAULT_BG_KEY] || null;
+        const resolved = window.PageDyeStorage.resolveUrlSettings(
+          window.location.href,
+          data[URL_RULES_KEY],
+          data[domain],
+          lastKnownDefault
+        );
+        usingDefault = resolved.source === 'default';
+        activeRuleId = resolved.source === 'rule' ? resolved.rule.id : null;
+        currentSettings = resolved.settings || null;
+        applyBackground(currentSettings || { type: 'none' });
+      });
+    } catch (_) {}
+  }
+
+  function persistActiveSettings(settings, callback) {
+    if (!activeRuleId) {
+      chrome.storage.local.set({ [usingDefault ? DEFAULT_BG_KEY : window.location.hostname]: settings }, callback);
+      return;
     }
+    chrome.storage.local.get(URL_RULES_KEY, (data) => {
+      const rules = Array.isArray(data[URL_RULES_KEY]) ? data[URL_RULES_KEY] : [];
+      const index = rules.findIndex((rule) => rule && rule.id === activeRuleId);
+      if (index < 0) {
+        if (callback) callback();
+        return;
+      }
+      rules[index] = { ...rules[index], settings };
+      chrome.storage.local.set({ [URL_RULES_KEY]: rules }, callback);
+    });
   }
 
   // Upgrades a legacy sub-settings object (saved before Effects became an
@@ -583,23 +601,10 @@
       nextIndex = (nextIndex + 1) % sh.items.length;
     }
 
-    const domain = window.location.hostname;
-    const storageKey = usingDefault ? DEFAULT_BG_KEY : domain;
-    try {
-      chrome.storage.local.get(storageKey, (data) => {
-        if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
-          return;
-        }
-        const stored = data[storageKey];
-        if (stored && stored.mode === 'slideshow' && stored.slideshow) {
-          stored.slideshow.currentIndex = nextIndex;
-          stored.slideshow.lastRotationTime = Date.now();
-          try {
-            chrome.storage.local.set({ [storageKey]: stored });
-          } catch (e) {}
-        }
-      });
-    } catch (e) {}
+    const nextSettings = JSON.parse(JSON.stringify(settings));
+    nextSettings.slideshow.currentIndex = nextIndex;
+    nextSettings.slideshow.lastRotationTime = Date.now();
+    try { persistActiveSettings(nextSettings); } catch (_) {}
   }
 
   function getCurrentTimePeriod(settings) {

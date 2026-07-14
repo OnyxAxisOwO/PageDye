@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { runInNewContext } from 'node:vm';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const read = (file) => readFileSync(resolve(root, file), 'utf8');
@@ -37,6 +38,12 @@ test('popup and options include their shared image preparation helper', () => {
   const helper = read('scripts/image.js');
   assert.match(helper, /image\/webp/);
   assert.match(helper, /MAX_DIMENSION = 2560/);
+});
+
+test('popup keeps its scroll area and bottom navigation as direct layout siblings', () => {
+  const popup = read('popup/popup.html');
+  assert.match(popup, /<\/main>\s*<div class="bottom-nav"/);
+  assert.doesNotMatch(popup, /main-controls-wrapper/);
 });
 
 test('performance safeguards cancel hidden-page work and retain the temporary shortcut', () => {
@@ -102,8 +109,42 @@ test('content injection is complete, idempotent, and tears down replaced runtime
   assert.match(injection, /scripts\/cursor\.js/);
   const content = read('scripts/content.js');
   assert.match(content, /window\.__pagedyeContentTeardown/);
-  assert.match(content, /usingDefault \? DEFAULT_BG_KEY : domain/);
+  assert.match(content, /persistActiveSettings/);
+  assert.match(content, /resolveUrlSettings/);
   assert.match(read('scripts/effects.js'), /PageDyeEffects\.stopEffect/);
+});
+
+test('the abandoned URL-rule migration restores domain settings once', async () => {
+  const background = read('scripts/background.js');
+  const existing = { mode: 'single', type: 'image', value: 'existing' };
+  const recovered = { mode: 'single', type: 'color', value: '#123456' };
+  const data = {
+    'existing.example': existing,
+    __pagedye_url_rules__: [
+      { enabled: true, type: 'domain', action: 'apply', pattern: 'restored.example', settings: recovered },
+      { enabled: true, type: 'domain', action: 'apply', pattern: 'existing.example', settings: recovered },
+      { enabled: true, type: 'wildcard', action: 'apply', pattern: '*.ignored.example', settings: recovered },
+      { enabled: true, type: 'domain', action: 'exclude', pattern: 'excluded.example', settings: recovered }
+    ]
+  };
+  let resolveWrite;
+  const writeFinished = new Promise((resolveWritePromise) => { resolveWrite = resolveWritePromise; });
+  let written;
+  const chrome = {
+    storage: { local: {
+      get: async () => data,
+      set: async (value) => { written = JSON.parse(JSON.stringify(value)); resolveWrite(); }
+    } },
+    runtime: { onMessage: { addListener() {} } }
+  };
+
+  runInNewContext(background, { chrome, console });
+  await writeFinished;
+
+  assert.deepEqual(written, {
+    'restored.example': recovered,
+    __pagedye_url_rules_recovered_v080__: true
+  });
 });
 
 test('backup schema accepts supported data and blocks arbitrary storage keys', () => {
@@ -114,7 +155,7 @@ test('backup schema accepts supported data and blocks arbitrary storage keys', (
     [storageSchema.KEYS.uiTheme]: { pageBg: '#fff' },
     arbitrary: { secret: true }
   }, '0.8.0');
-  assert.equal(backup.schemaVersion, 1);
+  assert.equal(backup.schemaVersion, 2);
   assert.deepEqual(Object.keys(backup.sites), ['example.com']);
   assert.equal(backup.sites['example.com'].opacity, 100);
   assert.equal(backup.sites['example.com'].blur, 0);
@@ -135,6 +176,104 @@ test('backup schema accepts supported data and blocks arbitrary storage keys', (
   assert.ok(!Object.hasOwn(prepared.write, 'malicious'));
   assert.ok(prepared.removeKeys.includes(storageSchema.KEYS.defaultBackground));
   assert.throws(() => storageSchema.prepareImport([]));
+});
+
+test('URL rules use ordered first-match resolution across all supported match types', () => {
+  const red = { mode: 'single', type: 'color', value: '#ff0000' };
+  const blue = { mode: 'single', type: 'color', value: '#0000ff' };
+  const rules = [
+    { id: 'disabled', type: 'exact', pattern: 'https://github.com/settings/profile', action: 'exclude', enabled: false },
+    { id: 'exact', type: 'exact', pattern: 'https://github.com/settings/profile?tab=keys', action: 'apply', settings: red },
+    { id: 'exclude', type: 'prefix', pattern: 'github.com/settings/*', action: 'exclude' },
+    { id: 'host', type: 'hostname', pattern: 'github.com', action: 'apply', settings: blue }
+  ];
+
+  const exact = storageSchema.resolveUrlSettings('https://github.com/settings/profile?tab=keys#section', rules, null, null);
+  assert.equal(exact.source, 'rule');
+  assert.equal(exact.rule.id, 'exact');
+  assert.equal(exact.settings.value, '#ff0000');
+
+  const excluded = storageSchema.resolveUrlSettings('https://github.com/settings/security', rules, blue, red);
+  assert.equal(excluded.source, 'exclude');
+  assert.equal(excluded.excluded, true);
+  assert.equal(excluded.settings, null);
+
+  const hostname = storageSchema.resolveUrlSettings('https://github.com/explore', rules, null, null);
+  assert.equal(hostname.rule.id, 'host');
+  assert.equal(hostname.settings.value, '#0000ff');
+
+  assert.equal(storageSchema.urlRuleMatches(
+    { id: 'prefix', type: 'prefix', pattern: 'github.com/settings/*', action: 'exclude' },
+    'https://github.com/settings'
+  ), true);
+  assert.equal(storageSchema.urlRuleMatches(
+    { id: 'prefix', type: 'prefix', pattern: 'github.com/settings/*', action: 'exclude' },
+    'https://github.com/settings-old'
+  ), false);
+  assert.equal(storageSchema.urlRuleMatches(
+    { id: 'wild', type: 'wildcard', pattern: '*.example.com', action: 'apply', settings: red },
+    'https://docs.example.com/page'
+  ), true);
+  assert.equal(storageSchema.urlRuleMatches(
+    { id: 'wild', type: 'wildcard', pattern: '*.example.com', action: 'apply', settings: red },
+    'https://example.com/page'
+  ), false);
+});
+
+test('URL rules are validated and included in schema v2 backups', () => {
+  const settings = { mode: 'single', type: 'color', value: '#123456' };
+  const rule = { id: 'rule_1', type: 'prefix', pattern: 'github.com/settings/*', action: 'apply', enabled: false, settings };
+  assert.equal(storageSchema.normalizeRulePattern('exact', 'github.com/a#fragment'), 'https://github.com/a');
+  assert.equal(storageSchema.normalizeRulePattern('wildcard', 'example.com'), null);
+  assert.equal(storageSchema.normalizeRulePattern('prefix', 'github.com/settings/*'), 'github.com/settings/*');
+
+  const backup = storageSchema.buildBackup({ [storageSchema.KEYS.urlRules]: [rule] }, '0.8.1');
+  assert.equal(backup.schemaVersion, 2);
+  assert.equal(backup.urlRules.length, 1);
+  assert.equal(backup.urlRules[0].enabled, false);
+  assert.throws(() => storageSchema.buildBackup({
+    [storageSchema.KEYS.urlRules]: [{ ...rule, pattern: 'bad pattern' }]
+  }, '0.8.1'), /URL rules/);
+
+  const prepared = storageSchema.prepareImport({
+    schemaVersion: 2,
+    sites: {},
+    urlRules: [rule],
+    defaultBackground: null,
+    customEffects: [],
+    customPresetColors: { light: [], dark: [] }
+  });
+  assert.equal(prepared.write[storageSchema.KEYS.urlRules][0].id, 'rule_1');
+  assert.throws(() => storageSchema.prepareImport({
+    schemaVersion: 2,
+    sites: {},
+    urlRules: [{ ...rule, pattern: 'bad pattern' }],
+    defaultBackground: null,
+    customEffects: [],
+    customPresetColors: { light: [], dark: [] }
+  }), /URL rule/);
+
+  const legacy = storageSchema.prepareImport({
+    schemaVersion: 1,
+    sites: {},
+    defaultBackground: null,
+    customEffects: [],
+    customPresetColors: { light: [], dark: [] }
+  });
+  assert.ok(legacy.removeKeys.includes(storageSchema.KEYS.urlRules));
+  assert.ok(storageSchema.prepareImport({ 'example.com': settings }).removeKeys.includes(storageSchema.KEYS.urlRules));
+});
+
+test('options expose rule priority, drag sorting, disabling, and rule editing', () => {
+  const html = read('options/options.html');
+  const options = read('options/options.js');
+  assert.match(html, /id="rule-form"/);
+  assert.match(html, /value="exact"/);
+  assert.match(html, /value="prefix"/);
+  assert.match(html, /value="wildcard"/);
+  assert.match(options, /tr\.draggable = true/);
+  assert.match(options, /rule-enabled-toggle/);
+  assert.match(options, /currentEditingRuleId/);
 });
 
 test('custom effect URLs and code imports are constrained', () => {

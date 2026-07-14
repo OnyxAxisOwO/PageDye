@@ -5,12 +5,13 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
-  const BACKUP_SCHEMA_VERSION = 1;
+  const BACKUP_SCHEMA_VERSION = 2;
   const MAX_BACKUP_BYTES = 64 * 1024 * 1024;
   const MAX_EFFECT_FILE_BYTES = 512 * 1024;
   const MAX_EFFECT_CODE_CHARS = 200000;
   const MAX_EFFECT_NAME_CHARS = 120;
   const MAX_CUSTOM_EFFECTS = 100;
+  const MAX_URL_RULES = 1000;
   const MAX_URL_CHARS = 2048;
   const MAX_IMAGE_VALUE_CHARS = 32 * 1024 * 1024;
 
@@ -22,17 +23,20 @@
     debugMode: '__pagedye_debug_mode__',
     debugPosition: '__pagedye_debug_position__',
     defaultBackground: '__pagedye_default_background__',
-    extensionEnabled: '__pagedye_extension_enabled__'
+    extensionEnabled: '__pagedye_extension_enabled__',
+    urlRules: '__pagedye_url_rules_v081__'
   });
 
   const RESERVED_KEYS = new Set(Object.values(KEYS));
   const BACKUP_GLOBAL_KEYS = new Set([
     KEYS.defaultBackground,
     KEYS.customEffects,
-    KEYS.customPresetColors
+    KEYS.customPresetColors,
+    KEYS.urlRules
   ]);
   const MODES = new Set(['single', 'auto', 'timeRange', 'slideshow']);
   const TYPES = new Set(['none', 'color', 'image', 'effect']);
+  const URL_RULE_TYPES = new Set(['hostname', 'exact', 'prefix', 'wildcard']);
   const FORBIDDEN_OBJECT_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 
   function isPlainObject(value) {
@@ -154,6 +158,124 @@
     return isSiteKeyName(key) && !!normalizeSiteSettings(value);
   }
 
+  function normalizeRulePattern(type, value) {
+    if (!URL_RULE_TYPES.has(type) || typeof value !== 'string') return null;
+    const input = value.trim();
+    if (!input || input.length > MAX_URL_CHARS || /[\u0000-\u001f]/.test(input)) return null;
+
+    if (type === 'hostname' || type === 'wildcard') {
+      const hostnameInput = type === 'wildcard' && input.startsWith('*.') ? input.slice(2) : input;
+      if (type === 'wildcard' && !input.startsWith('*.')) return null;
+      if (/[/\\?#]/.test(hostnameInput)) return null;
+      try {
+        const url = new URL(`https://${hostnameInput}`);
+        if (url.hostname !== hostnameInput.toLowerCase() || url.port || url.username || url.password) return null;
+        return type === 'wildcard' ? `*.${url.hostname}` : url.hostname;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    if (type === 'exact') {
+      try {
+        const url = new URL(/^[a-z][a-z\d+.-]*:/i.test(input) ? input : `https://${input}`);
+        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
+        url.hash = '';
+        return url.href;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    const withoutStar = input.endsWith('*') ? input.slice(0, -1) : input;
+    try {
+      const url = new URL(/^[a-z][a-z\d+.-]*:/i.test(withoutStar) ? withoutStar : `https://${withoutStar}`);
+      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) return null;
+      let pathname = url.pathname || '/';
+      if (!pathname.endsWith('/')) pathname += '/';
+      return `${url.hostname}${pathname}*`;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function normalizeUrlRule(rule) {
+    if (!isPlainObject(rule)) return null;
+    const sourceType = rule.type === 'domain' ? 'hostname' : rule.type;
+    if (!URL_RULE_TYPES.has(sourceType)) return null;
+    const pattern = normalizeRulePattern(sourceType, rule.pattern);
+    const action = rule.action === 'exclude' ? 'exclude' : rule.action === 'apply' ? 'apply' : null;
+    const id = trimString(rule.id, 100);
+    if (!id || !/^[a-zA-Z0-9_-]+$/.test(id) || !pattern || !action) return null;
+    const clean = {
+      id,
+      type: sourceType,
+      pattern,
+      action,
+      enabled: rule.enabled !== false
+    };
+    if (action === 'apply') {
+      clean.settings = normalizeSiteSettings(rule.settings);
+      if (!clean.settings) return null;
+    }
+    return clean;
+  }
+
+  function normalizeUrlRules(value) {
+    if (!Array.isArray(value)) return [];
+    const rules = [];
+    const ids = new Set();
+    for (const source of value.slice(0, MAX_URL_RULES)) {
+      const rule = normalizeUrlRule(source);
+      if (!rule || ids.has(rule.id)) continue;
+      ids.add(rule.id);
+      rules.push(rule);
+    }
+    return rules;
+  }
+
+  function urlRuleMatches(rule, value) {
+    const clean = normalizeUrlRule(rule);
+    if (!clean || clean.enabled === false) return false;
+    let url;
+    try {
+      url = value instanceof URL ? value : new URL(value);
+    } catch (_) {
+      return false;
+    }
+    const hostname = url.hostname.toLowerCase();
+    if (clean.type === 'hostname') return hostname === clean.pattern;
+    if (clean.type === 'wildcard') return hostname.endsWith(`.${clean.pattern.slice(2)}`);
+    if (clean.type === 'prefix') {
+      const separator = clean.pattern.indexOf('/');
+      const ruleHost = clean.pattern.slice(0, separator);
+      const pathPrefix = clean.pattern.slice(separator, -1);
+      const pathBase = pathPrefix.length > 1 && pathPrefix.endsWith('/') ? pathPrefix.slice(0, -1) : pathPrefix;
+      return hostname === ruleHost && (url.pathname === pathBase || url.pathname.startsWith(pathPrefix));
+    }
+    const comparable = new URL(url.href);
+    comparable.hash = '';
+    return comparable.href === clean.pattern;
+  }
+
+  function resolveUrlSettings(value, rules, hostnameSettings, defaultSettings) {
+    for (const rule of Array.isArray(rules) ? rules : []) {
+      if (!urlRuleMatches(rule, value)) continue;
+      if (rule.action === 'exclude') {
+        return { settings: null, rule, source: 'exclude', excluded: true };
+      }
+      const settings = normalizeSiteSettings(rule.settings);
+      if (settings) return { settings, rule, source: 'rule', excluded: false };
+    }
+    if (normalizeSiteSettings(hostnameSettings)) {
+      return { settings: hostnameSettings, rule: null, source: 'hostname', excluded: false };
+    }
+    if (normalizeSiteSettings(defaultSettings)) {
+      return { settings: defaultSettings, rule: null, source: 'default', excluded: false };
+    }
+    return { settings: null, rule: null, source: 'none', excluded: false };
+  }
+
   function normalizeEffectUrl(value) {
     if (typeof value !== 'string') return null;
     let candidate = value.trim();
@@ -223,11 +345,17 @@
     if (defaultSource !== null && defaultSource !== undefined && !defaultBackground) {
       throw new Error('Invalid or oversized default background configuration.');
     }
+    const rawUrlRules = source[KEYS.urlRules];
+    const urlRules = normalizeUrlRules(rawUrlRules);
+    if (rawUrlRules !== undefined && (!Array.isArray(rawUrlRules) || rawUrlRules.length > MAX_URL_RULES || urlRules.length !== rawUrlRules.length)) {
+      throw new Error('Invalid or oversized URL rules collection.');
+    }
     return {
       schemaVersion: BACKUP_SCHEMA_VERSION,
       appVersion: trimString(appVersion, 40),
       exportedAt: new Date().toISOString(),
       sites,
+      urlRules,
       defaultBackground,
       customEffects: normalizeCustomEffects(source[KEYS.customEffects]),
       customPresetColors: normalizePresetColors(source[KEYS.customPresetColors])
@@ -241,7 +369,7 @@
     const siteKeys = [];
 
     if (Object.prototype.hasOwnProperty.call(payload, 'schemaVersion')) {
-      if (payload.schemaVersion !== BACKUP_SCHEMA_VERSION || !isPlainObject(payload.sites)) {
+      if (![1, BACKUP_SCHEMA_VERSION].includes(payload.schemaVersion) || !isPlainObject(payload.sites)) {
         throw new Error('Unsupported or invalid PageDye backup schema.');
       }
       const siteEntries = Object.entries(payload.sites);
@@ -251,6 +379,16 @@
         if (!isSiteSettingsKey(key, normalized)) throw new Error(`Invalid site configuration key: ${key}`);
         write[key] = normalized;
         siteKeys.push(key);
+      }
+      if (payload.schemaVersion >= 2) {
+        if (!Array.isArray(payload.urlRules) || payload.urlRules.length > MAX_URL_RULES) {
+          throw new Error('Invalid URL rules collection.');
+        }
+        const urlRules = normalizeUrlRules(payload.urlRules);
+        if (urlRules.length !== payload.urlRules.length) throw new Error('Invalid or duplicate URL rule.');
+        write[KEYS.urlRules] = urlRules;
+      } else {
+        removeKeys.push(KEYS.urlRules);
       }
       const defaultSettings = normalizeSiteSettings(payload.defaultBackground);
       if (payload.defaultBackground !== null && payload.defaultBackground !== undefined && !defaultSettings) {
@@ -274,6 +412,7 @@
       if (!isPlainObject(payload.customPresetColors)) throw new Error('Invalid custom preset colors.');
       write[KEYS.customPresetColors] = normalizePresetColors(payload.customPresetColors);
     } else {
+      if (!Object.prototype.hasOwnProperty.call(payload, KEYS.urlRules)) removeKeys.push(KEYS.urlRules);
       for (const [key, value] of Object.entries(payload)) {
         if (isSiteKeyName(key) && isPlainObject(value) && Object.prototype.hasOwnProperty.call(value, 'type')) {
           const normalized = normalizeSiteSettings(value);
@@ -287,6 +426,10 @@
           write[key] = normalizeCustomEffects(value);
         } else if (key === KEYS.customPresetColors) {
           write[key] = normalizePresetColors(value);
+        } else if (key === KEYS.urlRules) {
+          const urlRules = normalizeUrlRules(value);
+          if (!Array.isArray(value) || urlRules.length !== value.length) throw new Error('Invalid URL rules collection.');
+          write[key] = urlRules;
         }
       }
       if (!siteKeys.length && !Object.keys(write).some((key) => BACKUP_GLOBAL_KEYS.has(key))) {
@@ -304,12 +447,18 @@
     MAX_EFFECT_CODE_CHARS,
     MAX_EFFECT_NAME_CHARS,
     MAX_CUSTOM_EFFECTS,
+    MAX_URL_RULES,
     MAX_URL_CHARS,
     MAX_IMAGE_VALUE_CHARS,
     KEYS,
     isPlainObject,
     isSiteSettingsKey,
     normalizeSiteSettings,
+    normalizeRulePattern,
+    normalizeUrlRule,
+    normalizeUrlRules,
+    urlRuleMatches,
+    resolveUrlSettings,
     normalizeEffectUrl,
     normalizeCustomEffect,
     normalizeCustomEffects,

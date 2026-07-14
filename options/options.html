@@ -76,7 +76,7 @@
       </nav>
       
       <div class="sidebar-footer">
-        <span id="version" class="version-label">v0.8.0</span>
+        <span id="version" class="version-label">v0.8.1</span>
       </div>
     </aside>
     
@@ -85,8 +85,69 @@
       <!-- Section 1: Configured Sites -->
       <section id="section-sites" class="content-section active">
         <div class="section-header">
-          <h2 data-i18n="sitesTitle">Configured Sites</h2>
-          <p class="section-subtitle" data-i18n="sitesHint">Manage settings for specific websites. You can remove configurations individually.</p>
+          <div class="section-header-row">
+            <div>
+              <h2 data-i18n="sitesTitle">URL Rules</h2>
+              <p class="section-subtitle" data-i18n="sitesHint">The first enabled matching rule wins. Drag rules to change priority.</p>
+            </div>
+            <button type="button" id="new-rule-btn" class="btn primary-btn" data-i18n="newRule">New Rule</button>
+          </div>
+        </div>
+
+        <form id="rule-form" class="rule-form hidden" novalidate>
+          <div class="rule-form-grid">
+            <label class="form-group">
+              <span data-i18n="ruleAction">Action</span>
+              <select id="rule-action">
+                <option value="apply" data-i18n="ruleApply">Apply background</option>
+                <option value="exclude" data-i18n="ruleExclude">Exclude page</option>
+              </select>
+            </label>
+            <label class="form-group">
+              <span data-i18n="ruleType">Match type</span>
+              <select id="rule-type">
+                <option value="hostname" data-i18n="ruleHostname">Hostname</option>
+                <option value="exact" data-i18n="ruleExact">Exact URL</option>
+                <option value="prefix" data-i18n="rulePrefix">Path prefix</option>
+                <option value="wildcard" data-i18n="ruleWildcard">Wildcard domain</option>
+              </select>
+            </label>
+            <label class="form-group rule-pattern-group">
+              <span data-i18n="rulePattern">Pattern</span>
+              <input id="rule-pattern" type="text" required autocomplete="off" placeholder="github.com/settings/*">
+              <small id="rule-pattern-hint" data-i18n="rulePatternHint">Examples: github.com, https://github.com/settings/profile, github.com/settings/*, *.example.com</small>
+            </label>
+          </div>
+          <p id="rule-form-error" class="form-error hidden" role="alert"></p>
+          <div class="rule-form-actions">
+            <button type="button" id="rule-cancel-btn" class="btn secondary-btn" data-i18n="confirmCancel">Cancel</button>
+            <button type="submit" class="btn primary-btn" data-i18n="createRule">Create Rule</button>
+          </div>
+        </form>
+
+        <div class="card table-card rules-table-card">
+          <div class="table-responsive">
+            <table class="sites-table rules-table">
+              <thead>
+                <tr>
+                  <th class="rule-priority-column" data-i18n="rulePriority">Priority</th>
+                  <th data-i18n="ruleMatch">Match</th>
+                  <th data-i18n="ruleBehavior">Behavior</th>
+                  <th data-i18n="ruleStatus">Enabled</th>
+                  <th data-i18n="thActions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="rules-list-body"></tbody>
+            </table>
+          </div>
+          <div id="no-rules-msg" class="no-data hidden">
+            <p data-i18n="noRules">No URL rules yet. Hostname settings below still work as before.</p>
+          </div>
+        </div>
+
+        <div class="subsection-heading">
+          <h3 data-i18n="hostnameFallbacks">Hostname Fallbacks</h3>
+          <p data-i18n="hostnameFallbacksHint">Used only when no enabled URL rule matches.</p>
         </div>
         
         <div class="card search-card">
@@ -342,7 +403,7 @@
           <div class="about-logo">
             <div class="logo-circle"></div>
             <h3>PageDye</h3>
-            <span class="badge" id="about-version">v0.8.0</span>
+            <span class="badge" id="about-version">v0.8.1</span>
           </div>
           
           <p class="about-desc" data-i18n="aboutText">PageDye is a browser extension that allows you to dye any webpage's background with your choice of color or custom image. You can adjust opacity, blur, repetition, element selector, and even inject custom CSS for complete control over readability and design.</p>
@@ -911,7 +972,7 @@
           </div>
           <div class="edit-actions-right">
             <button type="button" id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
-            <span class="version-text" id="edit-version">v0.8.0</span>
+            <span class="version-text" id="edit-version">v0.8.1</span>
             <span class="divider">|</span>
             <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; display: block;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>

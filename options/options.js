@@ -44,7 +44,29 @@ document.addEventListener('DOMContentLoaded', async () => {
       chooseFile: "choose file",
       savedImage: "Saved image",
       sitesTitle: "Configured Sites",
-      sitesHint: "Manage settings for specific websites. You can remove configurations individually.",
+      sitesHint: "The first enabled matching rule wins. Drag rules to change priority.",
+      newRule: "New Rule",
+      createRule: "Create Rule",
+      ruleAction: "Action",
+      ruleApply: "Apply background",
+      ruleExclude: "Exclude page",
+      ruleType: "Match type",
+      ruleHostname: "Hostname",
+      ruleExact: "Exact URL",
+      rulePrefix: "Path prefix",
+      ruleWildcard: "Wildcard domain",
+      rulePattern: "Pattern",
+      rulePatternHint: "Examples: github.com, https://github.com/settings/profile, github.com/settings/*, *.example.com",
+      rulePriority: "Priority",
+      ruleMatch: "Match",
+      ruleBehavior: "Behavior",
+      ruleStatus: "Enabled",
+      noRules: "No URL rules yet. Hostname settings below still work as before.",
+      hostnameFallbacks: "Hostname Fallbacks",
+      hostnameFallbacksHint: "Used only when no enabled URL rule matches.",
+      invalidRulePattern: "Enter a valid pattern for the selected match type.",
+      confirmDeleteRule: "Delete rule {pattern}?",
+      ruleSaved: "URL rule saved!",
       searchPlaceholder: "Search domains...",
       thDomain: "Domain",
       thBgType: "Background Type",
@@ -494,6 +516,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
   const DEBUG_MODE_KEY = '__pagedye_debug_mode__';
   const DEFAULT_BG_KEY = '__pagedye_default_background__';
+  const URL_RULES_KEY = '__pagedye_url_rules_v081__';
   const UI_THEME_DEFAULTS = { pageBg: '#f1f5f9', containerBg: '#ffffff', pageBgImage: null, containerBgImage: null, accent: 'neutral', customAccent: '#18181b', disableAnimation: false };
   let currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS);
   const UI_THEME_ACCENTS = {
@@ -737,6 +760,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     versionLabel: document.getElementById('version'),
     aboutVersion: document.getElementById('about-version'),
     sitesListBody: document.getElementById('sites-list-body'),
+    rulesListBody: document.getElementById('rules-list-body'),
+    noRulesMsg: document.getElementById('no-rules-msg'),
+    newRuleBtn: document.getElementById('new-rule-btn'),
+    ruleForm: document.getElementById('rule-form'),
+    ruleAction: document.getElementById('rule-action'),
+    ruleType: document.getElementById('rule-type'),
+    rulePattern: document.getElementById('rule-pattern'),
+    ruleFormError: document.getElementById('rule-form-error'),
+    ruleCancelBtn: document.getElementById('rule-cancel-btn'),
     noSitesMsg: document.getElementById('no-sites-msg'),
     searchInput: document.getElementById('search-input'),
     exportBtn: document.getElementById('export-btn'),
@@ -891,6 +923,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (editVersionEl) editVersionEl.textContent = extensionVersion;
 
   // Load configured sites
+  await loadRulesList();
   await loadSitesList();
   await loadCustomEffectsList();
   await populateCustomEffectOptions(document.getElementById('edit-effect-kind'));
@@ -908,10 +941,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'local' || !Object.prototype.hasOwnProperty.call(changes, CUSTOM_EFFECTS_KEY)) return;
-    populateCustomEffectOptions(document.getElementById('edit-effect-kind'));
-    if (document.getElementById('section-custom-effects').classList.contains('active')) {
-      loadCustomEffectsList();
+    if (area !== 'local') return;
+    if (Object.prototype.hasOwnProperty.call(changes, URL_RULES_KEY) && document.getElementById('section-sites').classList.contains('active')) {
+      loadRulesList();
+    }
+    if (Object.prototype.hasOwnProperty.call(changes, CUSTOM_EFFECTS_KEY)) {
+      populateCustomEffectOptions(document.getElementById('edit-effect-kind'));
+      if (document.getElementById('section-custom-effects').classList.contains('active')) {
+        loadCustomEffectsList();
+      }
     }
   });
 
@@ -944,6 +982,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   els.searchInput.addEventListener('input', () => {
     filterSites(els.searchInput.value.toLowerCase().trim());
   });
+
+  els.newRuleBtn.addEventListener('click', () => {
+    els.ruleForm.classList.remove('hidden');
+    els.rulePattern.focus();
+  });
+  els.ruleCancelBtn.addEventListener('click', closeRuleForm);
+  els.ruleType.addEventListener('change', updateRulePatternPlaceholder);
+  els.ruleForm.addEventListener('submit', createRule);
 
   // Backup: Export Configs
   els.exportBtn.addEventListener('click', exportConfigs);
@@ -983,7 +1029,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   function t(key) {
     const zhFallback = {
       uiThemeColor: "\u754c\u9762\u4e3b\u9898\u8272",
-      uiThemeColorHint: "\u53ea\u6539\u53d8 PageDye \u8bbe\u7f6e\u9875\u548c\u5f39\u7a97\u989c\u8272\uff0c\u4e0d\u4f1a\u5f71\u54cd\u7f51\u7ad9\u989c\u8272\u3002"
+      uiThemeColorHint: "\u53ea\u6539\u53d8 PageDye \u8bbe\u7f6e\u9875\u548c\u5f39\u7a97\u989c\u8272\uff0c\u4e0d\u4f1a\u5f71\u54cd\u7f51\u7ad9\u989c\u8272\u3002",
+      sitesTitle: "URL \u89c4\u5219",
+      sitesHint: "\u4ece\u4e0a\u5230\u4e0b\u5339\u914d\u7b2c\u4e00\u6761\u5df2\u542f\u7528\u7684\u89c4\u5219\uff0c\u62d6\u52a8\u53ef\u8c03\u6574\u4f18\u5148\u7ea7\u3002",
+      newRule: "\u65b0\u5efa\u89c4\u5219",
+      createRule: "\u521b\u5efa\u89c4\u5219",
+      ruleAction: "\u52a8\u4f5c",
+      ruleApply: "\u5e94\u7528\u80cc\u666f",
+      ruleExclude: "\u6392\u9664\u9875\u9762",
+      ruleType: "\u5339\u914d\u7c7b\u578b",
+      ruleHostname: "\u4e3b\u673a\u540d",
+      ruleExact: "\u7cbe\u786e\u7f51\u5740",
+      rulePrefix: "\u8def\u5f84\u524d\u7f00",
+      ruleWildcard: "\u901a\u914d\u5b50\u57df\u540d",
+      rulePattern: "\u5339\u914d\u5185\u5bb9",
+      rulePatternHint: "\u4f8b\u5982 github.com\u3001https://github.com/settings/profile\u3001github.com/settings/*\u3001*.example.com",
+      rulePriority: "\u4f18\u5148\u7ea7",
+      ruleMatch: "\u5339\u914d",
+      ruleBehavior: "\u884c\u4e3a",
+      ruleStatus: "\u542f\u7528",
+      noRules: "\u8fd8\u6ca1\u6709 URL \u89c4\u5219\uff0c\u4e0b\u65b9\u7684\u4e3b\u673a\u540d\u914d\u7f6e\u4ecd\u4f1a\u6309\u539f\u65b9\u5f0f\u5de5\u4f5c\u3002",
+      hostnameFallbacks: "\u4e3b\u673a\u540d\u56de\u9000\u914d\u7f6e",
+      hostnameFallbacksHint: "\u4ec5\u5728\u6ca1\u6709\u5df2\u542f\u7528\u7684 URL \u89c4\u5219\u547d\u4e2d\u65f6\u4f7f\u7528\u3002",
+      invalidRulePattern: "\u8bf7\u8f93\u5165\u7b26\u5408\u5f53\u524d\u5339\u914d\u7c7b\u578b\u7684\u6709\u6548\u5185\u5bb9\u3002",
+      confirmDeleteRule: "\u5220\u9664\u89c4\u5219 {pattern}\uff1f",
+      ruleSaved: "URL \u89c4\u5219\u5df2\u4fdd\u5b58\uff01"
     };
     if (lang === 'zh' && zhFallback[key]) return zhFallback[key];
     return i18n[lang][key] || i18n.en[key] || key;
@@ -1101,6 +1171,191 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Pinned first row for the shared default background — always shown
   // (even unconfigured) so it's discoverable, excluded from the per-site
   // domain filter/search and from "no sites configured" messaging.
+  function closeRuleForm() {
+    els.ruleForm.reset();
+    els.ruleForm.classList.add('hidden');
+    els.ruleFormError.classList.add('hidden');
+    els.ruleFormError.textContent = '';
+    updateRulePatternPlaceholder();
+  }
+
+  function updateRulePatternPlaceholder() {
+    const placeholders = {
+      hostname: 'github.com',
+      exact: 'https://github.com/settings/profile',
+      prefix: 'github.com/settings/*',
+      wildcard: '*.example.com'
+    };
+    els.rulePattern.placeholder = placeholders[els.ruleType.value] || '';
+  }
+
+  function generateRuleId() {
+    if (crypto.randomUUID) return 'rule_' + crypto.randomUUID().replaceAll('-', '');
+    return 'rule_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  }
+
+  function blankRuleSettings() {
+    return {
+      mode: 'single', type: 'none', value: '', opacity: 100, blur: 0,
+      style: { fixed: true, size: 'cover', repeat: false }
+    };
+  }
+
+  function ruleHostname(rule) {
+    try {
+      if (rule.type === 'exact') return new URL(rule.pattern).hostname;
+      if (rule.type === 'wildcard') return rule.pattern.slice(2);
+      return rule.pattern.split('/')[0];
+    } catch (_) {
+      return '';
+    }
+  }
+
+  async function createRule(event) {
+    event.preventDefault();
+    const type = els.ruleType.value;
+    const pattern = window.PageDyeStorage.normalizeRulePattern(type, els.rulePattern.value);
+    if (!pattern) {
+      els.ruleFormError.textContent = t('invalidRulePattern');
+      els.ruleFormError.classList.remove('hidden');
+      els.rulePattern.focus();
+      return;
+    }
+    const data = await chrome.storage.local.get(null);
+    const action = els.ruleAction.value;
+    const rule = { id: generateRuleId(), type, pattern, action, enabled: true };
+    if (action === 'apply') {
+      const inherited = data[ruleHostname(rule)] || data[DEFAULT_BG_KEY] || blankRuleSettings();
+      rule.settings = JSON.parse(JSON.stringify(inherited));
+    }
+    const rules = window.PageDyeStorage.normalizeUrlRules(data[URL_RULES_KEY]);
+    rules.unshift(rule);
+    rules.splice(window.PageDyeStorage.MAX_URL_RULES);
+    await chrome.storage.local.set({ [URL_RULES_KEY]: rules });
+    closeRuleForm();
+    await loadRulesList();
+    showStatus(t('ruleSaved'));
+    if (action === 'apply') openEditSite(null, rule.id);
+  }
+
+  async function updateStoredRules(mutator) {
+    const data = await chrome.storage.local.get(URL_RULES_KEY);
+    const rules = window.PageDyeStorage.normalizeUrlRules(data[URL_RULES_KEY]);
+    const next = mutator(rules) || rules;
+    await chrome.storage.local.set({ [URL_RULES_KEY]: next });
+  }
+
+  async function deleteRule(rule) {
+    if (!(await showConfirm(t('confirmDeleteRule').replace('{pattern}', rule.pattern)))) return;
+    await updateStoredRules((rules) => rules.filter((item) => item.id !== rule.id));
+    await loadRulesList();
+    showStatus(t('deleteSiteDone'));
+  }
+
+  function ruleTypeLabel(type) {
+    return t({ hostname: 'ruleHostname', exact: 'ruleExact', prefix: 'rulePrefix', wildcard: 'ruleWildcard' }[type]);
+  }
+
+  async function loadRulesList() {
+    els.rulesListBody.innerHTML = '';
+    const data = await chrome.storage.local.get(URL_RULES_KEY);
+    const rules = window.PageDyeStorage.normalizeUrlRules(data[URL_RULES_KEY]);
+    els.noRulesMsg.classList.toggle('hidden', rules.length > 0);
+
+    rules.forEach((rule, index) => {
+      const tr = document.createElement('tr');
+      tr.className = 'rule-row' + (rule.enabled ? '' : ' rule-row-disabled');
+      tr.draggable = true;
+      tr.dataset.ruleId = rule.id;
+      tr.dataset.domain = rule.pattern.toLowerCase();
+
+      const priority = document.createElement('td');
+      priority.innerHTML = `<span class="rule-priority"><svg class="drag-handle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>${index + 1}</span>`;
+      tr.appendChild(priority);
+
+      const match = document.createElement('td');
+      match.innerHTML = '<div class="rule-match"><code></code><span class="rule-kind"></span></div>';
+      match.querySelector('code').textContent = rule.pattern;
+      match.querySelector('.rule-kind').textContent = ruleTypeLabel(rule.type);
+      tr.appendChild(match);
+
+      const behavior = document.createElement('td');
+      behavior.className = 'rule-behavior';
+      const actionBadge = document.createElement('span');
+      actionBadge.className = `rule-action-badge ${rule.action}`;
+      actionBadge.textContent = t(rule.action === 'exclude' ? 'ruleExclude' : 'ruleApply');
+      behavior.appendChild(actionBadge);
+      if (rule.action === 'apply') behavior.appendChild(buildBgTypeBadge(rule.settings));
+      tr.appendChild(behavior);
+
+      const status = document.createElement('td');
+      const toggle = document.createElement('input');
+      toggle.type = 'checkbox';
+      toggle.className = 'rule-enabled-toggle';
+      toggle.checked = rule.enabled;
+      toggle.title = t('ruleStatus');
+      toggle.addEventListener('change', async () => {
+        await updateStoredRules((items) => items.map((item) => item.id === rule.id ? { ...item, enabled: toggle.checked } : item));
+        await loadRulesList();
+      });
+      status.appendChild(toggle);
+      tr.appendChild(status);
+
+      const actions = document.createElement('td');
+      actions.className = 'rule-actions';
+      if (rule.action === 'apply') {
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'icon-btn';
+        edit.title = t('editBtn');
+        edit.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
+        edit.addEventListener('click', () => openEditSite(null, rule.id));
+        actions.appendChild(edit);
+      }
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'icon-btn-danger';
+      remove.title = t('deleteBtn');
+      remove.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path></svg>';
+      remove.addEventListener('click', () => deleteRule(rule));
+      actions.appendChild(remove);
+      tr.appendChild(actions);
+
+      tr.addEventListener('dragstart', () => {
+        tr.classList.add('dragging');
+        document.body.dataset.draggedRuleId = rule.id;
+      });
+      tr.addEventListener('dragend', () => {
+        tr.classList.remove('dragging');
+        delete document.body.dataset.draggedRuleId;
+        els.rulesListBody.querySelectorAll('.drag-over').forEach((row) => row.classList.remove('drag-over'));
+      });
+      tr.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        tr.classList.add('drag-over');
+      });
+      tr.addEventListener('dragleave', () => tr.classList.remove('drag-over'));
+      tr.addEventListener('drop', async (event) => {
+        event.preventDefault();
+        const draggedId = document.body.dataset.draggedRuleId;
+        tr.classList.remove('drag-over');
+        if (!draggedId || draggedId === rule.id) return;
+        await updateStoredRules((items) => {
+          const from = items.findIndex((item) => item.id === draggedId);
+          if (from < 0) return items;
+          const [moved] = items.splice(from, 1);
+          const to = items.findIndex((item) => item.id === rule.id);
+          if (to < 0) return items;
+          items.splice(to, 0, moved);
+          return items;
+        });
+        await loadRulesList();
+      });
+
+      els.rulesListBody.appendChild(tr);
+    });
+  }
+
   function buildDefaultBgRow(rawSettings) {
     const settings = rawSettings || { mode: 'single', type: 'none' };
     const tr = document.createElement('tr');
@@ -1214,6 +1469,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         row.classList.add('hidden');
       }
+    });
+
+    els.rulesListBody.querySelectorAll('tr').forEach((row) => {
+      row.classList.toggle('hidden', !row.dataset.domain.includes(query));
     });
 
     if (visibleCount === 0) {
@@ -1854,6 +2113,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const data = await chrome.storage.local.get(null);
     const siteKeys = Object.keys(data).filter((key) => window.PageDyeStorage.isSiteSettingsKey(key, data[key]));
     if (siteKeys.length) await chrome.storage.local.remove(siteKeys);
+    await chrome.storage.local.remove(URL_RULES_KEY);
+    await loadRulesList();
     await loadSitesList();
     showStatus(t('clearAllDone'));
   }
@@ -2178,6 +2439,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Edit Site Feature Implementation
   let currentEditingDomain = '';
+  let currentEditingRuleId = null;
   let editCurrentImageBase64 = null;
   let editActiveScheme = 'light';
   let editActiveTimePeriodIndex = 0;
@@ -2324,10 +2586,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.editStatusText.textContent = t('statusSynced') || 'Synced';
   }
 
-  async function openEditSite(domain) {
+  async function openEditSite(domain, ruleId = null) {
     currentEditingDomain = domain;
-    document.getElementById('edit-domain-name').textContent =
-      domain === DEFAULT_BG_KEY ? t('defaultBgEditTitle') : domain;
+    currentEditingRuleId = ruleId;
+
+    let rule = null;
+    if (ruleId) {
+      const ruleData = await chrome.storage.local.get(URL_RULES_KEY);
+      rule = window.PageDyeStorage.normalizeUrlRules(ruleData[URL_RULES_KEY]).find((item) => item.id === ruleId) || null;
+      if (!rule || rule.action !== 'apply') return;
+    }
+    document.getElementById('edit-domain-name').textContent = rule
+      ? rule.pattern
+      : domain === DEFAULT_BG_KEY ? t('defaultBgEditTitle') : domain;
 
     els.sections.forEach(s => s.classList.remove('active'));
     document.getElementById('section-edit-site').classList.add('active');
@@ -2353,8 +2624,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       editPanelFrosted.classList.toggle('inactive', activeTab !== 'frosted');
     }
 
-    const data = await chrome.storage.local.get(domain);
-    currentEditSettings = data[domain] || {
+    const data = rule ? null : await chrome.storage.local.get(domain);
+    currentEditSettings = (rule ? rule.settings : data[domain]) || {
       mode: 'single',
       type: 'none',
       value: '',
@@ -3026,9 +3297,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     collectEditSettings();
 
     try {
-      await chrome.storage.local.set({ [currentEditingDomain]: currentEditSettings });
+      if (currentEditingRuleId) {
+        await updateStoredRules((rules) => rules.map((rule) =>
+          rule.id === currentEditingRuleId ? { ...rule, settings: currentEditSettings } : rule
+        ));
+      } else {
+        await chrome.storage.local.set({ [currentEditingDomain]: currentEditSettings });
+      }
       setEditSyncedState();
-      notifyTabsOfDomain(currentEditingDomain);
+      notifyTabsOfDomain(currentEditingRuleId ? URL_RULES_KEY : currentEditingDomain);
     } catch (err) {
       els.editStatusText.textContent = t('error');
       console.error(err);
@@ -3036,6 +3313,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function resetEditSettings() {
+    if (currentEditingRuleId) {
+      const data = await chrome.storage.local.get(URL_RULES_KEY);
+      const rule = window.PageDyeStorage.normalizeUrlRules(data[URL_RULES_KEY]).find((item) => item.id === currentEditingRuleId);
+      if (!rule || !(await showConfirm(t('confirmDeleteRule').replace('{pattern}', rule.pattern)))) return;
+      await updateStoredRules((rules) => rules.filter((item) => item.id !== currentEditingRuleId));
+      currentEditingRuleId = null;
+      els.sections.forEach((section) => section.classList.remove('active'));
+      document.getElementById('section-sites').classList.add('active');
+      await loadRulesList();
+      return;
+    }
     const confirmMsg = currentEditingDomain === DEFAULT_BG_KEY
       ? t('confirmDeleteDefault')
       : t('confirmDelete').replace('{domain}', currentEditingDomain);
@@ -3125,7 +3413,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           try {
             const url = new URL(tab.url);
             let shouldNotify;
-            if (domain === DEFAULT_BG_KEY) {
+            if (domain === URL_RULES_KEY) {
+              shouldNotify = true;
+            } else if (domain === DEFAULT_BG_KEY) {
               // The default only actually applies to tabs whose own site
               // has no override — pushing it to every open tab would
               // clobber sites that are independently configured.
@@ -3550,6 +3840,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('edit-back-btn').addEventListener('click', () => {
     els.sections.forEach(s => s.classList.remove('active'));
     document.getElementById('section-sites').classList.add('active');
+    currentEditingRuleId = null;
+    loadRulesList();
     loadSitesList();
   });
 

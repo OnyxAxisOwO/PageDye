@@ -5,7 +5,7 @@
 // (current form state + the picked selector) straight to storage for this
 // domain. The content script's storage listener then paints that element
 // immediately — no popup reopen required.
-function pagedyeElementPicker(settings, domain, fieldPath, tipTextMultiple, tipTextSingle) {
+function pagedyeElementPicker(settings, storageTarget, fieldPath, tipTextMultiple, tipTextSingle) {
   if (window.__pagedyePicking) return;
   window.__pagedyePicking = true;
 
@@ -138,7 +138,18 @@ function pagedyeElementPicker(settings, domain, fieldPath, tipTextMultiple, tipT
         if (typeof obj.blur !== 'number') obj.blur = 12;
         if (typeof obj.opacity !== 'number') obj.opacity = 55;
       }
-      chrome.storage.local.set({ [domain]: next });
+      if (storageTarget && storageTarget.ruleId) {
+        chrome.storage.local.get(storageTarget.rulesKey, (data) => {
+          const rules = Array.isArray(data[storageTarget.rulesKey]) ? data[storageTarget.rulesKey] : [];
+          const index = rules.findIndex((rule) => rule && rule.id === storageTarget.ruleId);
+          if (index < 0) return;
+          rules[index] = { ...rules[index], settings: next };
+          chrome.storage.local.set({ [storageTarget.rulesKey]: rules });
+        });
+      } else {
+        const key = typeof storageTarget === 'string' ? storageTarget : storageTarget.key;
+        chrome.storage.local.set({ [key]: next });
+      }
     } catch (err) { /* storage unavailable */ }
     
     if (fieldPath && fieldPath[0] === 'deepCompatExclude') {
@@ -412,6 +423,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetDefault: "Default (All Sites)",
       targetHintInherited: "This site has no settings of its own — showing the global default. Editing will save a config just for this site.",
       targetHintDefault: "Applies to every site that doesn't have its own settings.",
+      targetHintRule: "Matched URL rule: {pattern}. Changes are saved to this rule.",
+      targetHintExcluded: "This page is excluded by URL rule: {pattern}. Manage exclusions in Settings.",
       tabWallpaper: "Wallpaper",
       tabFrostedGlass: "Frosted Glass",
       advanced: "Advanced",
@@ -594,6 +607,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetDefault: "全站默认",
       targetHintInherited: "当前网站没有单独设置，正在使用全局默认背景。修改后将为此网站单独保存。",
       targetHintDefault: "应用于所有没有单独设置背景的网站。",
+      targetHintRule: "已匹配 URL 规则：{pattern}。修改会保存到这条规则。",
+      targetHintExcluded: "当前页面已被 URL 规则排除：{pattern}。请在设置页管理排除规则。",
       tabWallpaper: "壁纸",
       tabFrostedGlass: "磨砂玻璃",
       advanced: "高级设置",
@@ -1061,11 +1076,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
   const DEFAULT_BG_KEY = '__pagedye_default_background__';
+  const URL_RULES_KEY = '__pagedye_url_rules_v081__';
 
   // State
   let currentDomain = ''; // key currently being edited/saved: siteDomain or DEFAULT_BG_KEY
   let siteDomain = ''; // the active tab's real hostname, always
   let siteHasOwnConfig = false; // whether siteDomain has its own saved entry (vs. inheriting the default)
+  let activePageUrl = '';
+  let activeRuleId = null;
+  let activeRulePattern = '';
+  let pageExcluded = false;
   let currentImageBase64 = null;
   let lang = 'en';
   let activeScheme = 'light';
@@ -1123,6 +1143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (tab && tab.url) {
     try {
       const url = new URL(tab.url);
+      activePageUrl = url.href;
       siteDomain = url.hostname;
       currentDomain = siteDomain;
       els.domainBadge.textContent = currentDomain;
@@ -2018,6 +2039,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (currentDomain === DEFAULT_BG_KEY) {
       els.targetHint.textContent = t('targetHintDefault');
       els.targetHint.style.display = '';
+    } else if (pageExcluded) {
+      els.targetHint.textContent = t('targetHintExcluded').replace('{pattern}', activeRulePattern);
+      els.targetHint.style.display = '';
+    } else if (activeRuleId) {
+      els.targetHint.textContent = t('targetHintRule').replace('{pattern}', activeRulePattern);
+      els.targetHint.style.display = '';
     } else if (!siteHasOwnConfig) {
       els.targetHint.textContent = t('targetHintInherited');
       els.targetHint.style.display = '';
@@ -2049,14 +2076,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function loadSettings(domain) {
-    const data = await chrome.storage.local.get([domain, DEFAULT_BG_KEY]);
-    const ownEntry = data[domain];
+    const data = await chrome.storage.local.get([domain, DEFAULT_BG_KEY, URL_RULES_KEY]);
     const isSiteTarget = domain === siteDomain;
-    if (isSiteTarget) siteHasOwnConfig = !!ownEntry;
+    let ownEntry = data[domain];
+    activeRuleId = null;
+    activeRulePattern = '';
+    pageExcluded = false;
+    if (isSiteTarget) {
+      const resolved = window.PageDyeStorage.resolveUrlSettings(
+        activePageUrl,
+        data[URL_RULES_KEY],
+        data[domain],
+        data[DEFAULT_BG_KEY]
+      );
+      activeRuleId = resolved.source === 'rule' ? resolved.rule.id : null;
+      activeRulePattern = resolved.rule ? resolved.rule.pattern : '';
+      pageExcluded = resolved.excluded;
+      ownEntry = resolved.settings;
+      siteHasOwnConfig = resolved.source === 'rule' || resolved.source === 'hostname';
+      els.domainBadge.textContent = activeRulePattern || siteDomain;
+    }
     // Editing "this site" with no override of its own falls back to the
     // global default — the form should show what the page actually
     // renders right now, not a misleading blank slate.
-    const fallbackDefault = isSiteTarget ? data[DEFAULT_BG_KEY] : null;
+    const fallbackDefault = isSiteTarget && !pageExcluded ? data[DEFAULT_BG_KEY] : null;
     currentSettings = ownEntry || fallbackDefault || {
       mode: 'single',
       type: 'none',
@@ -2933,11 +2976,56 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.statusText.textContent = t('statusSynced');
   }
 
+  async function saveSettingsToCurrentTarget(settings) {
+    if (currentDomain === DEFAULT_BG_KEY) {
+      await chrome.storage.local.set({ [DEFAULT_BG_KEY]: settings });
+      return;
+    }
+    const data = await chrome.storage.local.get(URL_RULES_KEY);
+    const rules = window.PageDyeStorage.normalizeUrlRules(data[URL_RULES_KEY]);
+    if (activeRuleId) {
+      const index = rules.findIndex((rule) => rule && rule.id === activeRuleId);
+      if (index >= 0) {
+        rules[index] = { ...rules[index], settings };
+        await chrome.storage.local.set({ [URL_RULES_KEY]: rules });
+        return;
+      }
+      activeRuleId = null;
+    }
+    if (pageExcluded) {
+      const pattern = window.PageDyeStorage.normalizeRulePattern('exact', activePageUrl);
+      const rule = {
+        id: 'rule_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10),
+        type: 'exact',
+        pattern,
+        action: 'apply',
+        enabled: true,
+        settings
+      };
+      rules.unshift(rule);
+      rules.splice(window.PageDyeStorage.MAX_URL_RULES);
+      activeRuleId = rule.id;
+      activeRulePattern = pattern;
+      pageExcluded = false;
+      siteHasOwnConfig = true;
+      await chrome.storage.local.set({ [URL_RULES_KEY]: rules });
+      updateTargetHint();
+      return;
+    }
+    await chrome.storage.local.set({ [siteDomain]: settings });
+  }
+
+  function currentStorageTarget() {
+    return activeRuleId
+      ? { ruleId: activeRuleId, rulesKey: URL_RULES_KEY }
+      : { key: currentDomain };
+  }
+
   async function saveSettings(silent = true) {
     const settings = collectSettings();
 
     try {
-      await chrome.storage.local.set({ [currentDomain]: settings });
+      await saveSettingsToCurrentTarget(settings);
       if (currentDomain === siteDomain) { siteHasOwnConfig = true; updateTargetHint(); }
 
       try {
@@ -2960,7 +3048,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function resetSettings() {
     setSavingState();
-    await chrome.storage.local.remove(currentDomain);
+    if (!activeRuleId && !pageExcluded) await chrome.storage.local.remove(currentDomain);
     if (currentDomain === siteDomain) { siteHasOwnConfig = false; updateTargetHint(); }
 
     currentSettings = {
@@ -3067,6 +3155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // via the content script's storage listener — no popup reopen needed.
   async function startPicker() {
     const settings = collectSettings();
+    await saveSettingsToCurrentTarget(settings);
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
     try {
@@ -3074,7 +3163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: pagedyeElementPicker,
-        args: [settings, currentDomain, ['targetSelector'], t('pickerTipMultiple'), t('pickerTipSingle')]
+        args: [settings, currentStorageTarget(), ['targetSelector'], t('pickerTipMultiple'), t('pickerTipSingle')]
       });
       window.close();
     } catch (err) {
@@ -3090,6 +3179,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // any other entry's.
   async function startFrostedPicker(index) {
     const settings = collectSettings();
+    await saveSettingsToCurrentTarget(settings);
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
     try {
@@ -3097,7 +3187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: pagedyeElementPicker,
-        args: [settings, currentDomain, ['frostedGlass', index, 'selector'], t('pickerTipMultiple'), t('pickerTipSingle')]
+        args: [settings, currentStorageTarget(), ['frostedGlass', index, 'selector'], t('pickerTipMultiple'), t('pickerTipSingle')]
       });
       window.close();
     } catch (err) {
@@ -3111,6 +3201,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // deepCompatExclude selector list.
   async function startDeepCompatPicker() {
     const settings = collectSettings();
+    await saveSettingsToCurrentTarget(settings);
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
     try {
@@ -3118,7 +3209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: pagedyeElementPicker,
-        args: [settings, currentDomain, ['deepCompatExclude'], t('pickerTipMultiple'), t('pickerTipSingle')]
+        args: [settings, currentStorageTarget(), ['deepCompatExclude'], t('pickerTipMultiple'), t('pickerTipSingle')]
       });
       window.close();
     } catch (err) {

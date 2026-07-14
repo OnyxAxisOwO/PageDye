@@ -6,6 +6,8 @@
   const DEBUG_MODE_KEY = '__pagedye_debug_mode__';
   const EXTENSION_ENABLED_KEY = '__pagedye_extension_enabled__';
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
+  const DEFAULT_BG_KEY = '__pagedye_default_background__';
+  const URL_RULES_KEY = '__pagedye_url_rules_v081__';
   const POSITION_KEY = '__pagedye_debug_position__';
   const HOST_ID = 'pagedye-debug-host';
   const FPS_SAMPLE_SIZE = 90;
@@ -671,13 +673,16 @@
       return;
     }
     try {
-      chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY], (data) => {
+      chrome.storage.local.get([domain, DEFAULT_BG_KEY, URL_RULES_KEY, CUSTOM_EFFECTS_KEY], (data) => {
         if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
           teardown();
           return;
         }
         if (ui.tab !== 'state') return; // user may have switched tabs while this resolved
-        const settings = data[domain] || null;
+        const resolved = window.PageDyeStorage
+          ? window.PageDyeStorage.resolveUrlSettings(window.location.href, data[URL_RULES_KEY], data[domain], data[DEFAULT_BG_KEY])
+          : { settings: data[domain] || data[DEFAULT_BG_KEY] || null, source: data[domain] ? 'hostname' : 'default' };
+        const settings = resolved.settings || null;
         const effects = data[CUSTOM_EFFECTS_KEY] || [];
         const frosted = settings ? normalizeFrostedGlassList(settings.frostedGlass) : [];
 
