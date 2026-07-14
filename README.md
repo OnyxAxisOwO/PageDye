@@ -129,6 +129,12 @@ PageDye 不会把配置上传到服务器。只有当你主动填写远程图片
 npm run check
 ```
 
+## 特别感谢
+ - Claude Sonnet 5/GPT 5.6 Sol 主导开发
+ - Claude Opus 4.8/Fable 5 的 Bug 修复
+ - Gemini 3.1 Pro 的 UI 设计
+ - 豆包的拖后腿
+
 ## 许可证
 
 [MIT](LICENSE)
