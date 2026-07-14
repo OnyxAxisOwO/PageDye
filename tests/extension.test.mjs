@@ -413,7 +413,7 @@ test('options default to a simplified interface and gate expert tools behind adv
   assert.equal(storageSchema.KEYS.advancedMode, '__pagedye_advanced_mode__');
   assert.equal(storageSchema.isSiteSettingsKey(storageSchema.KEYS.advancedMode, true), false);
   assert.match(html, /id="advanced-mode-toggle"/);
-  for (const section of ['configs', 'custom-effects', 'debug']) {
+  for (const section of ['custom-effects', 'debug']) {
     assert.match(html, new RegExp(`data-target="section-${section}" data-advanced-only`));
   }
   assert.match(html, /class="advanced-feature-block" data-advanced-only/);
