@@ -41,6 +41,18 @@ test('popup and options include their shared image preparation helper', () => {
   assert.match(helper, /MAX_DIMENSION = 2560/);
 });
 
+test('configured-site editor uses centered popup-style tabs, modes, and selects', () => {
+  const html = read('options/options.html');
+  const css = read('options/options.css');
+
+  assert.match(html, /class="edit-view-tabs" id="edit-main-tabs"/);
+  assert.match(html, /class="mode-pill-group edit-wallpaper-mode" id="edit-wallpaper-mode"/);
+  assert.equal((html.match(/class="editor-select-wrap(?: compact)?"/g) || []).length, 7);
+  assert.match(css, /#section-edit-site \.edit-view-tabs label\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s);
+  assert.match(css, /#section-edit-site \.edit-wallpaper-mode label\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s);
+  assert.match(css, /#section-edit-site \.editor-select-wrap select\s*\{[^}]*border-radius:\s*12px;[^}]*appearance:\s*none;[^}]*font-weight:\s*600;/s);
+});
+
 test('popup keeps its scroll area and bottom navigation as direct layout siblings', () => {
   const popup = read('popup/popup.html');
   assert.match(popup, /<\/main>\s*<div class="bottom-nav"/);

@@ -4137,5 +4137,247 @@ input:checked + .slider.round:before {
   }
 }
 
+/* Keep the configured-site editor visually aligned with the popup controls. */
+#section-edit-site .edit-config-shell {
+  margin-bottom: 20px;
+}
+
+#section-edit-site .edit-view-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 18px;
+  background: var(--md-sys-color-surface-container);
+}
+
+#section-edit-site .edit-view-tabs input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#section-edit-site .edit-view-tabs label {
+  flex: 1 1 0;
+  display: flex;
+  min-width: 0;
+  min-height: 64px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+#section-edit-site .edit-view-tabs label:hover {
+  background: var(--md-state-hover);
+}
+
+#section-edit-site .edit-tab-icon {
+  display: inline-flex;
+  width: 64px;
+  height: 32px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+#section-edit-site .edit-tab-label {
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+#section-edit-site .edit-view-tabs input:checked + label {
+  color: var(--primary-color);
+}
+
+#section-edit-site .edit-view-tabs input:checked + label .edit-tab-icon {
+  background: var(--badge-color-bg);
+  color: var(--badge-color-text);
+}
+
+#section-edit-site .edit-view-tabs input:focus-visible + label {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+#section-edit-site .accordion {
+  margin: 0 2px 8px;
+  border-color: transparent;
+  border-radius: 18px;
+  background: var(--md-sys-color-surface-container);
+}
+
+#section-edit-site .accordion[open] {
+  background: var(--md-sys-color-surface-container-low);
+  box-shadow: var(--shadow-sm);
+}
+
+#section-edit-site .accordion-summary {
+  min-height: 40px;
+  padding: 5px 14px;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+#section-edit-site .accordion-summary:hover {
+  background: var(--md-state-hover);
+}
+
+#section-edit-site .accordion-content {
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-low);
+}
+
+#section-edit-site .accordion-highlight {
+  border-color: var(--primary-color);
+  background: var(--badge-color-bg);
+}
+
+#section-edit-site .edit-wallpaper-mode {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  overflow: visible;
+  padding: 2px 2px 8px;
+}
+
+#section-edit-site .edit-wallpaper-mode label {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 999px;
+  background: var(--md-sys-color-surface-container);
+  color: var(--text-secondary);
+  line-height: 1.2;
+  text-align: center;
+}
+
+#section-edit-site .edit-wallpaper-mode input:checked + label {
+  border-color: var(--primary-color);
+  background: var(--primary-color);
+  color: var(--primary-color-text);
+}
+
+#section-edit-site .editor-select-wrap {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  color: var(--text-secondary);
+}
+
+#section-edit-site .editor-select-wrap::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  pointer-events: none;
+  transform: translateY(-65%) rotate(45deg);
+}
+
+#section-edit-site .editor-select-wrap:focus-within {
+  color: var(--primary-color);
+}
+
+#section-edit-site .editor-select-wrap select {
+  width: 100%;
+  max-width: none;
+  min-height: 40px;
+  padding: 7px 38px 7px 13px;
+  border-color: transparent;
+  border-radius: 12px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--text-color);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+#section-edit-site .editor-select-wrap select:hover {
+  background: var(--md-sys-color-surface-container-high);
+}
+
+#section-edit-site .editor-select-wrap select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--input-focus-shadow);
+}
+
+#section-edit-site .control-group.row > .editor-select-wrap {
+  width: min(240px, 58%);
+  flex: 0 1 240px;
+}
+
+#section-edit-site .edit-time-selects {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#section-edit-site .editor-select-wrap.compact {
+  width: 92px;
+  flex: 0 0 92px;
+}
+
+#section-edit-site .editor-select-wrap.compact select {
+  min-height: 36px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  font-size: 12px;
+}
+
+#section-edit-site input[type="text"],
+#section-edit-site input[type="url"],
+#section-edit-site textarea {
+  border-color: var(--md-sys-color-outline-variant);
+  border-radius: 12px;
+  background: var(--md-sys-color-surface-container-high);
+}
+
+#section-edit-site .frosted-entry,
+#section-edit-site .select-color-card,
+#section-edit-site .scheme-card {
+  border-color: transparent;
+  border-radius: 20px;
+  background: var(--md-sys-color-surface-container);
+}
+
+@media (max-width: 560px) {
+  #section-edit-site .edit-wallpaper-mode {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #section-edit-site .control-group.row > .editor-select-wrap {
+    width: min(200px, 58%);
+    flex-basis: 200px;
+  }
+}
+
 
 
