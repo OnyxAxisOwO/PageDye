@@ -29,7 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
       copied: 'Configuration copied to {count} site(s).', groupCreated: 'Group created.',
       groupUpdated: 'Group updated.', exported: 'Selected sites exported.', imported: '{count} site(s) imported.',
       invalidFile: 'This is not a valid PageDye backup.', chooseSite: 'Choose at least one site first.',
-      confirmDeletePreset: 'Delete preset "{name}"?', delete: 'Delete', presetDeleted: 'Preset deleted.'
+      confirmDeletePreset: 'Delete preset "{name}"?', delete: 'Delete', presetDeleted: 'Preset deleted.',
+      exportConfirm: 'This selected-site backup is about {size} and contains {count} local image references. Export it now?'
     },
     zh: {
       nav: '预设与分组', title: '预设与站点分组',
@@ -52,7 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
       copied: '已复制到 {count} 个站点。', groupCreated: '分组已创建。',
       groupUpdated: '分组已更新。', exported: '选中站点已导出。', imported: '已导入 {count} 个站点。',
       invalidFile: '这不是有效的 PageDye 备份文件。', chooseSite: '请先选择至少一个站点。',
-      confirmDeletePreset: '删除预设“{name}”？', delete: '删除', presetDeleted: '预设已删除。'
+      confirmDeletePreset: '删除预设“{name}”？', delete: '删除', presetDeleted: '预设已删除。',
+      exportConfirm: '选中站点的备份约 {size}，包含 {count} 个本地图片引用。现在导出吗？'
     }
   }[zh ? 'zh' : 'en'];
 
@@ -369,6 +371,17 @@ document.addEventListener('DOMContentLoaded', () => {
   async function exportSelected() {
     if (!selectedSites.size) return;
     const backup = schema.buildSelectedSitesBackup(storageData, chrome.runtime.getManifest().version, [...selectedSites]);
+    const json = JSON.stringify(backup, null, 2);
+    const selectedStorage = Object.fromEntries([...selectedSites].filter((site) => sites[site]).map((site) => [site, sites[site]]));
+    const imageCount = window.PageDyeStorageManager.analyze(selectedStorage, schema).stats.imageCount;
+    const warning = text('exportConfirm', {
+      size: window.PageDyeStorageManager.formatBytes(window.PageDyeStorageManager.utf8Bytes(json)),
+      count: imageCount
+    });
+    const confirmed = typeof window.PageDyeOptionsConfirm === 'function'
+      ? await window.PageDyeOptionsConfirm(warning)
+      : window.confirm(warning);
+    if (!confirmed) return;
     downloadJson(backup, `pagedye-sites-${new Date().toISOString().slice(0, 10)}.json`);
     toast(text('exported'));
   }

@@ -51,6 +51,14 @@
           </svg>
           <span data-i18n="navAppearance">Appearance</span>
         </button>
+        <button type="button" class="nav-item" data-target="section-storage">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5" rx="8" ry="3"></ellipse>
+            <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path>
+            <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path>
+          </svg>
+          <span data-storage-i18n="nav">Storage</span>
+        </button>
         <button type="button" class="nav-item" data-target="section-backup">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -85,7 +93,7 @@
       </nav>
       
       <div class="sidebar-footer">
-        <span id="version" class="version-label">v0.8.2</span>
+        <span id="version" class="version-label">v0.8.3</span>
       </div>
     </aside>
     
@@ -433,6 +441,122 @@
         <button type="button" id="theme-reset-btn" class="btn secondary-btn" style="width: auto;" data-i18n="appearanceReset">Reset to Default</button>
       </section>
 
+      <section id="section-storage" class="content-section">
+        <div class="section-header storage-section-header">
+          <div>
+            <h2 data-storage-i18n="title">Storage Management</h2>
+            <p class="section-subtitle" data-storage-i18n="subtitle">Inspect local images, reclaim unused data, and keep backups under control.</p>
+          </div>
+          <button type="button" id="storage-refresh-btn" class="btn secondary-btn storage-refresh-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M20 11a8 8 0 1 0-2.3 5.7"></path>
+              <path d="M20 4v7h-7"></path>
+            </svg>
+            <span data-storage-i18n="refresh">Refresh</span>
+          </button>
+        </div>
+
+        <div class="storage-overview" aria-live="polite">
+          <article class="storage-metric-card">
+            <span data-storage-i18n="currentUsage">Current usage</span>
+            <strong id="storage-total-value">0 B</strong>
+            <small id="storage-quota-text" data-storage-i18n="calculating">Calculating...</small>
+          </article>
+          <article class="storage-metric-card">
+            <span data-storage-i18n="localImages">Local images</span>
+            <strong id="storage-images-value">0 B</strong>
+            <small id="storage-images-detail">0</small>
+          </article>
+          <article class="storage-metric-card">
+            <span data-storage-i18n="reclaimable">Immediately reclaimable</span>
+            <strong id="storage-reclaimable-value">0 B</strong>
+            <small id="storage-reclaimable-detail">0</small>
+          </article>
+          <article class="storage-metric-card">
+            <span data-storage-i18n="uniqueImages">Unique images</span>
+            <strong id="storage-unique-value">0</strong>
+            <small id="storage-duplicates-detail">0</small>
+          </article>
+        </div>
+
+        <div class="storage-quota" id="storage-quota" hidden>
+          <div class="storage-quota-track"><span id="storage-quota-bar"></span></div>
+        </div>
+
+        <div class="storage-tools" aria-label="Storage tools">
+          <div class="storage-tool-selects">
+            <label>
+              <span data-storage-i18n="sortBy">Sort images</span>
+              <select id="storage-sort-select">
+                <option value="size-desc" data-storage-i18n="sortLargest">Largest first</option>
+                <option value="size-asc" data-storage-i18n="sortSmallest">Smallest first</option>
+                <option value="source" data-storage-i18n="sortSource">Source</option>
+              </select>
+            </label>
+            <label>
+              <span data-storage-i18n="show">Show</span>
+              <select id="storage-filter-select">
+                <option value="all" data-storage-i18n="filterAll">All images</option>
+                <option value="duplicates" data-storage-i18n="filterDuplicates">Duplicates</option>
+                <option value="unused" data-storage-i18n="filterUnused">Unused</option>
+              </select>
+            </label>
+            <label>
+              <span data-storage-i18n="compressionQuality">Compression</span>
+              <select id="storage-quality-select">
+                <option value="0.84" data-storage-i18n="qualityHigh">High quality</option>
+                <option value="0.72" selected data-storage-i18n="qualityBalanced">Balanced</option>
+                <option value="0.60" data-storage-i18n="qualitySmall">Smaller files</option>
+              </select>
+            </label>
+          </div>
+          <div class="storage-tool-actions">
+            <button type="button" id="storage-find-duplicates-btn" class="btn secondary-btn" data-storage-i18n="findDuplicates">Find duplicates</button>
+            <button type="button" id="storage-delete-unused-btn" class="btn secondary-btn" data-storage-i18n="deleteUnused">Delete unused</button>
+            <button type="button" id="storage-recompress-btn" class="btn primary-btn" data-storage-i18n="recompress">Recompress images</button>
+          </div>
+        </div>
+        <div id="storage-operation-status" class="storage-operation-status hidden" role="status"></div>
+
+        <div class="card table-card storage-images-card">
+          <div class="table-responsive">
+            <table class="storage-table">
+              <thead>
+                <tr>
+                  <th data-storage-i18n="preview">Preview</th>
+                  <th data-storage-i18n="source">Site / source</th>
+                  <th data-storage-i18n="status">Status</th>
+                  <th data-storage-i18n="imageSize">Image size</th>
+                </tr>
+              </thead>
+              <tbody id="storage-images-body"></tbody>
+            </table>
+          </div>
+          <div id="storage-images-empty" class="no-data hidden"><p data-storage-i18n="noImages">No matching local images.</p></div>
+          <p id="storage-list-summary" class="storage-list-summary"></p>
+        </div>
+
+        <div class="subsection-heading storage-source-heading">
+          <h3 data-storage-i18n="sourceUsage">Usage by site and source</h3>
+          <p data-storage-i18n="sourceUsageHint">Includes configuration data and embedded image strings. Rule and preset rows are shown separately.</p>
+        </div>
+        <div class="card table-card">
+          <div class="table-responsive">
+            <table class="storage-table">
+              <thead>
+                <tr>
+                  <th data-storage-i18n="source">Site / source</th>
+                  <th data-storage-i18n="sourceType">Type</th>
+                  <th data-storage-i18n="images">Images</th>
+                  <th data-storage-i18n="totalSize">Total size</th>
+                </tr>
+              </thead>
+              <tbody id="storage-sources-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <!-- Section 2: Backup & Restore -->
       <section id="section-backup" class="content-section">
         <div class="section-header">
@@ -451,6 +575,7 @@
             </div>
             <h3 data-i18n="exportCardTitle">Export Backup</h3>
             <p data-i18n="exportCardText">Save all website background settings and custom styles into a backup file.</p>
+            <div id="backup-size-estimate" class="backup-size-estimate" data-storage-i18n="backupCalculating">Calculating backup size...</div>
             <button type="button" id="export-btn" class="btn primary-btn" data-i18n="exportBtn">Export Configs</button>
           </div>
           
@@ -518,7 +643,7 @@
           <div class="about-logo">
             <div class="logo-circle"></div>
             <h3>PageDye</h3>
-            <span class="badge" id="about-version">v0.8.2</span>
+            <span class="badge" id="about-version">v0.8.3</span>
           </div>
           
           <p class="about-desc" data-i18n="aboutText">PageDye is a browser extension that allows you to dye any webpage's background with your choice of color or custom image. You can adjust opacity, blur, repetition, element selector, and even inject custom CSS for complete control over readability and design.</p>
@@ -1087,7 +1212,7 @@
           </div>
           <div class="edit-actions-right">
             <button type="button" id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
-            <span class="version-text" id="edit-version">v0.8.2</span>
+            <span class="version-text" id="edit-version">v0.8.3</span>
             <span class="divider">|</span>
             <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; display: block;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
@@ -1210,6 +1335,7 @@
     </div>
   </div>
   <script src="../scripts/storage-schema.js"></script>
+  <script src="../scripts/storage-manager.js"></script>
   <script src="../scripts/gradient.js"></script>
   <script src="../scripts/config-presets.js"></script>
   <script src="../scripts/image.js"></script>
@@ -1219,5 +1345,6 @@
   <script src="../scripts/injection.js"></script>
   <script src="options.js"></script>
   <script src="config-manager.js"></script>
+  <script src="storage-manager-ui.js"></script>
 </body>
 </html>

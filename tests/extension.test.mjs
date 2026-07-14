@@ -10,6 +10,7 @@ const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const read = (file) => readFileSync(resolve(root, file), 'utf8');
 const require = createRequire(import.meta.url);
 const storageSchema = require(resolve(root, 'scripts/storage-schema.js'));
+const storageManager = require(resolve(root, 'scripts/storage-manager.js'));
 
 function pngDimensions(file) {
   const buffer = readFileSync(resolve(root, file));
@@ -298,6 +299,97 @@ test('configuration presets, site groups, and selected-site backups are validate
   assert.throws(() => storageSchema.buildBackup({
     [storageSchema.KEYS.siteGroups]: [{ ...group, sites: ['one.example', 'one.example'] }]
   }, '0.8.1'), /site groups/);
+});
+
+test('storage manager audits nested images, duplicates, owners, and reclaimable bytes', () => {
+  const repeated = 'data:image/png;base64,AAAA';
+  const unused = 'data:image/jpeg;base64,AQIDBA==';
+  const storage = {
+    'one.example': {
+      mode: 'single', type: 'image', value: repeated,
+      light: { type: 'color', value: unused }
+    },
+    'two.example': {
+      mode: 'auto', type: 'color', value: unused,
+      light: { type: 'image', value: repeated },
+      dark: { type: 'color', value: '#111111' }
+    },
+    [storageSchema.KEYS.urlRules]: [{
+      id: 'rule_storage', type: 'hostname', pattern: 'rule.example', action: 'apply', enabled: true,
+      settings: { mode: 'slideshow', type: 'none', value: '', slideshow: { items: [{ type: 'image', value: repeated }] } }
+    }],
+    [storageSchema.KEYS.configPresets]: [{
+      id: 'preset_storage', name: 'Stored image', createdAt: 1, updatedAt: 2,
+      settings: { mode: 'timeRange', type: 'none', value: '', timeRange: { items: [{ id: 'day', name: 'Day', start: 6, end: 18, type: 'image', value: repeated }] } }
+    }],
+    [storageSchema.KEYS.uiTheme]: { pageBgImage: { name: 'panel.png', data: repeated } }
+  };
+
+  const report = storageManager.analyze(storage, storageSchema);
+  assert.equal(storageManager.dataUrlBytes(repeated), 3);
+  assert.equal(storageManager.dataUrlBytes(unused), 4);
+  assert.equal(report.stats.imageCount, 7);
+  assert.equal(report.stats.uniqueImageCount, 2);
+  assert.equal(report.stats.unusedCount, 2);
+  assert.equal(report.stats.duplicateGroupCount, 2);
+  assert.equal(report.duplicateGroups[0].count, 5);
+  assert.ok(report.owners.some((owner) => owner.type === 'site' && owner.label === 'one.example'));
+  assert.ok(report.owners.some((owner) => owner.type === 'rule' && owner.label === 'rule.example'));
+  assert.ok(report.owners.some((owner) => owner.type === 'preset' && owner.label === 'Stored image'));
+  assert.ok(report.owners.some((owner) => owner.type === 'appearance'));
+});
+
+test('storage manager removes only unused paths and replaces all managed occurrences', () => {
+  const oldImage = 'data:image/png;base64,AAAA';
+  const replacement = 'data:image/webp;base64,AQID';
+  const storage = {
+    'one.example': {
+      mode: 'single', type: 'image', value: oldImage,
+      light: { type: 'image', value: oldImage },
+      dark: { type: 'color', value: oldImage }
+    },
+    [storageSchema.KEYS.uiTheme]: { containerBgImage: { data: oldImage, name: 'old.png' } }
+  };
+
+  const cleaned = storageManager.removeUnreferenced(storage, null, storageSchema);
+  assert.equal(cleaned.removedCount, 1);
+  assert.equal(cleaned.write['one.example'].value, oldImage);
+  assert.equal(cleaned.write['one.example'].light.value, oldImage);
+  assert.equal(cleaned.write['one.example'].dark.value, '');
+  assert.equal(storage['one.example'].light.value, oldImage, 'source storage must not be mutated');
+
+  const replaced = storageManager.replaceImages(storage, new Map([[oldImage, replacement]]), storageSchema);
+  assert.equal(replaced.replacedCount, 4);
+  assert.equal(replaced.write['one.example'].value, replacement);
+  assert.equal(replaced.write['one.example'].light.value, replacement);
+  assert.equal(replaced.write[storageSchema.KEYS.uiTheme].containerBgImage.data, replacement);
+  assert.ok(replaced.replacementBytes < replaced.originalBytes || replacement.length >= oldImage.length);
+});
+
+test('storage management interface exposes all requested workflows', () => {
+  const html = read('options/options.html');
+  const ui = read('options/storage-manager-ui.js');
+  const images = read('scripts/image.js');
+  const options = read('options/options.js');
+  const configs = read('options/config-manager.js');
+  const css = read('options/options.css');
+
+  for (const id of [
+    'section-storage', 'storage-total-value', 'storage-images-value', 'storage-sources-body',
+    'storage-sort-select', 'storage-find-duplicates-btn', 'storage-delete-unused-btn', 'storage-recompress-btn',
+    'backup-size-estimate'
+  ]) assert.match(html, new RegExp(`id="${id}"`));
+  assert.match(html, /scripts\/storage-manager\.js/);
+  assert.match(html, /storage-manager-ui\.js/);
+  assert.match(ui, /getBytesInUse\(null\)/);
+  assert.match(ui, /removeUnreferenced/);
+  assert.match(ui, /replaceImages/);
+  assert.match(images, /async function recompressDataUrl/);
+  assert.match(images, /RECOMPRESSIBLE_TYPES/);
+  assert.match(options, /This backup is about/);
+  assert.match(configs, /exportConfirm/);
+  assert.match(css, /\.storage-section-header\s*>\s*div:first-child\s*\{[^}]*flex:\s*1 1 auto/s);
+  assert.match(css, /\.storage-section-header\s+\.storage-refresh-btn\s*\{[^}]*width:\s*auto[^}]*max-width:\s*max-content[^}]*flex:\s*0 0 auto/s);
 });
 
 test('preset and group interfaces expose quick and advanced workflows', () => {

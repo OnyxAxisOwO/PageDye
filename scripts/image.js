@@ -6,6 +6,7 @@
   const MAX_INPUT_IMAGE_BYTES = 32 * 1024 * 1024;
   const MAX_STORED_IMAGE_BYTES = 8 * 1024 * 1024;
   const WEBP_QUALITIES = [0.86, 0.72, 0.58];
+  const RECOMPRESSIBLE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/avif', 'image/bmp']);
 
   function readAsDataUrl(blob) {
     return new Promise((resolve, reject) => {
@@ -28,6 +29,26 @@
 
   function canvasToBlob(canvas, quality) {
     return new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', quality));
+  }
+
+  function dataUrlToBlob(dataUrl) {
+    if (typeof dataUrl !== 'string' || !/^data:image\//i.test(dataUrl)) {
+      throw new Error('Invalid local image data');
+    }
+    const comma = dataUrl.indexOf(',');
+    if (comma < 0) throw new Error('Invalid local image data');
+    const header = dataUrl.slice(0, comma);
+    const mime = header.match(/^data:([^;,]+)/i)?.[1]?.toLowerCase() || 'application/octet-stream';
+    const payload = dataUrl.slice(comma + 1);
+    let bytes;
+    if (/;base64(?:;|$)/i.test(header)) {
+      const binary = atob(payload.replace(/\s/g, ''));
+      bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    } else {
+      bytes = new TextEncoder().encode(decodeURIComponent(payload));
+    }
+    return new Blob([bytes], { type: mime });
   }
 
   function tooLargeError() {
@@ -95,8 +116,60 @@
     }
   }
 
+  async function recompressDataUrl(dataUrl, options = {}) {
+    const source = dataUrlToBlob(dataUrl);
+    if (!RECOMPRESSIBLE_TYPES.has(source.type)) {
+      return {
+        dataUrl,
+        originalBytes: source.size,
+        storedBytes: source.size,
+        compressed: false,
+        skippedReason: 'format'
+      };
+    }
+
+    const quality = Math.max(0.4, Math.min(0.9, Number(options.quality) || 0.72));
+    const maxDimension = Math.max(640, Math.min(MAX_DIMENSION, Number(options.maxDimension) || 2048));
+    const image = await loadImage(source);
+    const naturalWidth = image.naturalWidth || image.width;
+    const naturalHeight = image.naturalHeight || image.height;
+    if (!naturalWidth || !naturalHeight) throw new Error('Unable to decode image dimensions');
+    const scale = Math.min(1, maxDimension / Math.max(naturalWidth, naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(naturalHeight * scale));
+    const context = canvas.getContext('2d', { alpha: true });
+    if (!context) throw new Error('Unable to create image canvas');
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    const candidate = await canvasToBlob(canvas, quality);
+    if (!candidate) throw new Error('Unable to encode image');
+    const minimumSaving = Math.max(1024, Math.round(source.size * 0.03));
+    if (candidate.size > MAX_STORED_IMAGE_BYTES || source.size - candidate.size < minimumSaving) {
+      return {
+        dataUrl,
+        originalBytes: source.size,
+        storedBytes: source.size,
+        compressed: false,
+        skippedReason: 'no-saving',
+        width: canvas.width,
+        height: canvas.height
+      };
+    }
+
+    return {
+      dataUrl: await readAsDataUrl(candidate),
+      originalBytes: source.size,
+      storedBytes: candidate.size,
+      compressed: true,
+      width: canvas.width,
+      height: canvas.height
+    };
+  }
+
   window.PageDyeImage = {
     prepareImage,
+    recompressDataUrl,
     MAX_DIMENSION,
     MAX_INPUT_IMAGE_BYTES,
     MAX_STORED_IMAGE_BYTES

@@ -2065,6 +2065,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (backupBytes > window.PageDyeStorage.MAX_BACKUP_BYTES) {
         throw new Error('Backup exceeds the maximum supported size.');
       }
+      const storageAnalysis = window.PageDyeStorageManager.analyze(data, window.PageDyeStorage);
+      const backupImageCount = storageAnalysis.images.filter((image) => image.ownerType !== 'appearance').length;
+      const sizeWarning = lang === 'zh'
+        ? `本次备份约 ${window.PageDyeStorageManager.formatBytes(backupBytes)}，包含 ${backupImageCount} 个本地图片引用。现在导出吗？`
+        : `This backup is about ${window.PageDyeStorageManager.formatBytes(backupBytes)} and contains ${backupImageCount} local image references. Export it now?`;
+      if (!(await showConfirm(sizeWarning))) return;
       const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -2469,6 +2475,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       cancelBtn.focus();
     });
   }
+  window.PageDyeOptionsConfirm = showConfirm;
 
   // Edit Site Feature Implementation
   let currentEditingDomain = '';
