@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
       exportConfirm: 'This backup is about {size} and contains {count} images. Download it now?'
     },
     zh: {
-      nav: '批量工具', title: '批量工具',
+      nav: '预设', title: '预设',
       subtitle: '保存整套背景效果，并一次应用到多个网站。',
       exportSelected: '导出选中站点', importSelected: '导入选中站点',
       presetsTitle: '已保存的整套效果', presetsHint: '保存一个网站的完整效果，之后可以直接用在其他网站上。',
