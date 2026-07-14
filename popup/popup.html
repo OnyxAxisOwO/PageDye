@@ -39,15 +39,15 @@
            common "why isn't this working" case on stubborn pages. -->
       <details class="accordion accordion-highlight" id="accordion-deepcompat">
         <summary class="accordion-summary">
-          <span data-i18n="runMode">Run Mode</span>
-          <span class="badge-new" id="run-mode-badge" data-i18n="runModeNormal">Normal</span>
+          <span data-i18n="runMode">Website Compatibility</span>
+          <span class="badge-new" id="run-mode-badge" data-i18n="runModeNormal">Standard</span>
           <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </summary>
         <div class="accordion-content">
           <div class="control-group" style="margin-bottom: 12px;">
             <div class="segmented-control run-mode-control" id="run-mode-control">
               <input type="radio" name="deepCompatMode" value="normal" id="run-mode-normal" checked>
-              <label for="run-mode-normal" data-i18n="runModeNormal">Normal</label>
+              <label for="run-mode-normal" data-i18n="runModeNormal">Standard</label>
 
               <input type="radio" name="deepCompatMode" value="enhanced" id="run-mode-enhanced">
               <label for="run-mode-enhanced" data-i18n="runModeEnhanced">Enhanced</label>
@@ -56,7 +56,8 @@
               <label for="run-mode-strong" data-i18n="runModeStrong">Strong</label>
             </div>
           </div>
-          <div class="control-group" style="margin-bottom: 0;">
+          <p class="hint run-mode-hint" data-i18n="runModeHint">If the background is covered, try Enhanced first. Use Strong only if the problem continues.</p>
+          <div class="control-group" style="margin-bottom: 0;" data-advanced-only>
             <label data-i18n="excludeControls" style="display: block; font-size: 12px; margin-bottom: 6px; color: var(--text-secondary);">Exclude elements:</label>
             <div id="deep-compat-exclude-list"></div>
             <div class="control-group row" style="margin-top: 8px;">
@@ -91,7 +92,7 @@
               </svg>
               <span data-preset-i18n="saveCurrent">Save</span>
             </button>
-            <button type="button" id="quick-preset-manage" class="quick-preset-manage" title="Manage presets" aria-label="Manage presets" data-preset-i18n-title="manage">
+            <button type="button" id="quick-preset-manage" class="quick-preset-manage" title="Manage presets" aria-label="Manage presets" data-preset-i18n-title="manage" data-advanced-only>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="4" y1="6" x2="20" y2="6"></line><circle cx="9" cy="6" r="2"></circle>
                 <line x1="4" y1="12" x2="20" y2="12"></line><circle cx="15" cy="12" r="2"></circle>
@@ -122,8 +123,8 @@
       <!-- Details 1: Wallpaper Mode & Rotation -->
       <details class="accordion" id="accordion-mode" open>
         <summary class="accordion-summary">
-          <span data-i18n="wallpaperMode">Wallpaper Mode</span>
-          <span class="active-mode-badge" id="active-mode-badge" data-i18n="modeSingle">Single</span>
+          <span data-i18n="wallpaperMode">Background Schedule</span>
+          <span class="active-mode-badge" id="active-mode-badge" data-i18n="modeSingle">Always</span>
           <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </summary>
         <div class="accordion-content">
@@ -238,7 +239,7 @@
       <!-- Details 2: Wallpaper Background Type & Config -->
       <details class="accordion" id="accordion-bg" open>
         <summary class="accordion-summary">
-          <span data-i18n="bgType">Background Settings</span>
+          <span data-i18n="bgType">Choose a Background</span>
           <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </summary>
         <div class="accordion-content">
@@ -463,7 +464,7 @@
             </div>
 
             <div class="control-group" style="margin-bottom: 0;">
-              <label for="image-url" data-i18n="orPasteUrl">Or paste image URL</label>
+              <label for="image-url" data-i18n="orPasteUrl">Or paste an image address</label>
               <input type="url" id="image-url" placeholder="https://example.com/image.jpg">
             </div>
             
@@ -484,14 +485,14 @@
               <input type="checkbox" id="effect-overlay-toggle">
               <span data-i18n="effectOverlayEnable">Layer an animated effect</span>
             </label>
-            <p class="hint" data-i18n="effectOverlayHint" style="margin-top: 6px; margin-bottom: 0;">Adds an animated Canvas wallpaper on top — combine with Solid, Gradient or Image, or use alone.</p>
+            <p class="hint" data-i18n="effectOverlayHint" style="margin-top: 6px; margin-bottom: 0;">Add movement over a color, gradient, or image, or use it on its own.</p>
           </div>
 
           <!-- Effects Section -->
           <div id="section-effects" class="section hidden" style="margin-top: 12px;">
             <div class="control-group">
               <label for="effect-kind" data-i18n="effectKind">Effect</label>
-              <p class="hint" data-i18n="effectKindHint">A minimalist black &amp; white animated wallpaper, rendered locally with Canvas — no external assets.</p>
+              <p class="hint" data-i18n="effectKindHint">Animated backgrounds are created on your device and do not download extra media.</p>
               <select id="effect-kind">
                 <option value="matrix" data-i18n="effectMatrix">Matrix</option>
                 <option value="particles" data-i18n="effectParticles">Particles</option>
@@ -510,7 +511,7 @@
                 <option value="vortex" data-i18n="effectVortex">Vortex</option>
                 <option value="typewriter" data-i18n="effectTypewriter">Typewriter</option>
               </select>
-              <button type="button" id="manage-custom-effects-link" class="ghost-link-btn" data-i18n="manageCustomEffects">Manage custom effects…</button>
+              <button type="button" id="manage-custom-effects-link" class="ghost-link-btn" data-i18n="manageCustomEffects" data-advanced-only>Manage custom effects…</button>
             </div>
 
             <div class="control-group hidden" id="effect-text-control">
@@ -654,9 +655,9 @@
 
 
       <!-- Advanced Settings Accordion -->
-      <details class="accordion" id="accordion-advanced">
+      <details class="accordion" id="accordion-advanced" data-advanced-only>
         <summary class="accordion-summary">
-          <span data-i18n="advanced">Advanced Settings</span>
+          <span data-i18n="advanced">Developer Controls</span>
           <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </summary>
         <div class="accordion-content">

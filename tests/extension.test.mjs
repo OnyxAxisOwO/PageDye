@@ -392,6 +392,27 @@ test('storage management interface exposes all requested workflows', () => {
   assert.match(css, /\.storage-section-header\s+\.storage-refresh-btn\s*\{[^}]*width:\s*auto[^}]*max-width:\s*max-content[^}]*flex:\s*0 0 auto/s);
 });
 
+test('options default to a simplified interface and gate expert tools behind advanced mode', () => {
+  const html = read('options/options.html');
+  const options = read('options/options.js');
+  const storageUi = read('options/storage-manager-ui.js');
+  const css = read('options/options.css');
+
+  assert.equal(storageSchema.KEYS.advancedMode, '__pagedye_advanced_mode__');
+  assert.equal(storageSchema.isSiteSettingsKey(storageSchema.KEYS.advancedMode, true), false);
+  assert.match(html, /id="advanced-mode-toggle"/);
+  for (const section of ['configs', 'custom-effects', 'debug']) {
+    assert.match(html, new RegExp(`data-target="section-${section}" data-advanced-only`));
+  }
+  assert.match(html, /class="advanced-feature-block" data-advanced-only/);
+  assert.match(html, /class="storage-tools"[^>]*data-advanced-only/);
+  assert.match(html, /id="storage-delete-unused-btn"/);
+  assert.match(css, /body:not\(\.advanced-mode\) \[data-advanced-only\]\s*\{[^}]*display:\s*none\s*!important/s);
+  assert.match(options, /document\.body\.classList\.toggle\('advanced-mode', enabled\)/);
+  assert.match(options, /\[ADVANCED_MODE_KEY\]: false, \[DEBUG_MODE_KEY\]: false/);
+  assert.doesNotMatch(storageUi, /Base64 data|本地图片引用|未引用图片字段/);
+});
+
 test('preset and group interfaces expose quick and advanced workflows', () => {
   const optionsHtml = read('options/options.html');
   const popupHtml = read('popup/popup.html');

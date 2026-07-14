@@ -20,6 +20,7 @@
 
   const KEYS = Object.freeze({
     uiTheme: '__pagedye_ui_theme__',
+    advancedMode: '__pagedye_advanced_mode__',
     pauseShortcut: '__pagedye_pause_shortcut__',
     customEffects: '__pagedye_custom_effects__',
     customPresetColors: '__pagedye_custom_preset_colors__',

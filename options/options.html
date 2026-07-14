@@ -26,7 +26,7 @@
           </svg>
           <span data-i18n="navSites">Configured Sites</span>
         </button>
-        <button type="button" class="nav-item" data-target="section-configs">
+        <button type="button" class="nav-item" data-target="section-configs" data-advanced-only>
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="4" width="7" height="7" rx="1"></rect>
             <rect x="14" y="4" width="7" height="7" rx="1"></rect>
@@ -35,7 +35,7 @@
           </svg>
           <span data-config-i18n="nav">Presets & Groups</span>
         </button>
-        <button type="button" class="nav-item" data-target="section-custom-effects">
+        <button type="button" class="nav-item" data-target="section-custom-effects" data-advanced-only>
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
           </svg>
@@ -49,7 +49,7 @@
             <circle cx="6.5" cy="12.5" r=".5"></circle>
             <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
           </svg>
-          <span data-i18n="navAppearance">Appearance</span>
+          <span data-i18n="navAppearance">Interface</span>
         </button>
         <button type="button" class="nav-item" data-target="section-storage">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -65,9 +65,23 @@
             <polyline points="17 8 12 3 7 8"></polyline>
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
-          <span data-i18n="navBackup">Backup & Restore</span>
+          <span data-i18n="navBackup">Backup</span>
         </button>
-        <button type="button" class="nav-item" data-target="section-debug">
+        <button type="button" class="nav-item" data-target="section-settings">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 21v-7"></path>
+            <path d="M4 10V3"></path>
+            <path d="M12 21v-9"></path>
+            <path d="M12 8V3"></path>
+            <path d="M20 21v-5"></path>
+            <path d="M20 12V3"></path>
+            <path d="M1 14h6"></path>
+            <path d="M9 8h6"></path>
+            <path d="M17 16h6"></path>
+          </svg>
+          <span data-i18n="navSettings">Settings</span>
+        </button>
+        <button type="button" class="nav-item" data-target="section-debug" data-advanced-only>
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
             <rect x="9" y="9" width="6" height="6"></rect>
@@ -80,7 +94,7 @@
             <line x1="1" y1="9" x2="4" y2="9"></line>
             <line x1="1" y1="14" x2="4" y2="14"></line>
           </svg>
-          <span data-i18n="navDebug">Debug Mode</span>
+          <span data-i18n="navDebug">Diagnostics</span>
         </button>
         <button type="button" class="nav-item" data-target="section-about">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -102,69 +116,74 @@
       <!-- Section 1: Configured Sites -->
       <section id="section-sites" class="content-section active">
         <div class="section-header">
-          <div class="section-header-row">
+          <h2 data-i18n="sitesTitle">Website Backgrounds</h2>
+          <p class="section-subtitle" data-i18n="sitesHint">View and update the backgrounds you have saved.</p>
+        </div>
+
+        <div class="advanced-feature-block" data-advanced-only>
+          <div class="subsection-heading advanced-feature-heading">
             <div>
-              <h2 data-i18n="sitesTitle">URL Rules</h2>
-              <p class="section-subtitle" data-i18n="sitesHint">The first enabled matching rule wins. Drag rules to change priority.</p>
+              <h3 data-i18n="urlRulesTitle">Page Rules</h3>
+              <p data-i18n="urlRulesHint">Use different backgrounds on specific pages, or leave a page unchanged.</p>
             </div>
             <button type="button" id="new-rule-btn" class="btn primary-btn" data-i18n="newRule">New Rule</button>
           </div>
-        </div>
 
-        <form id="rule-form" class="rule-form hidden" novalidate>
-          <div class="rule-form-grid">
-            <label class="form-group">
-              <span data-i18n="ruleAction">Action</span>
-              <select id="rule-action">
-                <option value="apply" data-i18n="ruleApply">Apply background</option>
-                <option value="exclude" data-i18n="ruleExclude">Exclude page</option>
-              </select>
-            </label>
-            <label class="form-group">
-              <span data-i18n="ruleType">Match type</span>
-              <select id="rule-type">
-                <option value="hostname" data-i18n="ruleHostname">Hostname</option>
-                <option value="exact" data-i18n="ruleExact">Exact URL</option>
-                <option value="prefix" data-i18n="rulePrefix">Path prefix</option>
-                <option value="wildcard" data-i18n="ruleWildcard">Wildcard domain</option>
-              </select>
-            </label>
-            <label class="form-group rule-pattern-group">
-              <span data-i18n="rulePattern">Pattern</span>
-              <input id="rule-pattern" type="text" required autocomplete="off" placeholder="github.com/settings/*">
-              <small id="rule-pattern-hint" data-i18n="rulePatternHint">Examples: github.com, https://github.com/settings/profile, github.com/settings/*, *.example.com</small>
-            </label>
-          </div>
-          <p id="rule-form-error" class="form-error hidden" role="alert"></p>
-          <div class="rule-form-actions">
-            <button type="button" id="rule-cancel-btn" class="btn secondary-btn" data-i18n="confirmCancel">Cancel</button>
-            <button type="submit" class="btn primary-btn" data-i18n="createRule">Create Rule</button>
-          </div>
-        </form>
+          <form id="rule-form" class="rule-form hidden" novalidate>
+            <div class="rule-form-grid">
+              <label class="form-group">
+                <span data-i18n="ruleAction">What to do</span>
+                <select id="rule-action">
+                  <option value="apply" data-i18n="ruleApply">Use a background</option>
+                  <option value="exclude" data-i18n="ruleExclude">Leave page unchanged</option>
+                </select>
+              </label>
+              <label class="form-group">
+                <span data-i18n="ruleType">Which pages</span>
+                <select id="rule-type">
+                  <option value="hostname" data-i18n="ruleHostname">Whole website</option>
+                  <option value="exact" data-i18n="ruleExact">One exact page</option>
+                  <option value="prefix" data-i18n="rulePrefix">Pages under a path</option>
+                  <option value="wildcard" data-i18n="ruleWildcard">Website and subdomains</option>
+                </select>
+              </label>
+              <label class="form-group rule-pattern-group">
+                <span data-i18n="rulePattern">Website or page address</span>
+                <input id="rule-pattern" type="text" required autocomplete="off" placeholder="github.com/settings/*">
+                <small id="rule-pattern-hint" data-i18n="rulePatternHint">Examples: github.com, https://github.com/settings/profile, github.com/settings/*, *.example.com</small>
+              </label>
+            </div>
+            <p id="rule-form-error" class="form-error hidden" role="alert"></p>
+            <div class="rule-form-actions">
+              <button type="button" id="rule-cancel-btn" class="btn secondary-btn" data-i18n="confirmCancel">Cancel</button>
+              <button type="submit" class="btn primary-btn" data-i18n="createRule">Save Rule</button>
+            </div>
+          </form>
 
-        <div class="card table-card rules-table-card">
-          <div class="table-responsive">
-            <table class="sites-table rules-table">
-              <thead>
-                <tr>
-                  <th class="rule-priority-column" data-i18n="rulePriority">Priority</th>
-                  <th data-i18n="ruleMatch">Match</th>
-                  <th data-i18n="ruleBehavior">Behavior</th>
-                  <th data-i18n="ruleStatus">Enabled</th>
-                  <th data-i18n="thActions">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="rules-list-body"></tbody>
-            </table>
-          </div>
-          <div id="no-rules-msg" class="no-data hidden">
-            <p data-i18n="noRules">No URL rules yet. Hostname settings below still work as before.</p>
+          <div class="card table-card rules-table-card">
+            <div class="table-responsive">
+              <table class="sites-table rules-table">
+                <thead>
+                  <tr>
+                    <th class="rule-priority-column" data-i18n="rulePriority">Order</th>
+                    <th data-i18n="ruleMatch">Pages</th>
+                    <th data-i18n="ruleBehavior">Result</th>
+                    <th data-i18n="ruleStatus">On</th>
+                    <th data-i18n="thActions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="rules-list-body"></tbody>
+              </table>
+            </div>
+            <div id="no-rules-msg" class="no-data hidden">
+              <p data-i18n="noRules">No page rules yet.</p>
+            </div>
           </div>
         </div>
 
         <div class="subsection-heading">
-          <h3 data-i18n="hostnameFallbacks">Hostname Fallbacks</h3>
-          <p data-i18n="hostnameFallbacksHint">Used only when no enabled URL rule matches.</p>
+          <h3 data-i18n="hostnameFallbacks">Saved Websites</h3>
+          <p data-i18n="hostnameFallbacksHint">Select a website to change its background.</p>
         </div>
         
         <div class="card search-card">
@@ -210,8 +229,8 @@
 
         <div class="config-subsection-heading">
           <div>
-            <h3 data-config-i18n="presetsTitle">Configuration presets</h3>
-            <p data-config-i18n="presetsHint">A preset includes wallpaper, effects, frosted glass, compatibility, cursor, and custom CSS settings.</p>
+            <h3 data-config-i18n="presetsTitle">Saved setups</h3>
+            <p data-config-i18n="presetsHint">A saved setup keeps the complete look of a website so you can reuse it elsewhere.</p>
           </div>
         </div>
 
@@ -372,7 +391,7 @@
             </div>
           </div>
 
-          <div class="control-group">
+          <div class="control-group" data-advanced-only>
             <label data-i18n="pageBackground">Page Background</label>
             <p class="hint" data-i18n="pageBackgroundHint">The outer area surrounding the dashboard panel.</p>
             <div class="color-input-wrapper" style="margin-bottom: 10px;">
@@ -394,7 +413,7 @@
             </div>
           </div>
 
-          <div class="control-group" style="margin-bottom: 0;">
+          <div class="control-group" style="margin-bottom: 0;" data-advanced-only>
             <label data-i18n="containerBackground">Container Background</label>
             <p class="hint" data-i18n="containerBackgroundHint">The sidebar and main panel background.</p>
             <div class="color-input-wrapper" style="margin-bottom: 10px;">
@@ -416,7 +435,7 @@
             </div>
           </div>
         </div>
-        <div class="card">
+        <div class="card" data-advanced-only>
           <div class="control-group" style="margin-bottom: 0;">
             <label class="checkbox-label">
               <input type="checkbox" id="theme-disable-animation">
@@ -444,8 +463,8 @@
       <section id="section-storage" class="content-section">
         <div class="section-header storage-section-header">
           <div>
-            <h2 data-storage-i18n="title">Storage Management</h2>
-            <p class="section-subtitle" data-storage-i18n="subtitle">Inspect local images, reclaim unused data, and keep backups under control.</p>
+            <h2 data-storage-i18n="title">Storage Space</h2>
+            <p class="section-subtitle" data-storage-i18n="subtitle">See how much space PageDye uses and safely remove images you no longer need.</p>
           </div>
           <button type="button" id="storage-refresh-btn" class="btn secondary-btn storage-refresh-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -472,18 +491,31 @@
             <strong id="storage-reclaimable-value">0 B</strong>
             <small id="storage-reclaimable-detail">0</small>
           </article>
-          <article class="storage-metric-card">
+          <article class="storage-metric-card" data-advanced-only>
             <span data-storage-i18n="uniqueImages">Unique images</span>
             <strong id="storage-unique-value">0</strong>
             <small id="storage-duplicates-detail">0</small>
           </article>
         </div>
 
-        <div class="storage-quota" id="storage-quota" hidden>
+        <div class="storage-quota" id="storage-quota" hidden data-advanced-only>
           <div class="storage-quota-track"><span id="storage-quota-bar"></span></div>
         </div>
 
-        <div class="storage-tools" aria-label="Storage tools">
+        <div class="storage-cleanup-panel">
+          <div>
+            <h3 data-storage-i18n="cleanupTitle">Free up space</h3>
+            <p data-storage-i18n="cleanupHint">Remove images that are no longer used by any saved background. Images in use stay untouched.</p>
+          </div>
+          <button type="button" id="storage-delete-unused-btn" class="btn primary-btn" data-storage-i18n="deleteUnused">Clean up unused images</button>
+        </div>
+        <div id="storage-operation-status" class="storage-operation-status hidden" role="status"></div>
+
+        <div class="subsection-heading storage-details-heading" data-advanced-only>
+          <h3 data-storage-i18n="detailsTitle">Detailed image tools</h3>
+          <p data-storage-i18n="detailsHint">Review individual images, find extra copies, or reduce image file sizes.</p>
+        </div>
+        <div class="storage-tools" aria-label="Storage tools" data-advanced-only>
           <div class="storage-tool-selects">
             <label>
               <span data-storage-i18n="sortBy">Sort images</span>
@@ -512,13 +544,11 @@
           </div>
           <div class="storage-tool-actions">
             <button type="button" id="storage-find-duplicates-btn" class="btn secondary-btn" data-storage-i18n="findDuplicates">Find duplicates</button>
-            <button type="button" id="storage-delete-unused-btn" class="btn secondary-btn" data-storage-i18n="deleteUnused">Delete unused</button>
             <button type="button" id="storage-recompress-btn" class="btn primary-btn" data-storage-i18n="recompress">Recompress images</button>
           </div>
         </div>
-        <div id="storage-operation-status" class="storage-operation-status hidden" role="status"></div>
 
-        <div class="card table-card storage-images-card">
+        <div class="card table-card storage-images-card" data-advanced-only>
           <div class="table-responsive">
             <table class="storage-table">
               <thead>
@@ -536,11 +566,11 @@
           <p id="storage-list-summary" class="storage-list-summary"></p>
         </div>
 
-        <div class="subsection-heading storage-source-heading">
+        <div class="subsection-heading storage-source-heading" data-advanced-only>
           <h3 data-storage-i18n="sourceUsage">Usage by site and source</h3>
           <p data-storage-i18n="sourceUsageHint">Includes configuration data and embedded image strings. Rule and preset rows are shown separately.</p>
         </div>
-        <div class="card table-card">
+        <div class="card table-card" data-advanced-only>
           <div class="table-responsive">
             <table class="storage-table">
               <thead>
@@ -560,8 +590,8 @@
       <!-- Section 2: Backup & Restore -->
       <section id="section-backup" class="content-section">
         <div class="section-header">
-          <h2 data-i18n="backupTitle">Backup & Restore</h2>
-          <p class="section-subtitle" data-i18n="backupHint">Export all site configurations (including local images) as a JSON file, or import from a previous backup.</p>
+          <h2 data-i18n="backupTitle">Backup</h2>
+          <p class="section-subtitle" data-i18n="backupHint">Download a copy of your backgrounds and restore it later when needed.</p>
         </div>
         
         <div class="card grid-cards">
@@ -573,10 +603,10 @@
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
             </div>
-            <h3 data-i18n="exportCardTitle">Export Backup</h3>
-            <p data-i18n="exportCardText">Save all website background settings and custom styles into a backup file.</p>
+            <h3 data-i18n="exportCardTitle">Download a backup</h3>
+            <p data-i18n="exportCardText">Keep a copy of your saved website backgrounds and local images.</p>
             <div id="backup-size-estimate" class="backup-size-estimate" data-storage-i18n="backupCalculating">Calculating backup size...</div>
-            <button type="button" id="export-btn" class="btn primary-btn" data-i18n="exportBtn">Export Configs</button>
+            <button type="button" id="export-btn" class="btn primary-btn" data-i18n="exportBtn">Download Backup</button>
           </div>
           
           <div class="action-card">
@@ -587,21 +617,48 @@
                 <line x1="12" y1="3" x2="12" y2="15"></line>
               </svg>
             </div>
-            <h3 data-i18n="importCardTitle">Import Backup</h3>
-            <p data-i18n="importCardText">Restore background settings from a previously saved JSON backup file.</p>
-            <button type="button" id="import-btn" class="btn secondary-btn" data-i18n="importBtn">Import Configs</button>
+            <h3 data-i18n="importCardTitle">Restore a backup</h3>
+            <p data-i18n="importCardText">Choose a PageDye backup file you saved earlier.</p>
+            <button type="button" id="import-btn" class="btn secondary-btn" data-i18n="importBtn">Choose Backup File</button>
             <input type="file" id="import-file" accept=".json" hidden>
           </div>
         </div>
         
         <div class="card danger-card">
           <div class="danger-header">
-            <h3 data-i18n="dangerZoneTitle">Danger Zone</h3>
-            <p data-i18n="dangerZoneText">These operations cannot be undone. Please be careful.</p>
+            <h3 data-i18n="dangerZoneTitle">Clear saved backgrounds</h3>
+            <p data-i18n="dangerZoneText">This removes every website background from PageDye and cannot be undone.</p>
           </div>
           <div class="danger-body">
-            <button type="button" id="clear-all-btn" class="btn danger-btn" data-i18n="clearAllBtn">Wipe All Configurations</button>
+            <button type="button" id="clear-all-btn" class="btn danger-btn" data-i18n="clearAllBtn">Clear All Website Settings</button>
           </div>
+        </div>
+      </section>
+
+      <section id="section-settings" class="content-section">
+        <div class="section-header">
+          <h2 data-i18n="settingsTitle">Settings</h2>
+          <p class="section-subtitle" data-i18n="settingsHint">Keep PageDye simple, or reveal tools for complex setups and troubleshooting.</p>
+        </div>
+
+        <div class="settings-panel">
+          <div class="settings-panel-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v18"></path>
+              <path d="M3 12h18"></path>
+              <circle cx="12" cy="12" r="8"></circle>
+            </svg>
+          </div>
+          <div class="settings-panel-copy">
+            <h3 data-i18n="advancedModeTitle">Advanced mode</h3>
+            <p data-i18n="advancedModeHint">Shows page rules, batch tools, custom effects, detailed storage controls, and diagnostics.</p>
+            <strong id="advanced-mode-status" class="advanced-mode-status" aria-live="polite"></strong>
+          </div>
+          <label class="mode-toggle" for="advanced-mode-toggle">
+            <input type="checkbox" id="advanced-mode-toggle">
+            <span class="mode-toggle-track" aria-hidden="true"><span></span></span>
+            <span class="sr-only" data-i18n="advancedModeTitle">Advanced mode</span>
+          </label>
         </div>
       </section>
       
@@ -646,7 +703,7 @@
             <span class="badge" id="about-version">v0.8.3</span>
           </div>
           
-          <p class="about-desc" data-i18n="aboutText">PageDye is a browser extension that allows you to dye any webpage's background with your choice of color or custom image. You can adjust opacity, blur, repetition, element selector, and even inject custom CSS for complete control over readability and design.</p>
+          <p class="about-desc" data-i18n="aboutText">PageDye lets you give each website its own color, image, gradient, or animated background. Your choices are saved in this browser and return automatically.</p>
           
           <hr class="divider">
           
@@ -697,6 +754,7 @@
               <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </summary>
             <div class="accordion-content">
+              <p class="hint run-mode-hint" data-i18n="runModeHint">If the background is covered, try Enhanced first. Use Strong only if the problem continues.</p>
               <div class="control-group" style="margin-bottom: 12px;">
                 <div class="segmented-control run-mode-control" id="edit-run-mode-control">
                   <input type="radio" name="edit-deepCompatMode" value="normal" id="edit-run-mode-normal" checked>
@@ -709,7 +767,7 @@
                   <label for="edit-run-mode-strong" data-i18n="runModeStrong">Strong</label>
                 </div>
               </div>
-              <div class="control-group" style="margin-bottom: 0;">
+              <div class="control-group" style="margin-bottom: 0;" data-advanced-only>
                 <input type="text" id="edit-deep-compat-exclude" placeholder=".modal, [role=dialog]" data-i18n-placeholder="deepCompatExcludePlaceholder">
               </div>
             </div>
@@ -979,7 +1037,7 @@
                 </div>
 
                 <div class="control-group">
-                  <label for="edit-image-url" data-i18n="orPasteUrl">Or paste image URL</label>
+                  <label for="edit-image-url" data-i18n="orPasteUrl">Or paste an image address</label>
                   <input type="url" id="edit-image-url" placeholder="https://example.com/image.jpg">
                 </div>
                 
@@ -994,7 +1052,7 @@
               <div id="edit-section-effects" class="section hidden">
                 <div class="control-group">
                   <label for="edit-effect-kind" data-i18n="effectKind">Effect</label>
-                  <p class="hint" data-i18n="effectKindHint">A minimalist black &amp; white animated wallpaper, rendered locally with Canvas — no external assets.</p>
+                  <p class="hint" data-i18n="effectKindHint">Animated backgrounds are created on your device and do not download extra media.</p>
                   <select id="edit-effect-kind">
                     <option value="matrix" data-i18n="effectMatrix">Matrix</option>
                     <option value="particles" data-i18n="effectParticles">Particles</option>
@@ -1165,7 +1223,7 @@
           </details>
 
           <!-- Advanced Settings Accordion -->
-          <details class="accordion" id="edit-accordion-advanced">
+          <details class="accordion" id="edit-accordion-advanced" data-advanced-only>
             <summary class="accordion-summary">
               <span data-i18n="advanced">Advanced Settings</span>
               <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>

@@ -8,21 +8,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const zh = presetApi.language() === 'zh';
   const messages = {
     en: {
-      nav: 'Presets & Groups', title: 'Presets & Groups',
-      subtitle: 'Reuse complete configurations and manage several sites together.',
+      nav: 'Batch Tools', title: 'Batch Tools',
+      subtitle: 'Save a complete background setup and apply it to several websites at once.',
       exportSelected: 'Export selected', importSelected: 'Import selected',
-      presetsTitle: 'Configuration presets',
-      presetsHint: 'A preset includes wallpaper, effects, frosted glass, compatibility, cursor, and custom CSS settings.',
+      presetsTitle: 'Saved setups',
+      presetsHint: 'A saved setup keeps the complete look of a website so you can reuse it elsewhere.',
       presetName: 'Preset name', presetNamePlaceholder: 'My preset', presetSource: 'Copy from site',
       savePreset: 'Save preset', builtIn: 'Built-in', custom: 'Custom', deletePreset: 'Delete preset',
-      applySelected: 'Apply selected', sitesTitle: 'Site groups and batch actions',
-      selectSitesHint: 'Select sites, then choose one action.', selectedCount: '{count} site(s) selected',
+      applySelected: 'Apply to selected', sitesTitle: 'Manage several websites',
+      selectSitesHint: 'Choose websites, then pick what you want to change.', selectedCount: '{count} site(s) selected',
       showGroup: 'Show group', allSites: 'All sites', applyPreset: 'Apply preset', apply: 'Apply',
       copyConfig: 'Copy site configuration', copyToSelected: 'Copy to selected', siteGroup: 'Site group',
       addToGroup: 'Add', removeFromGroup: 'Remove', newGroup: 'New group from selected',
       deleteGroup: 'Delete group', confirmDeleteGroup: 'Delete group "{name}"? Sites will keep their configurations.',
       groupNamePlaceholder: 'Work', createGroup: 'Create', domain: 'Domain', groups: 'Groups',
-      configuration: 'Configuration', noSites: 'No configured sites.', noGroup: 'No group',
+      configuration: 'Background', noSites: 'No saved websites.', noGroup: 'No group',
       chooseImportSites: 'Choose sites to import', cancel: 'Cancel', importChosen: 'Import chosen sites',
       typeNone: 'None', typeColor: 'Color', typeImage: 'Image', typeEffect: 'Effect',
       savedPreset: 'Preset saved.', applied: 'Configuration applied to {count} site(s).',
@@ -30,23 +30,23 @@ document.addEventListener('DOMContentLoaded', () => {
       groupUpdated: 'Group updated.', exported: 'Selected sites exported.', imported: '{count} site(s) imported.',
       invalidFile: 'This is not a valid PageDye backup.', chooseSite: 'Choose at least one site first.',
       confirmDeletePreset: 'Delete preset "{name}"?', delete: 'Delete', presetDeleted: 'Preset deleted.',
-      exportConfirm: 'This selected-site backup is about {size} and contains {count} local image references. Export it now?'
+      exportConfirm: 'This backup is about {size} and contains {count} images. Download it now?'
     },
     zh: {
-      nav: '预设与分组', title: '预设与站点分组',
-      subtitle: '复用完整配置，并一次管理多个站点。',
+      nav: '批量工具', title: '批量工具',
+      subtitle: '保存整套背景效果，并一次应用到多个网站。',
       exportSelected: '导出选中站点', importSelected: '导入选中站点',
-      presetsTitle: '配置预设', presetsHint: '预设包含壁纸、动效、磨砂玻璃、兼容模式、光标和自定义 CSS 等完整设置。',
+      presetsTitle: '已保存的整套效果', presetsHint: '保存一个网站的完整效果，之后可以直接用在其他网站上。',
       presetName: '预设名称', presetNamePlaceholder: '我的预设', presetSource: '复制自站点',
       savePreset: '保存预设', builtIn: '内置', custom: '自定义', deletePreset: '删除预设',
-      applySelected: '应用到选中站点', sitesTitle: '站点分组与批量操作',
-      selectSitesHint: '先选择站点，再执行一个批量操作。', selectedCount: '已选择 {count} 个站点',
+      applySelected: '应用到选中网站', sitesTitle: '同时管理多个网站',
+      selectSitesHint: '先选择网站，再选择要进行的操作。', selectedCount: '已选择 {count} 个网站',
       showGroup: '显示分组', allSites: '全部站点', applyPreset: '应用预设', apply: '应用',
       copyConfig: '复制站点配置', copyToSelected: '复制到选中站点', siteGroup: '站点分组',
       addToGroup: '加入', removeFromGroup: '移出', newGroup: '用选中站点新建分组',
       deleteGroup: '删除分组', confirmDeleteGroup: '删除分组“{name}”？站点配置会保留。',
       groupNamePlaceholder: '工作', createGroup: '新建', domain: '站点', groups: '分组',
-      configuration: '配置', noSites: '暂无已配置站点。', noGroup: '未分组',
+      configuration: '背景', noSites: '暂无已保存的网站。', noGroup: '未分组',
       chooseImportSites: '选择要导入的站点', cancel: '取消', importChosen: '导入选中站点',
       typeNone: '无', typeColor: '颜色', typeImage: '图片', typeEffect: '动效',
       savedPreset: '预设已保存。', applied: '已应用到 {count} 个站点。',
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
       groupUpdated: '分组已更新。', exported: '选中站点已导出。', imported: '已导入 {count} 个站点。',
       invalidFile: '这不是有效的 PageDye 备份文件。', chooseSite: '请先选择至少一个站点。',
       confirmDeletePreset: '删除预设“{name}”？', delete: '删除', presetDeleted: '预设已删除。',
-      exportConfirm: '选中站点的备份约 {size}，包含 {count} 个本地图片引用。现在导出吗？'
+      exportConfirm: '这份备份约 {size}，包含 {count} 张图片。现在下载吗？'
     }
   }[zh ? 'zh' : 'en'];
 

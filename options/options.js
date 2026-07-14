@@ -1,18 +1,25 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const i18n = {
     en: {
-      title: "PageDye Dashboard",
+      title: "PageDye Settings",
       appName: "PageDye",
-      navSites: "Configured Sites",
+      navSites: "Website Backgrounds",
       navCustomEffects: "Custom Effects",
-      navAppearance: "Appearance",
-      navBackup: "Backup & Restore",
-      navDebug: "Debug Mode",
+      navAppearance: "Interface",
+      navBackup: "Backup",
+      navSettings: "Settings",
+      navDebug: "Diagnostics",
       navAbout: "About",
-      debugTitle: "Debug Mode",
-      debugHint: "Adds a floating debug panel to every page for inspecting PageDye's own state and troubleshooting sites it doesn't render correctly on. Intended for developers/power users.",
-      debugEnable: "Enable debug mode",
-      debugEnableHint: "Shows a floating button on every page (bottom-right). Takes effect immediately on already-open tabs, no reload needed.",
+      settingsTitle: "Settings",
+      settingsHint: "Keep PageDye simple, or reveal tools for complex setups and troubleshooting.",
+      advancedModeTitle: "Advanced mode",
+      advancedModeHint: "Shows page rules, batch tools, custom effects, detailed storage controls, and diagnostics.",
+      advancedModeOn: "Advanced tools are visible",
+      advancedModeOff: "Using the simplified interface",
+      debugTitle: "Diagnostics",
+      debugHint: "Troubleshooting tools for checking why PageDye may not work as expected on a website.",
+      debugEnable: "Show diagnostics on websites",
+      debugEnableHint: "Adds a small diagnostics button to open tabs. Changes take effect immediately.",
       debugFeaturesTitle: "What's included",
       debugFeatureStateTitle: "State",
       debugFeatureState: "Live view of the current site's saved settings (mode, background type, Deep Compatibility Mode, Frosted Glass entries) and the raw JSON.",
@@ -22,8 +29,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       debugFeatureLogs: "A mirror of this page's console.log/warn/error output.",
       debugFeatureInspectorTitle: "Inspector",
       debugFeatureInspector: "Hover to highlight and click to lock an element, showing its tag/id/class, guessed selector, size and key computed styles.",
-      appearanceTitle: "Appearance",
-      appearanceHint: "Customize the colors of this dashboard itself (not your websites' backgrounds).",
+      appearanceTitle: "Interface",
+      appearanceHint: "Choose how PageDye's popup and settings look. Website backgrounds are not affected.",
       pageBackground: "Page Background",
       pageBackgroundHint: "The outer area surrounding the dashboard panel. Pick a color, or upload an image.",
       containerBackground: "Container Background",
@@ -31,10 +38,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       appearanceReset: "Reset to Default",
       appearanceSaved: "Appearance updated!",
       appearanceResetDone: "Appearance reset!",
-      disableThemeAnimation: "Disable dashboard animations",
-      disableThemeAnimationHint: "Turns off transitions, fade-ins, and animations in the extension panel/popup interface.",
-      pauseShortcut: "Temporary Pause Shortcut",
-      pauseShortcutHint: "Click the field, then press a key combination. It pauses or restores PageDye only in the current tab.",
+      disableThemeAnimation: "Reduce interface motion",
+      disableThemeAnimationHint: "Removes most transitions from the PageDye popup and settings.",
+      pauseShortcut: "Pause shortcut",
+      pauseShortcutHint: "Use this shortcut to pause or resume PageDye on the website you are viewing.",
       pauseShortcutReset: "Reset",
       pauseShortcutRequirement: "Use at least one modifier key (Ctrl, Alt, Shift, or ⌘).",
       pauseShortcutInvalid: "Add a modifier key to the shortcut.",
@@ -43,33 +50,35 @@ document.addEventListener('DOMContentLoaded', async () => {
       dragOrClick: "Drag image here, or",
       chooseFile: "choose file",
       savedImage: "Saved image",
-      sitesTitle: "Configured Sites",
-      sitesHint: "The first enabled matching rule wins. Drag rules to change priority.",
+      sitesTitle: "Website Backgrounds",
+      sitesHint: "View and update the backgrounds you have saved.",
+      urlRulesTitle: "Page Rules",
+      urlRulesHint: "Use different backgrounds on specific pages, or leave a page unchanged.",
       newRule: "New Rule",
-      createRule: "Create Rule",
-      ruleAction: "Action",
-      ruleApply: "Apply background",
-      ruleExclude: "Exclude page",
-      ruleType: "Match type",
-      ruleHostname: "Hostname",
-      ruleExact: "Exact URL",
-      rulePrefix: "Path prefix",
-      ruleWildcard: "Wildcard domain",
-      rulePattern: "Pattern",
+      createRule: "Save Rule",
+      ruleAction: "What to do",
+      ruleApply: "Use a background",
+      ruleExclude: "Leave page unchanged",
+      ruleType: "Which pages",
+      ruleHostname: "Whole website",
+      ruleExact: "One exact page",
+      rulePrefix: "Pages under a path",
+      ruleWildcard: "Website and subdomains",
+      rulePattern: "Website or page address",
       rulePatternHint: "Examples: github.com, https://github.com/settings/profile, github.com/settings/*, *.example.com",
-      rulePriority: "Priority",
-      ruleMatch: "Match",
-      ruleBehavior: "Behavior",
-      ruleStatus: "Enabled",
-      noRules: "No URL rules yet. Hostname settings below still work as before.",
-      hostnameFallbacks: "Hostname Fallbacks",
-      hostnameFallbacksHint: "Used only when no enabled URL rule matches.",
+      rulePriority: "Order",
+      ruleMatch: "Pages",
+      ruleBehavior: "Result",
+      ruleStatus: "On",
+      noRules: "No page rules yet.",
+      hostnameFallbacks: "Saved Websites",
+      hostnameFallbacksHint: "Select a website to change its background.",
       invalidRulePattern: "Enter a valid pattern for the selected match type.",
       confirmDeleteRule: "Delete rule {pattern}?",
       ruleSaved: "URL rule saved!",
       searchPlaceholder: "Search domains...",
-      thDomain: "Domain",
-      thBgType: "Background Type",
+      thDomain: "Website",
+      thBgType: "Background",
       thPreview: "Preview",
       thActions: "Actions",
       noSites: "No websites configured yet.",
@@ -85,38 +94,38 @@ document.addEventListener('DOMContentLoaded', async () => {
       modalTitle: "Notification",
       confirmOk: "Confirm",
       confirmCancel: "Cancel",
-      backupTitle: "Backup & Restore",
-      backupHint: "Export all site configurations (including local images) as a JSON file, or import from a previous backup.",
-      exportCardTitle: "Export Backup",
-      exportCardText: "Save all website background settings and custom styles into a backup file.",
-      exportBtn: "Export Configs",
-      importCardTitle: "Import Backup",
-      importCardText: "Restore background settings from a previously saved JSON backup file.",
-      importBtn: "Import Configs",
-      dangerZoneTitle: "Danger Zone",
-      dangerZoneText: "These operations cannot be undone. Please be careful.",
-      clearAllBtn: "Wipe All Configurations",
+      backupTitle: "Backup",
+      backupHint: "Download a copy of your backgrounds and restore it later when needed.",
+      exportCardTitle: "Download a backup",
+      exportCardText: "Keep a copy of your saved website backgrounds and local images.",
+      exportBtn: "Download Backup",
+      importCardTitle: "Restore a backup",
+      importCardText: "Choose a PageDye backup file you saved earlier.",
+      importBtn: "Choose Backup File",
+      dangerZoneTitle: "Clear saved backgrounds",
+      dangerZoneText: "This removes every website background from PageDye and cannot be undone.",
+      clearAllBtn: "Clear All Website Settings",
       clearAllConfirm: "Remove PageDye settings for ALL websites? This cannot be undone.",
       clearAllDone: "All sites cleared!",
       deleteSiteDone: "Site configuration removed!",
       aboutTitle: "About PageDye",
-      aboutText: "PageDye is a browser extension that allows you to dye any webpage's background with your choice of color or custom image. You can adjust opacity, blur, repetition, element selector, and even inject custom CSS for complete control over readability and design.",
+      aboutText: "PageDye lets you give each website its own color, image, gradient, or animated background. Your choices are saved in this browser and return automatically.",
       aboutAuthor: "Developer",
       aboutGithub: "Source Code",
       exportSuccess: "Backup exported successfully!",
       importSuccess: "Backup imported successfully!",
       importError: "Invalid backup file!",
-      confirmImport: "Importing will overwrite all current settings. Continue?",
+      confirmImport: "Restoring this backup will replace all currently saved website backgrounds. Continue?",
       settings: "Settings",
       backToSites: "Back to Sites",
-      editTitle: "Edit Configuration:",
-      bgType: "Background Type",
+      editTitle: "Edit Website:",
+      bgType: "Choose a Background",
       typeNone: "None",
       typeColor: "Color",
       typeImage: "Image",
       typeEffect: "Effects",
       effectKind: "Effect",
-      effectKindHint: "A minimalist black & white animated wallpaper, rendered locally with Canvas — no external assets.",
+      effectKindHint: "Animated backgrounds are created on your device and do not download extra media.",
       effectMatrix: "Matrix",
       effectParticles: "Particles",
       effectWaves: "Waves",
@@ -146,15 +155,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       effectSpeed: "Speed",
       color: "Color",
       tabLocal: "Local File",
-      tabUrl: "URL",
+      tabUrl: "Web Image",
+      orPasteUrl: "Or paste an image address",
       dropText: "Click or Drop image here",
       opacity: "Opacity",
       blur: "Blur",
-      fixed: "Fixed Position",
-      sizeCover: "Cover",
-      sizeContain: "Contain",
-      sizeAuto: "Auto",
-      sizeStretch: "Stretch",
+      fixed: "Keep background fixed",
+      sizeCover: "Fill the area",
+      sizeContain: "Show the whole image",
+      sizeAuto: "Original size",
+      sizeStretch: "Stretch to fill",
       repeat: "Repeat",
       reset: "Reset",
       save: "Save",
@@ -163,12 +173,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       error: "Error saving!",
       tabWallpaper: "Wallpaper",
       tabFrostedGlass: "Frosted Glass",
-      advanced: "Advanced Settings",
+      advanced: "Developer Controls",
       targetSelector: "Background Selector",
       targetSelectorHint: "Pick an element (or type a CSS selector) and PageDye applies your color/image directly to that element instead of the whole page. Leave empty for a full-page background.",
       deepCompat: "Deep Compatibility Mode",
-      runMode: "Run Mode",
-      runModeNormal: "Normal",
+      runMode: "Website Compatibility",
+      runModeHint: "If the background is covered, try Enhanced first. Use Strong only if the problem continues.",
+      runModeNormal: "Standard",
       runModeEnhanced: "Enhanced",
       runModeStrong: "Strong",
       deepCompatBadge: "For stubborn sites",
@@ -217,11 +228,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       autoScheme: "Auto Light/Dark",
       schemeLight: "Light Version",
       schemeDark: "Dark Version",
-      wallpaperMode: "Wallpaper Mode",
-      modeSingle: "Single",
-      modeAuto: "Auto",
-      modeTimeRange: "Time",
-      modeSlideshow: "Slide",
+      wallpaperMode: "Background Schedule",
+      modeSingle: "Always",
+      modeAuto: "Light / Dark",
+      modeTimeRange: "By Time",
+      modeSlideshow: "Slideshow",
       rotationInterval: "Interval",
       intervalOpen: "Each Open",
       interval15m: "15 Mins",
@@ -239,7 +250,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       timeRangeSettingsTitle: "Custom Time Ranges",
       labelPeriodName: "Period Name:",
       labelPeriodRange: "Time Range:",
-      advancedFilters: "Advanced Filters",
+      advancedFilters: "More Image Adjustments",
       filtersReset: "Reset",
       filterBrightness: "Brightness",
       filterContrast: "Contrast",
@@ -263,21 +274,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       gradientExtractFailed: "Couldn't read colors from this image",
       gradientGenerateFromColor: "Generate from color",
       gradientAnimated: "Animated",
-      gradientSpeed: "Speed"
+      gradientSpeed: "Speed",
+      statusSaving: "Saving...",
+      statusSynced: "Saved"
     },
     zh: {
-      title: "PageDye 控制面板",
+      title: "PageDye 设置",
       appName: "PageDye",
-      navSites: "已配置网站",
+      navSites: "网站背景",
       navCustomEffects: "自定义动效",
-      navAppearance: "外观",
-      navBackup: "备份与恢复",
-      navDebug: "调试模式",
-      navAbout: "关于 PageDye",
-      debugTitle: "调试模式",
-      debugHint: "在每个页面上添加一个悬浮调试面板,用来查看 PageDye 自身当前的状态,排查某些网站渲染不正常的问题。面向开发者/高级用户。",
-      debugEnable: "启用调试模式",
-      debugEnableHint: "在每个页面右下角显示一个悬浮按钮。对已打开的标签页立即生效,无需刷新。",
+      navAppearance: "界面外观",
+      navBackup: "备份",
+      navSettings: "设置",
+      navDebug: "问题诊断",
+      navAbout: "关于",
+      settingsTitle: "设置",
+      settingsHint: "保持界面简单，或按需显示复杂配置和排查工具。",
+      advancedModeTitle: "高级模式",
+      advancedModeHint: "显示页面规则、批量管理、自定义动效、存储明细和问题诊断。",
+      advancedModeOn: "高级工具已显示",
+      advancedModeOff: "当前使用精简界面",
+      debugTitle: "问题诊断",
+      debugHint: "用于排查 PageDye 在某些网站上没有按预期显示的问题。",
+      debugEnable: "在网页上显示诊断入口",
+      debugEnableHint: "在已打开的网页右下角添加一个小按钮，更改后立即生效。",
       debugFeaturesTitle: "包含的功能",
       debugFeatureStateTitle: "状态",
       debugFeatureState: "实时查看当前网站已保存的设置(模式、背景类型、深度兼容模式、磨砂玻璃条目)以及原始 JSON。",
@@ -287,8 +307,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       debugFeatureLogs: "镜像当前页面的 console.log/warn/error 输出。",
       debugFeatureInspectorTitle: "元素检查",
       debugFeatureInspector: "悬停高亮、点击锁定某个元素,查看其标签/ID/class、猜测的选择器、尺寸和关键计算样式。",
-      appearanceTitle: "外观",
-      appearanceHint: "自定义控制面板本身的配色（不影响您各个网站的背景设置）。",
+      appearanceTitle: "界面外观",
+      appearanceHint: "调整 PageDye 弹窗和设置页的样式，不会改变网站背景。",
       pageBackground: "页面背景",
       pageBackgroundHint: "控制面板外层的背景区域。可选择颜色，或上传一张背景图片。",
       containerBackground: "容器背景",
@@ -296,21 +316,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       appearanceReset: "恢复默认",
       appearanceSaved: "外观已更新!",
       appearanceResetDone: "外观已重置!",
-      disableThemeAnimation: "禁用控制面板动画效果",
-      disableThemeAnimationHint: "关闭扩展控制面板与弹出窗口（Popup）界面中的过渡、淡入等动画效果，提升响应性能。",
-      pauseShortcut: "临时暂停快捷键",
-      pauseShortcutHint: "点击输入框后按下组合键；它只会暂停或恢复当前标签页中的 PageDye。",
+      disableThemeAnimation: "减少界面动画",
+      disableThemeAnimationHint: "关闭 PageDye 弹窗和设置页中的大部分过渡效果。",
+      pauseShortcut: "暂停快捷键",
+      pauseShortcutHint: "使用这个快捷键，可在当前浏览的网站上暂停或恢复 PageDye。",
       pauseShortcutReset: "重置",
       pauseShortcutRequirement: "请至少使用一个修饰键（Ctrl、Alt、Shift 或 ⌘）。",
       pauseShortcutInvalid: "请为快捷键添加一个修饰键。",
       dragOrClick: "拖拽图片至此，或",
       chooseFile: "选择文件",
       savedImage: "已保存的图片",
-      sitesTitle: "已配置网站列表",
-      sitesHint: "管理各个网站的背景配置。您可以单独删除某个网站的配置。",
+      sitesTitle: "网站背景",
+      sitesHint: "查看和修改已经保存的网站背景。",
+      urlRulesTitle: "页面规则",
+      urlRulesHint: "让同一网站的特定页面使用不同背景，或保持原样。",
       searchPlaceholder: "搜索域名...",
-      thDomain: "域名",
-      thBgType: "背景类型",
+      thDomain: "网站",
+      thBgType: "背景",
       thPreview: "预览",
       thActions: "操作",
       noSites: "暂无已配置的网站。",
@@ -326,38 +348,38 @@ document.addEventListener('DOMContentLoaded', async () => {
       modalTitle: "提示",
       confirmOk: "确定",
       confirmCancel: "取消",
-      backupTitle: "备份与恢复",
-      backupHint: "将所有网站配置（包括本地图片）导出为 JSON 文件，或从之前的备份中导入。",
-      exportCardTitle: "导出备份",
-      exportCardText: "将所有网站背景设置和自定义 CSS 样式保存为一个备份文件。",
-      exportBtn: "导出配置",
-      importCardTitle: "导入备份",
-      importCardText: "从之前保存的 JSON 备份文件中恢复所有背景设置。",
-      importBtn: "导入配置",
-      dangerZoneTitle: "危险区域",
-      dangerZoneText: "以下操作无法撤销，请谨慎操作。",
-      clearAllBtn: "清除全部网站配置",
+      backupTitle: "备份",
+      backupHint: "下载一份网站背景副本，需要时可随时恢复。",
+      exportCardTitle: "下载备份",
+      exportCardText: "保存所有网站背景和本地图片的副本。",
+      exportBtn: "下载备份文件",
+      importCardTitle: "恢复备份",
+      importCardText: "选择以前保存的 PageDye 备份文件。",
+      importBtn: "选择备份文件",
+      dangerZoneTitle: "清除已保存的背景",
+      dangerZoneText: "这会移除 PageDye 中所有网站背景，而且无法撤销。",
+      clearAllBtn: "清除所有网站设置",
       clearAllConfirm: "确定要清除所有网站的 PageDye 设置吗？此操作无法撤销。",
       clearAllDone: "已清除全部网站!",
       deleteSiteDone: "网站配置已清除!",
       aboutTitle: "关于 PageDye",
-      aboutText: "PageDye 是一款能够为您定制任何网页背景的浏览器插件。您可以使用纯色或自定义图片作为背景，并能自由调整不透明度、模糊度、平铺方式，甚至能使用元素选择器和自定义 CSS，让页面背景更符合您的阅读习惯与个性偏好。",
+      aboutText: "PageDye 可以为每个网站设置不同的颜色、图片、渐变或动态背景。所有选择都保存在当前浏览器中，下次打开网站时会自动恢复。",
       aboutAuthor: "开发者",
       aboutGithub: "项目源码",
       exportSuccess: "备份导出成功!",
       importSuccess: "备份导入成功!",
       importError: "无效的备份文件!",
-      confirmImport: "导入将覆盖当前所有配置。确定要继续吗？",
+      confirmImport: "恢复这份备份会替换当前保存的所有网站背景。确定继续吗？",
       settings: "设置",
       backToSites: "返回网站列表",
-      editTitle: "编辑配置:",
-      bgType: "背景类型",
+      editTitle: "编辑网站:",
+      bgType: "选择背景",
       typeNone: "无",
       typeColor: "颜色",
       typeImage: "图片",
       typeEffect: "动效",
       effectKind: "特效",
-      effectKindHint: "极简黑白动态壁纸，完全通过 Canvas 本地渲染，不依赖任何外部资源。",
+      effectKindHint: "动态背景会直接在当前设备上生成，不会额外下载视频或图片。",
       effectMatrix: "代码雨",
       effectParticles: "粒子",
       effectWaves: "波浪",
@@ -387,15 +409,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       effectSpeed: "速度",
       color: "颜色",
       tabLocal: "本地文件",
-      tabUrl: "链接",
+      tabUrl: "网络图片",
+      orPasteUrl: "或粘贴图片网址",
       dropText: "点击或拖拽图片到此处",
       opacity: "不透明度",
       blur: "模糊度",
-      fixed: "固定背景",
-      sizeCover: "覆盖 (Cover)",
-      sizeContain: "包含 (Contain)",
-      sizeAuto: "自动 (Auto)",
-      sizeStretch: "拉伸 (Stretch)",
+      fixed: "背景保持固定",
+      sizeCover: "铺满区域",
+      sizeContain: "完整显示",
+      sizeAuto: "原始大小",
+      sizeStretch: "拉伸填满",
       repeat: "平铺",
       reset: "重置",
       save: "保存",
@@ -404,14 +427,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       error: "保存失败!",
       tabWallpaper: "壁纸",
       tabFrostedGlass: "磨砂玻璃",
-      advanced: "高级设置",
+      advanced: "开发者控制",
       targetSelector: "背景选择器",
       targetSelectorHint: "拾取一个元素（或手动输入 CSS 选择器），PageDye 会把颜色/图片直接应用到该元素，而不是整页。留空则为整页背景。",
       deepCompat: "深度兼容模式",
-      runMode: "运行模式",
-      runModeNormal: "普通",
+      runMode: "网页适配",
+      runModeHint: "如果背景被网页挡住，先尝试“增强”；仍然无效时再使用“强力”。",
+      runModeNormal: "标准",
       runModeEnhanced: "增强",
-      runModeStrong: "强兼",
+      runModeStrong: "强力",
       deepCompatBadge: "顽固网站专用",
       deepCompatEnable: "为此网站启用",
       deepCompatHint: "适用于顽固网站（例如 Google 移动端页面）：多层不透明容器叠在一起，导致无论怎么设置背景都被遮住。开启后会自动检测并清除铺满视口的不透明背景层——包括由许多小块不透明卡片拼成的情况，不只是单个大容器。可能偶尔误伤某些依赖背景色做对比度的元素，遇到这种情况可在下方填入排除选择器。",
@@ -458,11 +482,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       autoScheme: "昼夜双态联动",
       schemeLight: "日光版",
       schemeDark: "夜间版",
-      wallpaperMode: "壁纸模式",
-      modeSingle: "单一",
-      modeAuto: "昼夜",
-      modeTimeRange: "时段",
-      modeSlideshow: "幻灯",
+      wallpaperMode: "背景切换",
+      modeSingle: "始终使用",
+      modeAuto: "跟随深浅色",
+      modeTimeRange: "按时段",
+      modeSlideshow: "轮播",
       rotationInterval: "轮换间隔",
       intervalOpen: "每次打开",
       interval15m: "15分钟",
@@ -480,7 +504,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       timeRangeSettingsTitle: "自定义时段范围",
       labelPeriodName: "时段名称:",
       labelPeriodRange: "时间范围:",
-      advancedFilters: "高级滤镜",
+      advancedFilters: "更多图片调整",
       filtersReset: "重置",
       filterBrightness: "亮度",
       filterContrast: "对比度",
@@ -504,13 +528,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       gradientExtractFailed: "无法从该图片提取颜色",
       gradientGenerateFromColor: "从颜色生成",
       gradientAnimated: "流动动画",
-      gradientSpeed: "速度"
+      gradientSpeed: "速度",
+      statusSaving: "正在保存...",
+      statusSynced: "已保存"
     }
   };
 
   let lang = 'en';
 
   const UI_THEME_KEY = '__pagedye_ui_theme__';
+  const ADVANCED_MODE_KEY = '__pagedye_advanced_mode__';
   const PAUSE_SHORTCUT_KEY = '__pagedye_pause_shortcut__';
   const DEFAULT_PAUSE_SHORTCUT = { code: 'KeyP', altKey: true, shiftKey: true, ctrlKey: false, metaKey: false };
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
@@ -818,6 +845,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     uiThemeCustomColorText: document.getElementById('ui-theme-custom-color-text'),
     pauseShortcutInput: document.getElementById('pause-shortcut-input'),
     pauseShortcutReset: document.getElementById('pause-shortcut-reset'),
+    advancedModeToggle: document.getElementById('advanced-mode-toggle'),
+    advancedModeStatus: document.getElementById('advanced-mode-status'),
     debugModeToggle: document.getElementById('debug-mode-toggle'),
 
     // Edit site controls
@@ -943,6 +972,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (els.aboutVersion) els.aboutVersion.textContent = extensionVersion;
   const editVersionEl = document.getElementById('edit-version');
   if (editVersionEl) editVersionEl.textContent = extensionVersion;
+  await initAdvancedMode();
 
   // Load configured sites
   await loadRulesList();
@@ -957,13 +987,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.debugModeToggle.checked = !!debugData[DEBUG_MODE_KEY];
     els.debugModeToggle.addEventListener('change', async () => {
       await chrome.storage.local.set({ [DEBUG_MODE_KEY]: els.debugModeToggle.checked });
-      const tabs = await chrome.tabs.query({});
-      await Promise.allSettled(tabs.filter((tab) => tab.id).map((tab) => window.PageDyeInjection.ensure(tab.id)));
+      await refreshDebugRuntime();
     });
   }
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
+    if (Object.prototype.hasOwnProperty.call(changes, ADVANCED_MODE_KEY)) {
+      applyAdvancedMode(!!changes[ADVANCED_MODE_KEY].newValue);
+    }
     if (Object.prototype.hasOwnProperty.call(changes, URL_RULES_KEY) && document.getElementById('section-sites').classList.contains('active')) {
       loadRulesList();
     }
@@ -975,12 +1007,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Opened from the popup's "manage custom effects" link.
-  if (location.hash === '#section-custom-effects') {
-    const navBtn = document.querySelector('.nav-item[data-target="section-custom-effects"]');
-    if (navBtn) navBtn.click();
-  }
-
   // Load & wire up dashboard appearance (page/container background colors)
   await initUiTheme();
   await initPauseShortcut();
@@ -988,17 +1014,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Sidebar navigation switching
   els.navItems.forEach(item => {
     item.addEventListener('click', () => {
-      // Leaving the custom-effect editor (or any section) shouldn't leave
-      // its live-preview rAF loop running in the background.
-      window.PageDyeEffects.stopEffect();
-      els.navItems.forEach(i => i.classList.remove('active'));
-      els.sections.forEach(s => s.classList.remove('active'));
-
-      item.classList.add('active');
-      const targetId = item.dataset.target;
-      document.getElementById(targetId).classList.add('active');
+      navigateToSection(item.dataset.target);
     });
   });
+
+  const requestedSection = location.hash.slice(1);
+  if (requestedSection && document.getElementById(requestedSection)) {
+    const requestedNav = document.querySelector(`.nav-item[data-target="${requestedSection}"]`);
+    navigateToSection(requestedNav && requestedNav.hasAttribute('data-advanced-only') && !document.body.classList.contains('advanced-mode')
+      ? 'section-settings'
+      : requestedSection);
+  }
 
   // Search input filter
   els.searchInput.addEventListener('input', () => {
@@ -1024,6 +1050,58 @@ document.addEventListener('DOMContentLoaded', async () => {
   els.clearAllBtn.addEventListener('click', clearAllSites);
 
   // Helper functions
+  function navigateToSection(targetId) {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+    window.PageDyeEffects.stopEffect();
+    els.navItems.forEach((item) => item.classList.toggle('active', item.dataset.target === targetId));
+    els.sections.forEach((section) => section.classList.toggle('active', section.id === targetId));
+  }
+
+  function applyAdvancedMode(enabled) {
+    document.body.classList.toggle('advanced-mode', enabled);
+    if (els.advancedModeToggle) els.advancedModeToggle.checked = enabled;
+    if (els.advancedModeStatus) {
+      els.advancedModeStatus.textContent = t(enabled ? 'advancedModeOn' : 'advancedModeOff');
+    }
+
+    if (!enabled) {
+      const activeAdvancedNav = document.querySelector('.nav-item.active[data-advanced-only]');
+      if (activeAdvancedNav) navigateToSection('section-settings');
+      document.querySelectorAll('[data-advanced-only].accordion[open]').forEach((details) => {
+        details.open = false;
+      });
+    }
+  }
+
+  async function refreshDebugRuntime() {
+    const tabs = await chrome.tabs.query({});
+    await Promise.allSettled(tabs.filter((tab) => tab.id).map((tab) => window.PageDyeInjection.ensure(tab.id)));
+  }
+
+  async function initAdvancedMode() {
+    if (!els.advancedModeToggle) return;
+    const data = await chrome.storage.local.get([ADVANCED_MODE_KEY, DEBUG_MODE_KEY]);
+    const enabled = !!data[ADVANCED_MODE_KEY] || !!data[DEBUG_MODE_KEY];
+    applyAdvancedMode(enabled);
+
+    if (enabled && !data[ADVANCED_MODE_KEY]) {
+      await chrome.storage.local.set({ [ADVANCED_MODE_KEY]: true });
+    }
+
+    els.advancedModeToggle.addEventListener('change', async () => {
+      const next = els.advancedModeToggle.checked;
+      if (!next && els.debugModeToggle?.checked) {
+        els.debugModeToggle.checked = false;
+        await chrome.storage.local.set({ [ADVANCED_MODE_KEY]: false, [DEBUG_MODE_KEY]: false });
+        await refreshDebugRuntime();
+      } else {
+        await chrome.storage.local.set({ [ADVANCED_MODE_KEY]: next });
+      }
+      applyAdvancedMode(next);
+    });
+  }
+
   function initI18n() {
     const browserLang = navigator.language || navigator.userLanguage; 
     if (browserLang.toLowerCase().startsWith('zh')) {
@@ -1050,35 +1128,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function t(key) {
     const zhFallback = {
-      uiThemeColor: "\u754c\u9762\u4e3b\u9898\u8272",
-      uiThemeColorHint: "\u53ea\u6539\u53d8 PageDye \u8bbe\u7f6e\u9875\u548c\u5f39\u7a97\u989c\u8272\uff0c\u4e0d\u4f1a\u5f71\u54cd\u7f51\u7ad9\u989c\u8272\u3002",
-      sitesTitle: "URL \u89c4\u5219",
-      sitesHint: "\u4ece\u4e0a\u5230\u4e0b\u5339\u914d\u7b2c\u4e00\u6761\u5df2\u542f\u7528\u7684\u89c4\u5219\uff0c\u62d6\u52a8\u53ef\u8c03\u6574\u4f18\u5148\u7ea7\u3002",
-      newRule: "\u65b0\u5efa\u89c4\u5219",
-      createRule: "\u521b\u5efa\u89c4\u5219",
-      ruleAction: "\u52a8\u4f5c",
-      ruleApply: "\u5e94\u7528\u80cc\u666f",
-      ruleExclude: "\u6392\u9664\u9875\u9762",
-      ruleType: "\u5339\u914d\u7c7b\u578b",
-      ruleHostname: "\u4e3b\u673a\u540d",
-      ruleExact: "\u7cbe\u786e\u7f51\u5740",
-      rulePrefix: "\u8def\u5f84\u524d\u7f00",
-      ruleWildcard: "\u901a\u914d\u5b50\u57df\u540d",
-      rulePattern: "\u5339\u914d\u5185\u5bb9",
-      rulePatternHint: "\u4f8b\u5982 github.com\u3001https://github.com/settings/profile\u3001github.com/settings/*\u3001*.example.com",
-      rulePriority: "\u4f18\u5148\u7ea7",
-      ruleMatch: "\u5339\u914d",
-      ruleBehavior: "\u884c\u4e3a",
-      ruleStatus: "\u542f\u7528",
-      noRules: "\u8fd8\u6ca1\u6709 URL \u89c4\u5219\uff0c\u4e0b\u65b9\u7684\u4e3b\u673a\u540d\u914d\u7f6e\u4ecd\u4f1a\u6309\u539f\u65b9\u5f0f\u5de5\u4f5c\u3002",
-      hostnameFallbacks: "\u4e3b\u673a\u540d\u56de\u9000\u914d\u7f6e",
-      hostnameFallbacksHint: "\u4ec5\u5728\u6ca1\u6709\u5df2\u542f\u7528\u7684 URL \u89c4\u5219\u547d\u4e2d\u65f6\u4f7f\u7528\u3002",
-      invalidRulePattern: "\u8bf7\u8f93\u5165\u7b26\u5408\u5f53\u524d\u5339\u914d\u7c7b\u578b\u7684\u6709\u6548\u5185\u5bb9\u3002",
-      confirmDeleteRule: "\u5220\u9664\u89c4\u5219 {pattern}\uff1f",
-      ruleSaved: "URL \u89c4\u5219\u5df2\u4fdd\u5b58\uff01"
+      uiThemeColor: "界面主题色",
+      uiThemeColorHint: "只改变 PageDye 设置页和弹窗的颜色，不会影响网站背景。",
+      newRule: "新建规则",
+      createRule: "保存规则",
+      ruleAction: "要做什么",
+      ruleApply: "使用背景",
+      ruleExclude: "保持页面原样",
+      ruleType: "适用页面",
+      ruleHostname: "整个网站",
+      ruleExact: "一个指定页面",
+      rulePrefix: "某个路径下的页面",
+      ruleWildcard: "网站及其子域名",
+      rulePattern: "网站或页面地址",
+      rulePatternHint: "例如 github.com、https://github.com/settings/profile、github.com/settings/*、*.example.com",
+      rulePriority: "顺序",
+      ruleMatch: "页面",
+      ruleBehavior: "效果",
+      ruleStatus: "启用",
+      noRules: "还没有页面规则。",
+      invalidRulePattern: "请输入符合所选范围的网站或页面地址。",
+      confirmDeleteRule: "删除规则 {pattern}？",
+      ruleSaved: "页面规则已保存！"
     };
+    if (i18n[lang][key]) return i18n[lang][key];
     if (lang === 'zh' && zhFallback[key]) return zhFallback[key];
-    return i18n[lang][key] || i18n.en[key] || key;
+    return i18n.en[key] || key;
   }
 
   function buildBgTypeBadge(settings) {
@@ -2068,8 +2143,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const storageAnalysis = window.PageDyeStorageManager.analyze(data, window.PageDyeStorage);
       const backupImageCount = storageAnalysis.images.filter((image) => image.ownerType !== 'appearance').length;
       const sizeWarning = lang === 'zh'
-        ? `本次备份约 ${window.PageDyeStorageManager.formatBytes(backupBytes)}，包含 ${backupImageCount} 个本地图片引用。现在导出吗？`
-        : `This backup is about ${window.PageDyeStorageManager.formatBytes(backupBytes)} and contains ${backupImageCount} local image references. Export it now?`;
+        ? `这份备份约 ${window.PageDyeStorageManager.formatBytes(backupBytes)}，包含 ${backupImageCount} 张图片。现在下载吗？`
+        : `This backup is about ${window.PageDyeStorageManager.formatBytes(backupBytes)} and contains ${backupImageCount} images. Download it now?`;
       if (!(await showConfirm(sizeWarning))) return;
       const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);

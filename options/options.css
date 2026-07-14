@@ -112,6 +112,22 @@ body {
   min-height: 100vh;
 }
 
+body:not(.advanced-mode) [data-advanced-only] {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .dashboard-container {
   display: flex;
   min-height: 100vh;
@@ -510,9 +526,13 @@ body {
 
 .storage-overview {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 12px;
+}
+
+body.advanced-mode .storage-overview {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .storage-metric-card {
@@ -751,6 +771,159 @@ body {
   margin-top: 0;
 }
 
+.storage-cleanup-panel,
+.settings-panel {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-bg);
+}
+
+.storage-cleanup-panel {
+  justify-content: space-between;
+  margin: 18px 0 14px;
+}
+
+.storage-cleanup-panel > div,
+.settings-panel-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.storage-cleanup-panel h3,
+.settings-panel h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.storage-cleanup-panel p,
+.settings-panel p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.storage-cleanup-panel .btn {
+  width: auto;
+  min-width: max-content;
+  flex: 0 0 auto;
+}
+
+.storage-details-heading {
+  margin-top: 30px;
+}
+
+.settings-panel {
+  align-items: flex-start;
+  background: var(--surface-card);
+}
+
+.settings-panel-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--badge-color-bg);
+  color: var(--primary-color);
+}
+
+.settings-panel-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.advanced-mode-status {
+  display: block;
+  margin-top: 10px;
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mode-toggle {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.mode-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.mode-toggle-track {
+  position: relative;
+  display: block;
+  width: 50px;
+  height: 30px;
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  background: var(--surface-bg);
+  transition: background-color .18s ease, border-color .18s ease;
+}
+
+.mode-toggle-track > span {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  transition: transform .18s ease, background-color .18s ease;
+}
+
+.mode-toggle input:checked + .mode-toggle-track {
+  border-color: var(--primary-color);
+  background: var(--primary-color);
+}
+
+.mode-toggle input:checked + .mode-toggle-track > span {
+  transform: translateX(20px);
+  background: var(--primary-color-text);
+}
+
+.mode-toggle input:focus-visible + .mode-toggle-track {
+  outline: 3px solid var(--input-focus-shadow);
+  outline-offset: 2px;
+}
+
+.advanced-feature-block {
+  margin-bottom: 30px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.advanced-feature-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.advanced-feature-heading > div {
+  min-width: 0;
+}
+
+.advanced-feature-heading .btn {
+  width: auto;
+  min-width: max-content;
+}
+
+.run-mode-hint {
+  margin-top: 0;
+}
+
 .backup-size-estimate {
   min-height: 16px;
   margin: -10px 0 14px;
@@ -760,7 +933,8 @@ body {
 }
 
 @media (max-width: 1100px) {
-  .storage-overview {
+  .storage-overview,
+  body.advanced-mode .storage-overview {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -784,7 +958,8 @@ body {
     align-self: flex-start;
   }
 
-  .storage-overview {
+  .storage-overview,
+  body.advanced-mode .storage-overview {
     grid-template-columns: 1fr;
   }
 
@@ -796,6 +971,23 @@ body {
   .storage-tool-actions .btn {
     width: 100%;
     white-space: normal;
+  }
+
+  .storage-cleanup-panel,
+  .settings-panel,
+  .advanced-feature-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .storage-cleanup-panel .btn,
+  .advanced-feature-heading .btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mode-toggle {
+    align-self: flex-start;
   }
 }
 

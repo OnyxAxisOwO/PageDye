@@ -88,6 +88,14 @@ body {
   font-size: 14px;
 }
 
+body:not(.advanced-mode) [data-advanced-only] {
+  display: none !important;
+}
+
+.run-mode-hint {
+  margin-top: 0;
+}
+
 .container {
   padding: 16px;
   display: flex;
