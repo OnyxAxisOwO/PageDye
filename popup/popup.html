@@ -67,6 +67,58 @@
         </div>
       </details>
 
+      <section class="quick-preset-bar" aria-labelledby="quick-preset-label">
+        <div class="quick-preset-header">
+          <div class="quick-preset-title">
+            <span class="quick-preset-title-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3H5a2 2 0 0 0-2 2v7"></path>
+                <path d="M21 12v7a2 2 0 0 1-2 2h-7"></path>
+                <path d="M16 3h5v5"></path>
+                <path d="M8 21H3v-5"></path>
+                <path d="m21 3-7 7"></path>
+                <path d="m3 21 7-7"></path>
+              </svg>
+            </span>
+            <label id="quick-preset-label" for="quick-preset-select" data-preset-i18n="label">Preset</label>
+          </div>
+          <div class="quick-preset-actions">
+            <button type="button" id="quick-preset-save" class="quick-preset-save" data-preset-i18n-title="saveCurrent">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path>
+                <path d="M17 21v-8H7v8"></path>
+                <path d="M7 3v5h8"></path>
+              </svg>
+              <span data-preset-i18n="saveCurrent">Save</span>
+            </button>
+            <button type="button" id="quick-preset-manage" class="quick-preset-manage" title="Manage presets" aria-label="Manage presets" data-preset-i18n-title="manage">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="4" y1="6" x2="20" y2="6"></line><circle cx="9" cy="6" r="2"></circle>
+                <line x1="4" y1="12" x2="20" y2="12"></line><circle cx="15" cy="12" r="2"></circle>
+                <line x1="4" y1="18" x2="20" y2="18"></line><circle cx="11" cy="18" r="2"></circle>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="quick-preset-controls">
+          <div class="quick-preset-select-wrap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m12 3-1.9 5.1L5 10l5.1 1.9L12 17l1.9-5.1L19 10l-5.1-1.9L12 3Z"></path>
+              <path d="m5 3-.6 1.4L3 5l1.4.6L5 7l.6-1.4L7 5l-1.4-.6L5 3Z"></path>
+              <path d="m19 17-.9 2.1L16 20l2.1.9L19 23l.9-2.1L22 20l-2.1-.9L19 17Z"></path>
+            </svg>
+            <select id="quick-preset-select" aria-label="Preset"></select>
+          </div>
+          <button type="button" id="quick-preset-apply" class="quick-preset-apply">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m5 12 4 4L19 6"></path>
+            </svg>
+            <span data-preset-i18n="apply">Apply</span>
+          </button>
+        </div>
+        <span id="quick-preset-status" class="quick-preset-status" role="status" aria-live="polite"></span>
+      </section>
+
       <!-- Details 1: Wallpaper Mode & Rotation -->
       <details class="accordion" id="accordion-mode" open>
         <summary class="accordion-summary">
@@ -781,7 +833,7 @@
         <div class="footer-actions">
           <button type="button" id="reset-btn" class="ghost-link-btn" data-i18n="reset">Reset</button>
           <span class="divider">|</span>
-          <span id="version" class="version-text">v0.8.1</span>
+          <span id="version" class="version-text">v0.8.2</span>
           <span class="divider">|</span>
           <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 13px; height: 13px; display: block;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
@@ -839,10 +891,12 @@
   </div>
   <script src="../scripts/gradient.js"></script>
   <script src="../scripts/storage-schema.js"></script>
+  <script src="../scripts/config-presets.js"></script>
   <script src="../scripts/image.js"></script>
   <script src="../scripts/cursor.js"></script>
   <script src="../lib/prism.js"></script>
   <script src="../scripts/injection.js"></script>
   <script src="popup.js"></script>
+  <script src="preset-quick.js"></script>
 </body>
 </html>

@@ -5,13 +5,16 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
-  const BACKUP_SCHEMA_VERSION = 2;
+  const BACKUP_SCHEMA_VERSION = 3;
   const MAX_BACKUP_BYTES = 64 * 1024 * 1024;
   const MAX_EFFECT_FILE_BYTES = 512 * 1024;
   const MAX_EFFECT_CODE_CHARS = 200000;
   const MAX_EFFECT_NAME_CHARS = 120;
   const MAX_CUSTOM_EFFECTS = 100;
   const MAX_URL_RULES = 1000;
+  const MAX_CONFIG_PRESETS = 100;
+  const MAX_SITE_GROUPS = 100;
+  const MAX_GROUP_SITES = 1000;
   const MAX_URL_CHARS = 2048;
   const MAX_IMAGE_VALUE_CHARS = 32 * 1024 * 1024;
 
@@ -24,7 +27,9 @@
     debugPosition: '__pagedye_debug_position__',
     defaultBackground: '__pagedye_default_background__',
     extensionEnabled: '__pagedye_extension_enabled__',
-    urlRules: '__pagedye_url_rules_v081__'
+    urlRules: '__pagedye_url_rules_v081__',
+    configPresets: '__pagedye_config_presets__',
+    siteGroups: '__pagedye_site_groups__'
   });
 
   const RESERVED_KEYS = new Set(Object.values(KEYS));
@@ -32,7 +37,9 @@
     KEYS.defaultBackground,
     KEYS.customEffects,
     KEYS.customPresetColors,
-    KEYS.urlRules
+    KEYS.urlRules,
+    KEYS.configPresets,
+    KEYS.siteGroups
   ]);
   const MODES = new Set(['single', 'auto', 'timeRange', 'slideshow']);
   const TYPES = new Set(['none', 'color', 'image', 'effect']);
@@ -331,6 +338,69 @@
     return clean;
   }
 
+  function normalizeConfigPreset(entry) {
+    if (!isPlainObject(entry)) return null;
+    const id = trimString(entry.id, 100);
+    const name = trimString(entry.name, 80).trim();
+    const settings = normalizeSiteSettings(entry.settings);
+    if (!id || !/^[a-zA-Z0-9_-]+$/.test(id) || !name || !settings) return null;
+    return {
+      id,
+      name,
+      settings,
+      createdAt: clampNumber(entry.createdAt, 0, Number.MAX_SAFE_INTEGER, Date.now()),
+      updatedAt: clampNumber(entry.updatedAt, 0, Number.MAX_SAFE_INTEGER, Date.now())
+    };
+  }
+
+  function normalizeConfigPresets(value) {
+    if (!Array.isArray(value)) return [];
+    const presets = [];
+    const ids = new Set();
+    for (const source of value.slice(0, MAX_CONFIG_PRESETS)) {
+      const preset = normalizeConfigPreset(source);
+      if (!preset || ids.has(preset.id)) continue;
+      ids.add(preset.id);
+      presets.push(preset);
+    }
+    return presets;
+  }
+
+  function normalizeSiteGroup(entry) {
+    if (!isPlainObject(entry)) return null;
+    const id = trimString(entry.id, 100);
+    const name = trimString(entry.name, 80).trim();
+    if (!id || !/^[a-zA-Z0-9_-]+$/.test(id) || !name || !Array.isArray(entry.sites)) return null;
+    if (entry.sites.length > MAX_GROUP_SITES) return null;
+    const sites = [];
+    const seen = new Set();
+    for (const site of entry.sites) {
+      if (!isSiteKeyName(site) || seen.has(site)) return null;
+      seen.add(site);
+      sites.push(site);
+    }
+    return {
+      id,
+      name,
+      sites,
+      createdAt: clampNumber(entry.createdAt, 0, Number.MAX_SAFE_INTEGER, Date.now()),
+      updatedAt: clampNumber(entry.updatedAt, 0, Number.MAX_SAFE_INTEGER, Date.now())
+    };
+  }
+
+  function normalizeSiteGroups(value) {
+    if (!Array.isArray(value)) return [];
+    const groups = [];
+    const ids = new Set();
+    for (const source of value.slice(0, MAX_SITE_GROUPS)) {
+      const group = normalizeSiteGroup(source);
+      if (!group || ids.has(group.id)) continue;
+      ids.add(group.id);
+      groups.push(group);
+    }
+    return groups;
+  }
+
   function buildBackup(storage, appVersion) {
     const source = isPlainObject(storage) ? storage : {};
     const sites = Object.create(null);
@@ -350,6 +420,16 @@
     if (rawUrlRules !== undefined && (!Array.isArray(rawUrlRules) || rawUrlRules.length > MAX_URL_RULES || urlRules.length !== rawUrlRules.length)) {
       throw new Error('Invalid or oversized URL rules collection.');
     }
+    const rawConfigPresets = source[KEYS.configPresets];
+    const configPresets = normalizeConfigPresets(rawConfigPresets);
+    if (rawConfigPresets !== undefined && (!Array.isArray(rawConfigPresets) || rawConfigPresets.length > MAX_CONFIG_PRESETS || configPresets.length !== rawConfigPresets.length)) {
+      throw new Error('Invalid or oversized configuration presets collection.');
+    }
+    const rawSiteGroups = source[KEYS.siteGroups];
+    const siteGroups = normalizeSiteGroups(rawSiteGroups);
+    if (rawSiteGroups !== undefined && (!Array.isArray(rawSiteGroups) || rawSiteGroups.length > MAX_SITE_GROUPS || siteGroups.length !== rawSiteGroups.length)) {
+      throw new Error('Invalid or oversized site groups collection.');
+    }
     return {
       schemaVersion: BACKUP_SCHEMA_VERSION,
       appVersion: trimString(appVersion, 40),
@@ -358,7 +438,31 @@
       urlRules,
       defaultBackground,
       customEffects: normalizeCustomEffects(source[KEYS.customEffects]),
-      customPresetColors: normalizePresetColors(source[KEYS.customPresetColors])
+      customPresetColors: normalizePresetColors(source[KEYS.customPresetColors]),
+      configPresets,
+      siteGroups
+    };
+  }
+
+  function buildSelectedSitesBackup(storage, appVersion, selectedSites) {
+    const backup = buildBackup(storage, appVersion);
+    const selected = new Set(Array.isArray(selectedSites) ? selectedSites.filter(isSiteKeyName) : []);
+    const sites = Object.create(null);
+    for (const [key, settings] of Object.entries(backup.sites)) {
+      if (selected.has(key)) sites[key] = settings;
+    }
+    return {
+      ...backup,
+      sites,
+      urlRules: [],
+      defaultBackground: null,
+      customEffects: [],
+      customPresetColors: { light: [], dark: [] },
+      configPresets: [],
+      siteGroups: backup.siteGroups
+        .map((group) => ({ ...group, sites: group.sites.filter((site) => selected.has(site)) }))
+        .filter((group) => group.sites.length > 0),
+      selectionOnly: true
     };
   }
 
@@ -369,7 +473,7 @@
     const siteKeys = [];
 
     if (Object.prototype.hasOwnProperty.call(payload, 'schemaVersion')) {
-      if (![1, BACKUP_SCHEMA_VERSION].includes(payload.schemaVersion) || !isPlainObject(payload.sites)) {
+      if (![1, 2, BACKUP_SCHEMA_VERSION].includes(payload.schemaVersion) || !isPlainObject(payload.sites)) {
         throw new Error('Unsupported or invalid PageDye backup schema.');
       }
       const siteEntries = Object.entries(payload.sites);
@@ -411,6 +515,23 @@
       write[KEYS.customEffects] = effects;
       if (!isPlainObject(payload.customPresetColors)) throw new Error('Invalid custom preset colors.');
       write[KEYS.customPresetColors] = normalizePresetColors(payload.customPresetColors);
+      if (payload.schemaVersion >= 3) {
+        if (!Array.isArray(payload.configPresets) || payload.configPresets.length > MAX_CONFIG_PRESETS) {
+          throw new Error('Invalid configuration presets collection.');
+        }
+        const presets = normalizeConfigPresets(payload.configPresets);
+        if (presets.length !== payload.configPresets.length) throw new Error('Invalid or duplicate configuration preset.');
+        write[KEYS.configPresets] = presets;
+
+        if (!Array.isArray(payload.siteGroups) || payload.siteGroups.length > MAX_SITE_GROUPS) {
+          throw new Error('Invalid site groups collection.');
+        }
+        const groups = normalizeSiteGroups(payload.siteGroups);
+        if (groups.length !== payload.siteGroups.length) throw new Error('Invalid or duplicate site group.');
+        write[KEYS.siteGroups] = groups;
+      } else {
+        removeKeys.push(KEYS.configPresets, KEYS.siteGroups);
+      }
     } else {
       if (!Object.prototype.hasOwnProperty.call(payload, KEYS.urlRules)) removeKeys.push(KEYS.urlRules);
       for (const [key, value] of Object.entries(payload)) {
@@ -430,6 +551,14 @@
           const urlRules = normalizeUrlRules(value);
           if (!Array.isArray(value) || urlRules.length !== value.length) throw new Error('Invalid URL rules collection.');
           write[key] = urlRules;
+        } else if (key === KEYS.configPresets) {
+          const presets = normalizeConfigPresets(value);
+          if (!Array.isArray(value) || presets.length !== value.length) throw new Error('Invalid configuration presets collection.');
+          write[key] = presets;
+        } else if (key === KEYS.siteGroups) {
+          const groups = normalizeSiteGroups(value);
+          if (!Array.isArray(value) || groups.length !== value.length) throw new Error('Invalid site groups collection.');
+          write[key] = groups;
         }
       }
       if (!siteKeys.length && !Object.keys(write).some((key) => BACKUP_GLOBAL_KEYS.has(key))) {
@@ -448,6 +577,9 @@
     MAX_EFFECT_NAME_CHARS,
     MAX_CUSTOM_EFFECTS,
     MAX_URL_RULES,
+    MAX_CONFIG_PRESETS,
+    MAX_SITE_GROUPS,
+    MAX_GROUP_SITES,
     MAX_URL_CHARS,
     MAX_IMAGE_VALUE_CHARS,
     KEYS,
@@ -463,7 +595,12 @@
     normalizeCustomEffect,
     normalizeCustomEffects,
     normalizePresetColors,
+    normalizeConfigPreset,
+    normalizeConfigPresets,
+    normalizeSiteGroup,
+    normalizeSiteGroups,
     buildBackup,
+    buildSelectedSitesBackup,
     prepareImport
   });
 });

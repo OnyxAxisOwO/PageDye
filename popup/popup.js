@@ -1093,12 +1093,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   let activeSlideshowIndex = 0;
   let currentSettings = null;
   let saveDebounceTimer = null;
+  let pendingSettingsWrite = null;
   let gradientStopsState = [];
   let frostedGlassState = [];
   let cursorPresetState = 'ball';
   let cssEditorController = null;
   let isInitialLoad = true;
   let currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS);
+
+  window.PageDyePopupPresets = Object.freeze({
+    async beforeApply() {
+      if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
+      saveDebounceTimer = null;
+      if (pendingSettingsWrite) {
+        try { await pendingSettingsWrite; } catch (_) {}
+      }
+    },
+    async refresh() {
+      if (!siteDomain || !currentDomain) return;
+      await loadSettings(currentDomain);
+      setSyncedState();
+    }
+  });
 
   // Init
   const themeData = await chrome.storage.local.get(UI_THEME_KEY);
@@ -3023,9 +3039,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function saveSettings(silent = true) {
     const settings = collectSettings();
+    let write = null;
 
     try {
-      await saveSettingsToCurrentTarget(settings);
+      write = saveSettingsToCurrentTarget(settings);
+      pendingSettingsWrite = write;
+      await write;
+      if (pendingSettingsWrite === write) pendingSettingsWrite = null;
       if (currentDomain === siteDomain) { siteHasOwnConfig = true; updateTargetHint(); }
 
       try {
@@ -3041,6 +3061,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       setSyncedState();
     } catch (err) {
+      if (pendingSettingsWrite === write) pendingSettingsWrite = null;
       els.statusText.textContent = t('error');
       console.error(err);
     }

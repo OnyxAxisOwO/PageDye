@@ -517,8 +517,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   const DEBUG_MODE_KEY = '__pagedye_debug_mode__';
   const DEFAULT_BG_KEY = '__pagedye_default_background__';
   const URL_RULES_KEY = '__pagedye_url_rules_v081__';
-  const UI_THEME_DEFAULTS = { pageBg: '#f1f5f9', containerBg: '#ffffff', pageBgImage: null, containerBgImage: null, accent: 'neutral', customAccent: '#18181b', disableAnimation: false };
-  let currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS);
+  const SYSTEM_DARK_QUERY = window.matchMedia('(prefers-color-scheme: dark)');
+  const UI_THEME_BASE_DEFAULTS = { pageBgImage: null, containerBgImage: null, accent: 'neutral', customAccent: '#18181b', disableAnimation: false, backgroundMode: 'system' };
+  function getSystemUiThemeDefaults() {
+    return Object.assign({}, UI_THEME_BASE_DEFAULTS, SYSTEM_DARK_QUERY.matches
+      ? { pageBg: '#101414', containerBg: '#191C1C' }
+      : { pageBg: '#f1f5f9', containerBg: '#ffffff' });
+  }
+  function normalizeUiTheme(value) {
+    const saved = value && typeof value === 'object' ? value : {};
+    const legacyDefault = !saved.backgroundMode && !saved.pageBgImage && !saved.containerBgImage &&
+      String(saved.pageBg || '').toLowerCase() === '#f1f5f9' &&
+      String(saved.containerBg || '').toLowerCase() === '#ffffff';
+    const hasCustomBackground = saved.backgroundMode === 'custom' ||
+      (saved.backgroundMode !== 'system' && !legacyDefault && (!!saved.pageBgImage || !!saved.containerBgImage ||
+        Object.prototype.hasOwnProperty.call(saved, 'pageBg') || Object.prototype.hasOwnProperty.call(saved, 'containerBg')));
+    const defaults = getSystemUiThemeDefaults();
+    if (hasCustomBackground) return Object.assign({}, defaults, saved, { backgroundMode: 'custom' });
+    return Object.assign({}, defaults, saved, {
+      pageBg: defaults.pageBg,
+      containerBg: defaults.containerBg,
+      backgroundMode: 'system'
+    });
+  }
+  let currentUiTheme = getSystemUiThemeDefaults();
   const UI_THEME_ACCENTS = {
     neutral: '#18181b',
     red: '#BA1A1A',
@@ -2187,19 +2209,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function initUiTheme() {
     const data = await chrome.storage.local.get(UI_THEME_KEY);
-    currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS, data[UI_THEME_KEY] || {});
+    currentUiTheme = normalizeUiTheme(data[UI_THEME_KEY]);
     applyUiTheme(currentUiTheme);
     syncUiThemeInputs(currentUiTheme);
 
     const onPageBgChange = (value) => {
       els.themePageBg.value = value;
       els.themePageBgText.value = value;
-      saveUiTheme({ pageBg: value });
+      saveUiTheme({ pageBg: value, backgroundMode: 'custom' });
     };
     const onContainerBgChange = (value) => {
       els.themeContainerBg.value = value;
       els.themeContainerBgText.value = value;
-      saveUiTheme({ containerBg: value });
+      saveUiTheme({ containerBg: value, backgroundMode: 'custom' });
     };
 
     els.themePageBg.addEventListener('input', (e) => onPageBgChange(e.target.value));
@@ -2236,6 +2258,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupThemeImageUpload('page', els.themePageBgDrop, els.themePageBgFile, els.themePageBgFileInfo, els.themePageBgFilename, els.themePageBgRemove);
     setupThemeImageUpload('container', els.themeContainerBgDrop, els.themeContainerBgFile, els.themeContainerBgFileInfo, els.themeContainerBgFilename, els.themeContainerBgRemove);
 
+    SYSTEM_DARK_QUERY.addEventListener('change', () => {
+      if (currentUiTheme.backgroundMode !== 'system') return;
+      const defaults = getSystemUiThemeDefaults();
+      currentUiTheme = Object.assign({}, currentUiTheme, {
+        pageBg: defaults.pageBg,
+        containerBg: defaults.containerBg
+      });
+      applyUiTheme(currentUiTheme);
+      syncUiThemeInputs(currentUiTheme);
+    });
+
     const themeDisableAnim = document.getElementById('theme-disable-animation');
     if (themeDisableAnim) {
       themeDisableAnim.addEventListener('change', (e) => {
@@ -2245,7 +2278,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     els.themeResetBtn.addEventListener('click', async () => {
       await chrome.storage.local.remove(UI_THEME_KEY);
-      currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS);
+      currentUiTheme = getSystemUiThemeDefaults();
       applyUiTheme(currentUiTheme);
       syncUiThemeInputs(currentUiTheme);
       showStatus(t('appearanceResetDone'));
@@ -2278,7 +2311,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         dropEl.classList.add('hidden');
         fileInfoEl.classList.remove('hidden');
         filenameEl.textContent = prepared.name;
-        saveUiTheme({ [imageKey]: image });
+        saveUiTheme({ [imageKey]: image, backgroundMode: 'custom' });
       } catch (error) {
         console.error('Failed to prepare theme image:', error);
         showStatus(error && error.message ? error.message : t('importError'));
@@ -2289,7 +2322,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       fileEl.value = '';
       dropEl.classList.remove('hidden');
       fileInfoEl.classList.add('hidden');
-      saveUiTheme({ [imageKey]: null });
+      saveUiTheme({ [imageKey]: null, backgroundMode: 'custom' });
     });
   }
 

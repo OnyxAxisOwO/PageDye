@@ -155,7 +155,7 @@ test('backup schema accepts supported data and blocks arbitrary storage keys', (
     [storageSchema.KEYS.uiTheme]: { pageBg: '#fff' },
     arbitrary: { secret: true }
   }, '0.8.0');
-  assert.equal(backup.schemaVersion, 2);
+  assert.equal(backup.schemaVersion, 3);
   assert.deepEqual(Object.keys(backup.sites), ['example.com']);
   assert.equal(backup.sites['example.com'].opacity, 100);
   assert.equal(backup.sites['example.com'].blur, 0);
@@ -220,7 +220,7 @@ test('URL rules use ordered first-match resolution across all supported match ty
   ), false);
 });
 
-test('URL rules are validated and included in schema v2 backups', () => {
+test('URL rules are validated and included in current backups', () => {
   const settings = { mode: 'single', type: 'color', value: '#123456' };
   const rule = { id: 'rule_1', type: 'prefix', pattern: 'github.com/settings/*', action: 'apply', enabled: false, settings };
   assert.equal(storageSchema.normalizeRulePattern('exact', 'github.com/a#fragment'), 'https://github.com/a');
@@ -228,7 +228,7 @@ test('URL rules are validated and included in schema v2 backups', () => {
   assert.equal(storageSchema.normalizeRulePattern('prefix', 'github.com/settings/*'), 'github.com/settings/*');
 
   const backup = storageSchema.buildBackup({ [storageSchema.KEYS.urlRules]: [rule] }, '0.8.1');
-  assert.equal(backup.schemaVersion, 2);
+  assert.equal(backup.schemaVersion, 3);
   assert.equal(backup.urlRules.length, 1);
   assert.equal(backup.urlRules[0].enabled, false);
   assert.throws(() => storageSchema.buildBackup({
@@ -262,6 +262,107 @@ test('URL rules are validated and included in schema v2 backups', () => {
   });
   assert.ok(legacy.removeKeys.includes(storageSchema.KEYS.urlRules));
   assert.ok(storageSchema.prepareImport({ 'example.com': settings }).removeKeys.includes(storageSchema.KEYS.urlRules));
+});
+
+test('configuration presets, site groups, and selected-site backups are validated', () => {
+  const red = { mode: 'single', type: 'color', value: '#ff0000' };
+  const blue = { mode: 'single', type: 'color', value: '#0000ff' };
+  const preset = { id: 'preset_1', name: 'Reading', settings: red, createdAt: 1, updatedAt: 2 };
+  const group = { id: 'group_1', name: 'Work', sites: ['one.example', 'two.example'], createdAt: 1, updatedAt: 2 };
+  const storage = {
+    'one.example': red,
+    'two.example': blue,
+    [storageSchema.KEYS.configPresets]: [preset],
+    [storageSchema.KEYS.siteGroups]: [group]
+  };
+
+  const backup = storageSchema.buildBackup(storage, '0.8.1');
+  assert.equal(backup.schemaVersion, 3);
+  assert.equal(backup.configPresets[0].name, 'Reading');
+  assert.deepEqual(backup.siteGroups[0].sites, ['one.example', 'two.example']);
+
+  const selected = storageSchema.buildSelectedSitesBackup(storage, '0.8.1', ['two.example']);
+  assert.deepEqual(Object.keys(selected.sites), ['two.example']);
+  assert.deepEqual(selected.siteGroups[0].sites, ['two.example']);
+  assert.deepEqual(selected.configPresets, []);
+  assert.equal(selected.selectionOnly, true);
+
+  const prepared = storageSchema.prepareImport(backup);
+  assert.equal(prepared.write[storageSchema.KEYS.configPresets][0].id, 'preset_1');
+  assert.equal(prepared.write[storageSchema.KEYS.siteGroups][0].id, 'group_1');
+
+  assert.throws(() => storageSchema.prepareImport({
+    ...backup,
+    configPresets: [preset, preset]
+  }), /preset/);
+  assert.throws(() => storageSchema.buildBackup({
+    [storageSchema.KEYS.siteGroups]: [{ ...group, sites: ['one.example', 'one.example'] }]
+  }, '0.8.1'), /site groups/);
+});
+
+test('preset and group interfaces expose quick and advanced workflows', () => {
+  const optionsHtml = read('options/options.html');
+  const popupHtml = read('popup/popup.html');
+  const manager = read('options/config-manager.js');
+  const quick = read('popup/preset-quick.js');
+
+  assert.match(optionsHtml, /id="section-configs"/);
+  assert.match(optionsHtml, /id="config-export-selected"/);
+  assert.match(optionsHtml, /id="config-import-list"/);
+  assert.match(optionsHtml, /id="config-copy-source"/);
+  assert.match(optionsHtml, /id="config-group-select"/);
+  assert.match(popupHtml, /id="quick-preset-save"/);
+  assert.match(popupHtml, /id="quick-preset-apply"/);
+  assert.match(manager, /buildSelectedSitesBackup/);
+  assert.match(manager, /pendingImport\.selected/);
+  assert.match(manager, /settingsForApply/);
+  assert.match(quick, /result\.source === 'rule'/);
+  assert.match(quick, /PageDyePopupPresets\.beforeApply/);
+  assert.match(quick, /PageDyePopupPresets\.refresh/);
+});
+
+test('options default interface background follows the system color scheme', () => {
+  const options = read('options/options.js');
+  const css = read('options/options.css');
+  assert.match(options, /SYSTEM_DARK_QUERY = window\.matchMedia\('\(prefers-color-scheme: dark\)'\)/);
+  assert.match(options, /backgroundMode: 'system'/);
+  assert.match(options, /currentUiTheme\.backgroundMode !== 'system'/);
+  assert.match(css, /html\s*\{[^}]*background:\s*var\(--bg-color\)/s);
+});
+
+test('configuration presets use the current effect model and migrate legacy layers before apply', () => {
+  const context = { navigator: { language: 'en' } };
+  context.globalThis = context;
+  runInNewContext(read('scripts/config-presets.js'), context);
+  const api = context.PageDyeConfigPresets;
+  assert.deepEqual(Array.from(api.BUILT_INS, (preset) => preset.id), [
+    'builtin-light-aurora', 'builtin-dark-aurora', 'builtin-day', 'builtin-night'
+  ]);
+  const lightAurora = api.BUILT_INS.find((preset) => preset.id === 'builtin-light-aurora');
+  const aurora = api.BUILT_INS.find((preset) => preset.id === 'builtin-dark-aurora');
+  const day = api.BUILT_INS.find((preset) => preset.id === 'builtin-day');
+  const night = api.BUILT_INS.find((preset) => preset.id === 'builtin-night');
+  assert.equal(lightAurora.settings.effect, 'aurora');
+  assert.notEqual(api.previewStyle(lightAurora.settings).background, api.previewStyle(aurora.settings).background);
+  assert.equal(aurora.settings.type, 'color');
+  assert.equal(aurora.settings.effectEnabled, true);
+  assert.equal(aurora.settings.effect, 'aurora');
+  assert.match(api.previewStyle(aurora.settings).background, /linear-gradient/);
+  assert.equal(day.settings.effect, 'particles');
+  assert.equal(night.settings.effect, 'particles');
+  assert.notEqual(api.previewStyle(day.settings).background, api.previewStyle(night.settings).background);
+
+  const legacy = api.settingsForApply({
+    mode: 'auto', type: 'effect', value: 'particles', effectKind: 'particles',
+    light: { type: 'effect', value: 'aurora', effectKind: 'aurora' },
+    dark: { type: 'color', value: '#111111' }
+  });
+  assert.equal(legacy.type, 'none');
+  assert.equal(legacy.effectEnabled, true);
+  assert.equal(legacy.effect, 'particles');
+  assert.equal(legacy.light.type, 'none');
+  assert.equal(legacy.light.effect, 'aurora');
+  assert.equal(legacy.dark.type, 'color');
 });
 
 test('options expose rule priority, drag sorting, disabling, and rule editing', () => {
