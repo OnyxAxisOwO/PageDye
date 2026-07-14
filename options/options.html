@@ -676,13 +676,37 @@
           <h2><span data-i18n="editTitle">Edit Configuration:</span> <span id="edit-domain-name">domain.com</span></h2>
         </div>
 
-        <div class="card">
-          <div class="segmented-control main-tabs" id="edit-main-tabs">
+        <div class="edit-config-shell">
+          <div class="edit-view-tabs" id="edit-main-tabs">
             <input type="radio" name="edit-mainTab" value="wallpaper" id="edit-tab-wallpaper" checked>
-            <label for="edit-tab-wallpaper" data-i18n="tabWallpaper">Wallpaper</label>
+            <label for="edit-tab-wallpaper">
+              <span class="edit-tab-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+              </span>
+              <span class="edit-tab-label" data-i18n="tabWallpaper">Wallpaper</span>
+            </label>
 
             <input type="radio" name="edit-mainTab" value="frosted" id="edit-tab-frosted">
-            <label for="edit-tab-frosted" data-i18n="tabFrostedGlass">Frosted Glass</label>
+            <label for="edit-tab-frosted">
+              <span class="edit-tab-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="4" height="4"></rect>
+                  <rect x="10" y="3" width="4" height="4"></rect>
+                  <rect x="17" y="3" width="4" height="4"></rect>
+                  <rect x="3" y="10" width="4" height="4"></rect>
+                  <rect x="10" y="10" width="4" height="4"></rect>
+                  <rect x="17" y="10" width="4" height="4"></rect>
+                  <rect x="3" y="17" width="4" height="4"></rect>
+                  <rect x="10" y="17" width="4" height="4"></rect>
+                  <rect x="17" y="17" width="4" height="4"></rect>
+                </svg>
+              </span>
+              <span class="edit-tab-label" data-i18n="tabFrostedGlass">Frosted Glass</span>
+            </label>
           </div>
 
           <div class="editor-panels-slider-viewport">
@@ -724,18 +748,30 @@
             </summary>
             <div class="accordion-content">
               <div class="control-group">
-                <div class="segmented-control" id="edit-wallpaper-mode" style="margin-bottom: 0;">
+                <div class="mode-pill-group edit-wallpaper-mode" id="edit-wallpaper-mode">
                   <input type="radio" name="edit-wpMode" value="single" id="edit-mode-single" checked>
-                  <label for="edit-mode-single" data-i18n="modeSingle">Single</label>
-                  
+                  <label for="edit-mode-single">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                    <span data-i18n="modeSingle">Single</span>
+                  </label>
+
                   <input type="radio" name="edit-wpMode" value="auto" id="edit-mode-auto">
-                  <label for="edit-mode-auto" data-i18n="modeAuto">Light/Dark</label>
+                  <label for="edit-mode-auto">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48 2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48 2.83-2.83"></path><path d="M10 15l2-6 2 3"></path></svg>
+                    <span data-i18n="modeAuto">Light/Dark</span>
+                  </label>
 
                   <input type="radio" name="edit-wpMode" value="timeRange" id="edit-mode-timerange">
-                  <label for="edit-mode-timerange" data-i18n="modeTimeRange">Time</label>
-                  
+                  <label for="edit-mode-timerange">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span data-i18n="modeTimeRange">Time</span>
+                  </label>
+
                   <input type="radio" name="edit-wpMode" value="slideshow" id="edit-mode-slideshow">
-                  <label for="edit-mode-slideshow" data-i18n="modeSlideshow">Slideshow</label>
+                  <label for="edit-mode-slideshow">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                    <span data-i18n="modeSlideshow">Slideshow</span>
+                  </label>
                 </div>
               </div>
 
@@ -774,13 +810,15 @@
               <div id="edit-slideshow-config-panel" class="section hidden" style="margin-top: 12px; margin-bottom: 0;">
                 <div class="control-group row" style="margin-bottom: 8px;">
                   <label for="edit-slideshow-interval" data-i18n="rotationInterval">Interval</label>
-                  <select id="edit-slideshow-interval">
-                    <option value="open" data-i18n="intervalOpen">Each Open</option>
-                    <option value="15m" data-i18n="interval15m">15 Mins</option>
-                    <option value="30m" data-i18n="interval30m">30 Mins</option>
-                    <option value="1h" data-i18n="interval1h">1 Hour</option>
-                    <option value="24h" data-i18n="interval24h">1 Day</option>
-                  </select>
+                  <div class="editor-select-wrap">
+                    <select id="edit-slideshow-interval">
+                      <option value="open" data-i18n="intervalOpen">Each Open</option>
+                      <option value="15m" data-i18n="interval15m">15 Mins</option>
+                      <option value="30m" data-i18n="interval30m">30 Mins</option>
+                      <option value="1h" data-i18n="interval1h">1 Hour</option>
+                      <option value="24h" data-i18n="interval24h">1 Day</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div class="control-group row" style="margin-bottom: 12px;">
@@ -817,10 +855,14 @@
                 </div>
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                   <span data-i18n="labelPeriodRange" style="font-size: 13px; font-weight: 500;">Time Range:</span>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <select id="edit-time-period-start" style="padding: 4px 8px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--surface-bg); color: var(--text-color); width: 80px;"></select>
+                  <div class="edit-time-selects">
+                    <div class="editor-select-wrap compact">
+                      <select id="edit-time-period-start"></select>
+                    </div>
                     <span style="color: var(--text-secondary); font-size: 13px;">-</span>
-                    <select id="edit-time-period-end" style="padding: 4px 8px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--surface-bg); color: var(--text-color); width: 80px;"></select>
+                    <div class="editor-select-wrap compact">
+                      <select id="edit-time-period-end"></select>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -921,10 +963,12 @@
 
                   <div class="control-group row hidden" id="edit-gradient-shape-control">
                     <label data-i18n="gradientShape">Shape</label>
-                    <select id="edit-gradient-shape">
-                      <option value="circle" data-i18n="gradientShapeCircle">Circle</option>
-                      <option value="ellipse" data-i18n="gradientShapeEllipse">Ellipse</option>
-                    </select>
+                    <div class="editor-select-wrap">
+                      <select id="edit-gradient-shape">
+                        <option value="circle" data-i18n="gradientShapeCircle">Circle</option>
+                        <option value="ellipse" data-i18n="gradientShapeEllipse">Ellipse</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div class="control-group" style="margin-bottom: 10px;">
@@ -995,24 +1039,26 @@
                 <div class="control-group">
                   <label for="edit-effect-kind" data-i18n="effectKind">Effect</label>
                   <p class="hint" data-i18n="effectKindHint">A minimalist black &amp; white animated wallpaper, rendered locally with Canvas — no external assets.</p>
-                  <select id="edit-effect-kind">
-                    <option value="matrix" data-i18n="effectMatrix">Matrix</option>
-                    <option value="particles" data-i18n="effectParticles">Particles</option>
-                    <option value="waves" selected data-i18n="effectWaves">Waves</option>
-                    <option value="starfield" data-i18n="effectStarfield">Starfield</option>
-                    <option value="ripple" data-i18n="effectRipple">Ripple</option>
-                    <option value="aurora" data-i18n="effectAurora">Aurora</option>
-                    <option value="snow" data-i18n="effectSnow">Snow</option>
-                    <option value="bubbles" data-i18n="effectBubbles">Bubbles</option>
-                    <option value="constellation" data-i18n="effectConstellation">Constellation</option>
-                    <option value="fireflies" data-i18n="effectFireflies">Fireflies</option>
-                    <option value="gridpulse" data-i18n="effectGridPulse">Grid Pulse</option>
-                    <option value="rain" data-i18n="effectRain">Rain</option>
-                    <option value="confetti" data-i18n="effectConfetti">Confetti</option>
-                    <option value="plasma" data-i18n="effectPlasma">Plasma</option>
-                    <option value="vortex" data-i18n="effectVortex">Vortex</option>
-                    <option value="typewriter" data-i18n="effectTypewriter">Typewriter</option>
-                  </select>
+                  <div class="editor-select-wrap">
+                    <select id="edit-effect-kind">
+                      <option value="matrix" data-i18n="effectMatrix">Matrix</option>
+                      <option value="particles" data-i18n="effectParticles">Particles</option>
+                      <option value="waves" selected data-i18n="effectWaves">Waves</option>
+                      <option value="starfield" data-i18n="effectStarfield">Starfield</option>
+                      <option value="ripple" data-i18n="effectRipple">Ripple</option>
+                      <option value="aurora" data-i18n="effectAurora">Aurora</option>
+                      <option value="snow" data-i18n="effectSnow">Snow</option>
+                      <option value="bubbles" data-i18n="effectBubbles">Bubbles</option>
+                      <option value="constellation" data-i18n="effectConstellation">Constellation</option>
+                      <option value="fireflies" data-i18n="effectFireflies">Fireflies</option>
+                      <option value="gridpulse" data-i18n="effectGridPulse">Grid Pulse</option>
+                      <option value="rain" data-i18n="effectRain">Rain</option>
+                      <option value="confetti" data-i18n="effectConfetti">Confetti</option>
+                      <option value="plasma" data-i18n="effectPlasma">Plasma</option>
+                      <option value="vortex" data-i18n="effectVortex">Vortex</option>
+                      <option value="typewriter" data-i18n="effectTypewriter">Typewriter</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div class="control-group hidden" id="edit-effect-text-control">
@@ -1023,12 +1069,14 @@
                 <div class="control-group">
                   <label for="edit-effect-color-scheme" data-i18n="effectColorScheme">Color Preset</label>
                   <p class="hint" data-i18n="effectColorSchemeHint">Auto follows your system's light/dark setting live.</p>
-                  <select id="edit-effect-color-scheme">
-                    <option value="auto" selected data-i18n="effectSchemeAuto">Auto</option>
-                    <option value="light" data-i18n="effectSchemeLight">Light</option>
-                    <option value="dark" data-i18n="effectSchemeDark">Dark</option>
-                    <option value="custom" data-i18n="effectSchemeCustom">Custom</option>
-                  </select>
+                  <div class="editor-select-wrap">
+                    <select id="edit-effect-color-scheme">
+                      <option value="auto" selected data-i18n="effectSchemeAuto">Auto</option>
+                      <option value="light" data-i18n="effectSchemeLight">Light</option>
+                      <option value="dark" data-i18n="effectSchemeDark">Dark</option>
+                      <option value="custom" data-i18n="effectSchemeCustom">Custom</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div id="edit-effect-color-custom-control" class="hidden">
@@ -1145,12 +1193,14 @@
                        <input type="checkbox" id="edit-bg-fixed" checked>
                        <span data-i18n="fixed">Fixed Position</span>
                      </label>
-                     <select id="edit-bg-size">
-                       <option value="cover" data-i18n="sizeCover">Cover</option>
-                       <option value="contain" data-i18n="sizeContain">Contain</option>
-                       <option value="auto" data-i18n="sizeAuto">Auto</option>
-                       <option value="stretch" data-i18n="sizeStretch">Stretch</option>
-                     </select>
+                     <div class="editor-select-wrap">
+                       <select id="edit-bg-size">
+                         <option value="cover" data-i18n="sizeCover">Cover</option>
+                         <option value="contain" data-i18n="sizeContain">Contain</option>
+                         <option value="auto" data-i18n="sizeAuto">Auto</option>
+                         <option value="stretch" data-i18n="sizeStretch">Stretch</option>
+                       </select>
+                     </div>
                    </div>
                    
                    <div class="control-group row" style="margin-bottom: 0;">
