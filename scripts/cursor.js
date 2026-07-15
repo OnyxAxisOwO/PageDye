@@ -50,7 +50,7 @@ window.PageDyeCursor = (function () {
     const trail = c.trail || {};
     return {
       preset: PRESETS[c.preset] ? c.preset : 'ball',
-      color: (typeof c.color === 'string' && c.color) || '#ff5fa2',
+      color: (typeof c.color === 'string' && c.color) || '#3b82f6',
       size: clamp(c.size, 12, 48, 24),
       hoverScale: clamp(c.hoverScale, 1, 3, 1.6),
       // Off by default: easing the cursor toward the pointer instead of
@@ -285,6 +285,7 @@ window.PageDyeCursor = (function () {
     let frameId = null;
     let stopped = false;
     let last = null;
+    let visualHoverScale = 1;
     function loop(t) {
       if (stopped) return;
       frameId = requestAnimationFrame(loop);
@@ -304,14 +305,22 @@ window.PageDyeCursor = (function () {
         dotX = mouseX;
         dotY = mouseY;
       }
-      // Scale (hover grow/shrink) snaps instantly, same as position — the
-      // cursor shape is the real pointer, not a separately-animated object
-      // trailing behind it. This used to be a CSS `transition: transform`,
-      // which (since it shares the `transform` property with translate3d)
-      // eased the position too and made the cursor visibly lag behind the
-      // real pointer even with smoothing off.
-      const dotScale = root.dataset.hover ? (config.preset === 'dot-ring' ? 1 : config.hoverScale) : 1;
-      dot.style.transform = `translate3d(${dotX}px, ${dotY}px, 0) scale(${dotScale})`;
+      // Animate the rendered dimensions instead of scaling the composited
+      // layer. Position remains 1:1 with the pointer, while circles and
+      // borders are redrawn at their current size so enlarged cursors stay
+      // crisp instead of becoming a blurred bitmap.
+      const targetHoverScale = root.dataset.hover ? config.hoverScale : 1;
+      const scaleEase = reduceMotion ? 1 : 1 - Math.exp(-dt / 55);
+      const previousHoverScale = visualHoverScale;
+      visualHoverScale += (targetHoverScale - visualHoverScale) * scaleEase;
+      if (Math.abs(targetHoverScale - visualHoverScale) < 0.001) {
+        visualHoverScale = targetHoverScale;
+      }
+      const hoverScaleChanged = visualHoverScale !== previousHoverScale;
+      if (hoverScaleChanged && config.preset !== 'dot-ring') {
+        styleDot(dot, config.preset, config.color, config.size * visualHoverScale);
+      }
+      dot.style.transform = `translate3d(${dotX}px, ${dotY}px, 0)`;
 
       if (ring) {
         if (config.smoothing) {
@@ -321,8 +330,10 @@ window.PageDyeCursor = (function () {
           ringX = mouseX;
           ringY = mouseY;
         }
-        const ringScale = root.dataset.hover ? config.hoverScale : 1;
-        ring.style.transform = `translate3d(${ringX}px, ${ringY}px, 0) scale(${ringScale})`;
+        if (hoverScaleChanged) {
+          styleRing(ring, config.color, config.size * visualHoverScale);
+        }
+        ring.style.transform = `translate3d(${ringX}px, ${ringY}px, 0)`;
       }
 
       if (trailCanvas && !reduceMotion) {

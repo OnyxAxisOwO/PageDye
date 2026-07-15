@@ -41,6 +41,20 @@ test('popup and options include their shared image preparation helper', () => {
   assert.match(helper, /MAX_DIMENSION = 2560/);
 });
 
+test('dashboard appearance supports images while surface colors follow the interface theme', () => {
+  const css = read('options/options.css');
+  const options = read('options/options.js');
+  const html = read('options/options.html');
+
+  assert.match(options, /applyThemeBgImage\(document\.body, theme\.pageBgImage\)/);
+  assert.match(options, /applyThemeBgImage\(document\.querySelector\('\.dashboard-container'\), theme\.containerBgImage\)/);
+  assert.doesNotMatch(html, /id="theme-page-bg(?:-text)?"/);
+  assert.doesNotMatch(html, /id="theme-container-bg(?:-text)?"/);
+  assert.match(css, /body\s*\{\s*background:\s*var\(--md-sys-color-surface-container\);/);
+  assert.match(css, /\.dashboard-container\s*\{\s*background:\s*var\(--md-sys-color-surface\);/);
+  assert.match(css, /\.sidebar\s*\{\s*background:\s*var\(--md-sys-color-surface-container-low\);/);
+});
+
 test('configured-site editor uses centered popup-style tabs, modes, and selects', () => {
   const html = read('options/options.html');
   const css = read('options/options.css');
@@ -446,13 +460,13 @@ test('preset and group interfaces expose quick and advanced workflows', () => {
   assert.match(quick, /PageDyePopupPresets\.refresh/);
 });
 
-test('options default interface background follows the system color scheme', () => {
+test('options interface surfaces follow the system color scheme', () => {
   const options = read('options/options.js');
   const css = read('options/options.css');
   assert.match(options, /SYSTEM_DARK_QUERY = window\.matchMedia\('\(prefers-color-scheme: dark\)'\)/);
-  assert.match(options, /backgroundMode: 'system'/);
-  assert.match(options, /currentUiTheme\.backgroundMode !== 'system'/);
-  assert.match(css, /html\s*\{[^}]*background:\s*var\(--bg-color\)/s);
+  assert.match(options, /const isDark = SYSTEM_DARK_QUERY\.matches/);
+  assert.match(options, /SYSTEM_DARK_QUERY\.addEventListener\('change', \(\) => \{\s*applyUiTheme\(currentUiTheme\);/s);
+  assert.match(css, /body\s*\{\s*background:\s*var\(--md-sys-color-surface-container\);/);
 });
 
 test('configuration presets use the current effect model and migrate legacy layers before apply', () => {
@@ -592,6 +606,18 @@ test('picker injection uses the shared complete dependency loader', () => {
   const injection = read('scripts/injection.js');
   assert.match(injection, /scripts\/storage-schema\.js/);
   assert.match(injection, /scripts\/custom-effect-sandbox\.js/);
+});
+
+test('custom cursor defaults to blue and animates hover growth without bitmap scaling', () => {
+  const cursor = read('scripts/cursor.js');
+  const popupHtml = read('popup/popup.html');
+  const popup = read('popup/popup.js');
+  assert.match(cursor, /color: .*#3b82f6/);
+  assert.match(popupHtml, /id="cursor-color" value="#3b82f6"/);
+  assert.match(popup, /els\.cursorColor\.value = '#3b82f6'/);
+  assert.match(cursor, /visualHoverScale \+=/);
+  assert.match(cursor, /config\.size \* visualHoverScale/);
+  assert.doesNotMatch(cursor, /translate3d\([^`]+scale\(/);
 });
 
 test('image and backup limits reject oversize data instead of truncating it', () => {

@@ -3154,8 +3154,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.cursorToggle.checked = false;
     cursorPresetState = 'ball';
     renderCursorPresetsGrid();
-    els.cursorColor.value = '#ff5fa2';
-    els.cursorColorText.value = '#ff5fa2';
+    els.cursorColor.value = '#3b82f6';
+    els.cursorColorText.value = '#3b82f6';
     els.cursorSize.value = 24;
     els.cursorSizeVal.textContent = '24px';
     els.cursorHoverScale.value = 1.6;

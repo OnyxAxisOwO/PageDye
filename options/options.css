@@ -1430,6 +1430,8 @@ label {
   padding: 4px;
   border-radius: var(--radius);
   border: 1px solid var(--border-color);
+  position: relative;
+  z-index: 1;
 }
 
 .main-tabs {
@@ -1452,18 +1454,46 @@ label {
   cursor: pointer;
   border-radius: 6px;
   font-size: 13px;
-  transition: all 0.2s;
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1), font-weight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: var(--text-secondary);
   margin: 0;
   white-space: nowrap;
+  position: relative;
+  z-index: 2;
 }
 
 .segmented-control input:checked + label {
-  background: var(--surface-card);
   color: var(--primary-color);
-  box-shadow: var(--shadow-sm);
   font-weight: 600;
 }
+
+/* Segmented Control Sliding Animation */
+.segmented-control::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  background: var(--surface-card);
+  border-radius: 6px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+}
+
+/* For 2 items */
+.segmented-control:has(input:nth-of-type(2):last-of-type)::before {
+  width: calc((100% - 8px) / 2);
+}
+.segmented-control:has(input:nth-of-type(2):last-of-type):has(input:nth-of-type(1):checked)::before { transform: translateX(0); }
+.segmented-control:has(input:nth-of-type(2):last-of-type):has(input:nth-of-type(2):checked)::before { transform: translateX(100%); }
+
+/* For 3 items */
+.segmented-control:has(input:nth-of-type(3):last-of-type)::before {
+  width: calc((100% - 8px) / 3);
+}
+.segmented-control:has(input:nth-of-type(3):last-of-type):has(input:nth-of-type(1):checked)::before { transform: translateX(0); }
+.segmented-control:has(input:nth-of-type(3):last-of-type):has(input:nth-of-type(2):checked)::before { transform: translateX(100%); }
+.segmented-control:has(input:nth-of-type(3):last-of-type):has(input:nth-of-type(3):checked)::before { transform: translateX(200%); }
 
 .section-header-row {
   display: flex;
@@ -3829,7 +3859,7 @@ h1,
 }
 
 body {
-  background: var(--md-sys-color-surface);
+  background: var(--md-sys-color-surface-container);
   color: var(--md-sys-color-on-surface);
   letter-spacing: 0;
 }
@@ -3974,11 +4004,64 @@ body {
   color: var(--md-sys-color-on-surface);
 }
 
-.segmented-control input:checked + label,
-.bg-style-facade input:checked + label {
-  background: var(--md-sys-color-secondary-container);
+.segmented-control input:checked + label {
+  background: transparent;
   color: var(--md-sys-color-on-secondary-container);
   box-shadow: none;
+}
+
+.bg-style-facade {
+  position: relative;
+  z-index: 1;
+}
+
+.bg-style-facade label {
+  position: relative;
+  z-index: 2;
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1), font-weight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bg-style-facade input:checked + label {
+  background: transparent;
+  color: var(--md-sys-color-on-secondary-container);
+  box-shadow: none;
+}
+
+.bg-style-facade::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 0;
+  background: var(--md-sys-color-secondary-container);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+}
+
+.bg-style-facade:has(input:nth-of-type(5):last-of-type)::before {
+  width: 20%;
+}
+.bg-style-facade:has(input:nth-of-type(5):last-of-type):has(input:nth-of-type(1):checked)::before { transform: translateX(0); }
+.bg-style-facade:has(input:nth-of-type(5):last-of-type):has(input:nth-of-type(2):checked)::before { transform: translateX(100%); }
+.bg-style-facade:has(input:nth-of-type(5):last-of-type):has(input:nth-of-type(3):checked)::before { transform: translateX(200%); }
+.bg-style-facade:has(input:nth-of-type(5):last-of-type):has(input:nth-of-type(4):checked)::before { transform: translateX(300%); }
+.bg-style-facade:has(input:nth-of-type(5):last-of-type):has(input:nth-of-type(5):checked)::before { transform: translateX(400%); }
+
+.segmented-control::before {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 0;
+  background: var(--md-sys-color-secondary-container);
+}
+
+.segmented-control:has(input:nth-of-type(2):last-of-type)::before {
+  width: 50%;
+}
+
+.segmented-control:has(input:nth-of-type(3):last-of-type)::before {
+  width: 33.3333%;
 }
 
 .mode-pill-group label {

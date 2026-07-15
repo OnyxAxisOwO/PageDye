@@ -22,8 +22,8 @@
   --badge-color-text: #006A6A;
   --shadow-sm: 0 1px 2px rgba(23, 29, 28, 0.10);
   --shadow-md: 0 4px 12px rgba(23, 29, 28, 0.12);
-  --popup-corner-shadow-strong: rgba(23, 29, 28, 0.16);
-  --popup-corner-shadow-soft: rgba(23, 29, 28, 0.07);
+  --popup-corner-shadow-strong: rgba(23, 29, 28, 0.24);
+  --popup-corner-shadow-soft: rgba(23, 29, 28, 0.11);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -49,8 +49,8 @@
     --badge-color-text: #80D5D1;
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
     --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.32);
-    --popup-corner-shadow-strong: rgba(0, 0, 0, 0.34);
-    --popup-corner-shadow-soft: rgba(0, 0, 0, 0.18);
+    --popup-corner-shadow-strong: rgba(0, 0, 0, 0.44);
+    --popup-corner-shadow-soft: rgba(0, 0, 0, 0.23);
   }
 }
 
@@ -415,6 +415,8 @@ label {
   background: var(--surface-bg);
   padding: 4px;
   border-radius: var(--radius);
+  position: relative;
+  z-index: 1;
 }
 
 .main-tabs {
@@ -437,18 +439,46 @@ label {
   cursor: pointer;
   border-radius: 6px;
   font-size: 13px;
-  transition: all 0.2s;
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1), font-weight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: var(--text-secondary);
   margin: 0;
   white-space: nowrap;
+  position: relative;
+  z-index: 2;
 }
 
 .segmented-control input:checked + label {
-  background: var(--surface-card);
   color: var(--primary-color);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   font-weight: 600;
 }
+
+/* Segmented Control Sliding Animation */
+.segmented-control::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  background: var(--surface-card);
+  border-radius: 6px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+}
+
+/* For 2 items */
+.segmented-control:has(input:nth-of-type(2):last-of-type)::before {
+  width: calc((100% - 8px) / 2);
+}
+.segmented-control:has(input:nth-of-type(2):last-of-type):has(input:nth-of-type(1):checked)::before { transform: translateX(0); }
+.segmented-control:has(input:nth-of-type(2):last-of-type):has(input:nth-of-type(2):checked)::before { transform: translateX(100%); }
+
+/* For 3 items */
+.segmented-control:has(input:nth-of-type(3):last-of-type)::before {
+  width: calc((100% - 8px) / 3);
+}
+.segmented-control:has(input:nth-of-type(3):last-of-type):has(input:nth-of-type(1):checked)::before { transform: translateX(0); }
+.segmented-control:has(input:nth-of-type(3):last-of-type):has(input:nth-of-type(2):checked)::before { transform: translateX(100%); }
+.segmented-control:has(input:nth-of-type(3):last-of-type):has(input:nth-of-type(3):checked)::before { transform: translateX(200%); }
 
 .run-mode-control {
   box-sizing: border-box;
@@ -2098,10 +2128,10 @@ body::before {
   z-index: 2147483647;
   pointer-events: none;
   background:
-    radial-gradient(circle at -18px -22px,
+    radial-gradient(ellipse 72% 190px at 50% -42px,
       var(--popup-corner-shadow-strong) 0,
-      var(--popup-corner-shadow-soft) 96px,
-      transparent 210px);
+      var(--popup-corner-shadow-soft) 48%,
+      transparent 100%);
 }
 
 .container {
@@ -2318,11 +2348,64 @@ label {
   line-height: 1;
 }
 
-.segmented-control input:checked + label,
-.bg-style-facade input:checked + label {
-  background: var(--primary-color);
+.segmented-control input:checked + label {
+  background: transparent;
   color: var(--primary-color-text);
   box-shadow: none;
+}
+
+.bg-style-facade {
+  position: relative;
+  z-index: 1;
+}
+
+.bg-style-facade label {
+  position: relative;
+  z-index: 2;
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1), font-weight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bg-style-facade input:checked + label {
+  background: transparent;
+  color: var(--primary-color-text);
+  box-shadow: none;
+}
+
+.bg-style-facade::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  border-radius: 20px;
+  background: var(--primary-color);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+}
+
+.bg-style-facade:has(input:nth-of-type(5):last-of-type)::before {
+  width: calc((100% - 6px) / 5);
+}
+.bg-style-facade:has(input:nth-of-type(5):last-of-type):has(input:nth-of-type(1):checked)::before { transform: translateX(0); }
+.bg-style-facade:has(input:nth-of-type(5):last-of-type):has(input:nth-of-type(2):checked)::before { transform: translateX(100%); }
+.bg-style-facade:has(input:nth-of-type(5):last-of-type):has(input:nth-of-type(3):checked)::before { transform: translateX(200%); }
+.bg-style-facade:has(input:nth-of-type(5):last-of-type):has(input:nth-of-type(4):checked)::before { transform: translateX(300%); }
+.bg-style-facade:has(input:nth-of-type(5):last-of-type):has(input:nth-of-type(5):checked)::before { transform: translateX(400%); }
+
+.segmented-control::before {
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  border-radius: 999px;
+  background: var(--primary-color);
+}
+
+.segmented-control:has(input:nth-of-type(2):last-of-type)::before {
+  width: calc((100% - 6px) / 2);
+}
+
+.segmented-control:has(input:nth-of-type(3):last-of-type)::before {
+  width: calc((100% - 6px) / 3);
 }
 
 .bg-style-facade {

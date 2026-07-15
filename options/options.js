@@ -31,10 +31,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       debugFeatureInspector: "Hover to highlight and click to lock an element, showing its tag/id/class, guessed selector, size and key computed styles.",
       appearanceTitle: "Interface",
       appearanceHint: "Choose how PageDye's popup and settings look. Website backgrounds are not affected.",
-      pageBackground: "Page Background",
-      pageBackgroundHint: "The outer area surrounding the dashboard panel. Pick a color, or upload an image.",
-      containerBackground: "Container Background",
-      containerBackgroundHint: "The sidebar and main panel background. Pick a color, or upload an image.",
+      pageBackground: "Page Background Image",
+      pageBackgroundHint: "Upload an image for the outer area surrounding the dashboard panel.",
+      containerBackground: "Container Background Image",
+      containerBackgroundHint: "Upload an image for the sidebar and main panel.",
       appearanceReset: "Reset to Default",
       appearanceSaved: "Appearance updated!",
       appearanceResetDone: "Appearance reset!",
@@ -309,10 +309,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       debugFeatureInspector: "悬停高亮、点击锁定某个元素,查看其标签/ID/class、猜测的选择器、尺寸和关键计算样式。",
       appearanceTitle: "界面外观",
       appearanceHint: "调整 PageDye 弹窗和设置页的样式，不会改变网站背景。",
-      pageBackground: "页面背景",
-      pageBackgroundHint: "控制面板外层的背景区域。可选择颜色，或上传一张背景图片。",
-      containerBackground: "容器背景",
-      containerBackgroundHint: "侧边栏与主面板的背景。可选择颜色，或上传一张背景图片。",
+      pageBackground: "页面背景图片",
+      pageBackgroundHint: "为控制面板外层区域上传一张背景图片。",
+      containerBackground: "容器背景图片",
+      containerBackgroundHint: "为侧边栏与主面板上传一张背景图片。",
       appearanceReset: "恢复默认",
       appearanceSaved: "外观已更新!",
       appearanceResetDone: "外观已重置!",
@@ -547,27 +547,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const DEFAULT_BG_KEY = '__pagedye_default_background__';
   const URL_RULES_KEY = '__pagedye_url_rules_v081__';
   const SYSTEM_DARK_QUERY = window.matchMedia('(prefers-color-scheme: dark)');
-  const UI_THEME_BASE_DEFAULTS = { pageBgImage: null, containerBgImage: null, accent: 'neutral', customAccent: '#18181b', disableAnimation: false, backgroundMode: 'system' };
+  const UI_THEME_BASE_DEFAULTS = { pageBgImage: null, containerBgImage: null, accent: 'neutral', customAccent: '#18181b', disableAnimation: false };
   function getSystemUiThemeDefaults() {
-    return Object.assign({}, UI_THEME_BASE_DEFAULTS, SYSTEM_DARK_QUERY.matches
-      ? { pageBg: '#101414', containerBg: '#191C1C' }
-      : { pageBg: '#f1f5f9', containerBg: '#ffffff' });
+    return { ...UI_THEME_BASE_DEFAULTS };
   }
   function normalizeUiTheme(value) {
     const saved = value && typeof value === 'object' ? value : {};
-    const legacyDefault = !saved.backgroundMode && !saved.pageBgImage && !saved.containerBgImage &&
-      String(saved.pageBg || '').toLowerCase() === '#f1f5f9' &&
-      String(saved.containerBg || '').toLowerCase() === '#ffffff';
-    const hasCustomBackground = saved.backgroundMode === 'custom' ||
-      (saved.backgroundMode !== 'system' && !legacyDefault && (!!saved.pageBgImage || !!saved.containerBgImage ||
-        Object.prototype.hasOwnProperty.call(saved, 'pageBg') || Object.prototype.hasOwnProperty.call(saved, 'containerBg')));
-    const defaults = getSystemUiThemeDefaults();
-    if (hasCustomBackground) return Object.assign({}, defaults, saved, { backgroundMode: 'custom' });
-    return Object.assign({}, defaults, saved, {
-      pageBg: defaults.pageBg,
-      containerBg: defaults.containerBg,
-      backgroundMode: 'system'
-    });
+    // Colors from older versions are intentionally ignored. Surface colors are
+    // now derived from the selected interface theme; only images are custom.
+    const { pageBg, containerBg, backgroundMode, ...theme } = saved;
+    return Object.assign({}, getSystemUiThemeDefaults(), theme);
   }
   let currentUiTheme = getSystemUiThemeDefaults();
   const UI_THEME_ACCENTS = {
@@ -773,7 +762,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function applyUiThemeAccent(theme) {
     const root = document.documentElement.style;
-    const isDark = !colorIsLight(theme.containerBg);
+    const isDark = SYSTEM_DARK_QUERY.matches;
     const rawAccent = getUiAccentColor(theme);
     const accent = getDisplayAccentColor(rawAccent, isDark);
     const onAccent = colorIsLight(accent) ? '#000000' : '#ffffff';
@@ -827,10 +816,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     importFile: document.getElementById('import-file'),
     clearAllBtn: document.getElementById('clear-all-btn'),
     statusMsg: document.getElementById('status-msg'),
-    themePageBg: document.getElementById('theme-page-bg'),
-    themePageBgText: document.getElementById('theme-page-bg-text'),
-    themeContainerBg: document.getElementById('theme-container-bg'),
-    themeContainerBgText: document.getElementById('theme-container-bg-text'),
     themeResetBtn: document.getElementById('theme-reset-btn'),
     themePageBgDrop: document.getElementById('theme-page-bg-drop'),
     themePageBgFile: document.getElementById('theme-page-bg-file'),
@@ -2296,26 +2281,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyUiTheme(currentUiTheme);
     syncUiThemeInputs(currentUiTheme);
 
-    const onPageBgChange = (value) => {
-      els.themePageBg.value = value;
-      els.themePageBgText.value = value;
-      saveUiTheme({ pageBg: value, backgroundMode: 'custom' });
-    };
-    const onContainerBgChange = (value) => {
-      els.themeContainerBg.value = value;
-      els.themeContainerBgText.value = value;
-      saveUiTheme({ containerBg: value, backgroundMode: 'custom' });
-    };
-
-    els.themePageBg.addEventListener('input', (e) => onPageBgChange(e.target.value));
-    els.themePageBgText.addEventListener('change', (e) => {
-      if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onPageBgChange(e.target.value);
-    });
-    els.themeContainerBg.addEventListener('input', (e) => onContainerBgChange(e.target.value));
-    els.themeContainerBgText.addEventListener('change', (e) => {
-      if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onContainerBgChange(e.target.value);
-    });
-
     if (els.uiThemeColorGrid) {
       els.uiThemeColorGrid.addEventListener('click', (e) => {
         const dot = e.target.closest('.theme-color-dot');
@@ -2342,12 +2307,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupThemeImageUpload('container', els.themeContainerBgDrop, els.themeContainerBgFile, els.themeContainerBgFileInfo, els.themeContainerBgFilename, els.themeContainerBgRemove);
 
     SYSTEM_DARK_QUERY.addEventListener('change', () => {
-      if (currentUiTheme.backgroundMode !== 'system') return;
-      const defaults = getSystemUiThemeDefaults();
-      currentUiTheme = Object.assign({}, currentUiTheme, {
-        pageBg: defaults.pageBg,
-        containerBg: defaults.containerBg
-      });
       applyUiTheme(currentUiTheme);
       syncUiThemeInputs(currentUiTheme);
     });
@@ -2394,7 +2353,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         dropEl.classList.add('hidden');
         fileInfoEl.classList.remove('hidden');
         filenameEl.textContent = prepared.name;
-        saveUiTheme({ [imageKey]: image, backgroundMode: 'custom' });
+        saveUiTheme({ [imageKey]: image });
       } catch (error) {
         console.error('Failed to prepare theme image:', error);
         showStatus(error && error.message ? error.message : t('importError'));
@@ -2405,15 +2364,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       fileEl.value = '';
       dropEl.classList.remove('hidden');
       fileInfoEl.classList.add('hidden');
-      saveUiTheme({ [imageKey]: null, backgroundMode: 'custom' });
+      saveUiTheme({ [imageKey]: null });
     });
   }
 
   function syncUiThemeInputs(theme) {
-    els.themePageBg.value = theme.pageBg;
-    els.themePageBgText.value = theme.pageBg;
-    els.themeContainerBg.value = theme.containerBg;
-    els.themeContainerBgText.value = theme.containerBg;
     if (els.uiThemeCustomColor) els.uiThemeCustomColor.value = normalizeHexColor(theme.customAccent, UI_THEME_ACCENTS.neutral);
     if (els.uiThemeCustomColorText) els.uiThemeCustomColorText.value = normalizeHexColor(theme.customAccent, UI_THEME_ACCENTS.neutral);
     if (els.uiThemeColorGrid) {
@@ -2444,12 +2399,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function applyUiTheme(theme) {
     const root = document.documentElement.style;
-    root.setProperty('--bg-outer', theme.pageBg);
-    root.setProperty('--bg-color', theme.pageBg);
-    root.setProperty('--surface-card', theme.containerBg);
-    root.setProperty('--sidebar-bg', theme.containerBg);
-
-    const palette = colorIsLight(theme.containerBg) ? UI_THEME_LIGHT_PALETTE : UI_THEME_DARK_PALETTE;
+    const palette = SYSTEM_DARK_QUERY.matches ? UI_THEME_DARK_PALETTE : UI_THEME_LIGHT_PALETTE;
     Object.keys(palette).forEach(name => root.setProperty(name, palette[name]));
     applyUiThemeAccent(theme);
 
