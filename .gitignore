@@ -1,6 +1,9 @@
 # Build artifacts
 *.zip
 
+# Dependencies
+node_modules/
+
 # OS / editor junk
 .DS_Store
 Thumbs.db

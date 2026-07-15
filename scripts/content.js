@@ -426,16 +426,15 @@
       chrome.storage.local.set({ [usingDefault ? DEFAULT_BG_KEY : window.location.hostname]: settings }, callback);
       return;
     }
-    chrome.storage.local.get(URL_RULES_KEY, (data) => {
-      const rules = Array.isArray(data[URL_RULES_KEY]) ? data[URL_RULES_KEY] : [];
-      const index = rules.findIndex((rule) => rule && rule.id === activeRuleId);
-      if (index < 0) {
-        if (callback) callback();
-        return;
-      }
-      rules[index] = { ...rules[index], settings };
-      chrome.storage.local.set({ [URL_RULES_KEY]: rules }, callback);
-    });
+    // Routed through the background service worker's serialized
+    // URL_RULES_KEY write queue (scripts/background.js) instead of our own
+    // get-then-set here, so this tab's autonomous slideshow rotation can't
+    // silently clobber (or be clobbered by) a popup/options save or another
+    // open tab's rotation for the same rule.
+    chrome.runtime.sendMessage(
+      { action: 'pagedyeMutateUrlRules', op: 'setRuleSettings', payload: { ruleId: activeRuleId, settings } },
+      () => { if (callback) callback(); }
+    );
   }
 
   // Upgrades a legacy sub-settings object (saved before Effects became an

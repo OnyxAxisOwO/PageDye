@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PageDye Lite
 // @namespace    https://github.com/onyxaxisowo/pagedye
-// @version      0.8.7
+// @version      0.9.0
 // @description  轻量版 PageDye —— 无浏览器扩展权限依赖,在 Tampermonkey / Violentmonkey / iOS "Userscripts" 等用户脚本管理器里自定义网页背景、渐变、动效壁纸与磨砂玻璃效果。
 // @author       PageDye
 // @match        *://*/*
@@ -40,7 +40,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '0.8.7';
+  const VERSION = '0.9.0';
   const domain = window.location.hostname;
   const STORAGE_KEY = domain;
   const GLOBAL_KEY = 'pagedye-lite:global-ui';
@@ -1785,7 +1785,7 @@
   let tabContentAnim = null;
   const ui = {
     open: false, tab: 'wallpaper', scheme: 'light', slideIndex: 0, timePeriodIndex: 0,
-    accordions: { mode: true, bg: true, target: false, deepcompat: false, frosted: true, buttonAppearance: true, movement: false, backup: false }
+    accordions: { mode: true, bg: true, deepcompat: false, buttonAppearance: true, movement: false, backup: false }
   };
 
   function getEditable() {
@@ -2894,7 +2894,6 @@
         transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
       }
       .pd-seg button.active { background: var(--pd-card); color: var(--pd-text); box-shadow: 0 1px 3px var(--pd-shadow); font-weight: 600; }
-      .pd-seg-main { margin-bottom: 14px; }
       .pd-target-seg { margin-bottom: 8px; border: 1px solid var(--pd-border); }
       .pd-target-seg[hidden], #pd-target-hint[hidden] { display: none; }
 
@@ -2952,7 +2951,6 @@
       .pd-row { margin-bottom: 10px; }
       .pd-row-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--pd-text); margin-bottom: 5px; }
       .pd-row-inline { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--pd-text); margin-bottom: 8px; cursor: pointer; min-height: 34px; }
-      .pd-val-badge { font-size: 11px; background: var(--pd-btn-bg); padding: 2px 7px; border-radius: 999px; color: var(--pd-text-secondary); }
 
       .pd-row input[type="text"], .pd-row select, textarea {
         width: 100%; padding: 9px 10px; border-radius: var(--pd-radius-sm); border: 1px solid var(--pd-border);
@@ -3107,14 +3105,12 @@
         display: flex; align-items: center; justify-content: center; width: 64px; height: 32px;
         border-radius: 16px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
-      .pd-nav-icon { transition: transform 0.3s; display: flex; align-items: center; justify-content: center; }
       .pd-nav-label { font-size: 12px; font-weight: 600; }
       .pd-bottom-nav button.active { color: var(--pd-text); }
       .pd-bottom-nav button.active .pd-nav-icon-container { background: #C2E7FF; color: #001D35; }
       @media (prefers-color-scheme: dark) {
         .pd-bottom-nav button.active .pd-nav-icon-container { background: #004A77; color: #C2E7FF; }
       }
-      .pd-bottom-nav button.active .pd-nav-icon { transform: scale(1.1); }
 
       button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
         outline: 2px solid var(--pd-accent-bg); outline-offset: 1px;

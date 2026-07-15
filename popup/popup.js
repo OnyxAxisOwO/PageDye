@@ -139,12 +139,14 @@ function pagedyeElementPicker(settings, storageTarget, fieldPath, tipTextMultipl
         if (typeof obj.opacity !== 'number') obj.opacity = 55;
       }
       if (storageTarget && storageTarget.ruleId) {
-        chrome.storage.local.get(storageTarget.rulesKey, (data) => {
-          const rules = Array.isArray(data[storageTarget.rulesKey]) ? data[storageTarget.rulesKey] : [];
-          const index = rules.findIndex((rule) => rule && rule.id === storageTarget.ruleId);
-          if (index < 0) return;
-          rules[index] = { ...rules[index], settings: next };
-          chrome.storage.local.set({ [storageTarget.rulesKey]: rules });
+        // Routed through the background service worker's serialized
+        // URL_RULES_KEY write queue (scripts/background.js) instead of our
+        // own get-then-set, since the popup that injected this picker has
+        // already closed by the time the user clicks an element here.
+        chrome.runtime.sendMessage({
+          action: 'pagedyeMutateUrlRules',
+          op: 'setRuleSettings',
+          payload: { ruleId: storageTarget.ruleId, settings: next }
         });
       } else {
         const key = typeof storageTarget === 'string' ? storageTarget : storageTarget.key;
@@ -180,23 +182,10 @@ const EXTENSION_ENABLED_KEY = '__pagedye_extension_enabled__';
 const UI_THEME_KEY = '__pagedye_ui_theme__';
 const ADVANCED_MODE_KEY = '__pagedye_advanced_mode__';
 const UI_THEME_DEFAULTS = { accent: 'neutral', customAccent: '#18181b', disableAnimation: false };
-const UI_THEME_ACCENTS = {
-  neutral: '#18181b',
-  red: '#BA1A1A',
-  pink: '#B3266E',
-  purple: '#6750A4',
-  indigo: '#445E91',
-  blue: '#0061A4',
-  cyan: '#006874',
-  teal: '#006A6A',
-  green: '#386A20',
-  orange: '#8B5000'
-};
-
-function normalizeHexColor(color, fallback) {
-  const value = (color || '').trim();
-  return /^#[0-9a-fA-F]{6}$/.test(value) ? value.toUpperCase() : fallback;
-}
+// normalizeHexColor/hexToRgba/shiftHexColor/hexToHsl/hslToHex/getUiAccentColor/
+// getDisplayAccentColor/UI_THEME_ACCENTS live in scripts/shared/color-utils.js
+// (byte-identical to the options.js copies they were extracted from).
+const { UI_THEME_ACCENTS, normalizeHexColor, hexToRgba, shiftHexColor, hexToHsl, hslToHex, getUiAccentColor, getDisplayAccentColor } = window.PageDyeColorUtils;
 
 function colorIsLight(color) {
   const hex = normalizeHexColor(color, '#18181B').replace('#', '');
@@ -204,63 +193,6 @@ function colorIsLight(color) {
   const g = parseInt(hex.slice(2, 4), 16);
   const b = parseInt(hex.slice(4, 6), 16);
   return (0.299 * r + 0.587 * g + 0.114 * b) >= 140;
-}
-
-function hexToRgba(color, alpha) {
-  const hex = normalizeHexColor(color, '#18181B').replace('#', '');
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-function shiftHexColor(color, amount) {
-  const hex = normalizeHexColor(color, '#18181B').replace('#', '');
-  const next = [0, 2, 4].map((idx) => {
-    const value = Math.max(0, Math.min(255, parseInt(hex.slice(idx, idx + 2), 16) + amount));
-    return value.toString(16).padStart(2, '0');
-  });
-  return '#' + next.join('').toUpperCase();
-}
-
-function hexToHsl(color) {
-  const hex = normalizeHexColor(color, '#18181B').replace('#', '');
-  const r = parseInt(hex.slice(0, 2), 16) / 255;
-  const g = parseInt(hex.slice(2, 4), 16) / 255;
-  const b = parseInt(hex.slice(4, 6), 16) / 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-  const d = max - min;
-  let h = 0;
-  let s = 0;
-  if (d !== 0) {
-    s = d / (1 - Math.abs(2 * l - 1));
-    switch (max) {
-      case r: h = 60 * (((g - b) / d) % 6); break;
-      case g: h = 60 * ((b - r) / d + 2); break;
-      default: h = 60 * ((r - g) / d + 4); break;
-    }
-    if (h < 0) h += 360;
-  }
-  return { h, s: s * 100, l: l * 100 };
-}
-
-function hslToHex(h, s, l) {
-  const sat = s / 100;
-  const light = l / 100;
-  const c = (1 - Math.abs(2 * light - 1)) * sat;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = light - c / 2;
-  let r = 0, g = 0, b = 0;
-  if (h < 60) { r = c; g = x; b = 0; }
-  else if (h < 120) { r = x; g = c; b = 0; }
-  else if (h < 180) { r = 0; g = c; b = x; }
-  else if (h < 240) { r = 0; g = x; b = c; }
-  else if (h < 300) { r = x; g = 0; b = c; }
-  else { r = c; g = 0; b = x; }
-  const toHex = (v) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
-  return ('#' + toHex(r) + toHex(g) + toHex(b)).toUpperCase();
 }
 
 // Real Material You dynamic color doesn't just tint buttons — the surfaces
@@ -305,23 +237,6 @@ function getNeutralSurfaceTones(accentHex, isDark) {
   };
 }
 
-function getUiAccentColor(theme) {
-  if (theme.accent === 'custom') {
-    return normalizeHexColor(theme.customAccent, UI_THEME_ACCENTS.neutral);
-  }
-  return UI_THEME_ACCENTS[theme.accent] || UI_THEME_ACCENTS.neutral;
-}
-
-// The accent is also used directly as foreground text/icon color (badges,
-// the active bottom-nav tab), not just as a button fill. Its raw hue/sat is
-// kept, but lightness is remapped so it stays legible against the current
-// dark/light surface — otherwise the default near-black "neutral" accent
-// renders as near-black text on the dark surface in dark mode.
-function getDisplayAccentColor(accentHex, isDark) {
-  const { h, s, l } = hexToHsl(accentHex);
-  const targetL = isDark ? Math.max(l, 70) : Math.min(l, 45);
-  return hslToHex(h, s, targetL);
-}
 
 function applyUiTheme(theme) {
   const root = document.documentElement.style;
@@ -862,72 +777,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     extensionEnabledToggle: document.getElementById('extension-enabled-toggle')
   };
 
-  function setAccordionOpen(details, open, animate = true) {
-    const content = details && details.querySelector(':scope > .accordion-content');
-    if (!details || !content) return;
-
-    if (details.open === open && !details.classList.contains('accordion-animating')) return;
-    details._pagedyeAccordionOpenTarget = open;
-
-    if (details._pagedyeAccordionAnimation) {
-      details._pagedyeAccordionAnimation.cancel();
-      details._pagedyeAccordionAnimation = null;
-    }
-
-    const shouldAnimate = animate && !document.documentElement.classList.contains('pagedye-no-animation') && content.animate;
-    if (!shouldAnimate) {
-      details.open = open;
-      content.style.height = '';
-      content.style.overflow = '';
-      content.style.opacity = '';
-      details.classList.remove('accordion-animating');
-      return;
-    }
-
-    details.classList.add('accordion-animating');
-
-    if (open) {
-      content.style.height = '0px';
-      content.style.overflow = 'hidden';
-      details.open = true;
-      const targetHeight = content.scrollHeight;
-      details._pagedyeAccordionAnimation = content.animate(
-        [{ height: '0px', opacity: 0.35 }, { height: targetHeight + 'px', opacity: 1 }],
-        { duration: 220, easing: 'cubic-bezier(.22,1,.36,1)' }
-      );
-    } else {
-      const startHeight = content.scrollHeight;
-      content.style.height = startHeight + 'px';
-      content.style.overflow = 'hidden';
-      details._pagedyeAccordionAnimation = content.animate(
-        [{ height: startHeight + 'px', opacity: 1 }, { height: '0px', opacity: 0.35 }],
-        { duration: 170, easing: 'ease' }
-      );
-    }
-
-    details._pagedyeAccordionAnimation.onfinish = () => {
-      details.open = open;
-      content.style.height = '';
-      content.style.overflow = '';
-      content.style.opacity = '';
-      details.classList.remove('accordion-animating');
-      details._pagedyeAccordionAnimation = null;
-      details._pagedyeAccordionOpenTarget = open;
-    };
-  }
-
-  function handleAccordionSummaryClick(e) {
-    const summary = e.target.closest('.accordion-summary');
-    if (!summary) return;
-    const details = summary.closest('.accordion');
-    if (!details || !details.contains(summary)) return;
-    e.preventDefault();
-    const currentTarget = typeof details._pagedyeAccordionOpenTarget === 'boolean'
-      ? details._pagedyeAccordionOpenTarget
-      : details.open;
-    setAccordionOpen(details, !currentTarget);
-  }
-
+  // setAccordionOpen/handleAccordionSummaryClick live in scripts/shared/ui-accordion.js
+  // (byte-identical to the options.js copies they were extracted from).
+  const { setAccordionOpen, handleAccordionSummaryClick } = window.PageDyeAccordion;
   document.addEventListener('click', handleAccordionSummaryClick);
 
   function syncUiThemeControls() {
@@ -1861,8 +1713,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       extensionPowerTitle: "PageDye \u5df2\u5f00\u542f",
       extensionPowerHint: "\u5173\u95ed\u540e\u4f1a\u505c\u6b62\u6240\u6709\u9875\u9762\u4e0a\u7684 PageDye \u529f\u80fd\u3002"
     };
+    // Precedence matches options.js's copy of this function: the primary
+    // i18n[lang] table wins if it has the key at all, zhFallback only fills
+    // gaps the primary table doesn't cover, i18n.en is the last resort.
+    if (i18n[lang][key]) return i18n[lang][key];
     if (lang === 'zh' && zhFallback[key]) return zhFallback[key];
-    return i18n[lang][key] || i18n.en[key] || key;
+    return i18n.en[key] || key;
   }
 
   // Appends the user's custom effects as an <optgroup> after the built-in
@@ -3008,15 +2864,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       await chrome.storage.local.set({ [DEFAULT_BG_KEY]: settings });
       return;
     }
-    const data = await chrome.storage.local.get(URL_RULES_KEY);
-    const rules = window.PageDyeStorage.normalizeUrlRules(data[URL_RULES_KEY]);
+    // Rule-array mutations route through the background service worker's
+    // serialized write queue (see scripts/background.js) instead of doing our
+    // own get(URL_RULES_KEY)-then-set here, so a concurrent write from
+    // options.js, another tab's content.js, or the injected picker can't
+    // silently clobber this one (or be clobbered by it).
     if (activeRuleId) {
-      const index = rules.findIndex((rule) => rule && rule.id === activeRuleId);
-      if (index >= 0) {
-        rules[index] = { ...rules[index], settings };
-        await chrome.storage.local.set({ [URL_RULES_KEY]: rules });
-        return;
-      }
+      const rules = await window.PageDyeRulesClient.setRuleSettings(activeRuleId, settings);
+      if (rules.some((rule) => rule && rule.id === activeRuleId)) return;
       activeRuleId = null;
     }
     if (pageExcluded) {
@@ -3029,13 +2884,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         enabled: true,
         settings
       };
-      rules.unshift(rule);
-      rules.splice(window.PageDyeStorage.MAX_URL_RULES);
+      await window.PageDyeRulesClient.insertRule(rule);
       activeRuleId = rule.id;
       activeRulePattern = pattern;
       pageExcluded = false;
       siteHasOwnConfig = true;
-      await chrome.storage.local.set({ [URL_RULES_KEY]: rules });
       updateTargetHint();
       return;
     }
@@ -3044,7 +2897,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function currentStorageTarget() {
     return activeRuleId
-      ? { ruleId: activeRuleId, rulesKey: URL_RULES_KEY }
+      ? { ruleId: activeRuleId }
       : { key: currentDomain };
   }
 
@@ -3420,123 +3273,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   isInitialLoad = false;
 });
 
+// initCustomCssEditor is now a thin alias for the shared code editor (see
+// scripts/shared/code-editor.js) called with language: 'css', matching this
+// file's previous CSS-only behavior exactly.
 function initCustomCssEditor(textareaId, containerId) {
-  const textarea = document.getElementById(textareaId);
-  const container = document.getElementById(containerId);
-  if (!textarea || !container) return null;
-
-  const gutter = container.querySelector('.editor-gutter');
-  const codeBlock = container.querySelector('.editor-highlight code');
-  const preBlock = container.querySelector('.editor-highlight');
-
-  function updateEditor() {
-    let code = textarea.value;
-    const isPlaceholder = !code;
-    
-    if (isPlaceholder) {
-      code = textarea.getAttribute('placeholder') || '';
-      container.classList.add('placeholder-active');
-    } else {
-      container.classList.remove('placeholder-active');
-    }
-
-    const highlighted = Prism.highlight(code, Prism.languages.css, 'css');
-    codeBlock.innerHTML = code.endsWith('\n') ? highlighted + ' ' : highlighted;
-
-    const lineCount = code.split('\n').length;
-    let gutterHTML = '';
-    for (let i = 1; i <= lineCount; i++) {
-      gutterHTML += `<span class="editor-gutter-num">${i}</span>`;
-    }
-    gutter.innerHTML = gutterHTML;
-    
-    syncScrolls();
-  }
-
-  function syncScrolls() {
-    gutter.scrollTop = textarea.scrollTop;
-    preBlock.scrollTop = textarea.scrollTop;
-    preBlock.scrollLeft = textarea.scrollLeft;
-  }
-
-  textarea.addEventListener('scroll', syncScrolls);
-  textarea.addEventListener('input', updateEditor);
-
-  textarea.addEventListener('keydown', (e) => {
-    const val = textarea.value;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-
-    // 1. Tab Key Support (2 spaces)
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      textarea.value = val.substring(0, start) + '  ' + val.substring(end);
-      textarea.selectionStart = textarea.selectionEnd = start + 2;
-      updateEditor();
-      textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-
-    // 2. Overwrite closing character if already typed
-    const closers = ['}', ')', ']', '"', "'"];
-    if (closers.includes(e.key) && start === end) {
-      const nextChar = val.charAt(start);
-      if (nextChar === e.key) {
-        e.preventDefault();
-        textarea.selectionStart = textarea.selectionEnd = start + 1;
-        return;
-      }
-    }
-
-    // 3. Auto-closing brackets
-    const pairs = {
-      '{': '}',
-      '(': ')',
-      '[': ']',
-      '"': '"',
-      "'": "'"
-    };
-
-    if (pairs[e.key] !== undefined) {
-      e.preventDefault();
-      const closing = pairs[e.key];
-      if (start !== end) {
-        const selected = val.substring(start, end);
-        textarea.value = val.substring(0, start) + e.key + selected + closing + val.substring(end);
-        textarea.selectionStart = start + 1;
-        textarea.selectionEnd = end + 1;
-      } else {
-        textarea.value = val.substring(0, start) + e.key + closing + val.substring(end);
-        textarea.selectionStart = textarea.selectionEnd = start + 1;
-      }
-      updateEditor();
-      textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-
-    // 4. Smart Indentation on Enter key
-    if (e.key === 'Enter' && start === end) {
-      const charBefore = val.charAt(start - 1);
-      const charAfter = val.charAt(start);
-      if (charBefore === '{' && charAfter === '}') {
-        e.preventDefault();
-        textarea.value = val.substring(0, start) + '\n  \n' + val.substring(end);
-        textarea.selectionStart = textarea.selectionEnd = start + 3;
-        updateEditor();
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-      } else if (charBefore === '{') {
-        e.preventDefault();
-        textarea.value = val.substring(0, start) + '\n  ' + val.substring(end);
-        textarea.selectionStart = textarea.selectionEnd = start + 3;
-        updateEditor();
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    }
-  });
-
-  updateEditor();
-
-  return {
-    update: updateEditor
-  };
+  return window.PageDyeCodeEditor.initCodeEditor(textareaId, containerId, 'css');
 }
 
 document.addEventListener('DOMContentLoaded', () => {

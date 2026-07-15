@@ -559,18 +559,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     return Object.assign({}, getSystemUiThemeDefaults(), theme);
   }
   let currentUiTheme = getSystemUiThemeDefaults();
-  const UI_THEME_ACCENTS = {
-    neutral: '#18181b',
-    red: '#BA1A1A',
-    pink: '#B3266E',
-    purple: '#6750A4',
-    indigo: '#445E91',
-    blue: '#0061A4',
-    cyan: '#006874',
-    teal: '#006A6A',
-    green: '#386A20',
-    orange: '#8B5000'
-  };
+  // normalizeHexColor/hexToRgba/shiftHexColor/hexToHsl/hslToHex/getUiAccentColor/
+  // getDisplayAccentColor/UI_THEME_ACCENTS live in scripts/shared/color-utils.js
+  // (byte-identical to the popup.js copies they were extracted from).
+  const { UI_THEME_ACCENTS, normalizeHexColor, hexToRgba, shiftHexColor, hexToHsl, hslToHex, getUiAccentColor, getDisplayAccentColor } = window.PageDyeColorUtils;
 
   // The base stylesheet only themes text/border/badge colors via
   // `@media (prefers-color-scheme: dark)`, so once the user picks a custom
@@ -622,68 +614,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const g = parseInt(full.slice(2, 4), 16);
     const b = parseInt(full.slice(4, 6), 16);
     return (0.299 * r + 0.587 * g + 0.114 * b) >= 140;
-  }
-
-  function normalizeHexColor(color, fallback) {
-    const value = (color || '').trim();
-    return /^#[0-9a-fA-F]{6}$/.test(value) ? value.toUpperCase() : fallback;
-  }
-
-  function hexToRgba(color, alpha) {
-    const hex = normalizeHexColor(color, '#18181B').replace('#', '');
-    const r = parseInt(hex.slice(0, 2), 16);
-    const g = parseInt(hex.slice(2, 4), 16);
-    const b = parseInt(hex.slice(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
-
-  function shiftHexColor(color, amount) {
-    const hex = normalizeHexColor(color, '#18181B').replace('#', '');
-    const next = [0, 2, 4].map((idx) => {
-      const value = Math.max(0, Math.min(255, parseInt(hex.slice(idx, idx + 2), 16) + amount));
-      return value.toString(16).padStart(2, '0');
-    });
-    return '#' + next.join('').toUpperCase();
-  }
-
-  function hexToHsl(color) {
-    const hex = normalizeHexColor(color, '#18181B').replace('#', '');
-    const r = parseInt(hex.slice(0, 2), 16) / 255;
-    const g = parseInt(hex.slice(2, 4), 16) / 255;
-    const b = parseInt(hex.slice(4, 6), 16) / 255;
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const l = (max + min) / 2;
-    const d = max - min;
-    let h = 0;
-    let s = 0;
-    if (d !== 0) {
-      s = d / (1 - Math.abs(2 * l - 1));
-      switch (max) {
-        case r: h = 60 * (((g - b) / d) % 6); break;
-        case g: h = 60 * ((b - r) / d + 2); break;
-        default: h = 60 * ((r - g) / d + 4); break;
-      }
-      if (h < 0) h += 360;
-    }
-    return { h, s: s * 100, l: l * 100 };
-  }
-
-  function hslToHex(h, s, l) {
-    const sat = s / 100;
-    const light = l / 100;
-    const c = (1 - Math.abs(2 * light - 1)) * sat;
-    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-    const m = light - c / 2;
-    let r = 0, g = 0, b = 0;
-    if (h < 60) { r = c; g = x; b = 0; }
-    else if (h < 120) { r = x; g = c; b = 0; }
-    else if (h < 180) { r = 0; g = c; b = x; }
-    else if (h < 240) { r = 0; g = x; b = c; }
-    else if (h < 300) { r = x; g = 0; b = c; }
-    else { r = c; g = 0; b = x; }
-    const toHex = (v) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
-    return ('#' + toHex(r) + toHex(g) + toHex(b)).toUpperCase();
   }
 
   // Real Material You dynamic color derives its whole neutral tonal palette
@@ -740,24 +670,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       '--md-sys-color-inverse-surface': hslToHex(h, surfaceSat, 19),
       '--md-sys-color-inverse-on-surface': hslToHex(h, textSat, 95)
     };
-  }
-
-  function getUiAccentColor(theme) {
-    if (theme.accent === 'custom') {
-      return normalizeHexColor(theme.customAccent, UI_THEME_ACCENTS.neutral);
-    }
-    return UI_THEME_ACCENTS[theme.accent] || UI_THEME_ACCENTS.neutral;
-  }
-
-  // The accent is also used directly as foreground text/icon color (badges,
-  // "on-container" text), not just as a button fill. Its raw hue/sat is kept,
-  // but lightness is remapped so it stays legible against the current
-  // dark/light container background — otherwise the default near-black
-  // "neutral" accent renders as near-black text on a dark container.
-  function getDisplayAccentColor(accentHex, isDark) {
-    const { h, s, l } = hexToHsl(accentHex);
-    const targetL = isDark ? Math.max(l, 70) : Math.min(l, 45);
-    return hslToHex(h, s, targetL);
   }
 
   function applyUiThemeAccent(theme) {
@@ -878,72 +790,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     editCustomEffectSaveBtn: document.getElementById('edit-custom-effect-save-btn')
   };
 
-  function setAccordionOpen(details, open, animate = true) {
-    const content = details && details.querySelector(':scope > .accordion-content');
-    if (!details || !content) return;
-
-    if (details.open === open && !details.classList.contains('accordion-animating')) return;
-    details._pagedyeAccordionOpenTarget = open;
-
-    if (details._pagedyeAccordionAnimation) {
-      details._pagedyeAccordionAnimation.cancel();
-      details._pagedyeAccordionAnimation = null;
-    }
-
-    const shouldAnimate = animate && !document.documentElement.classList.contains('pagedye-no-animation') && content.animate;
-    if (!shouldAnimate) {
-      details.open = open;
-      content.style.height = '';
-      content.style.overflow = '';
-      content.style.opacity = '';
-      details.classList.remove('accordion-animating');
-      return;
-    }
-
-    details.classList.add('accordion-animating');
-
-    if (open) {
-      content.style.height = '0px';
-      content.style.overflow = 'hidden';
-      details.open = true;
-      const targetHeight = content.scrollHeight;
-      details._pagedyeAccordionAnimation = content.animate(
-        [{ height: '0px', opacity: 0.35 }, { height: targetHeight + 'px', opacity: 1 }],
-        { duration: 220, easing: 'cubic-bezier(.22,1,.36,1)' }
-      );
-    } else {
-      const startHeight = content.scrollHeight;
-      content.style.height = startHeight + 'px';
-      content.style.overflow = 'hidden';
-      details._pagedyeAccordionAnimation = content.animate(
-        [{ height: startHeight + 'px', opacity: 1 }, { height: '0px', opacity: 0.35 }],
-        { duration: 170, easing: 'ease' }
-      );
-    }
-
-    details._pagedyeAccordionAnimation.onfinish = () => {
-      details.open = open;
-      content.style.height = '';
-      content.style.overflow = '';
-      content.style.opacity = '';
-      details.classList.remove('accordion-animating');
-      details._pagedyeAccordionAnimation = null;
-      details._pagedyeAccordionOpenTarget = open;
-    };
-  }
-
-  function handleAccordionSummaryClick(e) {
-    const summary = e.target.closest('.accordion-summary');
-    if (!summary) return;
-    const details = summary.closest('.accordion');
-    if (!details || !details.contains(summary)) return;
-    e.preventDefault();
-    const currentTarget = typeof details._pagedyeAccordionOpenTarget === 'boolean'
-      ? details._pagedyeAccordionOpenTarget
-      : details.open;
-    setAccordionOpen(details, !currentTarget);
-  }
-
+  // setAccordionOpen/handleAccordionSummaryClick live in scripts/shared/ui-accordion.js
+  // (byte-identical to the popup.js copies they were extracted from).
+  const { setAccordionOpen, handleAccordionSummaryClick } = window.PageDyeAccordion;
   document.addEventListener('click', handleAccordionSummaryClick);
 
   // Init translations & versions
@@ -1312,26 +1161,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       const inherited = data[ruleHostname(rule)] || data[DEFAULT_BG_KEY] || blankRuleSettings();
       rule.settings = JSON.parse(JSON.stringify(inherited));
     }
-    const rules = window.PageDyeStorage.normalizeUrlRules(data[URL_RULES_KEY]);
-    rules.unshift(rule);
-    rules.splice(window.PageDyeStorage.MAX_URL_RULES);
-    await chrome.storage.local.set({ [URL_RULES_KEY]: rules });
+    // Rule-array mutations route through the background service worker's
+    // serialized write queue (see scripts/background.js) instead of a
+    // get(URL_RULES_KEY)-then-set here, so a concurrent write from popup.js,
+    // another tab's content.js, or the injected picker can't be silently
+    // clobbered by (or clobber) this one.
+    await window.PageDyeRulesClient.insertRule(rule);
     closeRuleForm();
     await loadRulesList();
     showStatus(t('ruleSaved'));
     if (action === 'apply') openEditSite(null, rule.id);
   }
 
-  async function updateStoredRules(mutator) {
-    const data = await chrome.storage.local.get(URL_RULES_KEY);
-    const rules = window.PageDyeStorage.normalizeUrlRules(data[URL_RULES_KEY]);
-    const next = mutator(rules) || rules;
-    await chrome.storage.local.set({ [URL_RULES_KEY]: next });
-  }
-
   async function deleteRule(rule) {
     if (!(await showConfirm(t('confirmDeleteRule').replace('{pattern}', rule.pattern)))) return;
-    await updateStoredRules((rules) => rules.filter((item) => item.id !== rule.id));
+    await window.PageDyeRulesClient.deleteRule(rule.id);
     await loadRulesList();
     showStatus(t('deleteSiteDone'));
   }
@@ -1379,7 +1223,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       toggle.checked = rule.enabled;
       toggle.title = t('ruleStatus');
       toggle.addEventListener('change', async () => {
-        await updateStoredRules((items) => items.map((item) => item.id === rule.id ? { ...item, enabled: toggle.checked } : item));
+        await window.PageDyeRulesClient.setRuleEnabled(rule.id, toggle.checked);
         await loadRulesList();
       });
       status.appendChild(toggle);
@@ -1424,15 +1268,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         const draggedId = document.body.dataset.draggedRuleId;
         tr.classList.remove('drag-over');
         if (!draggedId || draggedId === rule.id) return;
-        await updateStoredRules((items) => {
-          const from = items.findIndex((item) => item.id === draggedId);
-          if (from < 0) return items;
-          const [moved] = items.splice(from, 1);
-          const to = items.findIndex((item) => item.id === rule.id);
-          if (to < 0) return items;
-          items.splice(to, 0, moved);
-          return items;
-        });
+        // Compute the new full order from the currently-rendered rows (which
+        // reflect the last loadRulesList() fetch), then hand the whole
+        // ordered id list to the arbiter rather than an index-splice mutator
+        // -- a splice computed against a possibly-stale array is exactly the
+        // kind of lost update this write queue exists to prevent.
+        const orderedIds = Array.from(els.rulesListBody.querySelectorAll('tr')).map((row) => row.dataset.ruleId);
+        const from = orderedIds.indexOf(draggedId);
+        if (from < 0) return;
+        orderedIds.splice(from, 1);
+        const to = orderedIds.indexOf(rule.id);
+        if (to < 0) return;
+        orderedIds.splice(to, 0, draggedId);
+        await window.PageDyeRulesClient.reorderRules(orderedIds);
         await loadRulesList();
       });
 
@@ -3365,9 +3213,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       if (currentEditingRuleId) {
-        await updateStoredRules((rules) => rules.map((rule) =>
-          rule.id === currentEditingRuleId ? { ...rule, settings: currentEditSettings } : rule
-        ));
+        await window.PageDyeRulesClient.setRuleSettings(currentEditingRuleId, currentEditSettings);
       } else {
         await chrome.storage.local.set({ [currentEditingDomain]: currentEditSettings });
       }
@@ -3384,7 +3230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const data = await chrome.storage.local.get(URL_RULES_KEY);
       const rule = window.PageDyeStorage.normalizeUrlRules(data[URL_RULES_KEY]).find((item) => item.id === currentEditingRuleId);
       if (!rule || !(await showConfirm(t('confirmDeleteRule').replace('{pattern}', rule.pattern)))) return;
-      await updateStoredRules((rules) => rules.filter((item) => item.id !== currentEditingRuleId));
+      await window.PageDyeRulesClient.deleteRule(currentEditingRuleId);
       currentEditingRuleId = null;
       els.sections.forEach((section) => section.classList.remove('active'));
       document.getElementById('section-sites').classList.add('active');
@@ -4303,127 +4149,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 // javascript/clike component), falls back to plain escaped text so the
 // gutter/tab/bracket-autocomplete behavior below still works without color
 // highlighting, rather than throwing on Prism.highlight(code, undefined, ...).
+// initCodeEditor is now a thin alias for the shared code editor (see
+// scripts/shared/code-editor.js), unchanged from this file's previous
+// implementation (that shared version was extracted verbatim from here).
 function initCodeEditor(textareaId, containerId, language) {
-  language = language || 'css';
-  const textarea = document.getElementById(textareaId);
-  const container = document.getElementById(containerId);
-  if (!textarea || !container) return null;
-
-  const gutter = container.querySelector('.editor-gutter');
-  const codeBlock = container.querySelector('.editor-highlight code');
-  const preBlock = container.querySelector('.editor-highlight');
-  const grammar = window.Prism && Prism.languages[language];
-
-  function escapeHtml(s) {
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-
-  function updateEditor() {
-    let code = textarea.value;
-    const isPlaceholder = !code;
-
-    if (isPlaceholder) {
-      code = textarea.getAttribute('placeholder') || '';
-      container.classList.add('placeholder-active');
-    } else {
-      container.classList.remove('placeholder-active');
-    }
-
-    const highlighted = grammar ? Prism.highlight(code, grammar, language) : escapeHtml(code);
-    codeBlock.innerHTML = code.endsWith('\n') ? highlighted + ' ' : highlighted;
-
-    const lineCount = code.split('\n').length;
-    let gutterHTML = '';
-    for (let i = 1; i <= lineCount; i++) {
-      gutterHTML += `<span class="editor-gutter-num">${i}</span>`;
-    }
-    gutter.innerHTML = gutterHTML;
-    
-    syncScrolls();
-  }
-
-  function syncScrolls() {
-    gutter.scrollTop = textarea.scrollTop;
-    preBlock.scrollTop = textarea.scrollTop;
-    preBlock.scrollLeft = textarea.scrollLeft;
-  }
-
-  textarea.addEventListener('scroll', syncScrolls);
-  textarea.addEventListener('input', updateEditor);
-
-  textarea.addEventListener('keydown', (e) => {
-    const val = textarea.value;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-
-    // 1. Tab Key Support (2 spaces)
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      textarea.value = val.substring(0, start) + '  ' + val.substring(end);
-      textarea.selectionStart = textarea.selectionEnd = start + 2;
-      updateEditor();
-      textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-
-    // 2. Overwrite closing character if already typed
-    const closers = ['}', ')', ']', '"', "'"];
-    if (closers.includes(e.key) && start === end) {
-      const nextChar = val.charAt(start);
-      if (nextChar === e.key) {
-        e.preventDefault();
-        textarea.selectionStart = textarea.selectionEnd = start + 1;
-        return;
-      }
-    }
-
-    // 3. Auto-closing brackets
-    const pairs = {
-      '{': '}',
-      '(': ')',
-      '[': ']',
-      '"': '"',
-      "'": "'"
-    };
-
-    if (pairs[e.key] !== undefined) {
-      e.preventDefault();
-      const closing = pairs[e.key];
-      if (start !== end) {
-        const selected = val.substring(start, end);
-        textarea.value = val.substring(0, start) + e.key + selected + closing + val.substring(end);
-        textarea.selectionStart = start + 1;
-        textarea.selectionEnd = end + 1;
-      } else {
-        textarea.value = val.substring(0, start) + e.key + closing + val.substring(end);
-        textarea.selectionStart = textarea.selectionEnd = start + 1;
-      }
-      updateEditor();
-      textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-
-    // 4. Smart Indentation on Enter key
-    if (e.key === 'Enter' && start === end) {
-      const charBefore = val.charAt(start - 1);
-      const charAfter = val.charAt(start);
-      if (charBefore === '{' && charAfter === '}') {
-        e.preventDefault();
-        textarea.value = val.substring(0, start) + '\n  \n' + val.substring(end);
-        textarea.selectionStart = textarea.selectionEnd = start + 3;
-        updateEditor();
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-      } else if (charBefore === '{') {
-        e.preventDefault();
-        textarea.value = val.substring(0, start) + '\n  ' + val.substring(end);
-        textarea.selectionStart = textarea.selectionEnd = start + 3;
-        updateEditor();
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    }
-  });
-
-  updateEditor();
-
-  return {
-    update: updateEditor
-  };
+  return window.PageDyeCodeEditor.initCodeEditor(textareaId, containerId, language);
 }
