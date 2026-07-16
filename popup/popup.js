@@ -389,6 +389,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       cursorColor: "Color",
       cursorSize: "Size",
       cursorHoverScale: "Hover Enlarge",
+      cursorOpacity: "Opacity",
       cursorSmoothing: "Smooth Movement",
       cursorSmoothingHint: "Cursor eases toward the pointer instead of tracking it exactly. Off by default for precise clicking.",
       cursorTrailEnable: "Mouse Trail",
@@ -572,6 +573,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       cursorColor: "颜色",
       cursorSize: "大小",
       cursorHoverScale: "悬停放大",
+      cursorOpacity: "透明度",
       cursorSmoothing: "平滑跟随",
       cursorSmoothingHint: "光标会缓动跟随指针，而非精确对齐。默认关闭以保证点击精准。",
       cursorTrailEnable: "鼠标拖尾",
@@ -738,6 +740,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     cursorSizeVal: document.getElementById('cursor-size-val'),
     cursorHoverScale: document.getElementById('cursor-hover-scale'),
     cursorHoverScaleVal: document.getElementById('cursor-hover-scale-val'),
+    cursorOpacity: document.getElementById('cursor-opacity'),
+    cursorOpacityVal: document.getElementById('cursor-opacity-val'),
     cursorSmoothingToggle: document.getElementById('cursor-smoothing-toggle'),
     cursorTrailToggle: document.getElementById('cursor-trail-toggle'),
     cursorTrailOptions: document.getElementById('cursor-trail-options'),
@@ -1452,6 +1456,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.cursorHoverScaleVal.textContent = `${parseFloat(e.target.value).toFixed(1)}x`;
     queueAutoSave();
   });
+  els.cursorOpacity.addEventListener('input', (e) => {
+    els.cursorOpacityVal.textContent = `${e.target.value}%`;
+    queueAutoSave();
+  });
   els.cursorSmoothingToggle.addEventListener('change', () => triggerImmediateSave());
   els.cursorTrailToggle.addEventListener('change', (e) => {
     els.cursorTrailOptions.classList.toggle('hidden', !e.target.checked);
@@ -2108,6 +2116,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.cursorSizeVal.textContent = `${cursorCfg.size}px`;
     els.cursorHoverScale.value = cursorCfg.hoverScale;
     els.cursorHoverScaleVal.textContent = `${cursorCfg.hoverScale.toFixed(1)}x`;
+    els.cursorOpacity.value = cursorCfg.opacity;
+    els.cursorOpacityVal.textContent = `${cursorCfg.opacity}%`;
     els.cursorSmoothingToggle.checked = cursorCfg.smoothing;
     els.cursorTrailToggle.checked = cursorCfg.trail.enabled;
     els.cursorTrailOptions.classList.toggle('hidden', !cursorCfg.trail.enabled);
@@ -2821,6 +2831,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       color: els.cursorColor.value,
       size: parseInt(els.cursorSize.value, 10),
       hoverScale: parseFloat(els.cursorHoverScale.value),
+      opacity: parseInt(els.cursorOpacity.value, 10),
       smoothing: els.cursorSmoothingToggle.checked,
       trail: {
         enabled: els.cursorTrailToggle.checked,
@@ -3013,6 +3024,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.cursorSizeVal.textContent = '24px';
     els.cursorHoverScale.value = 1.6;
     els.cursorHoverScaleVal.textContent = '1.6x';
+    els.cursorOpacity.value = 100;
+    els.cursorOpacityVal.textContent = '100%';
     els.cursorSmoothingToggle.checked = false;
     els.cursorTrailToggle.checked = false;
     els.cursorTrailOptions.classList.add('hidden');

@@ -53,6 +53,10 @@ window.PageDyeCursor = (function () {
       color: (typeof c.color === 'string' && c.color) || '#3b82f6',
       size: clamp(c.size, 12, 48, 24),
       hoverScale: clamp(c.hoverScale, 1, 3, 1.6),
+      // Floor of 10 (not 0) so the cursor can never be dialed down to fully
+      // invisible — the native pointer is force-hidden while active, so 0%
+      // would leave the user with no visible pointer at all.
+      opacity: Math.round(clamp(c.opacity, 10, 100, 100)),
       // Off by default: easing the cursor toward the pointer instead of
       // tracking it 1:1 reads as input lag and hurts precise clicking.
       // Users who want the "premium" trailing look can opt in.
@@ -77,13 +81,22 @@ window.PageDyeCursor = (function () {
   }
 
   // Styles the primary shape element for every preset except 'dot-ring',
-  // where it renders just the small inner dot (the outer ring is a separate,
-  // independently-lagged element — see start()).
+  // where it renders just the small inner dot (the outer ring is a separate
+  // element rendered at the same position — see start()).
+  // Centering note: elements are positioned via a `translate(-50%, -50%)`
+  // baked into their transform (see start()/loop()), not negative
+  // margins. Margins have to be computed from our own width/2 math, which
+  // ignores that a border (e.g. the ring's) gets snapped to a whole device
+  // pixel independently of the element's fractional content width — that
+  // mismatch used to leave the ring's rendered center off by ~1px from the
+  // dot's. `translate(-50%, -50%)` is resolved by the browser against the
+  // actual final border-box, so it self-corrects regardless of rounding.
   function styleDot(el, preset, color, size) {
     Object.assign(el.style, {
       position: 'absolute',
       top: '0',
       left: '0',
+      boxSizing: 'border-box',
       borderRadius: '50%',
       willChange: 'transform'
     });
@@ -91,8 +104,6 @@ window.PageDyeCursor = (function () {
       Object.assign(el.style, {
         width: size + 'px',
         height: size + 'px',
-        marginLeft: (-size / 2) + 'px',
-        marginTop: (-size / 2) + 'px',
         background: 'transparent',
         border: `2px solid ${color}`,
         boxShadow: 'none'
@@ -102,8 +113,6 @@ window.PageDyeCursor = (function () {
       Object.assign(el.style, {
         width: glowSize + 'px',
         height: glowSize + 'px',
-        marginLeft: (-glowSize / 2) + 'px',
-        marginTop: (-glowSize / 2) + 'px',
         background: `radial-gradient(circle, ${hexToRgba(color, 0.9)} 0%, ${hexToRgba(color, 0)} 70%)`,
         border: 'none',
         boxShadow: 'none'
@@ -114,8 +123,6 @@ window.PageDyeCursor = (function () {
       Object.assign(el.style, {
         width: dotSize + 'px',
         height: dotSize + 'px',
-        marginLeft: (-dotSize / 2) + 'px',
-        marginTop: (-dotSize / 2) + 'px',
         background: color,
         border: 'none',
         boxShadow: `0 0 ${dotSize * 0.4}px ${hexToRgba(color, 0.5)}`
@@ -129,10 +136,9 @@ window.PageDyeCursor = (function () {
       position: 'absolute',
       top: '0',
       left: '0',
+      boxSizing: 'border-box',
       width: ringSize + 'px',
       height: ringSize + 'px',
-      marginLeft: (-ringSize / 2) + 'px',
-      marginTop: (-ringSize / 2) + 'px',
       borderRadius: '50%',
       background: 'transparent',
       border: `1.5px solid ${hexToRgba(color, 0.7)}`,
@@ -202,7 +208,11 @@ window.PageDyeCursor = (function () {
       width: '0',
       height: '0',
       zIndex: '2147483647',
-      pointerEvents: 'none'
+      pointerEvents: 'none',
+      // Applied on the shadow host itself so the dot, ring, and trail
+      // canvas are composited as one group and fade together uniformly,
+      // instead of each element's own translucency stacking differently.
+      opacity: String(config.opacity / 100)
     });
     document.documentElement.appendChild(root);
     const shadow = root.attachShadow({ mode: 'open' });
@@ -250,8 +260,6 @@ window.PageDyeCursor = (function () {
     let mouseY = -9999;
     let dotX = mouseX;
     let dotY = mouseY;
-    let ringX = mouseX;
-    let ringY = mouseY;
     let lastSampleTime = 0;
     let hasMoved = false;
 
@@ -261,7 +269,6 @@ window.PageDyeCursor = (function () {
       if (!hasMoved) {
         hasMoved = true;
         dotX = mouseX; dotY = mouseY;
-        ringX = mouseX; ringY = mouseY;
       }
     }
     window.addEventListener('mousemove', mouseMoveHandler);
@@ -295,9 +302,11 @@ window.PageDyeCursor = (function () {
 
       // By default the cursor shape tracks the real pointer exactly (1:1) so
       // it doesn't feel like input lag. If the user opts into smoothing, the
-      // dot eases toward the pointer and the (optional) outer ring uses an
-      // even slower factor so it visibly trails the dot — the "premium"
-      // dot+ring cursor look.
+      // dot eases toward the pointer. The (optional) outer ring always
+      // renders at this same dotX/dotY — never its own independently-eased
+      // position — so the inner dot stays visually centered inside the ring
+      // instead of drifting off-center as the two catch up to the pointer
+      // at different rates.
       if (config.smoothing) {
         dotX += (mouseX - dotX) * Math.min(1, dt / 16 * 0.55);
         dotY += (mouseY - dotY) * Math.min(1, dt / 16 * 0.55);
@@ -320,30 +329,30 @@ window.PageDyeCursor = (function () {
       if (hoverScaleChanged && config.preset !== 'dot-ring') {
         styleDot(dot, config.preset, config.color, config.size * visualHoverScale);
       }
-      dot.style.transform = `translate3d(${dotX}px, ${dotY}px, 0)`;
+      dot.style.transform = `translate3d(${dotX}px, ${dotY}px, 0) translate(-50%, -50%)`;
 
       if (ring) {
-        if (config.smoothing) {
-          ringX += (mouseX - ringX) * Math.min(1, dt / 16 * 0.18);
-          ringY += (mouseY - ringY) * Math.min(1, dt / 16 * 0.18);
-        } else {
-          ringX = mouseX;
-          ringY = mouseY;
-        }
         if (hoverScaleChanged) {
           styleRing(ring, config.color, config.size * visualHoverScale);
         }
-        ring.style.transform = `translate3d(${ringX}px, ${ringY}px, 0)`;
+        ring.style.transform = `translate3d(${dotX}px, ${dotY}px, 0) translate(-50%, -50%)`;
       }
 
       if (trailCanvas && !reduceMotion) {
         lastSampleTime += dt;
         if (lastSampleTime >= pointIntervalMs) {
           lastSampleTime = 0;
-          trailPoints.push({ x: mouseX, y: mouseY });
+          // Sample the dot's rendered (possibly eased) position, not the
+          // raw pointer — otherwise, with smoothing on, the trail's newest
+          // point sits ahead of the dot/ring instead of attached to them.
+          trailPoints.push({ x: dotX, y: dotY });
           while (trailPoints.length > config.trail.length) trailPoints.shift();
         }
-        drawTrail(trailCtx, trailCanvas, trailPoints, config);
+        // Always draw through to the dot's current position, not just the
+        // last sample, so the trail stays visually attached to the cursor
+        // between samples instead of trailing up to one sample interval
+        // behind it.
+        drawTrail(trailCtx, trailCanvas, trailPoints.concat({ x: dotX, y: dotY }), config);
       }
     }
     frameId = requestAnimationFrame(loop);
