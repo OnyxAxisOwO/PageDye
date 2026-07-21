@@ -7,7 +7,10 @@
 // shared-code extraction, CSS consolidation, and storage-serialization phases.
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import jsdomPkg from 'jsdom';
 import { createChromeMock, loadExtensionPage, waitFor } from './helpers/dom-harness.mjs';
+
+const { JSDOM } = jsdomPkg;
 
 function fire(el, type) {
   el.dispatchEvent(new el.ownerDocument.defaultView.Event(type, { bubbles: true }));
@@ -66,6 +69,62 @@ test('popup: rapid successive color edits debounce into one trailing save with t
 
   await waitFor(() => store['example.com'].value === '#333333', { timeout: 2000 });
   assert.equal(store['example.com'].value, '#333333', 'only the last debounced value should be persisted');
+});
+
+test('popup: text editor injects its in-page picker into the active tab', async () => {
+  const { chrome, calls } = createChromeMock();
+  const { document, errors } = await loadExtensionPage('popup/popup.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  fire(document.getElementById('text-editor-start-btn'), 'click');
+  await waitFor(() => calls.scriptingExecuteScript.some((call) => call.func && call.func.name === 'pagedyeTextPicker'));
+
+  assert.ok(calls.tabsSendMessage.some((call) => call.message.action === 'pagedyePing'));
+});
+
+test('in-page text picker highlights, edits, and persists text without reloading', async () => {
+  const { chrome, calls } = createChromeMock();
+  const { document } = await loadExtensionPage('popup/popup.html', { chrome });
+  fire(document.getElementById('text-editor-start-btn'), 'click');
+  const injection = await waitFor(() => calls.scriptingExecuteScript.find((call) => call.func && call.func.name === 'pagedyeTextPicker'));
+
+  const page = new JSDOM('<!doctype html><html><body><p id="copy">Original text</p></body></html>', {
+    url: 'https://example.com/article#comments',
+    runScripts: 'dangerously',
+    pretendToBeVisual: true
+  });
+  const stored = {};
+  page.window.chrome = {
+    storage: { local: {
+      get(key, callback) {
+        const result = { [key]: stored[key] };
+        if (callback) callback(result);
+        return Promise.resolve(result);
+      },
+      set(value, callback) {
+        Object.assign(stored, value);
+        if (callback) callback();
+        return Promise.resolve();
+      }
+    } }
+  };
+  const text = page.window.document.getElementById('copy');
+  page.window.document.elementFromPoint = () => text;
+  page.window.eval(`(${injection.func.toString()})(...${JSON.stringify(injection.args)})`);
+
+  assert.ok(Array.from(page.window.document.documentElement.children).some((element) => element.textContent.includes('hover text')));
+  text.dispatchEvent(new page.window.MouseEvent('click', { bubbles: true, clientX: 10, clientY: 10 }));
+  const input = page.window.document.querySelector('textarea');
+  assert.ok(input, 'clicking text opens the editor input');
+  input.value = 'Updated text';
+  fire(input, 'input');
+  assert.equal(text.textContent, 'Updated text');
+  Array.from(page.window.document.querySelectorAll('button')).find((button) => button.textContent === 'Save').click();
+  await waitFor(() => stored.__pagedye_text_overrides_v1__);
+
+  assert.deepEqual(JSON.parse(JSON.stringify(stored.__pagedye_text_overrides_v1__['https://example.com/article'].entries)), [
+    { selector: '#copy', text: 'Updated text' }
+  ]);
 });
 
 test('options.html boots with no uncaught errors', async () => {

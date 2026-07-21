@@ -17,6 +17,7 @@
   const PAUSE_SHORTCUT_KEY = '__pagedye_pause_shortcut__';
   const DEFAULT_PAUSE_SHORTCUT = { code: 'KeyP', altKey: true, shiftKey: true, ctrlKey: false, metaKey: false };
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
+  const TEXT_OVERRIDES_KEY = '__pagedye_text_overrides_v1__';
   const DEFAULT_BG_KEY = '__pagedye_default_background__';
   const URL_RULES_KEY = '__pagedye_url_rules_v081__';
   let currentSettings = null;
@@ -35,12 +36,17 @@
   let usingDefault = false;
   let activeRuleId = null;
   let lastKnownDefault = null;
+  let savedTextOverrides = {};
+  let textEditor = null;
+  let textOverridesDomReadyListenerAdded = false;
+  let textOverridesLoadListenerAdded = false;
 
   // Initialize
   window.__pagedyeContentTeardown = teardown;
   init();
 
   function teardown() {
+    try { finishTextEditing(false); } catch (_) {}
     if (slideshowTimer) {
       clearTimeout(slideshowTimer);
       slideshowTimer = null;
@@ -103,7 +109,7 @@
     // Load initial settings
     const domain = window.location.hostname;
     try {
-      chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY, DEFAULT_BG_KEY, URL_RULES_KEY, EXTENSION_ENABLED_KEY, PAUSE_SHORTCUT_KEY, DEBUG_MODE_KEY], (data) => {
+      chrome.storage.local.get([domain, CUSTOM_EFFECTS_KEY, DEFAULT_BG_KEY, URL_RULES_KEY, EXTENSION_ENABLED_KEY, PAUSE_SHORTCUT_KEY, DEBUG_MODE_KEY, TEXT_OVERRIDES_KEY], (data) => {
         if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
           return;
         }
@@ -112,6 +118,8 @@
         if (extensionEnabled && debugModeEnabled) ensureDebugRuntime();
         pauseShortcut = normalizePauseShortcut(data[PAUSE_SHORTCUT_KEY]);
         currentCustomEffects = data[CUSTOM_EFFECTS_KEY] || [];
+        savedTextOverrides = data[TEXT_OVERRIDES_KEY] || {};
+        applySavedTextOverrides();
         lastKnownDefault = data[DEFAULT_BG_KEY] || null;
         const resolved = window.PageDyeStorage.resolveUrlSettings(
           window.location.href,
@@ -336,6 +344,9 @@
         disablePageDyeFeatures();
       }
     }
+    if (message.action === 'startTextEditing') {
+      startTextEditing();
+    }
     // Reply so the sender's awaited sendMessage resolves cleanly.
     try {
       sendResponse({ ok: true });
@@ -384,6 +395,11 @@
       pauseShortcut = normalizePauseShortcut(changes[PAUSE_SHORTCUT_KEY].newValue);
     }
 
+    if (Object.prototype.hasOwnProperty.call(changes, TEXT_OVERRIDES_KEY)) {
+      savedTextOverrides = changes[TEXT_OVERRIDES_KEY].newValue || {};
+      applySavedTextOverrides();
+    }
+
     if (!extensionEnabled) return;
 
     if (Object.prototype.hasOwnProperty.call(changes, CUSTOM_EFFECTS_KEY)) {
@@ -399,6 +415,226 @@
       return;
     }
 
+  }
+
+  function textOverridePageKey() {
+    try {
+      const url = new URL(window.location.href);
+      url.hash = '';
+      return url.href;
+    } catch (_) {
+      return window.location.href.split('#')[0];
+    }
+  }
+
+  function applySavedTextOverrides() {
+    // Never overwrite text while the user is actively editing it. Saving the
+    // toolbar updates storage afterwards, so this will be applied on the next
+    // page visit (and is already visible in the current page).
+    if (textEditor) return;
+    const apply = () => {
+      const page = savedTextOverrides && savedTextOverrides[textOverridePageKey()];
+      const entries = page && Array.isArray(page.entries) ? page.entries : [];
+      for (const entry of entries) {
+        if (!entry || typeof entry.selector !== 'string' || typeof entry.text !== 'string') continue;
+        try {
+          const element = document.querySelector(entry.selector);
+          if (element && element.children.length === 0 && element.textContent !== entry.text && !element.closest('[data-pagedye-text-editor-host]')) {
+            // The editor only permits text-only elements, so replacing the
+            // text cannot remove markup that belongs to the website.
+            element.textContent = entry.text;
+          }
+        } catch (_) {}
+      }
+    };
+    const applyAfterPageLoad = () => {
+      if (textOverridesLoadListenerAdded) return;
+      textOverridesLoadListenerAdded = true;
+      window.addEventListener('load', apply, { once: true });
+    };
+
+    if (document.readyState === 'loading') {
+      if (!textOverridesDomReadyListenerAdded) {
+        textOverridesDomReadyListenerAdded = true;
+        document.addEventListener('DOMContentLoaded', () => {
+          apply();
+          applyAfterPageLoad();
+        }, { once: true });
+      }
+      return;
+    }
+    apply();
+    // Many modern sites render their content after DOMContentLoaded. Re-run
+    // once after all page resources are ready so a late renderer cannot erase
+    // a saved text replacement before the user sees it.
+    applyAfterPageLoad();
+  }
+
+  function cssEscape(value) {
+    if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(value);
+    return String(value).replace(/[^a-zA-Z0-9_-]/g, (char) => `\\${char}`);
+  }
+
+  function getTextOverrideSelector(element) {
+    if (element.id) return `#${cssEscape(element.id)}`;
+    const parts = [];
+    let current = element;
+    while (current && current.nodeType === Node.ELEMENT_NODE && current !== document.documentElement) {
+      let part = current.tagName.toLowerCase();
+      let index = 1;
+      let sibling = current;
+      while ((sibling = sibling.previousElementSibling)) {
+        if (sibling.tagName === current.tagName) index++;
+      }
+      part += `:nth-of-type(${index})`;
+      parts.unshift(part);
+      const selector = parts.join(' > ');
+      try {
+        if (document.querySelectorAll(selector).length === 1) return selector;
+      } catch (_) {}
+      current = current.parentElement;
+    }
+    return parts.join(' > ');
+  }
+
+  function findEditableTextTarget(node, editorHost) {
+    let element = node && node.nodeType === Node.ELEMENT_NODE ? node : node && node.parentElement;
+    const blockedTags = new Set(['A', 'AREA', 'BUTTON', 'CODE', 'EMBED', 'IFRAME', 'INPUT', 'LABEL', 'OPTION', 'SCRIPT', 'SELECT', 'STYLE', 'SVG', 'TEXTAREA', 'VIDEO']);
+    while (element && element !== document.body && element !== document.documentElement) {
+      if (element === editorHost || element.closest('[data-pagedye-text-editor-host]')) return null;
+      if (!blockedTags.has(element.tagName) && element.children.length === 0 && element.textContent.trim()) return element;
+      element = element.parentElement;
+    }
+    return null;
+  }
+
+  function startTextEditing() {
+    if (textEditor) return;
+    if (!document.body) {
+      document.addEventListener('DOMContentLoaded', startTextEditing, { once: true });
+      return;
+    }
+
+    const host = document.createElement('div');
+    host.setAttribute('data-pagedye-text-editor-host', '');
+    host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;pointer-events:none;';
+    const shadow = host.attachShadow({ mode: 'closed' });
+    shadow.innerHTML = `
+      <style>
+        .bar { pointer-events:auto; position:absolute; right:16px; bottom:16px; display:flex; align-items:center; gap:8px; max-width:min(560px,calc(100vw - 32px)); padding:10px 12px; border-radius:10px; background:#111827; color:#fff; box-shadow:0 10px 28px rgba(0,0,0,.35); font:13px/1.35 system-ui,sans-serif; }
+        .message { margin-right:4px; }
+        button { border:0; border-radius:7px; padding:7px 11px; color:#fff; background:#374151; font:inherit; cursor:pointer; }
+        button.save { background:#2563eb; }
+      </style>
+      <div class="bar" role="dialog" aria-label="PageDye text editor">
+        <span class="message">点击文字即可编辑；可编辑多处。</span>
+        <button type="button" class="cancel">取消</button>
+        <button type="button" class="save">保存</button>
+      </div>`;
+    document.documentElement.appendChild(host);
+
+    const state = { host, entries: new Map(), onClick: null, onKeydown: null, message: shadow.querySelector('.message') };
+    textEditor = state;
+    const saveButton = shadow.querySelector('.save');
+    const cancelButton = shadow.querySelector('.cancel');
+
+    state.onClick = (event) => {
+      if (!textEditor || event.target === host || host.contains(event.target)) return;
+      const target = findEditableTextTarget(event.target, host);
+      // Keep site controls and links inert while editing, so an accidental
+      // click cannot navigate away and discard the in-page editing session.
+      if (!target) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
+      if (!state.entries.has(target)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        state.entries.set(target, {
+          selector: getTextOverrideSelector(target),
+          originalText: target.textContent,
+          originalContenteditable: target.getAttribute('contenteditable')
+        });
+        target.setAttribute('data-pagedye-text-editing', '');
+        target.setAttribute('contenteditable', 'true');
+        target.focus();
+      }
+    };
+    state.onKeydown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        finishTextEditing(false);
+      }
+    };
+    window.addEventListener('click', state.onClick, true);
+    window.addEventListener('keydown', state.onKeydown, true);
+    cancelButton.addEventListener('click', () => finishTextEditing(false));
+    saveButton.addEventListener('click', () => saveTextEdits());
+
+    const highlightStyle = document.createElement('style');
+    highlightStyle.setAttribute('data-pagedye-text-editor-style', '');
+    highlightStyle.textContent = '[data-pagedye-text-editing] { outline: 2px solid #2563eb !important; outline-offset: 2px !important; }';
+    document.documentElement.appendChild(highlightStyle);
+    state.highlightStyle = highlightStyle;
+  }
+
+  async function saveTextEdits() {
+    const state = textEditor;
+    if (!state) return;
+    const changes = [];
+    for (const [element, entry] of state.entries) {
+      if (element.isConnected && entry.selector) {
+        changes.push({ selector: entry.selector, text: element.textContent });
+      }
+    }
+    try {
+      const data = await chrome.storage.local.get(TEXT_OVERRIDES_KEY);
+      const overrides = data[TEXT_OVERRIDES_KEY] && typeof data[TEXT_OVERRIDES_KEY] === 'object'
+        ? data[TEXT_OVERRIDES_KEY] : {};
+      const pageKey = textOverridePageKey();
+      const previous = overrides[pageKey] && Array.isArray(overrides[pageKey].entries)
+        ? overrides[pageKey].entries : [];
+      const bySelector = new Map(previous.filter((entry) => entry && typeof entry.selector === 'string').map((entry) => [entry.selector, entry]));
+      changes.forEach((entry) => bySelector.set(entry.selector, entry));
+      overrides[pageKey] = { entries: Array.from(bySelector.values()).slice(-100) };
+      await chrome.storage.local.set({ [TEXT_OVERRIDES_KEY]: overrides });
+      savedTextOverrides = overrides;
+      finishTextEditing(true);
+      showTextEditorNotice('文字已保存，无需刷新页面。');
+    } catch (_) {
+      if (state.message) state.message.textContent = '保存失败，请重试。';
+    }
+  }
+
+  function finishTextEditing(keepChanges) {
+    const state = textEditor;
+    if (!state) return;
+    for (const [element, entry] of state.entries) {
+      if (!keepChanges && element.isConnected) element.textContent = entry.originalText;
+      if (!element.isConnected) continue;
+      element.removeAttribute('data-pagedye-text-editing');
+      if (entry.originalContenteditable === null) element.removeAttribute('contenteditable');
+      else element.setAttribute('contenteditable', entry.originalContenteditable);
+    }
+    window.removeEventListener('click', state.onClick, true);
+    window.removeEventListener('keydown', state.onKeydown, true);
+    if (state.highlightStyle) state.highlightStyle.remove();
+    state.host.remove();
+    textEditor = null;
+  }
+
+  function showTextEditorNotice(message) {
+    const host = document.createElement('div');
+    host.setAttribute('data-pagedye-text-editor-host', '');
+    host.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:2147483647;';
+    const shadow = host.attachShadow({ mode: 'closed' });
+    const notice = document.createElement('div');
+    notice.style.cssText = 'padding:9px 12px;border-radius:8px;background:#111827;color:#fff;box-shadow:0 4px 18px rgba(0,0,0,.25);font:13px/1.35 system-ui,sans-serif;';
+    notice.textContent = message;
+    shadow.appendChild(notice);
+    document.documentElement.appendChild(host);
+    window.setTimeout(() => host.remove(), 2600);
   }
 
   function refreshResolvedSettings() {

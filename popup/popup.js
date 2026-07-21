@@ -175,10 +175,188 @@ function pagedyeElementPicker(settings, storageTarget, fieldPath, tipTextMultipl
   document.addEventListener('keydown', onKey, true);
 }
 
+// A self-contained text picker/editor. Like pagedyeElementPicker above, it
+// runs inside the target tab instead of relying on the popup staying open or
+// the content-script message channel being available.
+function pagedyeTextPicker(storageKey, labels) {
+  if (window.__pagedyeTextPickerCleanup) window.__pagedyeTextPickerCleanup();
+
+  const pageKey = (() => {
+    const url = new URL(window.location.href);
+    url.hash = '';
+    return url.href;
+  })();
+  const changes = new Map();
+  const blockedTags = new Set(['A', 'AREA', 'BUTTON', 'CODE', 'EMBED', 'IFRAME', 'INPUT', 'LABEL', 'OPTION', 'SCRIPT', 'SELECT', 'STYLE', 'SVG', 'TEXTAREA', 'VIDEO']);
+
+  const box = document.createElement('div');
+  Object.assign(box.style, {
+    position: 'fixed', zIndex: '2147483647', pointerEvents: 'none',
+    border: '2px solid #2563eb', background: 'rgba(37,99,235,.16)',
+    boxSizing: 'border-box', borderRadius: '3px', display: 'none'
+  });
+  const tip = document.createElement('div');
+  tip.textContent = labels.tip;
+  Object.assign(tip.style, {
+    position: 'fixed', zIndex: '2147483647', pointerEvents: 'none', top: '12px', left: '50%', transform: 'translateX(-50%)',
+    background: '#2563eb', color: '#fff', font: '13px/1.4 system-ui,sans-serif', padding: '7px 14px', borderRadius: '20px', boxShadow: '0 2px 8px rgba(0,0,0,.3)'
+  });
+  const panel = document.createElement('div');
+  Object.assign(panel.style, {
+    position: 'fixed', zIndex: '2147483647', left: '50%', bottom: '20px', transform: 'translateX(-50%)', width: 'min(460px, calc(100vw - 32px))',
+    padding: '15px', border: '1px solid rgba(148,163,184,.24)', borderRadius: '16px',
+    background: 'linear-gradient(145deg, rgba(30,41,59,.98), rgba(15,23,42,.98))', color: '#f8fafc',
+    boxShadow: '0 18px 45px rgba(2,6,23,.42), 0 2px 8px rgba(2,6,23,.22)', backdropFilter: 'blur(16px)',
+    font: '13px/1.4 system-ui,sans-serif', display: 'none'
+  });
+  const title = document.createElement('div');
+  title.textContent = labels.editing;
+  title.style.cssText = 'font-size:14px;font-weight:700;letter-spacing:.01em;margin-bottom:2px;';
+  const helper = document.createElement('div');
+  helper.textContent = labels.helper;
+  helper.style.cssText = 'font-size:12px;color:#94a3b8;margin-bottom:10px;';
+  const input = document.createElement('textarea');
+  input.rows = 2;
+  input.style.cssText = 'box-sizing:border-box;width:100%;min-height:76px;max-height:220px;resize:vertical;padding:10px 11px;border:1px solid rgba(148,163,184,.36);border-radius:10px;background:rgba(15,23,42,.64);color:#f8fafc;box-shadow:inset 0 1px 2px rgba(0,0,0,.18);font:14px/1.45 system-ui,sans-serif;outline:none;';
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(148,163,184,.16);';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.textContent = labels.cancel;
+  const save = document.createElement('button');
+  save.type = 'button';
+  save.textContent = labels.save;
+  [cancel, save].forEach((button) => Object.assign(button.style, { borderRadius: '8px', padding: '8px 13px', color: '#fff', font: '600 13px/1 system-ui,sans-serif', cursor: 'pointer' }));
+  Object.assign(cancel.style, { border: '1px solid rgba(148,163,184,.34)', background: 'rgba(51,65,85,.52)', color: '#cbd5e1' });
+  Object.assign(save.style, { border: '1px solid rgba(96,165,250,.55)', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', boxShadow: '0 5px 12px rgba(37,99,235,.3)' });
+  actions.append(cancel, save);
+  panel.append(title, helper, input, actions);
+  document.documentElement.append(box, tip, panel);
+
+  let current = null;
+
+  function cssEscape(value) {
+    if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(value);
+    return String(value).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+  }
+
+  function getSelector(element) {
+    if (element.id) return '#' + cssEscape(element.id);
+    const parts = [];
+    let node = element;
+    while (node && node.nodeType === 1 && node !== document.documentElement) {
+      let part = node.tagName.toLowerCase();
+      let index = 1;
+      let sibling = node;
+      while ((sibling = sibling.previousElementSibling)) if (sibling.tagName === node.tagName) index++;
+      part += ':nth-of-type(' + index + ')';
+      parts.unshift(part);
+      const selector = parts.join(' > ');
+      try { if (document.querySelectorAll(selector).length === 1) return selector; } catch (_) {}
+      node = node.parentElement;
+    }
+    return parts.join(' > ');
+  }
+
+  function editableTarget(element) {
+    let node = element;
+    while (node && node !== document.body && node !== document.documentElement) {
+      if (!blockedTags.has(node.tagName) && node.children.length === 0 && node.textContent.trim()) return node;
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  function showHighlight(element) {
+    if (!element) {
+      box.style.display = 'none';
+      return;
+    }
+    const rect = element.getBoundingClientRect();
+    Object.assign(box.style, { display: 'block', left: rect.left + 'px', top: rect.top + 'px', width: rect.width + 'px', height: rect.height + 'px' });
+  }
+
+  function onMove(event) {
+    if (panel.contains(event.target)) return;
+    showHighlight(editableTarget(document.elementFromPoint(event.clientX, event.clientY)));
+  }
+
+  function onClick(event) {
+    if (panel.contains(event.target)) return;
+    const element = editableTarget(document.elementFromPoint(event.clientX, event.clientY));
+    if (!element) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+    if (!changes.has(element)) changes.set(element, { selector: getSelector(element), originalText: element.textContent });
+    current = element;
+    input.value = element.textContent;
+    panel.style.display = 'block';
+    title.textContent = labels.editing;
+    input.focus();
+    input.select();
+  }
+
+  function onInput() {
+    if (current) current.textContent = input.value;
+  }
+
+  function cleanup(restore) {
+    document.removeEventListener('mousemove', onMove, true);
+    document.removeEventListener('click', onClick, true);
+    document.removeEventListener('keydown', onKey, true);
+    if (restore) changes.forEach((entry, element) => { if (element.isConnected) element.textContent = entry.originalText; });
+    box.remove();
+    tip.remove();
+    panel.remove();
+    delete window.__pagedyeTextPickerCleanup;
+  }
+
+  function onKey(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cleanup(true);
+    }
+  }
+
+  async function saveChanges() {
+    const entries = Array.from(changes).filter(([element]) => element.isConnected).map(([element, entry]) => ({ selector: entry.selector, text: element.textContent }));
+    try {
+      const data = await chrome.storage.local.get(storageKey);
+      const overrides = data && data[storageKey] && typeof data[storageKey] === 'object' ? data[storageKey] : {};
+      const previous = overrides[pageKey] && Array.isArray(overrides[pageKey].entries) ? overrides[pageKey].entries : [];
+      const bySelector = new Map(previous.filter((entry) => entry && typeof entry.selector === 'string').map((entry) => [entry.selector, entry]));
+      entries.forEach((entry) => bySelector.set(entry.selector, entry));
+      overrides[pageKey] = { entries: Array.from(bySelector.values()).slice(-100) };
+      await chrome.storage.local.set({ [storageKey]: overrides });
+      cleanup(false);
+      const notice = document.createElement('div');
+      notice.textContent = labels.saved;
+      Object.assign(notice.style, { position: 'fixed', zIndex: '2147483647', right: '16px', bottom: '16px', padding: '9px 12px', borderRadius: '8px', background: '#111827', color: '#fff', boxShadow: '0 4px 18px rgba(0,0,0,.25)', font: '13px/1.35 system-ui,sans-serif' });
+      document.documentElement.appendChild(notice);
+      setTimeout(() => notice.remove(), 2600);
+    } catch (_) {
+      title.textContent = labels.saveFailed;
+      title.style.color = '#fca5a5';
+    }
+  }
+
+  window.__pagedyeTextPickerCleanup = () => cleanup(true);
+  document.addEventListener('mousemove', onMove, true);
+  document.addEventListener('click', onClick, true);
+  document.addEventListener('keydown', onKey, true);
+  input.addEventListener('input', onInput);
+  input.addEventListener('focus', () => { input.style.borderColor = '#60a5fa'; input.style.boxShadow = '0 0 0 3px rgba(59,130,246,.2)'; });
+  input.addEventListener('blur', () => { input.style.borderColor = 'rgba(148,163,184,.36)'; input.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,.18)'; });
+  cancel.addEventListener('click', () => cleanup(true));
+  save.addEventListener('click', saveChanges);
+}
+
 // Shared across both DOMContentLoaded listeners below (they're independent,
 // sibling closures — not nested — so this can't live inside either one).
 const CUSTOM_PRESET_COLORS_KEY = '__pagedye_custom_preset_colors__';
 const EXTENSION_ENABLED_KEY = '__pagedye_extension_enabled__';
+const TEXT_OVERRIDES_KEY = '__pagedye_text_overrides_v1__';
 const UI_THEME_KEY = '__pagedye_ui_theme__';
 const ADVANCED_MODE_KEY = '__pagedye_advanced_mode__';
 const UI_THEME_DEFAULTS = { accent: 'neutral', customAccent: '#18181b', disableAnimation: false };
@@ -401,6 +579,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       cursorTrailSpeed: "Speed",
       customCss: "Custom CSS",
       customCssHint: "Injected into this site. Use !important to override stubborn styles.",
+      textEditor: "Edit Page Text",
+      textEditorHint: "Edit text directly on this page. Your changes are saved for this exact page without reloading it.",
+      textEditorStart: "Edit text on page",
       pickerFailed: "Can't pick on this page",
       wallpaperMode: "Background Schedule",
       modeSingle: "Always",
@@ -585,6 +766,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       cursorTrailSpeed: "速度",
       customCss: "自定义 CSS",
       customCssHint: "将注入到本网站。可用 !important 覆盖顽固样式。",
+      textEditor: "编辑网页文字",
+      textEditorHint: "直接在网页上修改文字。修改会保存到当前页面，且不会刷新网页。",
+      textEditorStart: "编辑网页文字",
       pickerFailed: "此页面无法拾取",
       wallpaperMode: "背景切换",
       modeSingle: "始终使用",
@@ -751,6 +935,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     cursorTrailSpeed: document.getElementById('cursor-trail-speed'),
     cursorTrailSpeedVal: document.getElementById('cursor-trail-speed-val'),
     customCss: document.getElementById('custom-css'),
+    textEditorStartBtn: document.getElementById('text-editor-start-btn'),
     settingsBtn: document.getElementById('settings-btn'),
 
     resetBtn: document.getElementById('reset-btn'),
@@ -1478,6 +1663,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Advanced: element picker
   els.pickBtn.addEventListener('click', startPicker);
   els.deepCompatPickBtn.addEventListener('click', startDeepCompatPicker);
+  els.textEditorStartBtn.addEventListener('click', startTextEditor);
 
   // Top-level tabs: Wallpaper vs Frosted Glass sliding transition
   const panelWallpaper = document.getElementById('panel-wallpaper');
@@ -3066,6 +3252,35 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.close();
     } catch (err) {
       console.log('Cannot start picker on this page', err);
+      setSavingState();
+      els.statusText.textContent = t('pickerFailed');
+    }
+  }
+
+  // The popup closes as soon as the user starts interacting with the page, so
+  // the content script owns the editor toolbar and its Save/Cancel actions.
+  // This keeps the editing session alive and never needs a page reload.
+  async function startTextEditor() {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) return;
+    try {
+      await window.PageDyeInjection.ensure(tab.id);
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: pagedyeTextPicker,
+        args: [TEXT_OVERRIDES_KEY, {
+          tip: lang === 'zh' ? 'PageDye：悬停文字可高亮，点击后编辑 · Esc 取消' : 'PageDye: hover text to highlight it, then click to edit · Esc to cancel',
+          editing: lang === 'zh' ? '编辑选中的文字' : 'Edit selected text',
+          helper: lang === 'zh' ? '更改会即时显示，保存后无需刷新页面。' : 'Changes appear immediately and save without reloading.',
+          cancel: lang === 'zh' ? '取消' : 'Cancel',
+          save: lang === 'zh' ? '保存' : 'Save',
+          saved: lang === 'zh' ? '文字已保存，无需刷新页面。' : 'Text saved without reloading the page.',
+          saveFailed: lang === 'zh' ? '保存失败，请重试。' : 'Could not save. Please try again.'
+        }]
+      });
+      window.close();
+    } catch (err) {
+      console.log('Cannot start text editor on this page', err);
       setSavingState();
       els.statusText.textContent = t('pickerFailed');
     }
