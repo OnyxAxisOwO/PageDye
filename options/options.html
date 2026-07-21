@@ -107,7 +107,7 @@
       </nav>
       
       <div class="sidebar-footer">
-        <span id="version" class="version-label">v0.9.2</span>
+        <span id="version" class="version-label">v0.9.3</span>
       </div>
     </aside>
     
@@ -616,11 +616,11 @@
         
         <div class="card danger-card">
           <div class="danger-header">
-            <h3 data-i18n="dangerZoneTitle">Clear saved backgrounds</h3>
-            <p data-i18n="dangerZoneText">This removes every website background from PageDye and cannot be undone.</p>
+            <h3 data-i18n="dangerZoneTitle">Clear all local data</h3>
+            <p data-i18n="dangerZoneText">This permanently removes every PageDye setting, saved image, and local preference from this browser.</p>
           </div>
           <div class="danger-body">
-            <button type="button" id="clear-all-btn" class="btn danger-btn" data-i18n="clearAllBtn">Clear All Website Settings</button>
+            <button type="button" id="clear-all-btn" class="btn danger-btn" data-i18n="clearAllBtn">Clear All Local Data</button>
           </div>
         </div>
       </section>
@@ -706,7 +706,7 @@
           <div class="about-logo">
             <div class="logo-circle"><img src="../icons/icon128.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: block;"></div>
             <h3>PageDye</h3>
-            <span class="badge" id="about-version">v0.9.2</span>
+            <span class="badge" id="about-version">v0.9.3</span>
           </div>
           
           <p class="about-desc" data-i18n="aboutText">PageDye lets you give each website its own color, image, gradient, or animated background. Your choices are saved in this browser and return automatically.</p>
@@ -737,6 +737,14 @@
             <span data-i18n="backToSites">Back to Sites</span>
           </button>
           <h2><span data-i18n="editTitle">Edit Configuration:</span> <span id="edit-domain-name">domain.com</span></h2>
+        </div>
+
+        <div id="edit-target-tabs" class="segmented-control edit-target-tabs hidden" aria-label="Settings target">
+          <input type="radio" name="editTarget" value="site" id="edit-target-site" checked>
+          <label for="edit-target-site" data-i18n="editTargetSite">This Site</label>
+
+          <input type="radio" name="editTarget" value="default" id="edit-target-default">
+          <label for="edit-target-default" data-i18n="editTargetDefault">Default (All Sites)</label>
         </div>
 
         <div class="edit-config-shell">
@@ -1326,7 +1334,7 @@
           </div>
           <div class="edit-actions-right">
             <button type="button" id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
-            <span class="version-text" id="edit-version">v0.9.2</span>
+            <span class="version-text" id="edit-version">v0.9.3</span>
             <span class="divider">|</span>
             <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; display: block;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>

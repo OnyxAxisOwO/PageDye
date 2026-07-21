@@ -71,6 +71,58 @@ test('popup: rapid successive color edits debounce into one trailing save with t
   assert.equal(store['example.com'].value, '#333333', 'only the last debounced value should be persisted');
 });
 
+test('popup: a site-specific background can always switch to and edit the global default', async () => {
+  const { chrome, store } = createChromeMock({
+    initialStorage: {
+      'example.com': { type: 'color', value: '#112233', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+      __pagedye_default_background__: { type: 'color', value: '#445566', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } }
+    }
+  });
+  const { document, errors } = await loadExtensionPage('popup/popup.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  const defaultTarget = document.getElementById('target-default');
+  defaultTarget.checked = true;
+  fire(defaultTarget, 'change');
+  await waitFor(() => document.getElementById('color-picker').value === '#445566');
+  assert.equal(store['example.com'], undefined, 'switching to the default must remove the site override');
+
+  const colorPicker = document.getElementById('color-picker');
+  colorPicker.value = '#abcdef';
+  fire(colorPicker, 'input');
+  await waitFor(() => store.__pagedye_default_background__.value === '#abcdef');
+  assert.equal(store['example.com'], undefined);
+});
+
+test('popup: auto mode edits the currently active dark scheme and replacing a standalone effect disables it', async () => {
+  const { chrome, store } = createChromeMock({
+    initialStorage: {
+      'example.com': {
+        mode: 'auto',
+        type: 'none',
+        value: '',
+        opacity: 100,
+        blur: 0,
+        style: { fixed: true, size: 'cover', repeat: false },
+        light: { type: 'image', value: 'data:image/png;base64,light-image', effectEnabled: false, opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+        dark: { type: 'none', value: '', effectEnabled: true, effect: 'waves', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } }
+      }
+    }
+  });
+  const { document, errors } = await loadExtensionPage('popup/popup.html', { chrome, prefersDark: true });
+  assert.deepEqual(errors, []);
+
+  assert.ok(document.getElementById('card-scheme-dark').classList.contains('active'));
+  assert.equal(document.getElementById('style-facade-effect').checked, true);
+
+  const imageFacade = document.getElementById('style-facade-image');
+  imageFacade.checked = true;
+  fire(imageFacade, 'change');
+
+  await waitFor(() => store['example.com'].dark.type === 'image' && store['example.com'].dark.effectEnabled === false);
+  assert.equal(store['example.com'].light.type, 'image', 'the inactive light scheme must remain untouched');
+});
+
 test('popup: text editor injects its in-page picker into the active tab', async () => {
   const { chrome, calls } = createChromeMock();
   const { document, errors } = await loadExtensionPage('popup/popup.html', { chrome });
@@ -145,4 +197,86 @@ test('options: picking an accent color in Appearance debounce-saves the UI theme
 
   await waitFor(() => store.__pagedye_ui_theme__ && store.__pagedye_ui_theme__.accent === 'blue', { timeout: 2000 });
   assert.equal(store.__pagedye_ui_theme__.accent, 'blue');
+});
+
+test('options: auto-mode editor opens the scheme currently used by the system', async () => {
+  const autoSettings = {
+    mode: 'auto',
+    type: 'none',
+    value: '',
+    opacity: 100,
+    blur: 0,
+    style: { fixed: true, size: 'cover', repeat: false },
+    light: { type: 'image', value: 'data:image/png;base64,light-image', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
+    dark: { type: 'effect', effect: 'waves', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } }
+  };
+  const { chrome, store } = createChromeMock({ initialStorage: { 'example.com': autoSettings }, tab: null });
+  const { document, errors } = await loadExtensionPage('options/options.html', { chrome, prefersDark: true });
+  assert.deepEqual(errors, []);
+
+  const siteLink = Array.from(document.querySelectorAll('.domain-edit-link')).find((link) => link.textContent === 'example.com');
+  assert.ok(siteLink);
+  fire(siteLink, 'click');
+
+  await waitFor(() => document.getElementById('section-edit-site').classList.contains('active') &&
+    document.getElementById('edit-card-scheme-dark').classList.contains('active'));
+  assert.equal(document.getElementById('edit-type-effect').checked, true);
+
+  const imageFacade = document.getElementById('edit-style-facade-image');
+  imageFacade.checked = true;
+  fire(imageFacade, 'change');
+
+  await waitFor(() => !document.getElementById('edit-section-image').classList.contains('hidden') &&
+    store['example.com'].dark.type === 'image');
+  assert.equal(document.getElementById('edit-type-image').checked, true);
+  assert.equal(document.getElementById('edit-section-effects').classList.contains('hidden'), true);
+});
+
+test('options: site editor exposes a top-level switch to edit the global default', async () => {
+  const siteSettings = { type: 'color', value: '#112233', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } };
+  const defaultSettings = { type: 'color', value: '#445566', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } };
+  const { chrome, store } = createChromeMock({
+    initialStorage: { 'example.com': siteSettings, __pagedye_default_background__: defaultSettings },
+    tab: null
+  });
+  const { document, errors } = await loadExtensionPage('options/options.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  const siteLink = Array.from(document.querySelectorAll('.domain-edit-link')).find((link) => link.textContent === 'example.com');
+  fire(siteLink, 'click');
+  await waitFor(() => !document.getElementById('edit-target-tabs').classList.contains('hidden'));
+
+  const defaultTarget = document.getElementById('edit-target-default');
+  defaultTarget.checked = true;
+  fire(defaultTarget, 'change');
+  await waitFor(() => document.getElementById('edit-color-picker').value === '#445566');
+  assert.equal(store['example.com'], undefined, 'the site must now inherit the global default');
+
+  const colorPicker = document.getElementById('edit-color-picker');
+  colorPicker.value = '#abcdef';
+  fire(colorPicker, 'input');
+  await waitFor(() => store.__pagedye_default_background__.value === '#abcdef');
+  assert.equal(store['example.com'], undefined);
+});
+
+test('options: clearing local data removes default backgrounds, images, and preferences', async () => {
+  const { chrome, store } = createChromeMock({
+    tab: null,
+    initialStorage: {
+      'example.com': { type: 'image', value: 'data:image/png;base64,stored-image' },
+      __pagedye_default_background__: { type: 'image', value: 'data:image/png;base64,default-image' },
+      __pagedye_custom_effects__: [{ id: 'effect-1', name: 'Stored effect', type: 'code', code: 'return;' }],
+      __pagedye_ui_theme__: { accent: 'blue' }
+    }
+  });
+  const { document, window, errors } = await loadExtensionPage('options/options.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  window.localStorage.setItem('pagedye_last_popup_tab', 'effects');
+  fire(document.getElementById('clear-all-btn'), 'click');
+  await waitFor(() => document.getElementById('confirm-modal').classList.contains('active'));
+  fire(document.getElementById('confirm-modal-ok'), 'click');
+
+  await waitFor(() => Object.keys(store).length === 0);
+  assert.equal(window.localStorage.getItem('pagedye_last_popup_tab'), null);
 });

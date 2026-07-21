@@ -2146,6 +2146,7 @@ label {
 }
 
 .accordion-content {
+  box-sizing: border-box;
   will-change: height, opacity;
   padding: 12px 14px 14px;
   border-top: 1px solid var(--outline-variant);
@@ -2354,7 +2355,9 @@ textarea:focus {
   overflow: hidden;
   border-color: var(--outline-variant);
   border-radius: 16px;
-  background-color: var(--surface-container-high);
+  /* Keep the transparency reference neutral instead of tinting it with the
+     current interface theme. */
+  background-color: #808080;
 }
 
 .scheme-card-preview {
@@ -2682,5 +2685,3 @@ footer {
   background: var(--badge-color-bg);
   color: var(--badge-color-text);
 }
-
-

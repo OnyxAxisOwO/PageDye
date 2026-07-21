@@ -90,6 +90,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       confirmDelete: "Are you sure you want to delete settings for {domain}?",
       defaultBgRowLabel: "Default Background (All Sites)",
       defaultBgEditTitle: "Default Background (All Sites)",
+      editTargetSite: "This Site",
+      editTargetDefault: "Default (All Sites)",
       confirmDeleteDefault: "Clear the default background? Sites that were inheriting it will show nothing until given their own settings.",
       modalTitle: "Notification",
       confirmOk: "Confirm",
@@ -102,11 +104,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       importCardTitle: "Restore a backup",
       importCardText: "Choose a PageDye backup file you saved earlier.",
       importBtn: "Choose Backup File",
-      dangerZoneTitle: "Clear saved backgrounds",
-      dangerZoneText: "This removes every website background from PageDye and cannot be undone.",
-      clearAllBtn: "Clear All Website Settings",
-      clearAllConfirm: "Remove PageDye settings for ALL websites? This cannot be undone.",
-      clearAllDone: "All sites cleared!",
+      dangerZoneTitle: "Clear all local data",
+      dangerZoneText: "This permanently removes every PageDye setting, saved image, and local preference from this browser.",
+      clearAllBtn: "Clear All Local Data",
+      clearAllConfirm: "Remove ALL PageDye local data, including default backgrounds, saved images, custom effects, and preferences? This cannot be undone.",
+      clearAllDone: "All local PageDye data cleared!",
       deleteSiteDone: "Site configuration removed!",
       aboutTitle: "About PageDye",
       aboutText: "PageDye lets you give each website its own color, image, gradient, or animated background. Your choices are saved in this browser and return automatically.",
@@ -346,6 +348,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       confirmDelete: "确定要删除 {domain} 的配置吗？",
       defaultBgRowLabel: "所有网站默认背景",
       defaultBgEditTitle: "所有网站默认背景",
+      editTargetSite: "此网站",
+      editTargetDefault: "全站默认",
       confirmDeleteDefault: "确定要清除全站默认背景吗？之前依赖它的网站在单独设置背景之前将不显示任何背景。",
       modalTitle: "提示",
       confirmOk: "确定",
@@ -358,11 +362,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       importCardTitle: "恢复备份",
       importCardText: "选择以前保存的 PageDye 备份文件。",
       importBtn: "选择备份文件",
-      dangerZoneTitle: "清除已保存的背景",
-      dangerZoneText: "这会移除 PageDye 中所有网站背景，而且无法撤销。",
-      clearAllBtn: "清除所有网站设置",
-      clearAllConfirm: "确定要清除所有网站的 PageDye 设置吗？此操作无法撤销。",
-      clearAllDone: "已清除全部网站!",
+      dangerZoneTitle: "清除全部本地数据",
+      dangerZoneText: "这会永久移除浏览器中 PageDye 的所有设置、已保存图片和本地偏好，且无法撤销。",
+      clearAllBtn: "清除全部本地数据",
+      clearAllConfirm: "确定要清除所有 PageDye 本地数据吗？包括默认背景、已保存图片、自定义动效和偏好设置。此操作无法撤销。",
+      clearAllDone: "已清除全部 PageDye 本地数据!",
       deleteSiteDone: "网站配置已清除!",
       aboutTitle: "关于 PageDye",
       aboutText: "PageDye 可以为每个网站设置不同的颜色、图片、渐变或动态背景。所有选择都保存在当前浏览器中，下次打开网站时会自动恢复。",
@@ -2048,10 +2052,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function clearAllSites() {
     if (!(await showConfirm(t('clearAllConfirm')))) return;
-    const data = await chrome.storage.local.get(null);
-    const siteKeys = Object.keys(data).filter((key) => window.PageDyeStorage.isSiteSettingsKey(key, data[key]));
-    if (siteKeys.length) await chrome.storage.local.remove(siteKeys);
-    await chrome.storage.local.remove(URL_RULES_KEY);
+    await chrome.storage.local.clear();
+    localStorage.clear();
     await loadRulesList();
     await loadSitesList();
     showStatus(t('clearAllDone'));
@@ -2355,11 +2357,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Edit Site Feature Implementation
   let currentEditingDomain = '';
   let currentEditingRuleId = null;
+  let editSiteDomain = '';
   let editCurrentImageBase64 = null;
-  let editActiveScheme = 'light';
+  let editActiveScheme = SYSTEM_DARK_QUERY.matches ? 'dark' : 'light';
   let editActiveTimePeriodIndex = 0;
   let editActiveSlideshowIndex = 0;
   let currentEditSettings = null;
+  let editTargetSwitchChain = Promise.resolve();
   let editGradientStopsState = [];
   let editFrostedGlassState = [];
   let lastSelectedEditorTab = 'wallpaper';
@@ -2501,7 +2505,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.editStatusText.textContent = t('statusSynced') || 'Synced';
   }
 
-  async function openEditSite(domain, ruleId = null) {
+  async function openEditSite(domain, ruleId = null, siteContext = null) {
     currentEditingDomain = domain;
     currentEditingRuleId = ruleId;
 
@@ -2511,9 +2515,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       rule = window.PageDyeStorage.normalizeUrlRules(ruleData[URL_RULES_KEY]).find((item) => item.id === ruleId) || null;
       if (!rule || rule.action !== 'apply') return;
     }
+    if (rule) {
+      editSiteDomain = '';
+    } else if (siteContext !== null) {
+      editSiteDomain = siteContext;
+    } else {
+      editSiteDomain = domain === DEFAULT_BG_KEY ? '' : domain;
+    }
     document.getElementById('edit-domain-name').textContent = rule
       ? rule.pattern
       : domain === DEFAULT_BG_KEY ? t('defaultBgEditTitle') : domain;
+    syncEditTargetTabs();
 
     els.sections.forEach(s => s.classList.remove('active'));
     document.getElementById('section-edit-site').classList.add('active');
@@ -2632,6 +2644,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const mode = currentEditSettings.mode || 'single';
+    if (mode === 'auto') editActiveScheme = SYSTEM_DARK_QUERY.matches ? 'dark' : 'light';
     const radio = document.querySelector(`input[name="edit-wpMode"][value="${mode}"]`);
     if (radio) radio.checked = true;
     updateEditModeUI(mode);
@@ -2873,6 +2886,52 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('edit-section-effects').classList.remove('hidden');
       document.getElementById('edit-section-styles').classList.remove('hidden');
     }
+    syncEditFacadeUI();
+  }
+
+  function syncEditTargetTabs() {
+    const tabs = document.getElementById('edit-target-tabs');
+    if (!tabs) return;
+    const available = !currentEditingRuleId && !!editSiteDomain;
+    tabs.classList.toggle('hidden', !available);
+    if (!available) return;
+    const target = currentEditingDomain === DEFAULT_BG_KEY ? 'default' : 'site';
+    const radio = document.querySelector(`input[name="editTarget"][value="${target}"]`);
+    if (radio) radio.checked = true;
+  }
+
+  function switchEditTarget(target) {
+    editTargetSwitchChain = editTargetSwitchChain
+      .catch(() => {})
+      .then(() => performEditTargetSwitch(target));
+    return editTargetSwitchChain;
+  }
+
+  async function performEditTargetSwitch(target) {
+    if (currentEditingRuleId || !editSiteDomain) return;
+    const nextDomain = target === 'default' ? DEFAULT_BG_KEY : editSiteDomain;
+    if (nextDomain === currentEditingDomain) return;
+    if (editSaveDebounceTimer) {
+      clearTimeout(editSaveDebounceTimer);
+      editSaveDebounceTimer = null;
+    }
+    if (currentEditSettings) await saveEditSettings(true);
+    if (target === 'default') {
+      // "Default" means this hostname inherits the global entry. Keeping the
+      // hostname entry would make the editor look switched while the page
+      // continued to render its old site-specific configuration.
+      await chrome.storage.local.remove(editSiteDomain);
+      notifyTabsOfDomain(editSiteDomain);
+    }
+    await openEditSite(nextDomain, null, editSiteDomain);
+  }
+
+  function syncEditFacadeUI() {
+    const type = document.querySelector('input[name="edit-bgType"]:checked')?.value || 'none';
+    const colorMode = document.querySelector('input[name="edit-colorMode"]:checked')?.value || 'solid';
+    const facadeValue = type === 'color' ? colorMode : type;
+    const facade = document.querySelector(`input[name="edit-bgStyleFacade"][value="${facadeValue}"]`);
+    if (facade) facade.checked = true;
   }
 
   function updateEditColorModeUI(colorMode) {
@@ -2894,6 +2953,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateEditGradientPreview();
       updateEditGradientExtractButtonState();
     }
+    syncEditFacadeUI();
   }
 
   function updateEditGradientKindUI(kind) {
@@ -3352,6 +3412,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Edit Site Event Listeners Setup
+  document.getElementsByName('edit-bgStyleFacade').forEach((facade) => {
+    facade.addEventListener('change', () => {
+      const value = facade.value;
+      const targetType = value === 'solid' || value === 'gradient' ? 'color' : value;
+      const targetColorMode = value === 'solid' || value === 'gradient' ? value : null;
+      const typeRadio = document.querySelector(`input[name="edit-bgType"][value="${targetType}"]`);
+      const colorModeRadio = targetColorMode
+        ? document.querySelector(`input[name="edit-colorMode"][value="${targetColorMode}"]`)
+        : null;
+      const typeChanged = !!typeRadio && !typeRadio.checked;
+      const colorModeChanged = !!colorModeRadio && !colorModeRadio.checked;
+
+      if (colorModeRadio) colorModeRadio.checked = true;
+      if (typeRadio) typeRadio.checked = true;
+
+      // Dispatch only one underlying change so this single visible action
+      // produces one complete settings write with the final type/sub-mode.
+      if (typeChanged) {
+        typeRadio.dispatchEvent(new Event('change', { bubbles: true }));
+      } else if (colorModeChanged) {
+        colorModeRadio.dispatchEvent(new Event('change', { bubbles: true }));
+      } else {
+        updateEditUI(targetType);
+      }
+      syncEditFacadeUI();
+    });
+  });
+
   const editTypeRadios = document.getElementsByName('edit-bgType');
   editTypeRadios.forEach(radio => {
     radio.addEventListener('change', () => {
@@ -3754,8 +3842,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.sections.forEach(s => s.classList.remove('active'));
     document.getElementById('section-sites').classList.add('active');
     currentEditingRuleId = null;
+    editSiteDomain = '';
     loadRulesList();
     loadSitesList();
+  });
+
+  document.getElementsByName('editTarget').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      if (radio.checked) switchEditTarget(radio.value);
+    });
   });
 
   // Top-level tabs: Wallpaper vs Frosted Glass sliding transition
@@ -3815,6 +3910,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentEditSettings.slideshow.order = els.editSlideshowRandom.checked ? 'random' : 'sequential';
       }
       
+      if (radio.value === 'auto' && prevMode !== 'auto') {
+        editActiveScheme = SYSTEM_DARK_QUERY.matches ? 'dark' : 'light';
+      }
       currentEditSettings.mode = radio.value;
       updateEditModeUI(radio.value);
       triggerEditImmediateSave();

@@ -12,17 +12,31 @@
     const content = details && details.querySelector(':scope > .accordion-content');
     if (!details || !content) return;
 
-    if (details.open === open && !details.classList.contains('accordion-animating')) return;
+    if (details.open === open && !details.classList.contains('accordion-animating')) {
+      content.hidden = !open;
+      return;
+    }
     details._pagedyeAccordionOpenTarget = open;
 
-    if (details._pagedyeAccordionAnimation) {
-      details._pagedyeAccordionAnimation.cancel();
+    const runningAnimation = details._pagedyeAccordionAnimation;
+    let startHeight = details.open ? content.getBoundingClientRect().height : 0;
+    let startOpacity = details.open ? Number.parseFloat(getComputedStyle(content).opacity) || 1 : 0;
+    if (runningAnimation) {
+      // Freeze the currently painted frame before cancelling. Without this,
+      // a rapid direction change briefly snaps to the old endpoint.
+      startHeight = content.getBoundingClientRect().height;
+      startOpacity = Number.parseFloat(getComputedStyle(content).opacity);
+      runningAnimation.onfinish = null;
+      runningAnimation.oncancel = null;
+      runningAnimation.cancel();
       details._pagedyeAccordionAnimation = null;
     }
 
-    const shouldAnimate = animate && !document.documentElement.classList.contains('pagedye-no-animation') && content.animate;
+    const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const shouldAnimate = animate && !reduceMotion && !document.documentElement.classList.contains('pagedye-no-animation') && content.animate;
     if (!shouldAnimate) {
       details.open = open;
+      content.hidden = !open;
       content.style.height = '';
       content.style.overflow = '';
       content.style.opacity = '';
@@ -31,34 +45,51 @@
     }
 
     details.classList.add('accordion-animating');
+    content.style.height = startHeight + 'px';
+    content.style.overflow = 'hidden';
+    content.style.opacity = String(Number.isFinite(startOpacity) ? startOpacity : (open ? 0 : 1));
+    // <details> must stay open while its contents animate closed. When opening,
+    // setting the zero-height inline style first avoids one full-height frame.
+    details.open = true;
+    content.hidden = false;
+    const targetHeight = open ? content.scrollHeight : 0;
+    const targetOpacity = open ? 1 : 0;
+    const animation = content.animate(
+      [
+        { height: startHeight + 'px', opacity: Number.isFinite(startOpacity) ? startOpacity : (open ? 0 : 1) },
+        { height: targetHeight + 'px', opacity: targetOpacity }
+      ],
+      {
+        duration: open ? 220 : 170,
+        easing: open ? 'cubic-bezier(.22,1,.36,1)' : 'cubic-bezier(.4,0,.2,1)',
+        fill: 'both'
+      }
+    );
+    details._pagedyeAccordionAnimation = animation;
 
-    if (open) {
-      content.style.height = '0px';
-      content.style.overflow = 'hidden';
-      details.open = true;
-      const targetHeight = content.scrollHeight;
-      details._pagedyeAccordionAnimation = content.animate(
-        [{ height: '0px', opacity: 0.35 }, { height: targetHeight + 'px', opacity: 1 }],
-        { duration: 220, easing: 'cubic-bezier(.22,1,.36,1)' }
-      );
-    } else {
-      const startHeight = content.scrollHeight;
-      content.style.height = startHeight + 'px';
-      content.style.overflow = 'hidden';
-      details._pagedyeAccordionAnimation = content.animate(
-        [{ height: startHeight + 'px', opacity: 1 }, { height: '0px', opacity: 0.35 }],
-        { duration: 170, easing: 'ease' }
-      );
-    }
-
-    details._pagedyeAccordionAnimation.onfinish = () => {
+    animation.onfinish = () => {
+      if (details._pagedyeAccordionAnimation !== animation) return;
+      animation.onfinish = null;
+      animation.oncancel = null;
+      // Pin the endpoint before removing the animation. On collapse, hide the
+      // content before clearing styles and closing <details>, preventing one
+      // natural-height frame from being painted between those two states.
+      content.style.height = targetHeight + 'px';
+      content.style.opacity = String(targetOpacity);
+      if (!open) content.hidden = true;
       details.open = open;
+      animation.cancel();
       content.style.height = '';
       content.style.overflow = '';
       content.style.opacity = '';
       details.classList.remove('accordion-animating');
       details._pagedyeAccordionAnimation = null;
       details._pagedyeAccordionOpenTarget = open;
+    };
+    animation.oncancel = () => {
+      if (details._pagedyeAccordionAnimation !== animation) return;
+      details._pagedyeAccordionAnimation = null;
+      details.classList.remove('accordion-animating');
     };
   }
 

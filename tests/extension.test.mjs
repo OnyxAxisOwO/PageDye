@@ -55,6 +55,15 @@ test('dashboard appearance supports images while surface colors follow the inter
   assert.match(css, /\.sidebar\s*\{\s*background:\s*var\(--md-sys-color-surface-container-low\);/);
 });
 
+test('image previews keep a neutral backdrop when their image opacity is reduced', () => {
+  const optionsCss = read('options/options.css');
+  const popupCss = read('popup/popup.css');
+  const optionsPreview = optionsCss.match(/\.image-preview\s*\{([\s\S]*?)\n\}/)?.[1] || '';
+  const popupPreview = popupCss.match(/\.image-preview\s*\{([\s\S]*?)\n\}/)?.[1] || '';
+  assert.match(optionsPreview, /background(?:-color)?:\s*#808080/);
+  assert.match(popupPreview, /background-color:\s*#808080/);
+});
+
 test('configured-site editor uses centered popup-style tabs, modes, and selects', () => {
   const html = read('options/options.html');
   const css = read('options/options.css');
@@ -65,6 +74,7 @@ test('configured-site editor uses centered popup-style tabs, modes, and selects'
   assert.match(css, /#section-edit-site \.edit-view-tabs label\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s);
   assert.match(css, /#section-edit-site \.edit-wallpaper-mode label\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s);
   assert.match(css, /#section-edit-site \.editor-select-wrap select\s*\{[^}]*border-radius:\s*12px;[^}]*appearance:\s*none;[^}]*font-weight:\s*600;/s);
+  assert.match(css, /\.segmented-control label\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s);
 });
 
 test('popup keeps its scroll area and bottom navigation as direct layout siblings', () => {
@@ -525,11 +535,11 @@ test('custom effect URLs and code imports are constrained', () => {
   assert.equal(storageSchema.normalizeCustomEffect({ type: 'code', code: 'x'.repeat(storageSchema.MAX_EFFECT_CODE_CHARS + 1) }), null);
 });
 
-test('site clearing is scoped and URL iframes are sandboxed', () => {
+test('clearing local data removes all extension storage and URL iframes are sandboxed', () => {
   const options = read('options/options.js');
   const clearBlock = options.match(/async function clearAllSites\(\) \{([\s\S]*?)showStatus\(t\('clearAllDone'\)\)/)?.[1] || '';
-  assert.doesNotMatch(clearBlock, /storage\.local\.clear/);
-  assert.match(clearBlock, /isSiteSettingsKey/);
+  assert.match(clearBlock, /await chrome\.storage\.local\.clear\(\)/);
+  assert.match(clearBlock, /localStorage\.clear\(\)/);
   assert.match(read('options/options.html'), /sandbox="allow-scripts allow-forms allow-pointer-lock"/);
   assert.match(read('options/options.html'), /referrerpolicy="no-referrer"/);
   const content = read('scripts/content.js');
@@ -556,6 +566,70 @@ test('confirm dialog and reset controls have baseline accessibility support', ()
   assert.match(options, /event\.key === 'Escape'/);
   assert.match(options, /event\.key === 'Tab'/);
   assert.match(options, /previousFocus/);
+});
+
+test('accordion animation keeps the painted height when rapidly reversing direction', () => {
+  const classNames = new Set();
+  let paintedHeight = 0;
+  let paintedOpacity = 0;
+  const animations = [];
+  const content = {
+    scrollHeight: 120,
+    style: { height: '', overflow: '', opacity: '' },
+    getBoundingClientRect: () => ({ height: paintedHeight }),
+    animate(keyframes, options) {
+      const animation = {
+        keyframes,
+        options,
+        cancelled: false,
+        onfinish: null,
+        oncancel: null,
+        cancel() {
+          this.cancelled = true;
+          if (this.oncancel) this.oncancel();
+        }
+      };
+      animations.push(animation);
+      return animation;
+    }
+  };
+  const details = {
+    open: false,
+    classList: {
+      add: (name) => classNames.add(name),
+      remove: (name) => classNames.delete(name),
+      contains: (name) => classNames.has(name)
+    },
+    querySelector: () => content
+  };
+  const sandbox = {
+    document: { documentElement: { classList: { contains: () => false } } },
+    matchMedia: () => ({ matches: false }),
+    getComputedStyle: () => ({ opacity: String(paintedOpacity) })
+  };
+  runInNewContext(read('scripts/shared/ui-accordion.js'), sandbox);
+
+  sandbox.PageDyeAccordion.setAccordionOpen(details, true);
+  assert.equal(animations[0].options.fill, 'both');
+  assert.deepEqual(JSON.parse(JSON.stringify(animations[0].keyframes)), [
+    { height: '0px', opacity: 0 },
+    { height: '120px', opacity: 1 }
+  ]);
+
+  paintedHeight = 47;
+  paintedOpacity = 0.6;
+  sandbox.PageDyeAccordion.setAccordionOpen(details, false);
+  assert.equal(animations[0].cancelled, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(animations[1].keyframes)), [
+    { height: '47px', opacity: 0.6 },
+    { height: '0px', opacity: 0 }
+  ]);
+
+  animations[1].onfinish();
+  assert.equal(details.open, false);
+  assert.equal(content.hidden, true, 'collapsed content is hidden before native details cleanup');
+  assert.equal(content.style.height, '');
+  assert.equal(classNames.has('accordion-animating'), false);
 });
 
 

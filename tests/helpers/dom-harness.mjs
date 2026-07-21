@@ -59,6 +59,14 @@ export function createChromeMock({ initialStorage = {}, tab = { id: 1, url: 'htt
         }
       }
       fireChanged(changes);
+    },
+    async clear() {
+      const changes = {};
+      for (const [k, v] of Object.entries(store)) {
+        changes[k] = { oldValue: v, newValue: undefined };
+        delete store[k];
+      }
+      fireChanged(changes);
     }
   };
 
@@ -121,7 +129,7 @@ class PatchingLoader extends ResourceLoader {
   }
 }
 
-function installPolyfills(window) {
+function installPolyfills(window, { prefersDark = false } = {}) {
   const store = new Map();
   Object.defineProperty(window, 'localStorage', {
     configurable: true,
@@ -133,7 +141,7 @@ function installPolyfills(window) {
     }
   });
   window.matchMedia = (query) => ({
-    matches: false,
+    matches: query.includes('prefers-color-scheme: dark') ? prefersDark : false,
     media: query,
     addListener() {},
     removeListener() {},
@@ -146,7 +154,7 @@ function installPolyfills(window) {
 // Loads an extension page (e.g. 'popup/popup.html') with its real scripts executing
 // against the given chrome mock. Resolves once the window 'load' event fires and a
 // short settle delay has passed (covers the page's own async DOMContentLoaded init).
-export async function loadExtensionPage(relHtmlPath, { chrome, patches = [], settleMs = 250 } = {}) {
+export async function loadExtensionPage(relHtmlPath, { chrome, patches = [], settleMs = 250, prefersDark = false } = {}) {
   const htmlPath = resolve(root, relHtmlPath);
   const html = readFileSync(htmlPath, 'utf8');
   const errors = [];
@@ -156,7 +164,7 @@ export async function loadExtensionPage(relHtmlPath, { chrome, patches = [], set
     resources: new PatchingLoader(patches),
     pretendToBeVisual: true,
     beforeParse(window) {
-      installPolyfills(window);
+      installPolyfills(window, { prefersDark });
       // Real chrome.storage.local.get() always hands back plain objects
       // freshly deserialized in the CALLING page's own realm -- there's no
       // such thing as "the wrong realm" in a real browser. Our mock's store

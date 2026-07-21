@@ -1136,12 +1136,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   let pageExcluded = false;
   let currentImageBase64 = null;
   let lang = 'en';
-  let activeScheme = 'light';
+  const preferredWallpaperScheme = () => window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  let activeScheme = preferredWallpaperScheme();
   let activeTimePeriodIndex = 0;
   let activeSlideshowIndex = 0;
   let currentSettings = null;
   let saveDebounceTimer = null;
   let pendingSettingsWrite = null;
+  let targetSwitchChain = Promise.resolve();
   let gradientStopsState = [];
   let frostedGlassState = [];
   let cursorPresetState = 'ball';
@@ -1743,6 +1745,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentSettings.slideshow.order = els.slideshowRandom.checked ? 'random' : 'sequential';
       }
       
+      if (radio.value === 'auto' && prevMode !== 'auto') {
+        activeScheme = preferredWallpaperScheme();
+      }
       currentSettings.mode = radio.value;
       updateModeUI(radio.value);
       triggerImmediateSave();
@@ -2131,10 +2136,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  async function switchTarget(target) {
-    currentDomain = target === 'default' ? DEFAULT_BG_KEY : siteDomain;
+  function switchTarget(target) {
+    targetSwitchChain = targetSwitchChain
+      .catch(() => {})
+      .then(() => performTargetSwitch(target));
+    return targetSwitchChain;
+  }
+
+  async function performTargetSwitch(target) {
+    const nextDomain = target === 'default' ? DEFAULT_BG_KEY : siteDomain;
+    if (nextDomain === currentDomain) return;
+
+    // Finish edits against the old target before changing currentDomain. This
+    // prevents a trailing debounced site write from landing in the default
+    // entry (or vice versa) while the next configuration is loading.
+    if (saveDebounceTimer) {
+      clearTimeout(saveDebounceTimer);
+      saveDebounceTimer = null;
+      await saveSettings(true);
+    } else if (pendingSettingsWrite) {
+      try { await pendingSettingsWrite; } catch (_) {}
+    }
+
+    if (target === 'default' && currentDomain === siteDomain && !activeRuleId && !pageExcluded) {
+      // Selecting the global default is an inheritance choice, not merely a
+      // different editor destination. Remove the hostname override so the
+      // current page immediately follows the global configuration.
+      await chrome.storage.local.remove(siteDomain);
+      siteHasOwnConfig = false;
+    }
+
+    currentDomain = nextDomain;
     els.domainBadge.textContent = target === 'default' ? t('targetDefault') : siteDomain;
-    await loadSettings(currentDomain);
+    const targetRadio = document.querySelector(`input[name="targetTab"][value="${target}"]`);
+    if (targetRadio) targetRadio.checked = true;
+    await loadSettings(nextDomain);
   }
 
   // Upgrades a legacy sub-settings object (saved before Effects became an
@@ -2279,6 +2315,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     (currentSettings.slideshow.items || []).forEach(migrateBgType);
 
     const mode = currentSettings.mode || 'single';
+    if (mode === 'auto') activeScheme = preferredWallpaperScheme();
     const radio = document.querySelector(`input[name="wpMode"][value="${mode}"]`);
     if (radio) radio.checked = true;
     updateModeUI(mode);
@@ -3544,6 +3581,8 @@ document.addEventListener('DOMContentLoaded', () => {
   facadeRadios.forEach(radio => {
     radio.addEventListener('change', (e) => {
       const val = e.target.value;
+      const activeType = document.querySelector('input[name="bgType"]:checked')?.value || 'none';
+      const effectToggle = document.getElementById('effect-overlay-toggle');
       let targetType = val;
       let targetColorMode = null;
       let targetEffect = null;
@@ -3557,12 +3596,25 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (val === 'none') {
         targetType = 'none';
         targetEffect = false;
+      } else if (activeType === 'none' && effectToggle && effectToggle.checked) {
+        // Choosing a real base background from a standalone effect is a mode
+        // replacement, not an implicit request to keep that effect layered on
+        // top. Users can still enable the overlay explicitly afterwards.
+        targetEffect = false;
       }
-      
+
+      let effectChanged = false;
+      if (targetEffect !== null && effectToggle && effectToggle.checked !== targetEffect) {
+        effectToggle.checked = targetEffect;
+        effectChanged = true;
+      }
+
       const typeInput = document.querySelector(`input[name="bgType"][value="${targetType}"]`);
+      let typeChanged = false;
       if (typeInput && !typeInput.checked) {
         typeInput.checked = true;
         typeInput.dispatchEvent(new Event('change', { bubbles: true }));
+        typeChanged = true;
       }
       
       if (targetColorMode) {
@@ -3573,12 +3625,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
       
-      if (targetEffect !== null) {
-        const effectToggle = document.getElementById('effect-overlay-toggle');
-        if (effectToggle && effectToggle.checked !== targetEffect) {
-            effectToggle.checked = targetEffect;
-            effectToggle.dispatchEvent(new Event('change', { bubbles: true }));
-        }
+      if (effectChanged && !typeChanged) {
+        effectToggle.dispatchEvent(new Event('change', { bubbles: true }));
       }
       
       syncFacadeUI();
