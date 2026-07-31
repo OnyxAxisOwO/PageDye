@@ -44,6 +44,31 @@ test('popup: switching background type to color and picking a color saves to the
   assert.equal(store['example.com'].value, '#ff00aa');
 });
 
+test('popup: the inline "clear current config" button next to the target hint resets the active target', async () => {
+  const { chrome, store } = createChromeMock({
+    initialStorage: {
+      'example.com': { type: 'color', value: '#112233', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } }
+    }
+  });
+  const { document, window, errors } = await loadExtensionPage('popup/popup.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  const clearBtn = document.getElementById('clear-current-btn');
+  assert.ok(clearBtn, 'clear-current-btn should exist next to the target hint');
+
+  let confirmMessage = null;
+  window.confirm = (msg) => { confirmMessage = msg; return false; };
+  fire(clearBtn, 'click');
+  await new Promise((r) => setTimeout(r, 50));
+  assert.ok(confirmMessage, 'clicking must prompt for confirmation before clearing anything');
+  assert.equal(store['example.com'].type, 'color', 'declining the confirmation must leave the config untouched');
+
+  window.confirm = () => true;
+  fire(clearBtn, 'click');
+  await waitFor(() => store['example.com'] && store['example.com'].type === 'none');
+  assert.equal(document.getElementById('type-none').checked, true);
+});
+
 test('popup: rapid successive color edits debounce into one trailing save with the final value', async () => {
   const { chrome, store } = createChromeMock();
   const { document, errors } = await loadExtensionPage('popup/popup.html', { chrome });
@@ -71,7 +96,7 @@ test('popup: rapid successive color edits debounce into one trailing save with t
   assert.equal(store['example.com'].value, '#333333', 'only the last debounced value should be persisted');
 });
 
-test('popup: a site-specific background can always switch to and edit the global default', async () => {
+test('popup: a site-specific background can always switch to and edit the global default, without losing the site override', async () => {
   const { chrome, store } = createChromeMock({
     initialStorage: {
       'example.com': { type: 'color', value: '#112233', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } },
@@ -85,13 +110,19 @@ test('popup: a site-specific background can always switch to and edit the global
   defaultTarget.checked = true;
   fire(defaultTarget, 'change');
   await waitFor(() => document.getElementById('color-picker').value === '#445566');
-  assert.equal(store['example.com'], undefined, 'switching to the default must remove the site override');
+  assert.equal(store['example.com'].value, '#112233', 'merely viewing the default tab must not delete the site override');
 
   const colorPicker = document.getElementById('color-picker');
   colorPicker.value = '#abcdef';
   fire(colorPicker, 'input');
   await waitFor(() => store.__pagedye_default_background__.value === '#abcdef');
-  assert.equal(store['example.com'], undefined);
+  assert.equal(store['example.com'].value, '#112233', 'editing the default must not touch the untouched site override');
+
+  const siteTarget = document.getElementById('target-site');
+  siteTarget.checked = true;
+  fire(siteTarget, 'change');
+  await waitFor(() => document.getElementById('color-picker').value === '#112233');
+  assert.equal(store['example.com'].value, '#112233', 'switching back to the site tab must restore its own settings, not a blank slate');
 });
 
 test('popup: auto mode edits the currently active dark scheme and replacing a standalone effect disables it', async () => {
@@ -232,7 +263,7 @@ test('options: auto-mode editor opens the scheme currently used by the system', 
   assert.equal(document.getElementById('edit-section-effects').classList.contains('hidden'), true);
 });
 
-test('options: site editor exposes a top-level switch to edit the global default', async () => {
+test('options: site editor exposes a top-level switch to edit the global default, without losing the site override', async () => {
   const siteSettings = { type: 'color', value: '#112233', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } };
   const defaultSettings = { type: 'color', value: '#445566', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } };
   const { chrome, store } = createChromeMock({
@@ -250,13 +281,50 @@ test('options: site editor exposes a top-level switch to edit the global default
   defaultTarget.checked = true;
   fire(defaultTarget, 'change');
   await waitFor(() => document.getElementById('edit-color-picker').value === '#445566');
-  assert.equal(store['example.com'], undefined, 'the site must now inherit the global default');
+  assert.equal(store['example.com'].value, '#112233', 'merely viewing the default tab must not delete the site override');
 
   const colorPicker = document.getElementById('edit-color-picker');
   colorPicker.value = '#abcdef';
   fire(colorPicker, 'input');
   await waitFor(() => store.__pagedye_default_background__.value === '#abcdef');
-  assert.equal(store['example.com'], undefined);
+  assert.equal(store['example.com'].value, '#112233', 'editing the default must not touch the untouched site override');
+
+  const siteTarget = document.getElementById('edit-target-site');
+  siteTarget.checked = true;
+  fire(siteTarget, 'change');
+  await waitFor(() => document.getElementById('edit-color-picker').value === '#112233');
+  assert.equal(store['example.com'].value, '#112233', 'switching back to the site tab must restore its own settings, not a blank slate');
+});
+
+test('options: the mobile sidebar drawer opens, closes on backdrop click, and closes on nav click', async () => {
+  const { chrome } = createChromeMock({ tab: null });
+  const { document, errors } = await loadExtensionPage('options/options.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  const toggle = document.getElementById('mobile-nav-toggle');
+  const closeBtn = document.getElementById('sidebar-close-btn');
+  assert.ok(sidebar && backdrop && toggle && closeBtn, 'mobile drawer controls should exist');
+
+  fire(toggle, 'click');
+  assert.ok(sidebar.classList.contains('mobile-open'), 'toggle must open the drawer');
+  assert.ok(backdrop.classList.contains('visible'), 'toggle must reveal the backdrop');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+
+  fire(closeBtn, 'click');
+  assert.ok(!sidebar.classList.contains('mobile-open'), 'the close button must close the drawer');
+  assert.ok(!backdrop.classList.contains('visible'));
+
+  fire(toggle, 'click');
+  fire(backdrop, 'click');
+  assert.ok(!sidebar.classList.contains('mobile-open'), 'clicking the backdrop must close the drawer');
+
+  fire(toggle, 'click');
+  const settingsNav = document.querySelector('.nav-item[data-target="section-settings"]');
+  fire(settingsNav, 'click');
+  assert.ok(!sidebar.classList.contains('mobile-open'), 'picking a section must close the drawer');
+  assert.ok(document.getElementById('section-settings').classList.contains('active'));
 });
 
 test('options: clearing local data removes default backgrounds, images, and preferences', async () => {

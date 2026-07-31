@@ -519,6 +519,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetHintDefault: "Applies to every site that doesn't have its own settings.",
       targetHintRule: "A page rule is controlling this page: {pattern}. Changes will be saved to that rule.",
       targetHintExcluded: "PageDye is leaving this page unchanged because of a saved page rule: {pattern}.",
+      clearCurrentConfig: "Clear current config",
+      confirmClearSite: "Clear this site's background config? This can't be undone.",
+      confirmClearDefault: "Clear the global default background config? This can't be undone.",
       tabWallpaper: "Wallpaper",
       tabFrostedGlass: "Frosted Glass",
       advanced: "Developer Controls",
@@ -710,6 +713,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       targetHintDefault: "应用于所有没有单独设置背景的网站。",
       targetHintRule: "当前页面由一条页面规则控制：{pattern}。修改会保存到这条规则。",
       targetHintExcluded: "PageDye 会根据已保存的页面规则保持此页原样：{pattern}。",
+      clearCurrentConfig: "清除当前配置",
+      confirmClearSite: "确定要清除此网站的独立背景配置吗？此操作无法撤销。",
+      confirmClearDefault: "确定要清除全站默认背景配置吗？此操作无法撤销。",
       tabWallpaper: "壁纸",
       tabFrostedGlass: "磨砂玻璃",
       advanced: "开发者控制",
@@ -939,6 +945,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     settingsBtn: document.getElementById('settings-btn'),
 
     resetBtn: document.getElementById('reset-btn'),
+    clearCurrentBtn: document.getElementById('clear-current-btn'),
 
     // Modes & Schemes
     wpModes: document.getElementsByName('wpMode'),
@@ -1860,6 +1867,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Actions
   els.resetBtn.addEventListener('click', resetSettings);
+  els.clearCurrentBtn.addEventListener('click', () => {
+    const msg = currentDomain === DEFAULT_BG_KEY ? t('confirmClearDefault') : t('confirmClearSite');
+    if (window.confirm(msg)) resetSettings();
+  });
   
   // Copy domain hostname
   els.domainBadge.addEventListener('click', async () => {
@@ -2156,14 +2167,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       await saveSettings(true);
     } else if (pendingSettingsWrite) {
       try { await pendingSettingsWrite; } catch (_) {}
-    }
-
-    if (target === 'default' && currentDomain === siteDomain && !activeRuleId && !pageExcluded) {
-      // Selecting the global default is an inheritance choice, not merely a
-      // different editor destination. Remove the hostname override so the
-      // current page immediately follows the global configuration.
-      await chrome.storage.local.remove(siteDomain);
-      siteHasOwnConfig = false;
     }
 
     currentDomain = nextDomain;

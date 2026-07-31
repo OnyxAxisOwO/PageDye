@@ -9,13 +9,35 @@
 </head>
 <body>
   <div class="dashboard-container">
+    <!-- Mobile top bar: stays visible on small screens where the sidebar becomes an off-canvas drawer -->
+    <div class="mobile-topbar">
+      <button type="button" id="mobile-nav-toggle" class="mobile-nav-toggle" aria-label="Menu" aria-expanded="false" aria-controls="sidebar">
+        <svg class="hamburger-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="logo-icon"><img src="../icons/icon128.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: block;"></div>
+      <h1 data-i18n="appName">PageDye</h1>
+    </div>
+
+    <!-- Backdrop behind the mobile sidebar drawer -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="logo-icon"><img src="../icons/icon128.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: block;"></div>
         <h1 data-i18n="appName">PageDye</h1>
+        <button type="button" id="sidebar-close-btn" class="sidebar-close-btn" aria-label="Close menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
-      
+
       <nav class="sidebar-nav">
         <button type="button" class="nav-item active" data-target="section-sites">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -107,7 +129,7 @@
       </nav>
       
       <div class="sidebar-footer">
-        <span id="version" class="version-label">v0.9.3</span>
+        <span id="version" class="version-label">v0.9.4</span>
       </div>
     </aside>
     
@@ -706,7 +728,7 @@
           <div class="about-logo">
             <div class="logo-circle"><img src="../icons/icon128.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: block;"></div>
             <h3>PageDye</h3>
-            <span class="badge" id="about-version">v0.9.3</span>
+            <span class="badge" id="about-version">v0.9.4</span>
           </div>
           
           <p class="about-desc" data-i18n="aboutText">PageDye lets you give each website its own color, image, gradient, or animated background. Your choices are saved in this browser and return automatically.</p>
@@ -1334,7 +1356,7 @@
           </div>
           <div class="edit-actions-right">
             <button type="button" id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
-            <span class="version-text" id="edit-version">v0.9.3</span>
+            <span class="version-text" id="edit-version">v0.9.4</span>
             <span class="divider">|</span>
             <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; display: block;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>

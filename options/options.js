@@ -713,6 +713,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const els = {
     navItems: document.querySelectorAll('.nav-item'),
     sections: document.querySelectorAll('.content-section'),
+    sidebar: document.getElementById('sidebar'),
+    sidebarBackdrop: document.getElementById('sidebar-backdrop'),
+    mobileNavToggle: document.getElementById('mobile-nav-toggle'),
+    sidebarCloseBtn: document.getElementById('sidebar-close-btn'),
     versionLabel: document.getElementById('version'),
     aboutVersion: document.getElementById('about-version'),
     sitesListBody: document.getElementById('sites-list-body'),
@@ -855,7 +859,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   els.navItems.forEach(item => {
     item.addEventListener('click', () => {
       navigateToSection(item.dataset.target);
+      closeMobileSidebar();
     });
+  });
+
+  // Mobile sidebar drawer (the sidebar becomes an off-canvas panel below the
+  // 767px breakpoint; on wider viewports these controls are hidden by CSS
+  // and openMobileSidebar/closeMobileSidebar are simply never triggered).
+  if (els.mobileNavToggle) {
+    els.mobileNavToggle.addEventListener('click', openMobileSidebar);
+  }
+  if (els.sidebarCloseBtn) {
+    els.sidebarCloseBtn.addEventListener('click', closeMobileSidebar);
+  }
+  if (els.sidebarBackdrop) {
+    els.sidebarBackdrop.addEventListener('click', closeMobileSidebar);
+  }
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeMobileSidebar();
   });
 
   const requestedSection = location.hash.slice(1);
@@ -890,6 +911,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   els.clearAllBtn.addEventListener('click', clearAllSites);
 
   // Helper functions
+  function openMobileSidebar() {
+    if (!els.sidebar) return;
+    els.sidebar.classList.add('mobile-open');
+    if (els.sidebarBackdrop) els.sidebarBackdrop.classList.add('visible');
+    if (els.mobileNavToggle) els.mobileNavToggle.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeMobileSidebar() {
+    if (!els.sidebar) return;
+    els.sidebar.classList.remove('mobile-open');
+    if (els.sidebarBackdrop) els.sidebarBackdrop.classList.remove('visible');
+    if (els.mobileNavToggle) els.mobileNavToggle.setAttribute('aria-expanded', 'false');
+  }
+
   function navigateToSection(targetId) {
     const target = document.getElementById(targetId);
     if (!target) return;
@@ -2916,13 +2951,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       editSaveDebounceTimer = null;
     }
     if (currentEditSettings) await saveEditSettings(true);
-    if (target === 'default') {
-      // "Default" means this hostname inherits the global entry. Keeping the
-      // hostname entry would make the editor look switched while the page
-      // continued to render its old site-specific configuration.
-      await chrome.storage.local.remove(editSiteDomain);
-      notifyTabsOfDomain(editSiteDomain);
-    }
     await openEditSite(nextDomain, null, editSiteDomain);
   }
 

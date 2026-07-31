@@ -117,8 +117,38 @@ body:not(.advanced-mode) [data-advanced-only] {
   white-space: nowrap;
 }
 
-.target-hint {
+.target-hint-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin: -4px 0 8px;
+}
+
+.target-hint {
+  margin: 0;
+  flex: 1;
+}
+
+.hint-action-btn {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.6;
+  min-height: 22px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--primary-color);
+  white-space: nowrap;
+}
+
+.hint-action-btn:hover {
+  background: var(--state-layer-hover);
+  border-color: var(--primary-color);
 }
 
 .quick-preset-bar {
