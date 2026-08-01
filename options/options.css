@@ -659,8 +659,7 @@ body.advanced-mode .storage-overview {
   margin-top: 0;
 }
 
-.storage-cleanup-panel,
-.settings-panel {
+.storage-cleanup-panel {
   display: flex;
   align-items: center;
   gap: 18px;
@@ -668,9 +667,6 @@ body.advanced-mode .storage-overview {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--surface-bg);
-}
-
-.storage-cleanup-panel {
   justify-content: space-between;
   margin: 18px 0 14px;
 }
@@ -681,15 +677,13 @@ body.advanced-mode .storage-overview {
   flex: 1 1 auto;
 }
 
-.storage-cleanup-panel h3,
-.settings-panel h3 {
+.storage-cleanup-panel h3 {
   margin: 0 0 6px;
   font-size: 16px;
   line-height: 1.3;
 }
 
-.storage-cleanup-panel p,
-.settings-panel p {
+.storage-cleanup-panel p {
   margin: 0;
   color: var(--text-secondary);
   font-size: 13px;
@@ -706,21 +700,58 @@ body.advanced-mode .storage-overview {
   margin-top: 30px;
 }
 
+/* Settings panel: borderless tonal card, matching the popup's
+   extension-power-card/power-switch treatment instead of the boxed,
+   hard-bordered look used elsewhere in the dashboard. */
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.settings-group:last-child {
+  margin-bottom: 0;
+}
+
+.settings-group .subsection-heading {
+  margin: 0;
+}
+
 .settings-panel {
+  display: flex;
   align-items: flex-start;
-  background: var(--surface-card);
-  margin-bottom: 20px;
+  gap: 16px;
+  padding: 18px 20px;
+  border: none;
+  border-radius: var(--md-radius-xl);
+  background: var(--md-sys-color-surface-container-low);
+  box-shadow: none;
+  margin: 0;
+}
+
+.settings-panel h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.settings-panel p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .settings-panel-icon {
   display: grid;
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
   place-items: center;
-  border-radius: 8px;
+  border-radius: 50%;
   background: var(--badge-color-bg);
-  color: var(--primary-color);
+  color: var(--badge-color-text);
 }
 
 .settings-panel-icon svg {
@@ -736,10 +767,73 @@ body.advanced-mode .storage-overview {
   font-weight: 600;
 }
 
+/* "What advanced mode also unlocks" — a flat, borderless reference list so
+   the scattered data-advanced-only features across the dashboard are
+   discoverable from one place instead of surprise-appearing elsewhere. */
+.advanced-unlocks {
+  padding: 0 20px;
+}
+
+.advanced-unlocks-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.advanced-unlocks-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.advanced-unlocks-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 6px 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.advanced-unlocks-list svg {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  color: var(--md-sys-color-primary);
+  opacity: 0.85;
+}
+
+/* Plain content, not a card: this is a reference list, not a control that
+   needs a tonal box drawn around it to read as its own surface. */
+.debug-info-card {
+  padding: 4px 20px 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.debug-info-card h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
 .mode-toggle {
   position: relative;
   display: inline-flex;
   flex: 0 0 auto;
+  margin-left: auto;
   cursor: pointer;
 }
 
@@ -753,11 +847,11 @@ body.advanced-mode .storage-overview {
 .mode-toggle-track {
   position: relative;
   display: block;
-  width: 44px;
+  width: 42px;
   height: 24px;
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
-  background: var(--surface-bg);
+  border: 2px solid var(--md-sys-color-outline-variant);
+  border-radius: 999px;
+  background: var(--md-sys-color-surface-container-highest);
   transition: background-color .18s ease, border-color .18s ease;
   box-sizing: border-box;
 }
@@ -770,6 +864,7 @@ body.advanced-mode .storage-overview {
   height: 16px;
   border-radius: 50%;
   background: var(--text-secondary);
+  box-shadow: var(--shadow-sm);
   transition: transform .18s ease, background-color .18s ease;
 }
 
@@ -779,7 +874,7 @@ body.advanced-mode .storage-overview {
 }
 
 .mode-toggle input:checked + .mode-toggle-track > span {
-  transform: translateX(20px);
+  transform: translateX(18px);
   background: var(--primary-color-text);
 }
 
@@ -1122,7 +1217,7 @@ body.advanced-mode .storage-overview {
     background: transparent;
     color: var(--text-color);
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background-color 0.15s ease;
   }
 
   .mobile-nav-toggle:hover,
@@ -3659,7 +3754,7 @@ body {
   color: var(--md-sys-color-on-surface-variant);
 }
 
-.card, .settings-panel, .storage-cleanup-panel {
+.card, .storage-cleanup-panel {
   border-color: var(--md-sys-color-outline-variant);
   border-radius: var(--md-radius-lg);
   background: var(--md-sys-color-surface-container-lowest);
@@ -4401,7 +4496,7 @@ input:checked + .slider.round:before {
   color: var(--text-secondary);
   cursor: pointer;
   text-align: center;
-  transition: background 0.18s ease, color 0.18s ease;
+  transition: background-color 0.18s ease, color 0.18s ease;
 }
 
 #section-edit-site .edit-view-tabs label:hover {
@@ -4416,7 +4511,7 @@ input:checked + .slider.round:before {
   align-items: center;
   justify-content: center;
   border-radius: 18px;
-  transition: background 0.18s ease, color 0.18s ease;
+  transition: background-color 0.18s ease, color 0.18s ease;
 }
 
 #section-edit-site .edit-tab-label {
@@ -4605,4 +4700,767 @@ input:checked + .slider.round:before {
     width: min(200px, 58%);
     flex-basis: 200px;
   }
+}
+
+/* ==========================================================================
+   Unified surface system
+   --------------------------------------------------------------------------
+   One card recipe for the whole dashboard. Before this layer every container
+   invented its own combination of border + radius + surface tone, so the page
+   read as a pile of unrelated boxes stitched together by hairlines.
+
+   The rule now: containers are distinguished by TONE, not by outlines. Each
+   nesting level steps one Material You surface role higher, which removes
+   essentially every 1px divider while keeping the hierarchy readable.
+
+       page            surface-container-lowest   (.dashboard-container)
+       card            surface-container-low      (--pd-surface-card)
+       nested block    surface-container          (--pd-surface-nested)
+       input / field   surface-container-high     (--pd-surface-field)
+
+   Borders survive only where they carry meaning that tone cannot: focus rings,
+   selected states, and the active-preset outline.
+   ========================================================================== */
+
+:root {
+  --pd-surface-card: var(--md-sys-color-surface-container-low);
+  --pd-surface-nested: var(--md-sys-color-surface-container);
+  --pd-surface-field: var(--md-sys-color-surface-container-high);
+  --pd-radius-card: var(--md-radius-xl);
+  --pd-radius-nested: 20px;
+  --pd-radius-field: 12px;
+}
+
+/* --- Level 1: cards ------------------------------------------------------ */
+
+.card,
+.action-card,
+.about-card,
+.table-card,
+.effect-preview-box,
+.modal-content,
+.rule-form,
+.settings-panel,
+.storage-metric-card,
+.storage-cleanup-panel,
+.storage-tools,
+.config-preset-card,
+.config-import-panel {
+  border: none;
+  border-radius: var(--pd-radius-card);
+  background: var(--pd-surface-card);
+  box-shadow: none;
+}
+
+/* Backup/import pair: transparent shell so the two action cards read as
+   siblings on the page rather than as cards inside another card. */
+.grid-cards {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* The two action cards carry different amounts of body copy (only the export
+   card has a size estimate), which used to leave their buttons on different
+   baselines. Pin the buttons to the bottom so they always line up. */
+.action-card {
+  justify-content: flex-start;
+}
+
+.action-card .btn {
+  margin-top: auto;
+}
+
+.action-card-icon {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.danger-card {
+  border: none;
+  background: var(--md-sys-color-error-container);
+}
+
+.danger-header h3 {
+  color: var(--md-sys-color-error);
+}
+
+.config-import-panel {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
+}
+
+/* --- Level 2: nested blocks ---------------------------------------------- */
+
+.accordion,
+#section-edit-site .accordion,
+.select-color-card,
+#section-edit-site .select-color-card,
+.frosted-entry,
+#section-edit-site .frosted-entry,
+.scheme-card,
+#section-edit-site .scheme-card,
+.file-info-badge,
+#edit-file-info,
+.config-import-option,
+.wallpaper-grid-card,
+.cursor-preset-swatch,
+.add-grid-card,
+.gradient-preset-swatch,
+.scheme-card-preview,
+.preview-swatch,
+.config-mini-preview,
+.stack-item {
+  border: none;
+  border-radius: var(--pd-radius-nested);
+  background: var(--pd-surface-nested);
+  box-shadow: none;
+}
+
+/* Small swatches keep a tighter radius than full-width blocks. */
+.preview-swatch,
+.config-mini-preview,
+.stack-item {
+  border-radius: 8px;
+}
+
+.gradient-preset-swatch,
+.cursor-preset-swatch,
+.wallpaper-grid-card,
+.add-grid-card {
+  border-radius: 14px;
+}
+
+.storage-operation-status {
+  border: none;
+  border-left: 3px solid var(--md-sys-color-primary);
+  border-radius: var(--pd-radius-field);
+  background: var(--pd-surface-nested);
+  box-shadow: none;
+}
+
+.storage-operation-status.error {
+  border-left-color: var(--md-sys-color-error);
+}
+
+/* Transparency reference, so it must stay neutral grey and never take on a
+   theme tone. */
+.image-preview {
+  border: none;
+  border-radius: var(--pd-radius-nested);
+  background: #808080;
+  box-shadow: none;
+}
+
+/* Selected states are the one place an outline still earns its keep. */
+.scheme-card.active,
+.wallpaper-grid-card.active,
+.cursor-preset-swatch.active,
+#section-edit-site .scheme-card.active {
+  border: none;
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  box-shadow: none;
+}
+
+.scheme-card:hover,
+.wallpaper-grid-card:hover,
+.cursor-preset-swatch:hover,
+.gradient-preset-swatch:hover,
+.add-grid-card:hover {
+  border: none;
+  background: var(--md-sys-color-surface-container-high);
+}
+
+.add-grid-card {
+  color: var(--md-sys-color-primary);
+}
+
+/* --- Level 3: fields ----------------------------------------------------- */
+
+input[type="text"],
+input[type="url"],
+select,
+textarea,
+.color-preview-container,
+.pagedye-code-editor,
+.gradient-stop-row .gradient-stop-pos,
+#section-edit-site input[type="text"],
+#section-edit-site input[type="url"],
+#section-edit-site textarea,
+.rule-form input,
+.rule-form select,
+.storage-tool-selects select,
+.config-inline-form select,
+.config-group-filter select,
+.config-action-row select {
+  border: 1px solid transparent;
+  border-radius: var(--pd-radius-field);
+  background: var(--pd-surface-field);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: none;
+}
+
+input[type="text"]:focus,
+input[type="url"]:focus,
+select:focus,
+textarea:focus,
+.pagedye-code-editor:focus-within {
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 3px var(--md-state-focus);
+}
+
+/* Fields sitting inside a nested block need one more tonal step to stay
+   legible against it. */
+.accordion-content input[type="text"],
+.accordion-content input[type="url"],
+.accordion-content select,
+.accordion-content textarea,
+.accordion-content .color-preview-container,
+.accordion-content .pagedye-code-editor {
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.search-card {
+  border: none;
+  background: var(--pd-surface-field);
+  box-shadow: none;
+}
+
+/* Drop zones become filled tonal targets instead of dashed outlines. */
+.file-drop-area {
+  border: none;
+  border-radius: var(--pd-radius-nested);
+  background: var(--pd-surface-nested);
+  color: var(--text-secondary);
+}
+
+.file-drop-area:hover,
+.file-drop-area.dragover {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+/* --- Dividers: dropped in favour of tone --------------------------------- */
+
+.sites-table th,
+.effects-table th,
+.storage-table th,
+.sites-table td,
+.effects-table td,
+.storage-table td,
+.accordion-content,
+#section-edit-site .accordion-content,
+.sidebar-footer,
+.advanced-feature-block,
+.tabs,
+.advanced,
+#edit-advanced-filters,
+#advanced-filters,
+.storage-list-summary,
+.editor-gutter,
+.config-preset-preview,
+.swatch-half.light-half {
+  border: none;
+}
+
+.sites-table th,
+.effects-table th,
+.storage-table th {
+  background: var(--pd-surface-nested);
+}
+
+.sites-table td,
+.effects-table td,
+.storage-table td {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+/* The accordion body shares its header tone, so opening one no longer draws a
+   seam across the card. */
+.accordion-content,
+#section-edit-site .accordion-content {
+  background: transparent;
+}
+
+.accordion,
+#section-edit-site .accordion {
+  overflow: hidden;
+}
+
+.accordion[open],
+#section-edit-site .accordion[open] {
+  background: var(--pd-surface-nested);
+  box-shadow: none;
+}
+
+.accordion-highlight,
+#section-edit-site .accordion-highlight {
+  border: none;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+/* Translucent rather than a fixed tone: the gutter sits inside an editor whose
+   own surface changes with nesting depth, so a relative overlay keeps it
+   readable everywhere instead of colliding at one particular level. */
+.editor-gutter {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 7%, transparent);
+}
+
+.divider {
+  border: none;
+  height: 0;
+  background: transparent;
+  margin-bottom: 8px;
+}
+
+.bg-type-badge.auto,
+.bg-type-badge.slideshow {
+  border: none;
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+/* --- Segmented controls and pills ---------------------------------------- */
+
+.segmented-control,
+.bg-style-facade {
+  border: none;
+  border-radius: 999px;
+  background: var(--pd-surface-field);
+  padding: 4px;
+  overflow: visible;
+}
+
+.segmented-control::before,
+.bg-style-facade::before {
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  border-radius: 999px;
+  background: var(--md-sys-color-primary);
+}
+
+.segmented-control label,
+.bg-style-facade label {
+  border-radius: 999px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.segmented-control input:checked + label,
+.bg-style-facade input:checked + label {
+  background: transparent;
+  color: var(--md-sys-color-on-primary);
+  box-shadow: none;
+}
+
+.segmented-control:has(input:nth-of-type(2):last-of-type)::before {
+  width: calc((100% - 8px) / 2);
+}
+
+.segmented-control:has(input:nth-of-type(3):last-of-type)::before {
+  width: calc((100% - 8px) / 3);
+}
+
+.bg-style-facade:has(input:nth-of-type(5):last-of-type)::before {
+  width: calc((100% - 8px) / 5);
+}
+
+.mode-pill-group label,
+#section-edit-site .edit-wallpaper-mode label {
+  border: none;
+  background: var(--pd-surface-nested);
+}
+
+.mode-pill-group input:checked + label,
+#section-edit-site .edit-wallpaper-mode input:checked + label {
+  border: none;
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+
+#section-edit-site .edit-view-tabs {
+  border: none;
+  border-radius: var(--pd-radius-card);
+  background: var(--pd-surface-nested);
+}
+
+/* --- Toggles, checkboxes, meters ----------------------------------------- */
+
+.slider.round {
+  border: 2px solid var(--md-sys-color-outline-variant);
+  background: var(--pd-surface-field);
+}
+
+input:checked + .slider.round {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary);
+}
+
+.config-group-tag,
+.storage-tag,
+.storage-quota-track {
+  background: var(--pd-surface-nested);
+}
+
+/* --- Buttons: one box, so bordered and filled variants agree -------------- */
+
+.btn,
+.primary-btn,
+.secondary-btn,
+.danger-btn {
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 10px 22px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-weight: 600;
+  line-height: 1.4;
+  box-shadow: none;
+}
+
+/* Every outlined control shares one hairline tone, so buttons that sit next to
+   each other (Reset beside a field, Pick beside an input) no longer disagree
+   about how dark their outline should be. */
+.secondary-btn,
+.pick-btn,
+.copy-color-btn,
+.filters-reset-btn {
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.icon-btn:hover {
+  background: var(--md-state-hover);
+}
+
+/* ==========================================================================
+   Material You component layer
+   --------------------------------------------------------------------------
+   Buttons, tables, tabs and the navigation drawer rebuilt against the M3
+   specs. Interactive surfaces get real state layers (a translucent overlay of
+   the *content* colour composited over the container colour) instead of the
+   ad-hoc lighten/darken values used before, so hover and press read the same
+   way on every control regardless of which surface it sits on.
+   ========================================================================== */
+
+:root {
+  /* The palette shipped error/error-container but never their content colours,
+     so anything drawn on an error surface had to guess. */
+  --md-sys-color-on-error: #FFFFFF;
+  --md-sys-color-on-error-container: #410002;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --md-sys-color-on-error: #690005;
+    --md-sys-color-on-error-container: #FFDAD6;
+  }
+}
+
+/* --- Buttons ------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 10px 24px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.1px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  box-shadow: none;
+}
+
+/* Filled: the highest-emphasis action on a view. */
+.primary-btn {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  border-color: transparent;
+}
+
+.primary-btn:hover {
+  background: color-mix(in srgb, var(--md-sys-color-on-primary) 8%, var(--md-sys-color-primary));
+  box-shadow: none;
+}
+
+.primary-btn:active {
+  background: color-mix(in srgb, var(--md-sys-color-on-primary) 12%, var(--md-sys-color-primary));
+}
+
+/* Outlined: medium emphasis, no fill so it never competes with Filled. */
+.secondary-btn {
+  background: transparent;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-primary);
+}
+
+.secondary-btn:hover {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+  border-color: var(--md-sys-color-outline-variant);
+}
+
+.secondary-btn:active {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
+}
+
+/* Tonal: for secondary actions that still need a filled shape. */
+.tonal-btn {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  border-color: transparent;
+}
+
+.tonal-btn:hover {
+  background: color-mix(in srgb, var(--md-sys-color-on-secondary-container) 8%, var(--md-sys-color-secondary-container));
+}
+
+/* Text: lowest emphasis, used inline next to body copy. */
+.ghost-link-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--md-sys-color-primary);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.ghost-link-btn:hover {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+  color: var(--md-sys-color-primary);
+  text-decoration: none;
+}
+
+/* Destructive: a *filled* error button. Previously both the card and the
+   button used error-container, so the button dissolved into its own card. */
+.danger-card {
+  background: var(--md-sys-color-error-container);
+}
+
+.danger-header h3 {
+  color: var(--md-sys-color-on-error-container);
+}
+
+.danger-header p {
+  color: color-mix(in srgb, var(--md-sys-color-on-error-container) 78%, transparent);
+}
+
+.danger-btn {
+  width: auto;
+  background: var(--md-sys-color-error);
+  color: var(--md-sys-color-on-error);
+  border-color: transparent;
+}
+
+.danger-btn:hover {
+  background: color-mix(in srgb, var(--md-sys-color-on-error) 8%, var(--md-sys-color-error));
+  color: var(--md-sys-color-on-error);
+  box-shadow: none;
+}
+
+.danger-btn:active {
+  background: color-mix(in srgb, var(--md-sys-color-on-error) 12%, var(--md-sys-color-error));
+}
+
+.btn:disabled,
+.btn[disabled] {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+  border-color: transparent;
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+  cursor: default;
+}
+
+.btn:focus-visible {
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+/* --- Data tables --------------------------------------------------------- */
+
+.sites-table,
+.effects-table,
+.storage-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sites-table th,
+.effects-table th,
+.storage-table th {
+  padding: 14px 20px;
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-align: left;
+  text-transform: none;
+}
+
+/* M3 data tables do keep row dividers, but at very low emphasis: enough to
+   track a row across columns, not enough to read as a grid. */
+.sites-table td,
+.effects-table td,
+.storage-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 45%, transparent);
+  color: var(--md-sys-color-on-surface);
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.sites-table tr:last-child td,
+.effects-table tr:last-child td,
+.storage-table tr:last-child td {
+  border-bottom: none;
+}
+
+.sites-table tbody tr:hover td,
+.effects-table tbody tr:hover td,
+.storage-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 5%, transparent);
+}
+
+.row-default-bg td {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 6%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 45%, transparent);
+}
+
+.storage-list-summary {
+  padding: 12px 20px;
+  border-top: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 45%, transparent);
+}
+
+/* --- Tabs ---------------------------------------------------------------- */
+
+/* A tonal track holding one filled pill, with the icon and label inline. */
+#section-edit-site .edit-view-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border: none;
+  border-radius: 999px;
+  background: var(--md-sys-color-surface-container);
+}
+
+#section-edit-site .edit-view-tabs label {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 16px;
+  border-radius: 999px;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+#section-edit-site .edit-view-tabs label:hover {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+}
+
+/* The whole tab becomes the indicator, so the icon no longer needs a pill of
+   its own sitting inside another pill. */
+#section-edit-site .edit-tab-icon {
+  display: inline-flex;
+  width: auto;
+  height: auto;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  background: transparent;
+}
+
+#section-edit-site .edit-tab-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+#section-edit-site .edit-tab-label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+#section-edit-site .edit-view-tabs input:checked + label {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+#section-edit-site .edit-view-tabs input:checked + label .edit-tab-icon {
+  background: transparent;
+  color: inherit;
+}
+
+/* --- Navigation drawer --------------------------------------------------- */
+
+.sidebar-nav {
+  gap: 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 24px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  text-align: left;
+  cursor: pointer;
+  /* background-color rather than the `background` shorthand, which would also
+     animate background-image/position/size and repaint more than it needs to. */
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.nav-item:hover {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+  color: var(--md-sys-color-on-surface);
+}
+
+.nav-item.active {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.nav-item:focus-visible {
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: -3px;
+}
+
+.nav-icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
 }

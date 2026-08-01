@@ -103,21 +103,6 @@
           </svg>
           <span data-i18n="navSettings">Settings</span>
         </button>
-        <button type="button" class="nav-item" data-target="section-debug" data-advanced-only>
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
-            <rect x="9" y="9" width="6" height="6"></rect>
-            <line x1="9" y1="1" x2="9" y2="4"></line>
-            <line x1="15" y1="1" x2="15" y2="4"></line>
-            <line x1="9" y1="20" x2="9" y2="23"></line>
-            <line x1="15" y1="20" x2="15" y2="23"></line>
-            <line x1="20" y1="9" x2="23" y2="9"></line>
-            <line x1="20" y1="14" x2="23" y2="14"></line>
-            <line x1="1" y1="9" x2="4" y2="9"></line>
-            <line x1="1" y1="14" x2="4" y2="14"></line>
-          </svg>
-          <span data-i18n="navDebug">Diagnostics</span>
-        </button>
         <button type="button" class="nav-item" data-target="section-about">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
@@ -129,7 +114,7 @@
       </nav>
       
       <div class="sidebar-footer">
-        <span id="version" class="version-label">v0.9.4</span>
+        <span id="version" class="version-label">v0.9.5</span>
       </div>
     </aside>
     
@@ -653,68 +638,106 @@
           <p class="section-subtitle" data-i18n="settingsHint">Keep PageDye simple, or reveal tools for complex setups and troubleshooting.</p>
         </div>
 
-        <div class="settings-panel">
-          <div class="settings-panel-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3v18"></path>
-              <path d="M3 12h18"></path>
-              <circle cx="12" cy="12" r="8"></circle>
-            </svg>
+        <div class="settings-group">
+          <div class="settings-panel">
+            <div class="settings-panel-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v18"></path>
+                <path d="M3 12h18"></path>
+                <circle cx="12" cy="12" r="8"></circle>
+              </svg>
+            </div>
+            <div class="settings-panel-copy">
+              <h3 data-i18n="advancedModeTitle">Advanced mode</h3>
+              <p data-i18n="advancedModeHint">Reveals extra tools for complex setups — see what's included below.</p>
+              <strong id="advanced-mode-status" class="advanced-mode-status" aria-live="polite"></strong>
+            </div>
+            <label class="mode-toggle" for="advanced-mode-toggle">
+              <input type="checkbox" id="advanced-mode-toggle">
+              <span class="mode-toggle-track" aria-hidden="true"><span></span></span>
+              <span class="sr-only" data-i18n="advancedModeTitle">Advanced mode</span>
+            </label>
           </div>
-          <div class="settings-panel-copy">
-            <h3 data-i18n="advancedModeTitle">Advanced mode</h3>
-            <p data-i18n="advancedModeHint">Shows page rules, batch tools, custom effects, detailed storage controls, and diagnostics.</p>
-            <strong id="advanced-mode-status" class="advanced-mode-status" aria-live="polite"></strong>
+
+          <div class="advanced-unlocks">
+            <span class="advanced-unlocks-label" data-i18n="advancedUnlocksTitle">Also unlocks:</span>
+            <ul class="advanced-unlocks-list">
+              <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+                <span data-i18n="unlockPageRules">Page rules for individual URLs</span>
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="7" height="7" rx="1"></rect><rect x="14" y="4" width="7" height="7" rx="1"></rect><rect x="3" y="15" width="7" height="5" rx="1"></rect><path d="M14 17.5h7M17.5 14v7"></path></svg>
+                <span data-i18n="unlockBatchTools">Batch tools and site groups</span>
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                <span data-i18n="unlockCustomEffects">Custom animated effects</span>
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                <span data-i18n="unlockSiteAdvanced">Custom CSS and background selectors per site</span>
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5"></circle><circle cx="17.5" cy="10.5" r=".5"></circle><circle cx="8.5" cy="7.5" r=".5"></circle><circle cx="6.5" cy="12.5" r=".5"></circle><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path></svg>
+                <span data-i18n="unlockAppearanceExtras">Dashboard background images and reduced motion</span>
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path></svg>
+                <span data-i18n="unlockStorageTools">Detailed storage and image tools</span>
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
+                <span data-i18n="unlockDeveloperOptions">Developer options, right below</span>
+              </li>
+            </ul>
           </div>
-          <label class="mode-toggle" for="advanced-mode-toggle">
-            <input type="checkbox" id="advanced-mode-toggle">
-            <span class="mode-toggle-track" aria-hidden="true"><span></span></span>
-            <span class="sr-only" data-i18n="advancedModeTitle">Advanced mode</span>
-          </label>
-        </div>
-      </section>
-      
-      <!-- Section 2.5: Debug Mode -->
-      <section id="section-debug" class="content-section">
-        <div class="section-header">
-          <h2 data-i18n="debugTitle">Debug Mode</h2>
-          <p class="section-subtitle" data-i18n="debugHint">Adds a floating debug panel to every page for inspecting PageDye's own state and troubleshooting sites it doesn't render correctly on. Intended for developers/power users.</p>
         </div>
 
-        <div class="settings-panel">
-          <div class="settings-panel-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
-              <rect x="9" y="9" width="6" height="6"></rect>
-              <line x1="9" y1="1" x2="9" y2="4"></line>
-              <line x1="15" y1="1" x2="15" y2="4"></line>
-              <line x1="9" y1="20" x2="9" y2="23"></line>
-              <line x1="15" y1="20" x2="15" y2="23"></line>
-              <line x1="20" y1="9" x2="23" y2="9"></line>
-              <line x1="20" y1="14" x2="23" y2="14"></line>
-              <line x1="1" y1="9" x2="4" y2="9"></line>
-              <line x1="1" y1="14" x2="4" y2="14"></line>
-            </svg>
+        <!-- Developer options: nested here (not a separate nav page) so its
+             relationship to Advanced mode above is explicit — it only shows
+             up once Advanced mode is on, same as everything in the list above. -->
+        <div class="settings-group" data-advanced-only>
+          <div class="subsection-heading">
+            <h3 data-i18n="settingsDevGroupTitle">Developer options</h3>
+            <p data-i18n="settingsDevGroupHint">Extra troubleshooting tools for checking why PageDye may not work as expected on a website.</p>
           </div>
-          <div class="settings-panel-copy">
-            <h3 data-i18n="debugEnable">Enable debug mode</h3>
-            <p data-i18n="debugEnableHint">Shows a floating button on every page (bottom-right). Takes effect immediately on already-open tabs, no reload needed.</p>
-          </div>
-          <label class="mode-toggle" for="debug-mode-toggle">
-            <input type="checkbox" id="debug-mode-toggle">
-            <span class="mode-toggle-track" aria-hidden="true"><span></span></span>
-            <span class="sr-only" data-i18n="debugEnable">Enable debug mode</span>
-          </label>
-        </div>
 
-        <div class="card">
-          <h3 data-i18n="debugFeaturesTitle">What's included</h3>
-          <ul class="debug-feature-list">
-            <li><strong data-i18n="debugFeatureStateTitle">State</strong> — <span data-i18n="debugFeatureState">Live view of the current site's saved settings (mode, background type, Deep Compatibility Mode, Frosted Glass entries) and the raw JSON.</span></li>
-            <li><strong data-i18n="debugFeaturePerfTitle">Performance</strong> — <span data-i18n="debugFeaturePerf">Live FPS, frame time, and JS heap memory (where supported).</span></li>
-            <li><strong data-i18n="debugFeatureLogsTitle">Logs</strong> — <span data-i18n="debugFeatureLogs">A mirror of this page's console.log/warn/error output.</span></li>
-            <li><strong data-i18n="debugFeatureInspectorTitle">Inspector</strong> — <span data-i18n="debugFeatureInspector">Hover to highlight and click to lock an element, showing its tag/id/class, guessed selector, size and key computed styles.</span></li>
-          </ul>
+          <div class="settings-panel">
+            <div class="settings-panel-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                <rect x="9" y="9" width="6" height="6"></rect>
+                <line x1="9" y1="1" x2="9" y2="4"></line>
+                <line x1="15" y1="1" x2="15" y2="4"></line>
+                <line x1="9" y1="20" x2="9" y2="23"></line>
+                <line x1="15" y1="20" x2="15" y2="23"></line>
+                <line x1="20" y1="9" x2="23" y2="9"></line>
+                <line x1="20" y1="14" x2="23" y2="14"></line>
+                <line x1="1" y1="9" x2="4" y2="9"></line>
+                <line x1="1" y1="14" x2="4" y2="14"></line>
+              </svg>
+            </div>
+            <div class="settings-panel-copy">
+              <h3 data-i18n="debugEnable">Enable debug mode</h3>
+              <p data-i18n="debugEnableHint">Shows a floating button on every page (bottom-right). Takes effect immediately on already-open tabs, no reload needed.</p>
+            </div>
+            <label class="mode-toggle" for="debug-mode-toggle">
+              <input type="checkbox" id="debug-mode-toggle">
+              <span class="mode-toggle-track" aria-hidden="true"><span></span></span>
+              <span class="sr-only" data-i18n="debugEnable">Enable debug mode</span>
+            </label>
+          </div>
+
+          <div class="debug-info-card">
+            <h3 data-i18n="debugFeaturesTitle">What's included</h3>
+            <ul class="debug-feature-list">
+              <li><strong data-i18n="debugFeatureStateTitle">State</strong> — <span data-i18n="debugFeatureState">Live view of the current site's saved settings (mode, background type, Deep Compatibility Mode, Frosted Glass entries) and the raw JSON.</span></li>
+              <li><strong data-i18n="debugFeaturePerfTitle">Performance</strong> — <span data-i18n="debugFeaturePerf">Live FPS, frame time, and JS heap memory (where supported).</span></li>
+              <li><strong data-i18n="debugFeatureLogsTitle">Logs</strong> — <span data-i18n="debugFeatureLogs">A mirror of this page's console.log/warn/error output.</span></li>
+              <li><strong data-i18n="debugFeatureInspectorTitle">Inspector</strong> — <span data-i18n="debugFeatureInspector">Hover to highlight and click to lock an element, showing its tag/id/class, guessed selector, size and key computed styles.</span></li>
+            </ul>
+          </div>
         </div>
       </section>
 
@@ -728,7 +751,7 @@
           <div class="about-logo">
             <div class="logo-circle"><img src="../icons/icon128.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: block;"></div>
             <h3>PageDye</h3>
-            <span class="badge" id="about-version">v0.9.4</span>
+            <span class="badge" id="about-version">v0.9.5</span>
           </div>
           
           <p class="about-desc" data-i18n="aboutText">PageDye lets you give each website its own color, image, gradient, or animated background. Your choices are saved in this browser and return automatically.</p>
@@ -1356,7 +1379,7 @@
           </div>
           <div class="edit-actions-right">
             <button type="button" id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
-            <span class="version-text" id="edit-version">v0.9.4</span>
+            <span class="version-text" id="edit-version">v0.9.5</span>
             <span class="divider">|</span>
             <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; display: block;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>

@@ -437,12 +437,18 @@ test('options default to a simplified interface and gate expert tools behind adv
   assert.equal(storageSchema.KEYS.advancedMode, '__pagedye_advanced_mode__');
   assert.equal(storageSchema.isSiteSettingsKey(storageSchema.KEYS.advancedMode, true), false);
   assert.match(html, /id="advanced-mode-toggle"/);
-  for (const section of ['custom-effects', 'debug']) {
+  for (const section of ['custom-effects']) {
     assert.match(html, new RegExp(`data-target="section-${section}" data-advanced-only`));
   }
   assert.match(html, /class="advanced-feature-block" data-advanced-only/);
   assert.match(html, /class="storage-tools"[^>]*data-advanced-only/);
   assert.match(html, /id="storage-delete-unused-btn"/);
+  // Debug mode is a developer sub-option nested inside the Settings page
+  // (revealed by Advanced mode) rather than its own advanced-gated nav
+  // page, so the relationship between the two toggles is explicit.
+  assert.match(html, /id="section-settings"/);
+  assert.doesNotMatch(html, /data-target="section-debug"/);
+  assert.match(html, /<section id="section-settings"[\s\S]*?data-advanced-only>[\s\S]*?id="debug-mode-toggle"[\s\S]*?<\/section>/);
   assert.match(css, /body:not\(\.advanced-mode\) \[data-advanced-only\]\s*\{[^}]*display:\s*none\s*!important/s);
   assert.match(options, /document\.body\.classList\.toggle\('advanced-mode', enabled\)/);
   assert.match(options, /\[ADVANCED_MODE_KEY\]: false, \[DEBUG_MODE_KEY\]: false/);
