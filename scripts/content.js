@@ -765,12 +765,14 @@
     applyFrostedGlass(settings.frostedGlass);
     applyCustomCursor(settings.cursor);
 
-    const hasBackground = activeSettings.type === 'color' || activeSettings.type === 'image' || activeSettings.effectEnabled;
+    const hasBackground = activeSettings.type === 'color' || activeSettings.type === 'image' || activeSettings.type === 'video' || activeSettings.effectEnabled;
     // The effect overlay is rendered on a full-viewport canvas; a per-element
     // selector doesn't apply to it, so effectEnabled always forces overlay
     // mode for the whole background (base layer included), same as a bare
-    // effect background always did before overlays existed.
-    const selector = !activeSettings.effectEnabled && activeSettings.targetSelector && activeSettings.targetSelector.trim();
+    // effect background always did before overlays existed. A <video> can't
+    // be expressed as the ::before-pseudo-element CSS text applyTargetBackground()
+    // generates either, so type:'video' always forces overlay mode too.
+    const selector = !activeSettings.effectEnabled && activeSettings.type !== 'video' && activeSettings.targetSelector && activeSettings.targetSelector.trim();
 
     if (!hasBackground) {
       removeBackdrop();
@@ -885,7 +887,7 @@
     enforceTransparency();
 
     let root = document.getElementById(ROOT_ID);
-    let layer, canvas, iframe;
+    let layer, canvas, iframe, video;
 
     if (!root) {
       root = document.createElement('div');
@@ -946,6 +948,19 @@
         transition: 'opacity 0.3s ease'
       });
       shadow.appendChild(iframe);
+
+      video = document.createElement('video');
+      video.id = 'pagedye-video-bg';
+      Object.assign(video.style, {
+        position: 'absolute',
+        top: '0',
+        left: '0',
+        width: '100%',
+        height: '100%',
+        display: 'none',
+        transition: 'opacity 0.3s ease'
+      });
+      shadow.appendChild(video);
     } else {
       layer = root.shadowRoot.getElementById('pagedye-layer');
       canvas = root.shadowRoot.getElementById('pagedye-effect-canvas');
@@ -966,12 +981,28 @@
         });
         root.shadowRoot.appendChild(iframe);
       }
+      video = root.shadowRoot.getElementById('pagedye-video-bg');
+      if (!video) {
+        video = document.createElement('video');
+        video.id = 'pagedye-video-bg';
+        Object.assign(video.style, {
+          position: 'absolute',
+          top: '0',
+          left: '0',
+          width: '100%',
+          height: '100%',
+          display: 'none',
+          transition: 'opacity 0.3s ease'
+        });
+        root.shadowRoot.appendChild(video);
+      }
     }
 
     root.style.zIndex = '-2147483648';
 
     paintBaseLayer(root, layer, settings);
     applyEffectOverlay(canvas, iframe, settings);
+    paintVideoLayer(video, settings);
   }
 
   // Paints the base background (none/color/image) onto `layer`, independent
@@ -1053,9 +1084,79 @@
            root.style.height = '100%'; // Full document height
         }
       }
+    } else if (settings.type === 'video') {
+      // The video itself is painted by paintVideoLayer() onto a dedicated
+      // <video> sibling (a CSS background-image can't play video) -- `layer`
+      // just needs to be cleared so no stale color/image shows through
+      // around/behind it (e.g. while the video is still buffering).
+      style.backgroundColor = 'transparent';
+      style.backgroundImage = 'none';
+      style.filter = 'none';
+      style.transform = 'none';
+      style.animation = 'none';
+      style.backgroundSize = 'auto';
+
+      if (settings.style && settings.style.fixed) {
+        root.style.position = 'fixed';
+        root.style.height = '100vh';
+      } else {
+        root.style.position = 'absolute';
+        root.style.height = '100%';
+      }
     }
 
     Object.assign(layer.style, style);
+  }
+
+  // Paints the type:'video' background onto its own <video> element -- see
+  // the comment above for why this can't live on `layer` like color/image.
+  // Muted+loop with an explicit play() call is the most reliable way to get
+  // control-free background playback across browsers (autoplay policies
+  // allow muted video, but the bare `autoplay` attribute is timing-sensitive
+  // on a dynamically created element).
+  function paintVideoLayer(videoEl, settings) {
+    if (!videoEl) return;
+    if (settings.type !== 'video' || !settings.value) {
+      videoEl.style.display = 'none';
+      if (videoEl.dataset.srcValue) {
+        videoEl.pause();
+        videoEl.removeAttribute('src');
+        videoEl.load();
+        delete videoEl.dataset.srcValue;
+      }
+      return;
+    }
+
+    videoEl.style.display = 'block';
+    videoEl.style.opacity = (toFiniteNumber(settings.opacity, 100) / 100).toString();
+    videoEl.style.filter = buildFilterString(settings);
+    const size = (settings.style && settings.style.size) || 'cover';
+    videoEl.style.objectFit = size === 'stretch' ? 'fill' : (size === 'contain' ? 'contain' : 'cover');
+
+    // Re-assigning `src` restarts playback from 0, so only touch it when the
+    // value actually changed -- applyBackground() re-runs on many unrelated
+    // setting tweaks and on the periodic time-range check.
+    if (videoEl.dataset.srcValue !== settings.value) {
+      videoEl.dataset.srcValue = settings.value;
+      videoEl.muted = true;
+      videoEl.loop = true;
+      videoEl.playsInline = true;
+      videoEl.src = settings.value;
+    }
+    syncVideoPlayback(videoEl);
+  }
+
+  // Shared by paintVideoLayer() and the visibility-change handler so a
+  // hidden tab always pauses decoding (battery/CPU), and a re-shown tab
+  // resumes without restarting from 0.
+  function syncVideoPlayback(videoEl) {
+    if (!videoEl || !videoEl.dataset.srcValue) return;
+    if (document.hidden) {
+      if (!videoEl.paused) videoEl.pause();
+    } else if (videoEl.paused) {
+      const playPromise = videoEl.play();
+      if (playPromise && typeof playPromise.catch === 'function') playPromise.catch(() => {});
+    }
   }
 
   // Starts/stops the animated-effect canvas (or an interactive custom-URL
@@ -1265,6 +1366,15 @@
     if (root) {
       const iframe = root.shadowRoot && root.shadowRoot.getElementById('pagedye-effect-iframe');
       if (iframe && window.PageDyeCustomSandbox) window.PageDyeCustomSandbox.release(iframe);
+      // A removed <video> can keep decoding in some browsers unless the
+      // source is explicitly cleared first (same rationale as stopEffect()
+      // above, for the canvas rAF loop).
+      const video = root.shadowRoot && root.shadowRoot.getElementById('pagedye-video-bg');
+      if (video) {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+      }
       root.remove();
     }
 
@@ -1444,6 +1554,10 @@
   }
 
   function onPageVisibilityChanged() {
+    const root = document.getElementById(ROOT_ID);
+    const video = root && root.shadowRoot && root.shadowRoot.getElementById('pagedye-video-bg');
+    if (video) syncVideoPlayback(video);
+
     if (!deepCompatEnabled) return;
     if (document.hidden) {
       pauseDeepCompatWatchers();
@@ -1868,10 +1982,10 @@
   function ensureAggressivePageDyeStructures() {
     const active = currentActiveSettings;
     if (!active) return;
-    const hasBackground = active.type === 'color' || active.type === 'image' || active.effectEnabled;
+    const hasBackground = active.type === 'color' || active.type === 'image' || active.type === 'video' || active.effectEnabled;
     if (!hasBackground) return;
 
-    const selector = !active.effectEnabled && active.targetSelector && active.targetSelector.trim();
+    const selector = !active.effectEnabled && active.type !== 'video' && active.targetSelector && active.targetSelector.trim();
     if (selector) {
       if (!document.getElementById(TARGET_STYLE_ID)) {
         applyTargetBackground(selector, active);

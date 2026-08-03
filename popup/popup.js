@@ -453,6 +453,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       typeNone: "None",
       typeColor: "Color",
       typeImage: "Image",
+      typeVideo: "Video",
       typeEffect: "Effects",
       effectKind: "Effect",
       effectKindHint: "Animated backgrounds are created on your device and do not download extra media.",
@@ -613,11 +614,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       statusSynced: "Saved",
       statusSaving: "Saving...",
       dragOrClick: "Drag image here, or",
+      dragVideoOrClick: "Drag video here, or",
       chooseFile: "choose file",
       orPasteUrl: "Or paste an image address",
+      videoSizeHint: "MP4 or WebM, up to 15 MB. Trim or compress long clips first.",
       adjustStyles: "Adjust Styles",
       activeImage: "Wallpaper Image",
       savedImage: "Saved Image",
+      savedVideo: "Saved Video",
       advancedFilters: "More Image Adjustments",
       filtersReset: "Reset",
       filterBrightness: "Brightness",
@@ -653,6 +657,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       typeNone: "无",
       typeColor: "颜色",
       typeImage: "图片",
+      typeVideo: "视频",
       typeEffect: "动效",
       effectKind: "特效",
       effectKindHint: "动态背景会直接在当前设备上生成，不会额外下载视频或图片。",
@@ -803,11 +808,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       statusSynced: "已保存",
       statusSaving: "正在保存...",
       dragOrClick: "拖拽图片至此，或",
+      dragVideoOrClick: "拖拽视频至此，或",
       chooseFile: "选择文件",
       orPasteUrl: "或粘贴图片网址",
+      videoSizeHint: "支持 MP4 或 WebM，不超过 15 MB。较长的片段请先自行裁剪或压缩。",
       adjustStyles: "调整壁纸样式",
       activeImage: "当前图片",
       savedImage: "已保存的壁纸",
+      savedVideo: "已保存的视频",
       advancedFilters: "更多图片调整",
       filtersReset: "重置",
       filterBrightness: "亮度",
@@ -872,11 +880,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     fileInfo: document.getElementById('file-info'),
     fileName: document.querySelector('.filename'),
     removeFileBtn: document.getElementById('remove-file'),
-    
+
+    // Video
+    videoDropArea: document.getElementById('video-drop-area'),
+    videoFileInput: document.getElementById('video-file'),
+    videoFileInfo: document.getElementById('video-file-info'),
+    videoFileName: document.getElementById('video-filename'),
+    removeVideoFileBtn: document.getElementById('remove-video-file'),
+    videoPreviewEl: document.getElementById('video-preview-el'),
+
     // Preview
     imagePreview: document.getElementById('image-preview'),
     imagePreviewBg: document.getElementById('image-preview-bg'),
-    
+
     opacity: document.getElementById('opacity'),
     opacityVal: document.getElementById('opacity-val'),
     blur: document.getElementById('blur'),
@@ -1142,6 +1158,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let activeRulePattern = '';
   let pageExcluded = false;
   let currentImageBase64 = null;
+  let currentVideoBase64 = null;
   let lang = 'en';
   const preferredWallpaperScheme = () => window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   let activeScheme = preferredWallpaperScheme();
@@ -1484,6 +1501,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
   els.removeFileBtn.addEventListener('click', clearFile);
+
+  // Video File Upload
+  els.videoDropArea.addEventListener('click', () => els.videoFileInput.click());
+  els.videoFileInput.addEventListener('change', handleVideoFileSelect);
+  els.videoDropArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    els.videoDropArea.classList.add('dragover');
+  });
+  els.videoDropArea.addEventListener('dragleave', () => els.videoDropArea.classList.remove('dragover'));
+  els.videoDropArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    els.videoDropArea.classList.remove('dragover');
+    if (e.dataTransfer.files.length) {
+      handleVideoFile(e.dataTransfer.files[0]);
+    }
+  });
+  els.removeVideoFileBtn.addEventListener('click', clearVideoFile);
 
   // Sliders
   els.opacity.addEventListener('input', (e) => {
@@ -1999,6 +2033,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const opacity = els.opacity.value;
     els.imagePreviewBg.style.opacity = opacity / 100;
+
+    // Video preview shares the same opacity/blur/filter sliders as image (see
+    // updateUI) -- keep its live preview in sync too. Unlike backgroundImage
+    // above, `src` is never touched here: reassigning it would restart
+    // playback, so it's only set where the underlying file actually changes
+    // (handleVideoFile / clearVideoFile / populateForm).
+    if (els.videoPreviewEl) {
+      els.videoPreviewEl.style.filter = filterStr;
+      els.videoPreviewEl.style.objectFit = els.bgSize.value === 'stretch' ? 'fill' : (els.bgSize.value === 'contain' ? 'contain' : 'cover');
+      els.videoPreviewEl.style.opacity = opacity / 100;
+    }
   }
 
   function populateForm(subSettings) {
@@ -2018,6 +2063,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.dropArea.classList.remove('hidden');
     els.fileInfo.classList.add('hidden');
 
+    currentVideoBase64 = null;
+    els.videoFileInput.value = '';
+    els.videoDropArea.classList.remove('hidden');
+    els.videoFileInfo.classList.add('hidden');
+    els.videoPreviewEl.removeAttribute('src');
+
     if (subSettings.type === 'color') {
       els.colorPicker.value = subSettings.value || '#ffffff';
       els.colorText.value = subSettings.value || '#ffffff';
@@ -2033,6 +2084,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         els.fileName.textContent = t('savedImage');
       } else {
         els.imageUrl.value = subSettings.value || '';
+      }
+    } else if (subSettings.type === 'video') {
+      if (subSettings.value) {
+        currentVideoBase64 = subSettings.value;
+        els.videoDropArea.classList.add('hidden');
+        els.videoFileInfo.classList.remove('hidden');
+        els.videoFileName.textContent = t('savedVideo');
+        els.videoPreviewEl.src = subSettings.value;
       }
     }
 
@@ -2096,6 +2155,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       dest.gradient = collectGradientFromForm();
     } else if (type === 'image') {
       value = currentImageBase64 || els.imageUrl.value;
+    } else if (type === 'video') {
+      value = currentVideoBase64 || '';
     }
 
     // Effect-overlay fields are independent of `type` — always collected
@@ -2546,6 +2607,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           } else if (item.type === 'image' && item.value) {
             activeCard.style.backgroundImage = `url('${item.value}')`;
             activeCard.className = baseClass;
+          } else if (item.type === 'video' && item.value) {
+            // This small grid card is a plain swatch div, not a real <video>
+            // -- there's no equivalent of a "poster frame" without decoding
+            // the clip, so it just labels itself instead of trying to show
+            // a (static, silent) preview.
+            activeCard.className = baseClass + ' type-none';
+            activeCard.textContent = t('typeVideo');
           } else if (item.effectEnabled) {
             activeCard.className = baseClass + ' type-none';
             activeCard.textContent = t('typeEffect');
@@ -2574,6 +2642,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sectionNone = document.getElementById('section-none');
     const sectionColor = document.getElementById('section-color');
     const sectionImage = document.getElementById('section-image');
+    const sectionVideo = document.getElementById('section-video');
 
     if (bgTypeSlider && !isInitialLoad) {
       bgTypeSlider.classList.add('transitioning');
@@ -2582,22 +2651,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (sectionNone) sectionNone.classList.toggle('inactive', type !== 'none');
     if (sectionColor) sectionColor.classList.toggle('inactive', type !== 'color');
     if (sectionImage) sectionImage.classList.toggle('inactive', type !== 'image');
+    if (sectionVideo) sectionVideo.classList.toggle('inactive', type !== 'video');
 
     if (bgTypeSlider) {
       if (isInitialLoad) {
         bgTypeSlider.style.transition = 'none';
       }
       if (type === 'none') bgTypeSlider.style.transform = 'translateX(0)';
-      else if (type === 'color') bgTypeSlider.style.transform = 'translateX(-33.333%)';
-      else if (type === 'image') bgTypeSlider.style.transform = 'translateX(-66.667%)';
+      else if (type === 'color') bgTypeSlider.style.transform = 'translateX(-25%)';
+      else if (type === 'image') bgTypeSlider.style.transform = 'translateX(-50%)';
+      else if (type === 'video') bgTypeSlider.style.transform = 'translateX(-75%)';
       if (isInitialLoad) {
         bgTypeSlider.offsetHeight; // trigger reflow
         bgTypeSlider.style.transition = '';
       }
     }
 
-    // Opacity (and, for image, blur/filters) show whenever there's anything
-    // to fade — a base type, or the effect overlay on its own over "None".
+    // Opacity (and, for image/video, blur/filters) show whenever there's
+    // anything to fade — a base type, or the effect overlay on its own over
+    // "None".
     els.sectionStyles.classList.toggle('hidden', type === 'none' && !els.effectOverlayToggle.checked);
     els.blurControl.classList.add('hidden');
     const advFilters = document.getElementById('advanced-filters');
@@ -2606,21 +2678,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (type === 'color') {
       const checkedColorMode = document.querySelector('input[name="colorMode"]:checked');
       updateColorModeUI(checkedColorMode ? checkedColorMode.value : 'solid');
-    } else if (type === 'image') {
+    } else if (type === 'image' || type === 'video') {
       els.blurControl.classList.remove('hidden');
       if (advFilters) advFilters.classList.remove('hidden');
       updatePreview();
     }
 
-    // Toggle image position options if image is active
+    // Toggle image/video position options if either is active. Video has no
+    // use for "Repeat" (tiling a looping clip makes no visual sense), so
+    // that row is hidden even though the rest of image-options is shared.
     const imgOptions = document.getElementById('image-options');
     if (imgOptions) {
-      if (type === 'image') {
-        imgOptions.classList.remove('hidden');
-      } else {
-        imgOptions.classList.add('hidden');
-      }
+      imgOptions.classList.toggle('hidden', type !== 'image' && type !== 'video');
     }
+    const repeatRow = document.getElementById('image-repeat-row');
+    if (repeatRow) repeatRow.classList.toggle('hidden', type === 'video');
 
     updateEffectOverlayUI();
   }
@@ -3017,6 +3089,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.fileInfo.classList.add('hidden');
     updatePreview();
     updateInteractivePreviews();
+    triggerImmediateSave();
+  }
+
+  function handleVideoFileSelect(e) {
+    if (e.target.files.length) {
+      handleVideoFile(e.target.files[0]);
+    }
+  }
+
+  async function handleVideoFile(file) {
+    try {
+      const video = await window.PageDyeVideo.prepareVideo(file);
+      currentVideoBase64 = video.dataUrl;
+      els.videoDropArea.classList.add('hidden');
+      els.videoFileInfo.classList.remove('hidden');
+      els.videoFileName.textContent = `${video.name} · ${formatBytes(video.bytes)}`;
+      els.videoPreviewEl.src = video.dataUrl;
+      updatePreview();
+      triggerImmediateSave();
+    } catch (error) {
+      console.error('Failed to prepare video:', error);
+      if (els.statusDot) els.statusDot.classList.add('blocked');
+      if (els.statusText) els.statusText.textContent = error && error.message ? error.message : t('error');
+    }
+  }
+
+  function clearVideoFile() {
+    currentVideoBase64 = null;
+    els.videoFileInput.value = '';
+    els.videoDropArea.classList.remove('hidden');
+    els.videoFileInfo.classList.add('hidden');
+    els.videoPreviewEl.removeAttribute('src');
+    updatePreview();
     triggerImmediateSave();
   }
 

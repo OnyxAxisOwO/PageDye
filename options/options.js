@@ -55,8 +55,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       uiThemeColor: "Interface Theme Color",
       uiThemeColorHint: "Changes PageDye popup and settings colors only. Websites stay unchanged.",
       dragOrClick: "Drag image here, or",
+      dragVideoOrClick: "Drag video here, or",
       chooseFile: "choose file",
       savedImage: "Saved image",
+      savedVideo: "Saved video",
+      videoSizeHint: "MP4 or WebM, up to 15 MB. Trim or compress long clips first.",
       sitesTitle: "Website Backgrounds",
       sitesHint: "View and update the backgrounds you have saved.",
       urlRulesTitle: "Page Rules",
@@ -132,6 +135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       typeNone: "None",
       typeColor: "Color",
       typeImage: "Image",
+      typeVideo: "Video",
       typeEffect: "Effects",
       effectKind: "Effect",
       effectKindHint: "Animated backgrounds are created on your device and do not download extra media.",
@@ -340,8 +344,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       pauseShortcutRequirement: "请至少使用一个修饰键（Ctrl、Alt、Shift 或 ⌘）。",
       pauseShortcutInvalid: "请为快捷键添加一个修饰键。",
       dragOrClick: "拖拽图片至此，或",
+      dragVideoOrClick: "拖拽视频至此，或",
       chooseFile: "选择文件",
       savedImage: "已保存的图片",
+      savedVideo: "已保存的视频",
+      videoSizeHint: "支持 MP4 或 WebM，不超过 15 MB。较长的片段请先自行裁剪或压缩。",
       sitesTitle: "网站背景",
       sitesHint: "查看和修改已经保存的网站背景。",
       urlRulesTitle: "页面规则",
@@ -397,6 +404,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       typeNone: "无",
       typeColor: "颜色",
       typeImage: "图片",
+      typeVideo: "视频",
       typeEffect: "动效",
       effectKind: "特效",
       effectKindHint: "动态背景会直接在当前设备上生成，不会额外下载视频或图片。",
@@ -2408,6 +2416,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentEditingRuleId = null;
   let editSiteDomain = '';
   let editCurrentImageBase64 = null;
+  let editCurrentVideoBase64 = null;
   let editActiveScheme = SYSTEM_DARK_QUERY.matches ? 'dark' : 'light';
   let editActiveTimePeriodIndex = 0;
   let editActiveSlideshowIndex = 0;
@@ -2427,6 +2436,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-drop-area').classList.remove('hidden');
     document.getElementById('edit-file-info').classList.add('hidden');
 
+    editCurrentVideoBase64 = null;
+    document.getElementById('edit-video-file').value = '';
+    document.getElementById('edit-video-drop-area').classList.remove('hidden');
+    document.getElementById('edit-video-file-info').classList.add('hidden');
+    document.getElementById('edit-video-preview-el').removeAttribute('src');
+
     if (subSettings.type === 'color') {
       document.getElementById('edit-color-picker').value = subSettings.value || '#ffffff';
       document.getElementById('edit-color-text').value = subSettings.value || '#ffffff';
@@ -2442,6 +2457,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('edit-filename').textContent = t('savedImage');
       } else {
         document.getElementById('edit-image-url').value = subSettings.value || '';
+      }
+    } else if (subSettings.type === 'video') {
+      if (subSettings.value) {
+        editCurrentVideoBase64 = subSettings.value;
+        document.getElementById('edit-video-drop-area').classList.add('hidden');
+        document.getElementById('edit-video-file-info').classList.remove('hidden');
+        document.getElementById('edit-video-filename').textContent = t('savedVideo');
+        document.getElementById('edit-video-preview-el').src = subSettings.value;
       }
     } else if (subSettings.type === 'effect') {
       document.getElementById('edit-effect-kind').value = subSettings.effect || 'waves';
@@ -2501,6 +2524,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       dest.gradient = collectEditGradientFromForm();
     } else if (type === 'image') {
       value = editCurrentImageBase64 || document.getElementById('edit-image-url').value;
+    } else if (type === 'video') {
+      value = editCurrentVideoBase64 || '';
     } else if (type === 'effect') {
       dest.effect = document.getElementById('edit-effect-kind').value;
       dest.effectText = document.getElementById('edit-effect-text').value || 'PageDye';
@@ -2816,6 +2841,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         card.style.backgroundImage = 'none';
       } else if (item.type === 'image' && item.value) {
         card.style.backgroundImage = `url('${item.value}')`;
+      } else if (item.type === 'video' && item.value) {
+        // Plain swatch div, not a real <video> -- no poster frame without
+        // decoding the clip, so it just labels itself (same as Effects).
+        card.classList.add('type-none');
+        card.textContent = t('typeVideo');
       } else if (item.type === 'effect') {
         card.classList.add('type-none');
         card.textContent = t('typeEffect');
@@ -2891,6 +2921,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           } else if (item.type === 'image' && item.value) {
             activeCard.style.backgroundImage = `url('${item.value}')`;
             activeCard.className = 'wallpaper-grid-card active';
+          } else if (item.type === 'video' && item.value) {
+            activeCard.className = 'wallpaper-grid-card active type-none';
+            activeCard.textContent = t('typeVideo');
           } else {
             activeCard.className = 'wallpaper-grid-card active type-none';
             activeCard.textContent = 'None';
@@ -2913,6 +2946,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateEditUI(type) {
     document.getElementById('edit-section-color').classList.add('hidden');
     document.getElementById('edit-section-image').classList.add('hidden');
+    document.getElementById('edit-section-video').classList.add('hidden');
     document.getElementById('edit-section-effects').classList.add('hidden');
     document.getElementById('edit-section-styles').classList.add('hidden');
     document.getElementById('edit-image-options').classList.add('hidden');
@@ -2930,6 +2964,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('edit-image-options').classList.remove('hidden');
       document.getElementById('edit-blur-control').classList.remove('hidden');
       document.getElementById('edit-advanced-filters').classList.remove('hidden');
+      const editRepeatRow = document.getElementById('edit-image-repeat-row');
+      if (editRepeatRow) editRepeatRow.classList.remove('hidden');
+      updateEditPreview();
+    } else if (type === 'video') {
+      document.getElementById('edit-section-video').classList.remove('hidden');
+      document.getElementById('edit-section-styles').classList.remove('hidden');
+      document.getElementById('edit-image-options').classList.remove('hidden');
+      document.getElementById('edit-blur-control').classList.remove('hidden');
+      document.getElementById('edit-advanced-filters').classList.remove('hidden');
+      // Tiling a looping clip makes no visual sense -- hide Repeat, unlike
+      // image which reuses the whole edit-image-options block as-is.
+      const editRepeatRow = document.getElementById('edit-image-repeat-row');
+      if (editRepeatRow) editRepeatRow.classList.add('hidden');
       updateEditPreview();
     } else if (type === 'effect') {
       document.getElementById('edit-section-effects').classList.remove('hidden');
@@ -3274,6 +3321,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const opacity = document.getElementById('edit-opacity').value;
     bgPreview.style.opacity = opacity / 100;
+
+    // Video preview shares the same opacity/blur/filter controls as image
+    // (see updateEditUI) -- keep its live preview in sync too. `src` is
+    // never touched here: reassigning it would restart playback, so it's
+    // only set where the underlying file actually changes (handleEditVideoFile
+    // / clearEditVideoFile / populateEditForm).
+    const videoPreview = document.getElementById('edit-video-preview-el');
+    if (videoPreview) {
+      videoPreview.style.filter = filterStr;
+      videoPreview.style.objectFit = imageSize === 'stretch' ? 'fill' : (imageSize === 'contain' ? 'contain' : 'cover');
+      videoPreview.style.opacity = opacity / 100;
+    }
   }
 
   function collectEditSettings() {
@@ -3409,6 +3468,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-drop-area').classList.remove('hidden');
     document.getElementById('edit-file-info').classList.add('hidden');
     document.getElementById('edit-image-url').value = '';
+    editCurrentVideoBase64 = null;
+    document.getElementById('edit-video-file').value = '';
+    document.getElementById('edit-video-drop-area').classList.remove('hidden');
+    document.getElementById('edit-video-file-info').classList.add('hidden');
+    document.getElementById('edit-video-preview-el').removeAttribute('src');
     document.getElementById('edit-target-selector').value = '';
     syncEditDeepCompatRunMode('normal');
     document.getElementById('edit-deep-compat-exclude').value = '';
@@ -3514,6 +3578,30 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (activeSettings && activeSettings.value && !activeSettings.value.startsWith('data:')) {
             document.getElementById('edit-image-url').value = activeSettings.value;
           }
+        }
+      }
+      // Same restoration as the image branch above, but for video -- no URL
+      // fallback since video is local-file-only.
+      if (radio.value === 'video') {
+        let activeSettings = currentEditSettings;
+        const mode = currentEditSettings ? (currentEditSettings.mode || 'single') : 'single';
+        if (mode === 'auto') {
+          activeSettings = currentEditSettings[editActiveScheme];
+        } else if (mode === 'slideshow') {
+          activeSettings = currentEditSettings.slideshow.items[editActiveSlideshowIndex];
+        }
+        editCurrentVideoBase64 = (activeSettings && activeSettings.value && activeSettings.value.startsWith('data:'))
+          ? activeSettings.value
+          : null;
+        if (editCurrentVideoBase64) {
+          document.getElementById('edit-video-drop-area').classList.add('hidden');
+          document.getElementById('edit-video-file-info').classList.remove('hidden');
+          document.getElementById('edit-video-filename').textContent = t('savedVideo') || 'Saved video';
+          document.getElementById('edit-video-preview-el').src = editCurrentVideoBase64;
+        } else {
+          document.getElementById('edit-video-drop-area').classList.remove('hidden');
+          document.getElementById('edit-video-file-info').classList.add('hidden');
+          document.getElementById('edit-video-preview-el').removeAttribute('src');
         }
       }
       // Full opacity makes an effect's flat bgColor look harsh; nudge a
@@ -3758,6 +3846,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-file-info').classList.add('hidden');
     updateEditPreview();
     updateEditInteractivePreviews();
+    triggerEditImmediateSave();
+  });
+
+  const editVideoDropArea = document.getElementById('edit-video-drop-area');
+  const editVideoFileInput = document.getElementById('edit-video-file');
+  editVideoDropArea.addEventListener('click', () => editVideoFileInput.click());
+  editVideoFileInput.addEventListener('change', (e) => {
+    if (e.target.files.length) handleEditVideoFile(e.target.files[0]);
+  });
+  editVideoDropArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    editVideoDropArea.classList.add('dragover');
+  });
+  editVideoDropArea.addEventListener('dragleave', () => editVideoDropArea.classList.remove('dragover'));
+  editVideoDropArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    editVideoDropArea.classList.remove('dragover');
+    if (e.dataTransfer.files.length) {
+      handleEditVideoFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  async function handleEditVideoFile(file) {
+    try {
+      const prepared = await window.PageDyeVideo.prepareVideo(file);
+      editCurrentVideoBase64 = prepared.dataUrl;
+      editVideoDropArea.classList.add('hidden');
+      document.getElementById('edit-video-file-info').classList.remove('hidden');
+      document.getElementById('edit-video-filename').textContent = `${prepared.name} · ${window.PageDyeStorageManager.formatBytes(prepared.bytes)}`;
+      document.getElementById('edit-video-preview-el').src = prepared.dataUrl;
+      updateEditPreview();
+      triggerEditImmediateSave();
+    } catch (error) {
+      console.error('Failed to prepare video:', error);
+      showStatus(error && error.message ? error.message : t('importError'));
+    }
+  }
+
+  document.getElementById('edit-remove-video-file').addEventListener('click', () => {
+    editCurrentVideoBase64 = null;
+    editVideoFileInput.value = '';
+    editVideoDropArea.classList.remove('hidden');
+    document.getElementById('edit-video-file-info').classList.add('hidden');
+    document.getElementById('edit-video-preview-el').removeAttribute('src');
+    updateEditPreview();
     triggerEditImmediateSave();
   });
 

@@ -2390,6 +2390,17 @@ textarea:focus {
   background-color: #808080;
 }
 
+/* A <video> preview needs real sizing (object-fit), unlike .image-preview-bg
+   which is just a background-image div. */
+.video-preview-el {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .scheme-card-preview {
   width: 100%;
   height: 52px;

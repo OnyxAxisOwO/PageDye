@@ -6,6 +6,7 @@
   'use strict';
 
   const DATA_IMAGE_RE = /^data:image\/([a-z0-9.+-]+)(?:;[^,]*)?,/i;
+  const DATA_VIDEO_RE = /^data:video\/([a-z0-9.+-]+)(?:;[^,]*)?,/i;
 
   function getSchema(schema) {
     return schema || (root && root.PageDyeStorage);
@@ -30,13 +31,36 @@
     return typeof value === 'string' && DATA_IMAGE_RE.test(value);
   }
 
+  function isLocalVideo(value) {
+    return typeof value === 'string' && DATA_VIDEO_RE.test(value);
+  }
+
+  function isLocalMedia(value) {
+    return isLocalImage(value) || isLocalVideo(value);
+  }
+
   function imageMime(value) {
     const match = typeof value === 'string' ? value.match(DATA_IMAGE_RE) : null;
     return match ? `image/${match[1].toLowerCase()}` : '';
   }
 
+  function videoMime(value) {
+    const match = typeof value === 'string' ? value.match(DATA_VIDEO_RE) : null;
+    return match ? `video/${match[1].toLowerCase()}` : '';
+  }
+
+  function mediaMime(value) {
+    return imageMime(value) || videoMime(value);
+  }
+
+  function mediaKind(value) {
+    if (isLocalImage(value)) return 'image';
+    if (isLocalVideo(value)) return 'video';
+    return '';
+  }
+
   function dataUrlBytes(value) {
-    if (!isLocalImage(value)) return 0;
+    if (!isLocalMedia(value)) return 0;
     const comma = value.indexOf(',');
     const header = value.slice(0, comma);
     const payload = value.slice(comma + 1);
@@ -107,8 +131,15 @@
     }
 
     function addImage(rootKey, path, layer, active, owner, location) {
-      if (!layer || !isLocalImage(layer.value)) return;
+      if (!layer || !isLocalMedia(layer.value)) return;
       const value = layer.value;
+      const kind = mediaKind(value);
+      // A layer's `.value` can be local media left over from before the
+      // layer's `type` was switched to something else (color, none...) --
+      // that's exactly the "unused" data this audit exists to surface, so
+      // active/referenced must check the layer's own declared type, not
+      // just the presence of a media value.
+      const isMediaType = layer.type === 'image' || layer.type === 'video';
       const bytes = dataUrlBytes(value);
       const storageBytes = utf8Bytes(value);
       const record = {
@@ -120,11 +151,12 @@
         ownerType: owner.type,
         site: owner.site || '',
         location,
-        active: !!active && layer.type === 'image',
-        referenced: layer.type === 'image',
+        active: !!active && isMediaType,
+        referenced: isMediaType,
         removable: true,
         dataUrl: value,
-        mime: imageMime(value),
+        mediaKind: kind,
+        mime: mediaMime(value),
         bytes,
         storageBytes,
         fingerprint: fingerprint(value),
@@ -240,9 +272,16 @@
     });
     duplicateGroups.sort((a, b) => b.reclaimableBytes - a.reclaimableBytes);
 
-    const imageStorageBytes = images.reduce((sum, record) => sum + record.storageBytes, 0);
+    // "Image" stats stay strictly image-only (excluding video) since they
+    // gate image-specific UI (the recompress button, the image-size meter)
+    // that has no equivalent handling for video yet.
+    const uniqueRecords = [...byValue.values()].map((records) => records[0]);
+    const imageRecords = images.filter((record) => record.mediaKind !== 'video');
+    const videoRecords = images.filter((record) => record.mediaKind === 'video');
+    const imageStorageBytes = imageRecords.reduce((sum, record) => sum + record.storageBytes, 0);
+    const videoStorageBytes = videoRecords.reduce((sum, record) => sum + record.storageBytes, 0);
     const unused = images.filter((record) => !record.referenced);
-    const uniqueImageBytes = [...byValue.values()].reduce((sum, records) => sum + records[0].storageBytes, 0);
+    const uniqueImageBytes = uniqueRecords.filter((record) => record.mediaKind !== 'video').reduce((sum, record) => sum + record.storageBytes, 0);
     const duplicateBytes = duplicateGroups.reduce((sum, group) => sum + group.reclaimableBytes, 0);
     const knownOwnerBytes = [...owners.values()].reduce((sum, owner) => sum + owner.totalBytes, 0);
     const estimatedTotalBytes = jsonBytes(source);
@@ -258,11 +297,14 @@
         estimatedTotalBytes,
         imageStorageBytes,
         uniqueImageBytes,
+        videoStorageBytes,
+        videoCount: videoRecords.length,
+        uniqueVideoCount: uniqueRecords.filter((record) => record.mediaKind === 'video').length,
         duplicateBytes,
         unusedBytes: unused.reduce((sum, record) => sum + record.storageBytes, 0),
         unusedCount: unused.length,
-        imageCount: images.length,
-        uniqueImageCount: byValue.size,
+        imageCount: imageRecords.length,
+        uniqueImageCount: uniqueRecords.filter((record) => record.mediaKind !== 'video').length,
         duplicateGroupCount: duplicateGroups.length,
         ownerCount: owners.size
       }
@@ -322,7 +364,12 @@
 
   return Object.freeze({
     isLocalImage,
+    isLocalVideo,
+    isLocalMedia,
     imageMime,
+    videoMime,
+    mediaMime,
+    mediaKind,
     dataUrlBytes,
     utf8Bytes,
     jsonBytes,

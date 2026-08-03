@@ -41,6 +41,21 @@ test('popup and options include their shared image preparation helper', () => {
   assert.match(helper, /MAX_DIMENSION = 2560/);
 });
 
+test('popup and options include their shared video preparation helper', () => {
+  for (const page of ['popup/popup.html', 'options/options.html']) {
+    assert.match(read(page), /scripts\/video\.js/);
+  }
+  // video.js must not be a content script -- it's only ever loaded by the
+  // two extension pages above, never injected into arbitrary web pages.
+  const manifest = JSON.parse(read('manifest.json'));
+  const contentScripts = manifest.content_scripts.flatMap((entry) => entry.js || []);
+  assert.ok(!contentScripts.includes('scripts/video.js'));
+
+  const helper = read('scripts/video.js');
+  assert.match(helper, /video\/mp4/);
+  assert.match(helper, /MAX_INPUT_VIDEO_BYTES = 15 \* 1024 \* 1024/);
+});
+
 test('dashboard appearance supports images while surface colors follow the interface theme', () => {
   const css = read('options/options.css');
   const options = read('options/options.js');
@@ -373,6 +388,45 @@ test('storage manager audits nested images, duplicates, owners, and reclaimable 
   assert.ok(report.owners.some((owner) => owner.type === 'rule' && owner.label === 'rule.example'));
   assert.ok(report.owners.some((owner) => owner.type === 'preset' && owner.label === 'Stored image'));
   assert.ok(report.owners.some((owner) => owner.type === 'appearance'));
+});
+
+test('video backgrounds are accepted by the schema and tracked separately by the storage manager audit', () => {
+  const video = 'data:video/mp4;base64,AAAA';
+  const unusedVideo = 'data:video/webm;base64,AQIDBA==';
+  const image = 'data:image/png;base64,AAAA';
+
+  const settings = storageSchema.normalizeSiteSettings({
+    mode: 'single', type: 'video', value: video, opacity: 80, blur: 2,
+    style: { fixed: true, size: 'cover', repeat: false }
+  });
+  assert.equal(settings.type, 'video');
+  assert.equal(settings.value, video);
+
+  const storage = {
+    'one.example': {
+      mode: 'single', type: 'video', value: video,
+      // A leftover video value on a layer whose own type is no longer
+      // 'video' (e.g. switched to color) is exactly the orphaned data this
+      // audit exists to surface -- same as an orphaned image value already.
+      light: { type: 'color', value: unusedVideo }
+    },
+    'two.example': { mode: 'single', type: 'image', value: image }
+  };
+
+  const report = storageManager.analyze(storage, storageSchema);
+  assert.equal(storageManager.mediaKind(video), 'video');
+  assert.equal(storageManager.isLocalMedia(video), true);
+  assert.equal(storageManager.isLocalImage(video), false);
+  assert.equal(report.stats.videoCount, 2);
+  assert.equal(report.stats.imageCount, 1);
+
+  const videoRecord = report.images.find((record) => record.dataUrl === video);
+  assert.equal(videoRecord.mediaKind, 'video');
+  assert.equal(videoRecord.mime, 'video/mp4');
+  assert.equal(videoRecord.referenced, true);
+
+  const unusedRecord = report.images.find((record) => record.dataUrl === unusedVideo);
+  assert.equal(unusedRecord.referenced, false, 'a video left in a layer whose own type is no longer video must be unused');
 });
 
 test('storage manager removes only unused paths and replaces all managed occurrences', () => {

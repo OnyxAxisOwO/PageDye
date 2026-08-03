@@ -43,7 +43,7 @@
     KEYS.siteGroups
   ]);
   const MODES = new Set(['single', 'auto', 'timeRange', 'slideshow']);
-  const TYPES = new Set(['none', 'color', 'image', 'effect']);
+  const TYPES = new Set(['none', 'color', 'image', 'effect', 'video']);
   const URL_RULE_TYPES = new Set(['hostname', 'exact', 'prefix', 'wildcard']);
   const FORBIDDEN_OBJECT_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 

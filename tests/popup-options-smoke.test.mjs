@@ -44,6 +44,28 @@ test('popup: switching background type to color and picking a color saves to the
   assert.equal(store['example.com'].value, '#ff00aa');
 });
 
+test('popup: switching to video type shows the video panel and persists type:video to the site key', async () => {
+  // prepareVideo() needs real video decoding, which jsdom doesn't implement,
+  // so this exercises the radio -> panel -> collectFormTo -> save wiring
+  // (the part hand-written for this feature and at risk of a typo/mismatched
+  // element id) without going through an actual file upload.
+  const { chrome, store } = createChromeMock();
+  const { document, errors } = await loadExtensionPage('popup/popup.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  const typeVideo = document.getElementById('type-video');
+  assert.ok(typeVideo, 'type-video radio should exist in the real bgType segmented control');
+  typeVideo.checked = true;
+  fire(typeVideo, 'change');
+
+  await waitFor(() => store['example.com'] && store['example.com'].type === 'video');
+  assert.equal(store['example.com'].type, 'video');
+
+  assert.equal(document.getElementById('section-video').classList.contains('inactive'), false);
+  assert.equal(document.getElementById('section-image').classList.contains('inactive'), true);
+  assert.equal(document.getElementById('image-repeat-row').classList.contains('hidden'), true, 'Repeat has no meaning for a looping video');
+});
+
 test('popup: the inline "clear current config" button next to the target hint resets the active target', async () => {
   const { chrome, store } = createChromeMock({
     initialStorage: {
@@ -261,6 +283,35 @@ test('options: auto-mode editor opens the scheme currently used by the system', 
     store['example.com'].dark.type === 'image');
   assert.equal(document.getElementById('edit-type-image').checked, true);
   assert.equal(document.getElementById('edit-section-effects').classList.contains('hidden'), true);
+});
+
+test('options: switching to video type shows the video panel, hides Repeat, and persists type:video', async () => {
+  const { chrome, store } = createChromeMock({
+    initialStorage: { 'example.com': { type: 'color', value: '#112233', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } } },
+    tab: null
+  });
+  const { document, errors } = await loadExtensionPage('options/options.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  const siteLink = Array.from(document.querySelectorAll('.domain-edit-link')).find((link) => link.textContent === 'example.com');
+  assert.ok(siteLink);
+  fire(siteLink, 'click');
+  // Wait for the form to actually finish loading the site's settings, not
+  // just for the section to become visible -- openEditSite() is async, and
+  // the 'active' class can toggle before currentEditSettings is populated.
+  await waitFor(() => document.getElementById('section-edit-site').classList.contains('active') &&
+    document.getElementById('edit-type-color').checked === true);
+
+  const videoFacade = document.getElementById('edit-style-facade-video');
+  assert.ok(videoFacade, 'edit-style-facade-video should exist in the facade control');
+  videoFacade.checked = true;
+  fire(videoFacade, 'change');
+
+  await waitFor(() => store['example.com'] && store['example.com'].type === 'video');
+  assert.equal(document.getElementById('edit-type-video').checked, true);
+  assert.equal(document.getElementById('edit-section-video').classList.contains('hidden'), false);
+  assert.equal(document.getElementById('edit-section-color').classList.contains('hidden'), true);
+  assert.equal(document.getElementById('edit-image-repeat-row').classList.contains('hidden'), true);
 });
 
 test('options: site editor exposes a top-level switch to edit the global default, without losing the site override', async () => {

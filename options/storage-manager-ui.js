@@ -210,10 +210,19 @@ document.addEventListener('DOMContentLoaded', () => {
     shown.forEach((record) => {
       const row = document.createElement('tr');
       const previewCell = document.createElement('td');
-      const preview = document.createElement('img');
+      // Videos can't be shown via a CSS/img `src` the way images can -- a
+      // real <video> element is needed to decode even a single frame.
+      // preload="metadata" (no autoplay/loop) keeps this to a static-looking
+      // first frame instead of every row in the list decoding simultaneously.
+      const preview = record.mediaKind === 'video' ? document.createElement('video') : document.createElement('img');
       preview.className = 'storage-image-preview';
-      preview.loading = 'lazy';
-      preview.alt = '';
+      if (record.mediaKind === 'video') {
+        preview.preload = 'metadata';
+        preview.muted = true;
+      } else {
+        preview.loading = 'lazy';
+        preview.alt = '';
+      }
       preview.src = record.dataUrl;
       previewCell.appendChild(preview);
 
@@ -222,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const sourceName = document.createElement('strong');
       sourceName.textContent = record.owner;
       const location = document.createElement('small');
-      location.textContent = text('imageMeta', { format: record.mime.replace('image/', '').toUpperCase() });
+      location.textContent = text('imageMeta', { format: record.mime.replace(/^(image|video)\//, '').toUpperCase() });
       sourceCell.append(sourceName, location);
 
       const statusCell = document.createElement('td');

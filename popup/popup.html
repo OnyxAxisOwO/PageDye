@@ -273,6 +273,12 @@
                 <span data-i18n="typeImage">Image</span>
               </label>
 
+              <input type="radio" name="bgStyleFacade" value="video" id="style-facade-video">
+              <label for="style-facade-video">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="style-icon"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                <span data-i18n="typeVideo">Video</span>
+              </label>
+
               <input type="radio" name="bgStyleFacade" value="effect" id="style-facade-effect">
               <label for="style-facade-effect">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="style-icon"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -290,16 +296,19 @@
               
               <input type="radio" name="bgType" value="image" id="type-image">
               <label for="type-image" data-i18n="typeImage">Image</label>
+
+              <input type="radio" name="bgType" value="video" id="type-video">
+              <label for="type-video" data-i18n="typeVideo">Video</label>
             </div>
           </div>
 
           <div class="editor-panels-slider-viewport">
-            <div class="editor-panels-slider slider-3-panels" id="bg-type-slider">
+            <div class="editor-panels-slider slider-4-panels" id="bg-type-slider">
               <!-- Panel 1: None Mode (empty placeholder) -->
-              <div id="section-none" class="editor-panel-slide slide-3-panels"></div>
+              <div id="section-none" class="editor-panel-slide slide-4-panels"></div>
 
               <!-- Panel 2: Color Section -->
-              <div id="section-color" class="editor-panel-slide slide-3-panels inactive section">
+              <div id="section-color" class="editor-panel-slide slide-4-panels inactive section">
             <div class="control-group" style="margin-bottom: 10px; display: none;">
               <div class="segmented-control" id="color-mode-toggle">
                 <input type="radio" name="colorMode" value="solid" id="colormode-solid" checked>
@@ -450,7 +459,7 @@
           </div>
 
           <!-- Image Section -->
-          <div id="section-image" class="editor-panel-slide slide-3-panels inactive section">
+          <div id="section-image" class="editor-panel-slide slide-4-panels inactive section">
             <div class="control-group">
               <div class="file-drop-area" id="drop-area">
                 <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px; margin-bottom: 8px; color: var(--text-secondary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -470,10 +479,36 @@
               <label for="image-url" data-i18n="orPasteUrl">Or paste an image address</label>
               <input type="url" id="image-url" placeholder="https://example.com/image.jpg">
             </div>
-            
+
             <div class="control-group preview-group" style="margin-top: 12px; margin-bottom: 0;">
                <div id="image-preview" class="image-preview" style="margin-top: 0;">
                  <div id="image-preview-bg" class="image-preview-bg"></div>
+               </div>
+            </div>
+          </div>
+
+          <!-- Video Section: local file only (no remote URL, no "paste
+               address" field, unlike Image above). -->
+          <div id="section-video" class="editor-panel-slide slide-4-panels inactive section">
+            <div class="control-group">
+              <div class="file-drop-area" id="video-drop-area">
+                <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px; margin-bottom: 8px; color: var(--text-secondary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <p style="margin: 0; font-size: 13px;"><span data-i18n="dragVideoOrClick">Drag video here, or</span> <span class="upload-link" data-i18n="chooseFile" style="color: var(--primary-color); text-decoration: underline; font-weight: 500;">choose file</span></p>
+                <input type="file" id="video-file" accept="video/mp4,video/webm" hidden>
+              </div>
+              <div id="video-file-info" class="file-info-badge hidden" style="margin-top: 8px;">
+                <div class="file-info-content">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; color: var(--text-secondary);"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                  <span id="video-filename" class="filename" style="font-size: 12px; font-weight: 500;"></span>
+                </div>
+                <button id="remove-video-file" class="remove-file-btn" type="button" title="Clear Video">×</button>
+              </div>
+              <p class="hint" data-i18n="videoSizeHint" style="margin-top: 8px; margin-bottom: 0;">MP4 or WebM, up to 15 MB. Trim or compress long clips first.</p>
+            </div>
+
+            <div class="control-group preview-group" style="margin-top: 12px; margin-bottom: 0;">
+               <div id="video-preview" class="image-preview" style="margin-top: 0;">
+                 <video id="video-preview-el" class="video-preview-el" muted loop autoplay playsinline></video>
                </div>
             </div>
           </div>
@@ -645,7 +680,7 @@
                  </select>
                </div>
                
-               <div class="control-group row" style="margin-bottom: 0;">
+               <div class="control-group row" id="image-repeat-row" style="margin-bottom: 0;">
                  <label class="checkbox-label">
                    <input type="checkbox" id="bg-repeat">
                    <span data-i18n="repeat">Repeat</span>
@@ -851,7 +886,7 @@
         <div class="footer-actions">
           <button type="button" id="reset-btn" class="ghost-link-btn" data-i18n="reset">Reset</button>
           <span class="divider">|</span>
-          <span id="version" class="version-text">v0.9.5</span>
+          <span id="version" class="version-text">v0.10.0</span>
           <span class="divider">|</span>
           <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 13px; height: 13px; display: block;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
@@ -911,6 +946,7 @@
   <script src="../scripts/storage-schema.js"></script>
   <script src="../scripts/config-presets.js"></script>
   <script src="../scripts/image.js"></script>
+  <script src="../scripts/video.js"></script>
   <script src="../scripts/cursor.js"></script>
   <script src="../scripts/shared/color-utils.js"></script>
   <script src="../scripts/shared/ui-accordion.js"></script>
