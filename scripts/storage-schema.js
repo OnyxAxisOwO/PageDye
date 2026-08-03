@@ -6,7 +6,7 @@
   'use strict';
 
   const BACKUP_SCHEMA_VERSION = 3;
-  const MAX_BACKUP_BYTES = 64 * 1024 * 1024;
+  const MAX_BACKUP_BYTES = 128 * 1024 * 1024;
   const MAX_EFFECT_FILE_BYTES = 512 * 1024;
   const MAX_EFFECT_CODE_CHARS = 200000;
   const MAX_EFFECT_NAME_CHARS = 120;
@@ -16,7 +16,9 @@
   const MAX_SITE_GROUPS = 100;
   const MAX_GROUP_SITES = 1000;
   const MAX_URL_CHARS = 2048;
-  const MAX_IMAGE_VALUE_CHARS = 32 * 1024 * 1024;
+  // Sized to fit a base64 data URL of the largest allowed local video
+  // (scripts/video.js MAX_INPUT_VIDEO_BYTES = 40 MB -> ~56M chars).
+  const MAX_IMAGE_VALUE_CHARS = 64 * 1024 * 1024;
 
   const KEYS = Object.freeze({
     uiTheme: '__pagedye_ui_theme__',

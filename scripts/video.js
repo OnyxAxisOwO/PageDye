@@ -4,7 +4,12 @@
 // as-is (subject to a hard input-size cap) and users are expected to trim or
 // compress a clip externally before choosing it.
 (() => {
-  const MAX_INPUT_VIDEO_BYTES = 15 * 1024 * 1024;
+  // 40 MB is the practical ceiling for the current data-URL-in-storage.local
+  // design: base64 inflates by 4/3 (40 MB -> ~56M chars), which must fit both
+  // the schema's per-value cap (MAX_IMAGE_VALUE_CHARS) and Chrome's ~64 MB
+  // runtime message limit on the URL-rule save path. Going higher needs a
+  // different storage mechanism (e.g. IndexedDB blobs), not a bigger number.
+  const MAX_INPUT_VIDEO_BYTES = 40 * 1024 * 1024;
   const ACCEPTED_VIDEO_TYPES = new Set(['video/mp4', 'video/webm']);
 
   function readAsDataUrl(blob) {

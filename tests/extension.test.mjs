@@ -53,7 +53,11 @@ test('popup and options include their shared video preparation helper', () => {
 
   const helper = read('scripts/video.js');
   assert.match(helper, /video\/mp4/);
-  assert.match(helper, /MAX_INPUT_VIDEO_BYTES = 15 \* 1024 \* 1024/);
+  assert.match(helper, /MAX_INPUT_VIDEO_BYTES = 40 \* 1024 \* 1024/);
+  // The schema's per-value cap must fit a base64 data URL of the largest
+  // allowed video (base64 inflates by 4/3, plus the data: prefix).
+  const videoCap = 40 * 1024 * 1024;
+  assert.ok(storageSchema.MAX_IMAGE_VALUE_CHARS > Math.ceil(videoCap / 3) * 4 + 32);
 });
 
 test('dashboard appearance supports images while surface colors follow the interface theme', () => {
@@ -68,6 +72,38 @@ test('dashboard appearance supports images while surface colors follow the inter
   assert.match(css, /body\s*\{\s*background:\s*var\(--md-sys-color-surface-container\);/);
   assert.match(css, /\.dashboard-container\s*\{\s*background:\s*var\(--md-sys-color-surface\);/);
   assert.match(css, /\.sidebar\s*\{\s*background:\s*var\(--md-sys-color-surface-container-low\);/);
+});
+
+test('the background-type facade has a sliding indicator rule matching its actual item count', () => {
+  // The ::before selection pill is positioned by CSS gated on
+  // :has(input:nth-of-type(N):last-of-type) -- a hardcoded item count. Adding
+  // a facade option without updating N silently drops the pill to zero width,
+  // so the selected type shows no highlight at all.
+  const pages = [
+    { html: 'popup/popup.html', css: 'popup/popup.css', id: 'bg-style-facade', name: 'bgStyleFacade' },
+    { html: 'options/options.html', css: 'options/options.css', id: 'edit-bg-style-facade', name: 'edit-bgStyleFacade' }
+  ];
+
+  for (const page of pages) {
+    const html = read(page.html);
+    const markup = html.match(new RegExp(`<div class="bg-style-facade" id="${page.id}">([\\s\\S]*?)</div>`))?.[1];
+    assert.ok(markup, `${page.html} should contain the ${page.id} facade`);
+    const count = markup.match(new RegExp(`name="${page.name}"`, 'g'))?.length || 0;
+    assert.ok(count > 0, `${page.html} facade should contain radio inputs`);
+
+    const css = read(page.css);
+    const guard = `.bg-style-facade:has(input:nth-of-type(${count}):last-of-type)`;
+    assert.ok(
+      css.includes(`${guard}::before`),
+      `${page.css} needs a ::before width rule for ${count} facade items (found none for nth-of-type(${count}))`
+    );
+    for (let index = 1; index <= count; index += 1) {
+      assert.ok(
+        css.includes(`${guard}:has(input:nth-of-type(${index}):checked)::before`),
+        `${page.css} is missing the facade indicator offset for item ${index} of ${count}`
+      );
+    }
+  }
 });
 
 test('image previews keep a neutral backdrop when their image opacity is reduced', () => {
