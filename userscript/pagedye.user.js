@@ -1920,9 +1920,10 @@
 
   function rangeRow(label, path, min, max, value, suffix, opts) {
     opts = opts || {};
+    const safeValue = escapeAttr(value);
     return `<div class="pd-row">
-      <div class="pd-row-head"><span>${label}</span><span data-echo="${path}">${value}${suffix || ''}</span></div>
-      <input type="range" min="${min}" max="${max}" step="${opts.step || 1}" value="${value}" data-path="${path}" data-scope="${opts.scope || 'edit'}"
+      <div class="pd-row-head"><span>${label}</span><span data-echo="${path}">${safeValue}${suffix || ''}</span></div>
+      <input type="range" min="${min}" max="${max}" step="${opts.step || 1}" value="${safeValue}" data-path="${path}" data-scope="${opts.scope || 'edit'}"
         data-numeric="1" data-suffix="${suffix || ''}" />
     </div>`;
   }
@@ -1937,7 +1938,7 @@
     opts = opts || {};
     return `<div class="pd-row pd-row-inline">
       <span>${label}</span>
-      <input type="color" value="${value || '#ffffff'}" data-path="${path}" data-scope="${opts.scope || 'edit'}" />
+      <input type="color" value="${escapeAttr(value || '#ffffff')}" data-path="${path}" data-scope="${opts.scope || 'edit'}" />
     </div>`;
   }
   function checkboxRow(label, path, checked, opts) {
@@ -1980,8 +1981,8 @@
     ).join('');
     const stopsHtml = g.stops.map((s, i) => `
       <div class="pd-stop-row">
-        <input type="color" value="${s.color}" data-path="gradient.stops.${i}.color" data-scope="edit" />
-        <input type="number" min="0" max="100" value="${s.position}" data-path="gradient.stops.${i}.position" data-scope="edit" data-numeric="1" style="width:52px" />
+        <input type="color" value="${escapeAttr(s.color)}" data-path="gradient.stops.${i}.color" data-scope="edit" />
+        <input type="number" min="0" max="100" value="${escapeAttr(s.position)}" data-path="gradient.stops.${i}.position" data-scope="edit" data-numeric="1" style="width:52px" />
         ${g.stops.length > 2 ? `<button data-action="remove-stop" data-index="${i}" title="删除色标">${svgIcon(ICON.trash, 13)}</button>` : ''}
       </div>`).join('');
 

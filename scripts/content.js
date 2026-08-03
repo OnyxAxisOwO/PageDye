@@ -1199,7 +1199,7 @@
           positionCss = 'background-position: center center !important;';
         }
       } else {
-        bgImageCss = `url("${settings.value}")`;
+        bgImageCss = `url("${cssStringEscape(settings.value)}")`;
         filterStr = buildFilterString(settings);
         sizeCss = st.size || 'cover';
         repeatCss = st.repeat ? 'repeat' : 'no-repeat';
@@ -1243,11 +1243,15 @@
   // to boost specificity so our !important rules outrank the site's own rules
   // on the same element, independent of stylesheet order. The target is always
   // a descendant of <html>, so `:root <sel>` still matches it.
+  // A selector containing `{`, `}` or a comment opener could close the rule
+  // this gets spliced into early and smuggle in unrelated CSS, so any segment
+  // containing those sequences is dropped rather than passed through.
+  const UNSAFE_SELECTOR_RE = /[{}]|\/\*|[\r\n]/;
   function scopeSelector(selector) {
     return selector
       .split(',')
       .map((s) => s.trim())
-      .filter(Boolean)
+      .filter((s) => Boolean(s) && !UNSAFE_SELECTOR_RE.test(s))
       .map((s) => `:root ${s}`)
       .join(', ');
   }
@@ -1464,18 +1468,35 @@
     document.querySelectorAll(`style[id^="${FROSTED_STYLE_ID}"]`).forEach((style) => style.remove());
   }
 
+  // Escapes a value for safe interpolation inside a double-quoted CSS
+  // string, e.g. `url("...")`. Backslash-escapes backslashes and quotes and
+  // strips raw newlines, so the value can never close the string early and
+  // inject sibling CSS/rules into the stylesheet it's spliced into.
+  function cssStringEscape(value) {
+    return String(value == null ? '' : value).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\r\n]/g, '');
+  }
+
+  // Coerces a settings field to a finite number, falling back when it isn't
+  // one — settings can come from an imported backup, so a field that should
+  // be numeric must never be trusted to actually be one before it's spliced
+  // into a CSS value string.
+  function toFiniteNumber(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
   // Builds a CSS filter string from a settings object.
   // Blur, brightness, contrast, grayscale, hue-rotate and invert are combined
   // into a single filter chain. Neutral values (blur=0, brightness=100,
   // contrast=100, others=0) are omitted to keep the string clean.
   function buildFilterString(settings) {
-    const blur       = settings.blur || 0;
+    const blur       = toFiniteNumber(settings.blur, 0);
     const f          = settings.filters || {};
-    const brightness = f.brightness !== undefined ? f.brightness : 100;
-    const contrast   = f.contrast   !== undefined ? f.contrast   : 100;
-    const grayscale  = f.grayscale  !== undefined ? f.grayscale  : 0;
-    const hue        = f.hue        !== undefined ? f.hue        : 0;
-    const invert     = f.invert     !== undefined ? f.invert     : 0;
+    const brightness = toFiniteNumber(f.brightness, 100);
+    const contrast   = toFiniteNumber(f.contrast, 100);
+    const grayscale  = toFiniteNumber(f.grayscale, 0);
+    const hue        = toFiniteNumber(f.hue, 0);
+    const invert     = toFiniteNumber(f.invert, 0);
 
     const parts = [];
     if (blur        > 0)   parts.push(`blur(${blur}px)`);

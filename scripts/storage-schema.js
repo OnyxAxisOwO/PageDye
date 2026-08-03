@@ -63,6 +63,38 @@
     return typeof value === 'string' ? value.slice(0, maxLength) : '';
   }
 
+  // Selectors are spliced verbatim into a live <style> tag's CSS text
+  // (content.js's applyTargetBackground/applyFrostedGlass). A selector
+  // containing `{`, `}` or a comment opener could close the intended rule
+  // early and smuggle in unrelated CSS rules, so any selector containing
+  // those sequences is rejected outright rather than escaped.
+  const UNSAFE_SELECTOR_RE = /[{}]|\/\*|[\r\n]/;
+  function isSafeSelectorList(value) {
+    return typeof value === 'string' && value.length > 0 && !UNSAFE_SELECTOR_RE.test(value);
+  }
+
+  const FILTER_RANGES = {
+    brightness: [0, 200, 100],
+    contrast: [0, 200, 100],
+    grayscale: [0, 100, 0],
+    hue: [0, 360, 0],
+    invert: [0, 100, 0]
+  };
+  // Filter values are interpolated into a CSS `filter:` value
+  // (content.js's buildFilterString) without further validation, so every
+  // sub-field is forced to a finite number here regardless of what shape
+  // survived the generic sanitizeJson() pass above.
+  function normalizeFilters(filters) {
+    if (!isPlainObject(filters)) return undefined;
+    const clean = Object.create(null);
+    for (const key of Object.keys(FILTER_RANGES)) {
+      if (!Object.prototype.hasOwnProperty.call(filters, key)) continue;
+      const [min, max, fallback] = FILTER_RANGES[key];
+      clean[key] = clampNumber(filters[key], min, max, fallback);
+    }
+    return clean;
+  }
+
   function sanitizeJson(value, depth = 0) {
     if (depth > 10) return undefined;
     if (value === null || typeof value === 'boolean') return value;
@@ -97,11 +129,16 @@
     if (Object.prototype.hasOwnProperty.call(layer, 'blur')) {
       clean.blur = clampNumber(layer.blur, 0, 100, 0);
     }
+    if (Object.prototype.hasOwnProperty.call(layer, 'filters')) {
+      clean.filters = normalizeFilters(layer.filters);
+    }
     if (Object.prototype.hasOwnProperty.call(layer, 'customCss')) {
       clean.customCss = trimString(layer.customCss, MAX_EFFECT_CODE_CHARS);
     }
     if (Object.prototype.hasOwnProperty.call(layer, 'targetSelector')) {
-      clean.targetSelector = trimString(layer.targetSelector, 2000);
+      const targetSelector = trimString(layer.targetSelector, 2000);
+      if (targetSelector && !isSafeSelectorList(targetSelector)) return null;
+      clean.targetSelector = targetSelector;
     }
     if (Object.prototype.hasOwnProperty.call(layer, 'deepCompatExclude')) {
       clean.deepCompatExclude = trimString(layer.deepCompatExclude, 4000);
@@ -151,7 +188,12 @@
     }
 
     if (Array.isArray(settings.frostedGlass)) {
-      clean.frostedGlass = settings.frostedGlass.slice(0, 100).map((item) => sanitizeJson(item)).filter(Boolean);
+      clean.frostedGlass = settings.frostedGlass.slice(0, 100).map((item) => {
+        const entry = sanitizeJson(item);
+        if (!entry) return null;
+        if (typeof entry.selector === 'string' && entry.selector && !isSafeSelectorList(entry.selector)) return null;
+        return entry;
+      }).filter(Boolean);
     }
     return clean;
   }
@@ -304,8 +346,10 @@
     if (!isPlainObject(entry)) return null;
     const type = entry.type === 'url' ? 'url' : entry.type === 'code' || entry.type == null ? 'code' : null;
     if (!type) return null;
+    const id = trimString(entry.id, 100);
+    if (!id || !/^[a-zA-Z0-9_-]+$/.test(id)) return null;
     const clean = {
-      id: trimString(entry.id, 100),
+      id,
       name: trimString(entry.name, MAX_EFFECT_NAME_CHARS) || options.fallbackName || 'Untitled Effect',
       type,
       code: '',

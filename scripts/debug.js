@@ -313,7 +313,13 @@
   }
 
   function onNetworkEntry(e) {
-    const entry = Object.assign({ id: ++networkIdSeq }, e.detail);
+    // e.detail is a CustomEvent payload dispatched on the shared `document`
+    // (debug-network.js runs in the page's MAIN world), so it must be
+    // treated as untrusted: any page script (or another extension's content
+    // script) can dispatch a forged event with this name. Spreading it
+    // *before* the generated id keeps that id from being overwritten by an
+    // attacker-supplied value.
+    const entry = Object.assign({}, e.detail, { id: ++networkIdSeq });
     networkEntries.push(entry);
     if (networkEntries.length > NETWORK_LIMIT) networkEntries.shift();
     if (ui.open && ui.tab === 'network') renderTabBody();
@@ -811,7 +817,7 @@
     const rows = networkEntries.slice().reverse().map((entry) => {
       const expanded = expandedNetworkId === entry.id;
       const statusText = entry.error ? '失败' : entry.status;
-      let html = `<div class="pd-dbg-net-row ${expanded ? 'pd-dbg-net-row-open' : ''}" data-network-id="${entry.id}">
+      let html = `<div class="pd-dbg-net-row ${expanded ? 'pd-dbg-net-row-open' : ''}" data-network-id="${escapeHtml(String(entry.id))}">
         <div class="pd-dbg-net-summary" data-action="toggle-network">
           <span class="pd-dbg-net-method">${escapeHtml(entry.method)}</span>
           <span class="pd-dbg-net-url" title="${escapeHtml(entry.url)}">${escapeHtml(shortUrl(entry.url))}</span>
@@ -857,7 +863,7 @@
       html += '<div class="pd-dbg-subhead">响应体</div>';
       html += `<pre class="pd-dbg-json">${escapeHtml(entry.resBody)}</pre>`;
     }
-    html += `<button type="button" class="pd-dbg-btn-secondary" data-action="copy-network-url" data-network-id="${entry.id}">复制 URL</button>`;
+    html += `<button type="button" class="pd-dbg-btn-secondary" data-action="copy-network-url" data-network-id="${escapeHtml(String(entry.id))}">复制 URL</button>`;
     html += '</div>';
     return html;
   }
@@ -963,7 +969,10 @@
   }
 
   function escapeHtml(s) {
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // Also escapes `"` since several call sites interpolate this into
+    // double-quoted HTML attributes (title="...", data-network-id="...."),
+    // not just text-node content.
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   function svgIcon(pathContent, size) {
