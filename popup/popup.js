@@ -3072,8 +3072,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       triggerImmediateSave();
     } catch (error) {
       console.error('Failed to prepare image:', error);
-      if (els.statusDot) els.statusDot.classList.add('blocked');
-      if (els.statusText) els.statusText.textContent = error && error.message ? error.message : t('error');
+      if (els.statusDot) els.statusDot.classList.add('error');
+      if (els.statusText) {
+        els.statusText.classList.add('status-text-error');
+        els.statusText.textContent = error && error.message ? error.message : t('error');
+      }
     }
   }
 
@@ -3110,8 +3113,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       triggerImmediateSave();
     } catch (error) {
       console.error('Failed to prepare video:', error);
-      if (els.statusDot) els.statusDot.classList.add('blocked');
-      if (els.statusText) els.statusText.textContent = error && error.message ? error.message : t('error');
+      if (els.statusDot) els.statusDot.classList.add('error');
+      if (els.statusText) {
+        els.statusText.classList.add('status-text-error');
+        els.statusText.textContent = error && error.message ? error.message : t('error');
+      }
     }
   }
 
@@ -3192,12 +3198,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function setSavingState() {
     els.statusDot.classList.add('saving');
+    els.statusDot.classList.remove('error');
+    els.statusText.classList.remove('status-text-error');
     els.statusText.textContent = t('statusSaving');
   }
 
   function setSyncedState() {
     els.statusDot.classList.remove('saving');
     els.statusDot.classList.remove('blocked');
+    els.statusDot.classList.remove('error');
+    els.statusText.classList.remove('status-text-error');
     els.statusText.textContent = t('statusSynced');
   }
 

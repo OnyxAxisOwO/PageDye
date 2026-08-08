@@ -1711,6 +1711,16 @@ body.pagedye-restricted-page {
   background-color: #6b7280;
   box-shadow: 0 0 0 4px rgba(107, 114, 128, 0.14);
 }
+
+.status-dot.error {
+  background-color: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.16);
+}
+
+.status-text-error {
+  color: #ef4444;
+  font-weight: 600;
+}
 @media (prefers-color-scheme: dark) {
   .bottom-nav input:checked + label .nav-icon-container {
     background: var(--badge-color-bg);

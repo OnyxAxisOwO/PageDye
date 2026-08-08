@@ -48,8 +48,16 @@
     });
   }
 
-  function tooLargeError() {
-    return new Error('Video is too large to store. Please trim or compress it first.');
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes)) return '';
+    return bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function tooLargeError(fileBytes) {
+    const limit = formatBytes(MAX_INPUT_VIDEO_BYTES);
+    const actual = formatBytes(fileBytes);
+    const sizeNote = actual ? `Your file is ${actual}; the` : 'The';
+    return new Error(`Video is too large to store. ${sizeNote} limit is ${limit}. Please trim or compress it first.`);
   }
 
   async function prepareVideo(file) {
@@ -57,7 +65,7 @@
       throw new Error('Please choose an MP4 or WebM video file');
     }
     if (!Number.isFinite(file.size) || file.size <= 0 || file.size > MAX_INPUT_VIDEO_BYTES) {
-      throw tooLargeError();
+      throw tooLargeError(file.size);
     }
 
     const meta = await loadVideo(file);

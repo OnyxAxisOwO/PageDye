@@ -4458,6 +4458,14 @@ input:checked + .slider.round:before {
   box-shadow: var(--md-elevation-2);
 }
 
+.status-msg-error {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-error);
+  font-weight: 500;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
 @media (max-width: 767px) {
   .sidebar {
     background: var(--md-sys-color-surface-container);

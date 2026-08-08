@@ -2349,11 +2349,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 300);
   }
 
-  function showStatus(msg) {
+  let statusMsgHideTimer = null;
+
+  function showStatus(msg, isError = false) {
     els.statusMsg.textContent = msg;
     els.statusMsg.classList.remove('hidden');
-    setTimeout(() => els.statusMsg.classList.add('hidden'), 2000);
+    els.statusMsg.classList.toggle('status-msg-error', isError);
+    clearTimeout(statusMsgHideTimer);
+    // Error toasts stay until the user dismisses them (click) or another
+    // status replaces them -- 2s is enough for a routine "saved" confirmation
+    // but not for an error the user needs to actually read and act on.
+    if (!isError) {
+      statusMsgHideTimer = setTimeout(() => els.statusMsg.classList.add('hidden'), 2000);
+    }
   }
+
+  els.statusMsg.addEventListener('click', () => {
+    if (els.statusMsg.classList.contains('status-msg-error')) {
+      els.statusMsg.classList.add('hidden');
+    }
+  });
 
   function showConfirm(message) {
     return new Promise((resolve) => {
@@ -3880,7 +3895,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       triggerEditImmediateSave();
     } catch (error) {
       console.error('Failed to prepare video:', error);
-      showStatus(error && error.message ? error.message : t('importError'));
+      showStatus(error && error.message ? error.message : t('importError'), true);
     }
   }
 
