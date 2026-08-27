@@ -16,6 +16,7 @@ const require = createRequire(import.meta.url);
 const markdown = require(resolve(root, 'scripts/shared/markdown.js'));
 const store = require(resolve(root, 'scripts/shared/ai-chat-store.js'));
 const aiTheme = require(resolve(root, 'scripts/ai-theme.js'));
+const chat = require(resolve(root, 'scripts/shared/ai-chat.js'));
 
 const SAMPLE_PROFILE = {
   hostname: 'example.com',
@@ -405,6 +406,72 @@ test('a theme designed before attachments existed still translates', () => {
   const settings = aiTheme.toSiteSettings(aiTheme.sanitizeTheme(SAMPLE_THEME), SAMPLE_PROFILE, [{ dataUrl: PNG }]);
 
   assert.equal(settings.type, 'color', 'nothing asked for the picture, so nothing uses it');
+});
+
+test('a frosted tint reaches storage only when it is a real color', () => {
+  const settings = aiTheme.toSiteSettings(aiTheme.sanitizeTheme({
+    ...SAMPLE_THEME,
+    frostedGlass: [{ selector: '#main-panel', opacity: 70, blur: 14, color: '#F0F4FF' }]
+  }), SAMPLE_PROFILE);
+
+  assert.equal(settings.frostedGlass[0].color, '#f0f4ff', 'normalized to the form the renderer parses');
+
+  // The renderer switches on the key being a valid hex, so anything that is
+  // not one has to be absent rather than empty — an empty string would be a
+  // value it re-rejects on every paint.
+  for (const color of ['', 'rebeccapurple', 'not a color', '#12', null]) {
+    const [entry] = aiTheme.toSiteSettings(aiTheme.sanitizeTheme({
+      ...SAMPLE_THEME,
+      frostedGlass: [{ selector: '#main-panel', opacity: 70, blur: 14, color }]
+    }), SAMPLE_PROFILE).frostedGlass;
+    assert.ok(!('color' in entry), `untinted for ${JSON.stringify(color)}`);
+  }
+});
+
+test('a radial, animated gradient survives into the layer the renderer reads', () => {
+  const theme = aiTheme.sanitizeTheme({
+    ...SAMPLE_THEME,
+    light: { ...SAMPLE_THEME.light, kind: 'radial', shape: 'circle', animated: true, speed: 30 }
+  });
+  const { light } = aiTheme.toSiteSettings(theme, SAMPLE_PROFILE);
+
+  assert.deepEqual(
+    { kind: light.gradient.kind, shape: light.gradient.shape, animated: light.gradient.animated, speed: light.gradient.speed },
+    { kind: 'radial', shape: 'circle', animated: true, speed: 30 }
+  );
+  // The chat's own swatch has to preview the shape that would be painted.
+  assert.match(chat.swatchGradient(theme.light), /^radial-gradient\(circle at center,/);
+});
+
+test('a gradient answer that says nothing about shape or motion is linear and still', () => {
+  // Every theme designed before these existed, plus any server that shaped the
+  // answer its own way. A free `animated` boolean is one a model reaches for.
+  const { light } = aiTheme.toSiteSettings(aiTheme.sanitizeTheme(SAMPLE_THEME), SAMPLE_PROFILE);
+
+  assert.equal(light.gradient.kind, 'linear');
+  assert.equal(light.gradient.animated, false);
+  assert.equal(aiTheme.sanitizeTheme({ ...SAMPLE_THEME, light: { ...SAMPLE_THEME.light, animated: 'yes' } }).light.animated,
+    false, 'only a real boolean turns it on');
+});
+
+test('picture filters ride on the image layer, and a picture with none carries no filter block', () => {
+  function wallpaper(extra) {
+    return aiTheme.toSiteSettings(
+      aiTheme.sanitizeTheme({ ...SAMPLE_THEME, wallpaperImage: { use: true, index: 1, ...extra } }),
+      SAMPLE_PROFILE,
+      [{ dataUrl: PNG }]
+    );
+  }
+
+  const dimmed = wallpaper({ brightness: 130, contrast: 70, grayscale: 40 });
+  assert.equal(dimmed.type, 'image');
+  assert.deepEqual(dimmed.light.filters, { brightness: 130, contrast: 70, grayscale: 40 });
+  assert.deepEqual(dimmed.dark.filters, { brightness: 130, contrast: 70, grayscale: 40 });
+
+  // All three at their no-op values is the common case; carrying the block
+  // anyway would hand the renderer a filter string to parse on every apply.
+  assert.ok(!('filters' in wallpaper({}).light), 'an untouched picture has no filters key');
+  assert.ok(!('filters' in wallpaper({ brightness: 100, contrast: 100, grayscale: 0 }).light));
 });
 
 // --- end to end through the real popup ----------------------------------------

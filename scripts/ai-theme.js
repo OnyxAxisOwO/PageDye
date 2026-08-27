@@ -80,6 +80,11 @@
   const GRADIENT_SCHEMA = {
     type: 'object',
     properties: {
+      // `angle` is meaningless for a radial gradient and `shape` for a linear
+      // one, but both are required: a union type is the first thing an
+      // OpenAI-compatible server drops, and the unused one costs one token.
+      kind: { type: 'string', enum: ['linear', 'radial'] },
+      shape: { type: 'string', enum: ['ellipse', 'circle'] },
       angle: { type: 'integer', minimum: 0, maximum: 360 },
       stops: {
         type: 'array',
@@ -96,9 +101,13 @@
         }
       },
       opacity: { type: 'integer', minimum: 0, maximum: 100 },
-      blur: { type: 'integer', minimum: 0, maximum: 100 }
+      blur: { type: 'integer', minimum: 0, maximum: 100 },
+      animated: { type: 'boolean' },
+      // Seconds for one full cycle. Slower is calmer; the renderer treats this
+      // as the CSS animation duration.
+      speed: { type: 'integer', minimum: 4, maximum: 60 }
     },
-    required: ['angle', 'stops', 'opacity', 'blur'],
+    required: ['kind', 'shape', 'angle', 'stops', 'opacity', 'blur', 'animated', 'speed'],
     additionalProperties: false
   };
 
@@ -116,9 +125,16 @@
       lightOpacity: { type: 'integer', minimum: 0, maximum: 100 },
       lightBlur: { type: 'integer', minimum: 0, maximum: 100 },
       darkOpacity: { type: 'integer', minimum: 0, maximum: 100 },
-      darkBlur: { type: 'integer', minimum: 0, maximum: 100 }
+      darkBlur: { type: 'integer', minimum: 0, maximum: 100 },
+      // The renderer applies CSS filters to an image layer only, which is why
+      // they live here rather than on the gradient slots. 100 is unchanged for
+      // brightness and contrast; 0 is unchanged for grayscale.
+      brightness: { type: 'integer', minimum: 20, maximum: 180 },
+      contrast: { type: 'integer', minimum: 20, maximum: 180 },
+      grayscale: { type: 'integer', minimum: 0, maximum: 100 }
     },
-    required: ['use', 'index', 'fit', 'fixed', 'lightOpacity', 'lightBlur', 'darkOpacity', 'darkBlur'],
+    required: ['use', 'index', 'fit', 'fixed', 'lightOpacity', 'lightBlur', 'darkOpacity', 'darkBlur',
+      'brightness', 'contrast', 'grayscale'],
     additionalProperties: false
   };
 
@@ -138,9 +154,14 @@
           properties: {
             selector: { type: 'string' },
             opacity: { type: 'integer', minimum: 0, maximum: 100 },
-            blur: { type: 'integer', minimum: 0, maximum: 100 }
+            blur: { type: 'integer', minimum: 0, maximum: 100 },
+            // `#rrggbb` tints the panel that exact color in both OS schemes.
+            // The empty string means "leave it to the renderer", which tracks
+            // the OS scheme — near-black in dark, near-white in light — and is
+            // usually the right answer for a container holding body text.
+            color: { type: 'string' }
           },
-          required: ['selector', 'opacity', 'blur'],
+          required: ['selector', 'opacity', 'blur', 'color'],
           additionalProperties: false
         }
       }
@@ -194,6 +215,19 @@
     '- Skip a container whose matchCount is high unless you want every match frosted.',
     '- Frosting nothing is a valid answer when every container is small or already subtle.',
     '',
+    'Each frosted container also takes a `color`. Leave it as the empty string and the',
+    'panel follows the OS scheme — near-white in light mode, near-black in dark. That is',
+    'the right answer for anything holding body text, because it is the only setting that',
+    'stays correct in both schemes against text whose color does not change.',
+    '',
+    'Give it a `#rrggbb` tint when you want the panel to belong to the wallpaper rather',
+    'than sit on top of it — a header, a sidebar, a card that is decoration more than',
+    'reading surface. A tint is one fixed color in BOTH schemes, so check it twice: pick',
+    'a very light tint when that container\'s text is dark, a very dark one when the text',
+    'is light, and keep it near the wallpaper\'s hue rather than a fresh color. If you',
+    'cannot name a tint that works against that container\'s exact text color in both',
+    'schemes, use the empty string. An untinted panel is never the wrong answer.',
+    '',
     'The user may attach images. They are numbered, and each one arrives with its',
     'number stated just before it. An attachment is a reference for taste and palette',
     'first: pull its colors into the gradient so the page picks up the mood of the',
@@ -210,6 +244,15 @@
     'artwork that must not be cropped, `tile` for a small repeating pattern; `fixed`',
     'true keeps the picture still while the page scrolls.',
     '',
+    'A picture also takes three filters, which apply to the picture alone and not to a',
+    'gradient. `brightness` and `contrast` are percentages where 100 leaves it untouched;',
+    '`grayscale` is 0 untouched to 100 fully desaturated. They are the precise tools for',
+    'the usual problem: a photo that is too loud behind text. Dropping `contrast` to',
+    '60-80 flattens it into something closer to a backdrop, `brightness` above 100 pushes',
+    'it toward white behind dark text (below 100 toward black behind light text), and a',
+    'little `grayscale` calms a picture whose colors fight the site\'s own. Prefer these',
+    'over destroying the picture with opacity when the user chose it deliberately.',
+    '',
     'Fill in `light` and `dark` even when you choose a picture: they are what the page',
     'falls back to if that attachment is no longer available, so keep them in the',
     'picture\'s own palette.',
@@ -221,6 +264,18 @@
     'wallpaper does not fight the site\'s branding. Prefer restraint — a low-contrast,',
     'two-to-three stop gradient reads as designed, while a saturated rainbow reads as a',
     'toy. Use the wallpaper opacity to keep the page comfortable to read for long periods.',
+    '',
+    'Gradient shape. `kind` is `linear` for a wash across the page, which is the default',
+    'and the right answer most of the time; `radial` puts a glow at the center, which',
+    'suits a page whose content sits in one centered column and looks like a spotlight on',
+    'a wide layout. `shape` (`ellipse` or `circle`) applies to radial only, `angle` to',
+    'linear only — fill both in regardless.',
+    '',
+    'Animation. `animated: true` makes the gradient drift, taking `speed` seconds per',
+    'cycle. Default it to false. A background that moves behind text is a permanent',
+    'distraction on anything the user reads, and it keeps a compositor busy for as long',
+    'as the tab is open. Turn it on when the user asks for it, and then keep `speed` slow',
+    '(20 or more) so it reads as ambient rather than as something demanding attention.',
     '',
     'Keep `rationale` to one or two sentences describing the visual idea and how you kept',
     'the text readable. Keep `themeName` to at most four words.',
@@ -250,6 +305,12 @@
     '- Then blur. On a picture this is what turns detail into a wash of color, which is',
     '  usually what "too busy" means; on a gradient it softens a hard band cutting across',
     '  the text.',
+    '- On a picture, `contrast` down and `brightness` away from the text (up behind dark',
+    '  text, down behind light text) do what "too bright" literally asks for, without',
+    '  fading the picture out the way opacity does. "Too colorful" is `grayscale` up.',
+    '- Tint the frosted panels holding the text, or clear a tint that is fighting them:',
+    '  a panel tinted for looks is the first thing to give up when the words on it have',
+    '  become hard to read.',
     '- Then the palette itself, away from the text color: lighter stops behind dark text,',
     '  darker stops behind light text. A wallpaper bright in the same way the text is dark',
     '  cannot be rescued by opacity alone.',
@@ -282,6 +343,8 @@
   const MAX_IMAGE_DATA_CHARS = 2 * 1024 * 1024;
   const IMAGE_DATA_URL_RE = /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*$/;
   const WALLPAPER_FITS = ['cover', 'contain', 'stretch', 'tile'];
+  const GRADIENT_KINDS = ['linear', 'radial'];
+  const GRADIENT_SHAPES = ['ellipse', 'circle'];
 
   // The attachments of one conversation, numbered once so that the number the
   // model is shown beside a picture is the number `wallpaperImage.index` means
@@ -699,10 +762,16 @@
     if (stops.length < 2) throw new Error(`Model returned an unusable ${label} gradient.`);
 
     return {
+      kind: GRADIENT_KINDS.includes(source.kind) ? source.kind : 'linear',
+      shape: GRADIENT_SHAPES.includes(source.shape) ? source.shape : 'ellipse',
       angle: clampInt(source.angle, 0, 360, 135),
       stops,
       opacity: clampInt(source.opacity, 0, 100, 100),
-      blur: clampInt(source.blur, 0, 100, 0)
+      blur: clampInt(source.blur, 0, 100, 0),
+      // Off unless asked for: a moving background behind text is a permanent
+      // distraction, and a model with a free boolean reaches for it.
+      animated: source.animated === true,
+      speed: clampInt(source.speed, 4, 60, 12)
     };
   }
 
@@ -719,7 +788,10 @@
       lightOpacity: clampInt(source.lightOpacity, 0, 100, 50),
       lightBlur: clampInt(source.lightBlur, 0, 100, 0),
       darkOpacity: clampInt(source.darkOpacity, 0, 100, 40),
-      darkBlur: clampInt(source.darkBlur, 0, 100, 0)
+      darkBlur: clampInt(source.darkBlur, 0, 100, 0),
+      brightness: clampInt(source.brightness, 20, 180, 100),
+      contrast: clampInt(source.contrast, 20, 180, 100),
+      grayscale: clampInt(source.grayscale, 0, 100, 0)
     };
   }
 
@@ -731,7 +803,12 @@
       wallpaperImage: sanitizeWallpaperImage(source.wallpaperImage),
       light: sanitizeSlot(source.light, 'light'),
       dark: sanitizeSlot(source.dark, 'dark'),
+      // Only the tint is normalized here; the rest of each entry is checked in
+      // toSiteSettings, which is where the selector meets the profile.
       frostedGlass: (Array.isArray(source.frostedGlass) ? source.frostedGlass : []).slice(0, 6)
+        .map((entry) => (entry && typeof entry === 'object'
+          ? { ...entry, color: normalizeHex(entry.color) || '' }
+          : entry))
     };
   }
 
@@ -810,10 +887,15 @@
     return {
       type: 'color',
       colorMode: 'gradient',
+      // The same keys the popup's own gradient editor writes, so a theme that
+      // arrived from the chat stays editable by hand afterwards.
       gradient: {
-        kind: 'linear',
+        kind: slot.kind,
+        shape: slot.shape,
         angle: slot.angle,
-        stops: slot.stops.map((stop) => ({ color: stop.color, position: stop.position }))
+        stops: slot.stops.map((stop) => ({ color: stop.color, position: stop.position })),
+        animated: slot.animated,
+        speed: slot.speed
       },
       opacity: slot.opacity,
       blur: slot.blur
@@ -848,7 +930,13 @@
         size: wallpaper.fit === 'tile' ? 'auto' : wallpaper.fit,
         repeat: wallpaper.fit === 'tile',
         fixed: wallpaper.fixed !== false
-      }
+      },
+      // Applied by content.js to image layers only. Omitted entirely when
+      // every value is a no-op, so a plain picture does not carry a filter
+      // string the renderer would have to parse on every apply.
+      ...(wallpaper.brightness === 100 && wallpaper.contrast === 100 && wallpaper.grayscale === 0
+        ? {}
+        : { filters: { brightness: wallpaper.brightness, contrast: wallpaper.contrast, grayscale: wallpaper.grayscale } })
     };
   }
 
@@ -870,11 +958,19 @@
 
     const frostedGlass = (Array.isArray(theme.frostedGlass) ? theme.frostedGlass : [])
       .filter((entry) => entry && knownSelectors.has(entry.selector))
-      .map((entry) => ({
-        selector: entry.selector,
-        opacity: clampInt(entry.opacity, 0, 100, 55),
-        blur: clampInt(entry.blur, 0, 100, 12)
-      }));
+      .map((entry) => {
+        const clean = {
+          selector: entry.selector,
+          opacity: clampInt(entry.opacity, 0, 100, 55),
+          blur: clampInt(entry.blur, 0, 100, 12)
+        };
+        // Absent rather than empty when untinted: the renderer switches on the
+        // key being a valid hex, and an empty string would only be a value it
+        // has to reject on every paint.
+        const color = normalizeHex(entry.color);
+        if (color) clean.color = color;
+        return clean;
+      });
 
     const wallpaperImage = pickWallpaperImage(theme, images);
     if (wallpaperImage) {

@@ -181,6 +181,14 @@
       if (!stop || !HEX_RE.test(String(stop.color)) || !Number.isFinite(position) || position < 0 || position > 100) return '';
       stops.push(`${String(stop.color)} ${Math.round(position)}%`);
     }
+    // Both shapes go through the same allow-list as everything else here: the
+    // swatch has to show what would actually be painted, and a chip that
+    // previews a radial theme as a linear one is a wrong answer, not a
+    // simplification.
+    if (slot.kind === 'radial') {
+      const shape = slot.shape === 'circle' ? 'circle' : 'ellipse';
+      return `radial-gradient(${shape} at center, ${stops.join(', ')})`;
+    }
     return `linear-gradient(${Math.round(angle)}deg, ${stops.join(', ')})`;
   }
 
