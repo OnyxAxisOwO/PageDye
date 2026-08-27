@@ -563,6 +563,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedBlur: "Blur",
       frostedOpacity: "Tint",
       frostedCustomColor: "Custom Color",
+      frostedTintFromBg: "Match wallpaper",
+      frostedTintFailed: "This background has no color to take.",
       frostedAddBtn: "+ Add element",
       customCursor: "Custom Cursor",
       cursorEnable: "Enable for this site",
@@ -755,6 +757,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedBlur: "模糊度",
       frostedOpacity: "透明度",
       frostedCustomColor: "自定义颜色",
+      frostedTintFromBg: "取自壁纸",
+      frostedTintFailed: "这个背景取不到颜色。",
       frostedAddBtn: "+ 添加元素",
       customCursor: "自定义光标",
       cursorEnable: "为此网站启用",
@@ -1633,6 +1637,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedGlassState.splice(idx, 1);
       renderFrostedList(frostedGlassState);
       triggerImmediateSave();
+      return;
+    }
+    const tintBtn = e.target.closest('.frosted-entry-tint');
+    if (tintBtn) {
+      const idx = parseInt(tintBtn.closest('.frosted-entry').dataset.index, 10);
+      applyFrostedTint(idx, tintBtn);
       return;
     }
     const pickBtn = e.target.closest('.frosted-entry-pick');
@@ -2859,6 +2869,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // Reuses the palette the wallpaper is already made of as the frosted tint.
+  // Entirely local — no API key, unlike asking the model for the same thing —
+  // and it works for a gradient or a solid color too, not just an image.
+  async function applyFrostedTint(index, button) {
+    const entry = frostedGlassState[index];
+    if (!entry) return;
+
+    const layer = {};
+    collectFormTo(layer);
+    button.disabled = true;
+    const result = await window.PageDyeGradient.extractLayerPalette(layer);
+    button.disabled = false;
+
+    const tint = result.ok ? window.PageDyeGradient.frostedTintFromColors(result.colors) : null;
+    if (!tint) {
+      els.statusText.textContent = t('frostedTintFailed');
+      setTimeout(setSyncedState, 1800);
+      return;
+    }
+
+    entry.color = tint;
+    renderFrostedList(frostedGlassState);
+    triggerImmediateSave();
+  }
+
   function renderFrostedList(list) {
     frostedGlassState = list.map(f => ({
       selector: f.selector || '',
@@ -2952,8 +2987,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       colorInput.value = entry.color || '#ffffff';
       colorInput.disabled = !entry.color;
 
+      // Seeds the picker from whatever the background is made of. It only
+      // fills in a starting value — the picker stays right beside it, because
+      // a tint derived from the wallpaper cannot know the color of the text it
+      // will end up sitting behind.
+      const tintBtn = document.createElement('button');
+      tintBtn.type = 'button';
+      tintBtn.className = 'frosted-entry-tint';
+      tintBtn.textContent = t('frostedTintFromBg');
+
       colorRow.appendChild(colorToggleLabel);
       colorRow.appendChild(colorInput);
+      colorRow.appendChild(tintBtn);
 
       row.appendChild(selectorRow);
       row.appendChild(blurLabelRow);

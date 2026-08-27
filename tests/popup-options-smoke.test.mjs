@@ -44,6 +44,58 @@ test('popup: switching background type to color and picking a color saves to the
   assert.equal(store['example.com'].value, '#ff00aa');
 });
 
+test('popup: a frosted panel can take its tint from the wallpaper, and says so when it cannot', async () => {
+  // todo #7's second half. The derivation lives in scripts/gradient.js; what
+  // this covers is the wiring around it — that the button reaches the form the
+  // user is actually looking at, and that the result lands in both the picker
+  // and storage.
+  const { chrome, store } = createChromeMock();
+  const { document, errors } = await loadExtensionPage('popup/popup.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  const typeColor = document.getElementById('type-color');
+  typeColor.checked = true;
+  fire(typeColor, 'change');
+  const colorPicker = document.getElementById('color-picker');
+  colorPicker.value = '#10233f';
+  fire(colorPicker, 'input');
+  await waitFor(() => store['example.com'] && store['example.com'].value === '#10233f', { timeout: 2000 });
+
+  document.getElementById('frosted-add-btn').click();
+  const tintBtn = document.querySelector('.frosted-entry-tint');
+  assert.ok(tintBtn, 'every frosted entry offers to take a tint from the wallpaper');
+
+  tintBtn.click();
+  await waitFor(() => {
+    const entry = (store['example.com'] || {}).frostedGlass;
+    return entry && entry[0] && entry[0].color;
+  }, { timeout: 2000 });
+
+  const tint = store['example.com'].frostedGlass[0].color;
+  // A dark navy wallpaper gets a dark tint that keeps its hue — the panel has
+  // to commit to one color for both OS schemes, so it follows the wallpaper.
+  assert.match(tint, /^#[0-9a-f]{6}$/);
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(tint.slice(i, i + 2), 16));
+  assert.ok(Math.max(r, g, b) < 80, `expected a dark tint, got ${tint}`);
+  assert.ok(b > r, `expected the wallpaper's blue to survive, got ${tint}`);
+  assert.equal(document.querySelector('.frosted-entry-color').value, tint, 'the picker shows it for editing');
+
+  // A background of "none" has no palette to sample, and that has to be said
+  // rather than silently leaving the old tint in place. Every status the line
+  // shows is recorded rather than polled: an autosave toast from the type
+  // change lands on the same element and would race the assertion.
+  const statusEl = document.getElementById('status-text');
+  const seen = [];
+  new document.defaultView.MutationObserver(() => seen.push(statusEl.textContent))
+    .observe(statusEl, { childList: true, characterData: true, subtree: true });
+
+  const typeNone = document.getElementById('type-none');
+  typeNone.checked = true;
+  fire(typeNone, 'change');
+  document.querySelector('.frosted-entry-tint').click();
+  await waitFor(() => seen.some((text) => /no color/i.test(text)), { timeout: 2000 });
+});
+
 test('popup: switching to video type shows the video panel and persists type:video to the site key', async () => {
   // prepareVideo() needs real video decoding, which jsdom doesn't implement,
   // so this exercises the radio -> panel -> collectFormTo -> save wiring

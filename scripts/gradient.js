@@ -297,6 +297,78 @@ window.PageDyeGradient = (function () {
     }
   }
 
+  // ---- Frosted-glass tint ------------------------------------------------
+  // A frosted panel's tint is ONE fixed color used in both OS schemes (see
+  // content.js's applyFrostedGlass), so it cannot adapt the way the untinted
+  // default does. That is what decides the shape of the two functions below:
+  // the tint has to commit to light or dark, and the only thing available to
+  // decide with — without knowing the page's text color — is the wallpaper.
+
+  // Gathers the colors a background is actually made of, whatever kind it is.
+  // Resolves {ok:false, reason} rather than throwing, because the image branch
+  // can hit a tainted canvas and every caller here is a click handler.
+  async function extractLayerPalette(layer, count = 5) {
+    const source = layer && typeof layer === 'object' ? layer : {};
+
+    if (source.type === 'image' && typeof source.value === 'string' && source.value) {
+      return extractPaletteFromImage(source.value, count);
+    }
+
+    if (source.type === 'color') {
+      if (source.colorMode === 'gradient' && source.gradient && Array.isArray(source.gradient.stops)) {
+        const colors = source.gradient.stops
+          .map((stop) => stop && stop.color)
+          .filter(isValidCssHexColor);
+        if (colors.length) return { ok: true, colors };
+      }
+      if (isValidCssHexColor(source.value)) return { ok: true, colors: [source.value] };
+    }
+
+    // A video frame cannot be sampled without decoding it, and an effect has
+    // no palette of its own — both are "nothing to take a color from" rather
+    // than a failure worth an error message.
+    return { ok: false, reason: 'no-palette' };
+  }
+
+  // Turns those colors into a tint: the wallpaper's own hue, most of the
+  // saturation dropped, and the lightness pushed to whichever extreme the
+  // wallpaper is already nearer. A panel that keeps a hint of the background's
+  // hue reads as part of the design; one that keeps its saturation competes
+  // with the text sitting on it.
+  function frostedTintFromColors(colors) {
+    const usable = (Array.isArray(colors) ? colors : []).filter(isValidCssHexColor);
+    if (!usable.length) return null;
+
+    // The average lightness of the whole palette, not of the first color: a
+    // dark photo with one bright highlight is still a dark background.
+    let hue = 0;
+    let saturation = 0;
+    let lightness = 0;
+    let hueWeight = 0;
+    for (const color of usable) {
+      const { r, g, b } = hexToRgb(color);
+      const [h, sat, l] = rgbToHsl(r, g, b);
+      lightness += l;
+      saturation += sat;
+      // Near-grey pixels have a meaningless hue, so they are averaged out of
+      // it rather than dragging it toward red.
+      hue += h * sat;
+      hueWeight += sat;
+    }
+    lightness /= usable.length;
+    saturation /= usable.length;
+    hue = hueWeight > 0 ? hue / hueWeight : 0;
+
+    const dark = lightness < 50;
+    const [r, g, b] = hslToRgb(
+      hue,
+      // Enough hue to be recognisable, not enough to tint the text on top.
+      Math.min(saturation, dark ? 24 : 20),
+      dark ? 12 : 95
+    );
+    return rgbToHex(r, g, b);
+  }
+
   return {
     MIN_STOPS,
     MAX_STOPS,
@@ -306,6 +378,8 @@ window.PageDyeGradient = (function () {
     clampStops,
     defaultGradient,
     extractPaletteFromImage,
+    extractLayerPalette,
+    frostedTintFromColors,
     generateTonalPalette,
     isValidCssHexColor,
     hexToRgb

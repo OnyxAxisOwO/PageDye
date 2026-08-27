@@ -231,6 +231,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedBlur: "Blur",
       frostedOpacity: "Tint",
       frostedCustomColor: "Custom Color",
+      frostedTintFromBg: "Match wallpaper",
+      frostedTintFailed: "This background has no color to take.",
       frostedAddBtn: "+ Add element",
       customCss: "Custom CSS",
       customCssHint: "Injected into this site. Use !important to override stubborn styles.",
@@ -525,6 +527,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedBlur: "模糊度",
       frostedOpacity: "透明度",
       frostedCustomColor: "自定义颜色",
+      frostedTintFromBg: "取自壁纸",
+      frostedTintFailed: "这个背景取不到颜色。",
       frostedAddBtn: "+ 添加元素",
       customCss: "自定义 CSS",
       customCssHint: "将注入到本网站。可用 !important 覆盖顽固样式。",
@@ -3421,6 +3425,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Rebuilds the frosted-entry list from scratch, one card per element, so
   // saving a new element never clobbers the others.
+  // The options-page half of the popup's applyFrostedTint; the derivation
+  // itself lives in scripts/gradient.js so the two cannot drift.
+  async function applyEditFrostedTint(index, button) {
+    const entry = editFrostedGlassState[index];
+    if (!entry) return;
+
+    const layer = {};
+    collectEditFormTo(layer);
+    button.disabled = true;
+    const result = await window.PageDyeGradient.extractLayerPalette(layer);
+    button.disabled = false;
+
+    const tint = result.ok ? window.PageDyeGradient.frostedTintFromColors(result.colors) : null;
+    if (!tint) {
+      showStatus(t('frostedTintFailed'), true);
+      return;
+    }
+
+    entry.color = tint;
+    renderEditFrostedList(editFrostedGlassState);
+    triggerEditImmediateSave();
+  }
+
   function renderEditFrostedList(list) {
     editFrostedGlassState = list.map(f => ({
       selector: f.selector || '',
@@ -3509,8 +3536,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       colorInput.value = entry.color || '#ffffff';
       colorInput.disabled = !entry.color;
 
+      // Seeds the picker from whatever the background is made of. It only
+      // fills in a starting value — the picker stays right beside it, because
+      // a tint derived from the wallpaper cannot know the color of the text it
+      // will end up sitting behind.
+      const tintBtn = document.createElement('button');
+      tintBtn.type = 'button';
+      tintBtn.className = 'frosted-entry-tint';
+      tintBtn.textContent = t('frostedTintFromBg');
+
       colorRow.appendChild(colorToggleLabel);
       colorRow.appendChild(colorInput);
+      colorRow.appendChild(tintBtn);
 
       row.appendChild(selectorRow);
       row.appendChild(blurLabelRow);
@@ -4293,6 +4330,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   editFrostedList.addEventListener('click', (e) => {
+    const tintBtn = e.target.closest('.frosted-entry-tint');
+    if (tintBtn) {
+      const idx = parseInt(tintBtn.closest('.frosted-entry').dataset.index, 10);
+      applyEditFrostedTint(idx, tintBtn);
+      return;
+    }
     const removeBtn = e.target.closest('.frosted-entry-remove');
     if (!removeBtn) return;
     const idx = parseInt(removeBtn.closest('.frosted-entry').dataset.index, 10);

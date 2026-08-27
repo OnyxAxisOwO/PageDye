@@ -2080,6 +2080,39 @@ input[type="range"]::-moz-range-thumb {
   cursor: not-allowed;
 }
 
+/* The label takes the slack so the swatch and the button that fills it stay
+   together as one control at the end of the row. */
+.frosted-entry-color-row {
+  gap: 8px;
+}
+
+.frosted-entry-color-row .checkbox-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.frosted-entry-tint {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.frosted-entry-tint:hover:not(:disabled) {
+  background: var(--state-layer-hover);
+  color: var(--text-color);
+}
+
+.frosted-entry-tint:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .gradient-presets-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
