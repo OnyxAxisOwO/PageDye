@@ -96,6 +96,75 @@ test('popup: a frosted panel can take its tint from the wallpaper, and says so w
   await waitFor(() => seen.some((text) => /no color/i.test(text)), { timeout: 2000 });
 });
 
+test('popup: an unreadable frosted panel is called out, and a fixed one stops being', async () => {
+  // The math is covered in tests/readability.test.mjs. What this covers is the
+  // wiring: that the popup captures the page's text colors, feeds them the
+  // wallpaper the user is actually editing, and puts the result on screen.
+  const { chrome, store } = createChromeMock();
+  chrome.scripting.executeScript = async (opts) => (opts.func ? [{
+    result: {
+      base: { backgroundColor: '#ffffff', textColor: '#1f2328' },
+      containers: [{ selector: '#main', textColor: '#1f2328', coverage: 0.5, matchCount: 1 }]
+    }
+  }] : []);
+
+  const { document, errors } = await loadExtensionPage('popup/popup.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  // A near-black wallpaper behind a barely-there panel holding near-black text.
+  const typeColor = document.getElementById('type-color');
+  typeColor.checked = true;
+  fire(typeColor, 'change');
+  const colorPicker = document.getElementById('color-picker');
+  colorPicker.value = '#101820';
+  fire(colorPicker, 'input');
+  await waitFor(() => store['example.com'] && store['example.com'].value === '#101820', { timeout: 2000 });
+
+  document.getElementById('frosted-add-btn').click();
+  const selector = document.querySelector('.frosted-entry-selector');
+  selector.value = '#main';
+  fire(selector, 'input');
+  const opacity = document.querySelector('.frosted-entry-opacity');
+  opacity.value = '20';
+  fire(opacity, 'input');
+
+  const box = document.getElementById('frosted-contrast');
+  await waitFor(() => !box.hidden && /#main/.test(box.textContent), { timeout: 3000 });
+  assert.match(box.textContent, /invisible|1\.\d:1|2\.\d:1/, box.textContent);
+  assert.ok(box.classList.contains('severe'), 'unreadable is not merely imperfect');
+
+  // Turning the panel almost solid white is the fix, and the warning has to
+  // clear — a check that only ever accuses is one users learn to ignore.
+  const colorToggle = document.querySelector('.frosted-entry-color-toggle');
+  colorToggle.checked = true;
+  fire(colorToggle, 'input');
+  const colorInput = document.querySelector('.frosted-entry-color');
+  colorInput.value = '#ffffff';
+  fire(colorInput, 'input');
+  document.querySelector('.frosted-entry-opacity').value = '96';
+  fire(document.querySelector('.frosted-entry-opacity'), 'input');
+
+  await waitFor(() => box.hidden, { timeout: 3000 });
+});
+
+test('popup: a page the extension cannot read simply offers no contrast check', async () => {
+  // executeScript resolving to nothing is what a store page, a PDF or a tab
+  // that navigated mid-capture looks like. It must not throw, and must not
+  // produce a warning built on colors nobody supplied.
+  const { chrome, store } = createChromeMock();
+  const { document, errors } = await loadExtensionPage('popup/popup.html', { chrome });
+
+  document.getElementById('frosted-add-btn').click();
+  const selector = document.querySelector('.frosted-entry-selector');
+  selector.value = '#main';
+  fire(selector, 'input');
+  await waitFor(() => store['example.com'] && store['example.com'].frostedGlass, { timeout: 2000 });
+  await new Promise((r) => setTimeout(r, 500));
+
+  assert.deepEqual(errors, []);
+  assert.equal(document.getElementById('frosted-contrast').hidden, true);
+});
+
 test('popup: switching to video type shows the video panel and persists type:video to the site key', async () => {
   // prepareVideo() needs real video decoding, which jsdom doesn't implement,
   // so this exercises the radio -> panel -> collectFormTo -> save wiring

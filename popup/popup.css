@@ -781,6 +781,36 @@ input[type="range"]::-moz-range-thumb {
   color: var(--text-color);
 }
 
+/* Only present when something is actually wrong: a permanently-visible
+   "contrast: fine" line would be noise on every open. */
+.frosted-contrast {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface-container-low);
+  border-left: 3px solid var(--warning-color, #b45309);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.frosted-contrast.severe {
+  border-left-color: var(--danger-color, #ba1a1a);
+}
+
+.frosted-contrast-line {
+  display: block;
+}
+
+.frosted-contrast-line + .frosted-contrast-line {
+  margin-top: 4px;
+}
+
+.frosted-contrast code {
+  font-family: inherit;
+  color: var(--text-color);
+}
+
 .frosted-entry-tint:disabled {
   opacity: 0.5;
   cursor: default;

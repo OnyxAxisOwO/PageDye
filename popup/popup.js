@@ -565,6 +565,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedCustomColor: "Custom Color",
       frostedTintFromBg: "Match wallpaper",
       frostedTintFailed: "This background has no color to take.",
+      frostedContrastWarn: "{selector}: the text on this panel would sit at {ratio}:1. AA asks for 4.5:1.",
+      frostedContrastSevere: "{selector}: the text on this panel is effectively invisible ({ratio}:1).",
+      frostedContrastDark: " Only in dark mode.",
+      frostedContrastLight: " Only in light mode.",
       frostedAddBtn: "+ Add element",
       customCursor: "Custom Cursor",
       cursorEnable: "Enable for this site",
@@ -759,6 +763,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       frostedCustomColor: "自定义颜色",
       frostedTintFromBg: "取自壁纸",
       frostedTintFailed: "这个背景取不到颜色。",
+      frostedContrastWarn: "{selector}：这块面板上的文字对比度只有 {ratio}:1，AA 标准要求 4.5:1。",
+      frostedContrastSevere: "{selector}：这块面板上的文字基本看不见了（{ratio}:1）。",
+      frostedContrastDark: "（仅深色模式）",
+      frostedContrastLight: "（仅浅色模式）",
       frostedAddBtn: "+ 添加元素",
       customCursor: "自定义光标",
       cursorEnable: "为此网站启用",
@@ -943,6 +951,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     uiThemeCustomColor: document.getElementById('ui-theme-custom-color'),
     uiThemeCustomColorText: document.getElementById('ui-theme-custom-color-text'),
     frostedList: document.getElementById('frosted-list'),
+    frostedContrast: document.getElementById('frosted-contrast'),
     frostedAddBtn: document.getElementById('frosted-add-btn'),
     cursorToggle: document.getElementById('cursor-toggle'),
     cursorPresetsGrid: document.getElementById('cursor-presets-grid'),
@@ -1178,6 +1187,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   let targetSwitchChain = Promise.resolve();
   let gradientStopsState = [];
   let frostedGlassState = [];
+  // Read by the hoisted contrast-check helpers below, which init calls before
+  // execution ever reaches their own block.
+  let contrastProfile = null;
+  let contrastProfileTried = false;
+  let contrastCheckTimer = null;
   let cursorPresetState = 'ball';
   let cssEditorController = null;
   let isInitialLoad = true;
@@ -2385,6 +2399,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (cssEditorController) cssEditorController.update();
 
     renderFrostedList(normalizeFrostedGlassList(currentSettings.frostedGlass));
+    queueContrastCheck();
 
     const cursorCfg = window.PageDyeCursor.normalizeCursorConfig(currentSettings.cursor);
     els.cursorToggle.checked = !!(currentSettings.cursor && currentSettings.cursor.enabled);
@@ -2869,6 +2884,100 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // --- frosted-glass contrast check ---------------------------------------
+  // The one thing PageDye can break that the user cannot see from inside the
+  // popup: a wallpaper that makes the page's own text unreadable. The math is
+  // in scripts/shared/readability.js; what lives here is where the two inputs
+  // come from — the form for the wallpaper, and the page itself for the text
+  // colors, which is the only place they exist.
+  //
+  // The profile is captured once per popup and reused: container text colors
+  // do not change while the user drags a slider, and re-injecting on every
+  // input event would be an injection per frame.
+  async function ensureContrastProfile() {
+    if (contrastProfileTried) return contrastProfile;
+    contrastProfileTried = true;
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !Number.isInteger(tab.id) || !/^https?:/i.test(tab.url || '')) return null;
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['scripts/page-profile.js'] });
+      const [captured] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => window.PageDyeProfile.build()
+      });
+      contrastProfile = (captured && captured.result) || null;
+    } catch (_) {
+      // A page the extension cannot be injected into (a store page, a PDF, a
+      // tab that navigated mid-capture) simply has no check available.
+      contrastProfile = null;
+    }
+    return contrastProfile;
+  }
+
+  // What the wallpaper resolves to, in the shape readability.js wants.
+  function contrastWallpaper() {
+    const layer = {};
+    collectFormTo(layer);
+    const colors = [];
+    if (layer.type === 'color') {
+      if (layer.colorMode === 'gradient' && layer.gradient && Array.isArray(layer.gradient.stops)) {
+        layer.gradient.stops.forEach((stop) => stop && colors.push(stop.color));
+      } else if (layer.value) {
+        colors.push(layer.value);
+      }
+    }
+    // An image or video wallpaper has no color the popup can name without
+    // decoding it, so the check falls back to the page's own background and
+    // reports only what the panel opacity alone can be blamed for.
+    return {
+      colors,
+      opacity: layer.opacity,
+      pageBackground: (contrastProfile && contrastProfile.base && contrastProfile.base.backgroundColor) || '#ffffff'
+    };
+  }
+
+  function renderContrastFindings(findings) {
+    const box = els.frostedContrast;
+    if (!box) return;
+    box.textContent = '';
+    box.hidden = !findings.length;
+    box.classList.toggle('severe', findings.some((finding) => finding.severe));
+    findings.forEach((finding) => {
+      const line = document.createElement('span');
+      line.className = 'frosted-contrast-line';
+      const scheme = finding.scheme === 'dark' ? t('frostedContrastDark')
+        : finding.scheme === 'light' ? t('frostedContrastLight') : '';
+      line.textContent = t(finding.severe ? 'frostedContrastSevere' : 'frostedContrastWarn')
+        .replace('{selector}', finding.selector)
+        .replace('{ratio}', finding.ratio.toFixed(1)) + scheme;
+      box.appendChild(line);
+    });
+  }
+
+  async function runContrastCheck() {
+    if (!els.frostedContrast) return;
+    if (!frostedGlassState.length) {
+      renderContrastFindings([]);
+      return;
+    }
+    const profile = await ensureContrastProfile();
+    if (!profile) {
+      renderContrastFindings([]);
+      return;
+    }
+    renderContrastFindings(window.PageDyeReadability.check({
+      frostedGlass: frostedGlassState,
+      wallpaper: contrastWallpaper(),
+      containers: profile.containers
+    }));
+  }
+
+  // Debounced for the same reason the autosave is: this runs off slider input.
+  function queueContrastCheck() {
+    clearTimeout(contrastCheckTimer);
+    contrastCheckTimer = setTimeout(() => { runContrastCheck(); }, 350);
+  }
+
   // Reuses the palette the wallpaper is already made of as the frosted tint.
   // Entirely local — no API key, unlike asking the model for the same thing —
   // and it works for a gradient or a solid color too, not just an image.
@@ -3212,6 +3321,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function queueAutoSave() {
     setSavingState();
+    queueContrastCheck();
     if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
     saveDebounceTimer = setTimeout(() => {
       saveSettings(true);
@@ -3220,6 +3330,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function triggerImmediateSave() {
     setSavingState();
+    queueContrastCheck();
     if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
     saveSettings(true);
   }
