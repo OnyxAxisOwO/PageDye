@@ -8,6 +8,18 @@
   const WEBP_QUALITIES = [0.86, 0.72, 0.58];
   const RECOMPRESSIBLE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/avif', 'image/bmp']);
 
+  // An image on its way to a model is a different job from an image on its way
+  // to a page: it is re-encoded much smaller because the model reads colour and
+  // composition, not detail, and because every attachment is re-sent — and
+  // re-billed — on every later turn of the conversation.
+  const CHAT_MAX_DIMENSION = 1024;
+  const CHAT_MAX_BYTES = 1024 * 1024;
+  const CHAT_QUALITIES = [0.82, 0.68, 0.52];
+  // What both provider shapes accept. A canvas that cannot encode the type it
+  // was asked for silently hands back a PNG, so the result is checked against
+  // this rather than assumed.
+  const CHAT_MEDIA_TYPES = ['image/webp', 'image/jpeg', 'image/png'];
+
   function readAsDataUrl(blob) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -116,6 +128,58 @@
     }
   }
 
+  // Prepares one attachment for the AI chat. Unlike prepareImage there is no
+  // "keep the original" fallback: an image the canvas cannot decode is one we
+  // cannot bound, and an unbounded attachment would be re-sent on every turn.
+  async function prepareChatImage(file) {
+    if (!file || !file.type || !file.type.startsWith('image/')) {
+      throw new Error('Please choose an image file');
+    }
+    if (!Number.isFinite(file.size) || file.size <= 0 || file.size > MAX_INPUT_IMAGE_BYTES) {
+      throw tooLargeError();
+    }
+
+    const image = await loadImage(file);
+    const naturalWidth = image.naturalWidth || image.width;
+    const naturalHeight = image.naturalHeight || image.height;
+    if (!naturalWidth || !naturalHeight) throw new Error('Unable to decode image dimensions');
+    const scale = Math.min(1, CHAT_MAX_DIMENSION / Math.max(naturalWidth, naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(naturalHeight * scale));
+    const context = canvas.getContext('2d', { alpha: false });
+    if (!context) throw new Error('Unable to create image canvas');
+    // Transparency has no meaning to the model and turns black under JPEG, so
+    // it is flattened onto white before anything else looks at the pixels.
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    let best = null;
+    for (const mediaType of CHAT_MEDIA_TYPES) {
+      for (const quality of CHAT_QUALITIES) {
+        const candidate = await new Promise((resolve) => canvas.toBlob(resolve, mediaType, quality));
+        if (!candidate || !CHAT_MEDIA_TYPES.includes(candidate.type)) continue;
+        if (!best || candidate.size < best.size) best = candidate;
+        if (candidate.size <= CHAT_MAX_BYTES) break;
+        // PNG ignores quality, so retrying it at a lower one is wasted work.
+        if (candidate.type === 'image/png') break;
+      }
+      if (best && best.size <= CHAT_MAX_BYTES) break;
+    }
+    if (!best) throw new Error('Unable to encode image');
+    if (best.size > CHAT_MAX_BYTES) throw tooLargeError();
+
+    return {
+      dataUrl: await readAsDataUrl(best),
+      name: (file.name || 'image').slice(0, 80),
+      mediaType: best.type,
+      width: canvas.width,
+      height: canvas.height,
+      bytes: best.size
+    };
+  }
+
   async function recompressDataUrl(dataUrl, options = {}) {
     const source = dataUrlToBlob(dataUrl);
     if (!RECOMPRESSIBLE_TYPES.has(source.type)) {
@@ -169,9 +233,13 @@
 
   window.PageDyeImage = {
     prepareImage,
+    prepareChatImage,
     recompressDataUrl,
     MAX_DIMENSION,
     MAX_INPUT_IMAGE_BYTES,
-    MAX_STORED_IMAGE_BYTES
+    MAX_STORED_IMAGE_BYTES,
+    CHAT_MAX_DIMENSION,
+    CHAT_MAX_BYTES,
+    CHAT_MEDIA_TYPES
   };
 })();

@@ -130,7 +130,7 @@
       </nav>
       
       <div class="sidebar-footer">
-        <span id="version" class="version-label">v0.11.0</span>
+        <span id="version" class="version-label">v0.11.1</span>
       </div>
     </aside>
     
@@ -815,6 +815,13 @@
               <input type="text" id="ai-model-input" autocomplete="off" spellcheck="false" list="ai-model-suggestions">
               <datalist id="ai-model-suggestions"></datalist>
             </div>
+            <div class="control-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="ai-vision-input">
+                <span data-i18n="aiVision">This model can read images</span>
+              </label>
+              <p class="hint" data-i18n="aiVisionHint">Turns on the attach button in the AI chat, so you can hand the model a picture to take a palette from — or to use as the wallpaper itself. Leave it off for a text-only model: attaching a picture to one fails the whole message rather than being ignored. Every Anthropic model here can read images; for an OpenAI-compatible endpoint, check your provider's model list. Switching provider resets this to that provider's default.</p>
+            </div>
             <div class="control-group" style="margin-bottom: 0;">
               <label for="ai-style-prompt-input" data-i18n="aiStylePrompt">Standing style preference</label>
               <p class="hint" data-i18n="aiStylePromptHint">Optional. Whatever you write here is added to every generation on every site — a palette you like, lower saturation, colour pairings to avoid for colour-vision reasons, or your own house style. It stays in effect until you change it; for a request that applies to one theme only, use the prompt box in the popup when you generate.</p>
@@ -834,7 +841,7 @@
           <div class="about-logo">
             <div class="logo-circle"><img src="../icons/icon128.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: block;"></div>
             <h3>PageDye</h3>
-            <span class="badge" id="about-version">v0.11.0</span>
+            <span class="badge" id="about-version">v0.11.1</span>
           </div>
           
           <p class="about-desc" data-i18n="aboutText">PageDye lets you give each website its own color, image, gradient, or animated background. Your choices are saved in this browser and return automatically.</p>
@@ -1497,7 +1504,7 @@
           </div>
           <div class="edit-actions-right">
             <button type="button" id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
-            <span class="version-text" id="edit-version">v0.11.0</span>
+            <span class="version-text" id="edit-version">v0.11.1</span>
             <span class="divider">|</span>
             <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; display: block;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>

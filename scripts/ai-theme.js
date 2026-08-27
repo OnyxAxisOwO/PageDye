@@ -50,6 +50,12 @@
       label: 'Anthropic',
       defaultBaseUrl: 'https://api.anthropic.com',
       defaultModel: 'claude-opus-5',
+      // Every Claude model this extension offers reads images, so the
+      // attachment button starts available here. Behind an arbitrary base URL
+      // it cannot be known, and a text-only model does not ignore a picture —
+      // it rejects the whole message — so that provider starts without it and
+      // the user ticks the box for a model they know can see.
+      vision: true,
       // Only ids this codebase has actually confirmed. The OpenAI-compatible
       // provider deliberately suggests nothing: with an arbitrary base URL the
       // valid ids are unknowable, and a stale guess is worse than a blank
@@ -61,6 +67,7 @@
       label: 'OpenAI Compatible',
       defaultBaseUrl: 'https://api.openai.com/v1',
       defaultModel: '',
+      vision: false,
       models: Object.freeze([])
     })
   });
@@ -95,11 +102,32 @@
     additionalProperties: false
   };
 
+  // The user's own attachments, offered back as a wallpaper the model can pick
+  // instead of a gradient. It never names a URL: `index` points into the
+  // numbered list of images the user attached to this conversation, which is
+  // the only source of picture data this file will accept.
+  const WALLPAPER_IMAGE_SCHEMA = {
+    type: 'object',
+    properties: {
+      use: { type: 'boolean' },
+      index: { type: 'integer', minimum: 1, maximum: 6 },
+      fit: { type: 'string', enum: ['cover', 'contain', 'stretch', 'tile'] },
+      fixed: { type: 'boolean' },
+      lightOpacity: { type: 'integer', minimum: 0, maximum: 100 },
+      lightBlur: { type: 'integer', minimum: 0, maximum: 100 },
+      darkOpacity: { type: 'integer', minimum: 0, maximum: 100 },
+      darkBlur: { type: 'integer', minimum: 0, maximum: 100 }
+    },
+    required: ['use', 'index', 'fit', 'fixed', 'lightOpacity', 'lightBlur', 'darkOpacity', 'darkBlur'],
+    additionalProperties: false
+  };
+
   const THEME_SCHEMA = {
     type: 'object',
     properties: {
       themeName: { type: 'string' },
       rationale: { type: 'string' },
+      wallpaperImage: WALLPAPER_IMAGE_SCHEMA,
       light: GRADIENT_SCHEMA,
       dark: GRADIENT_SCHEMA,
       frostedGlass: {
@@ -117,7 +145,7 @@
         }
       }
     },
-    required: ['themeName', 'rationale', 'light', 'dark', 'frostedGlass'],
+    required: ['themeName', 'rationale', 'wallpaperImage', 'light', 'dark', 'frostedGlass'],
     additionalProperties: false
   };
 
@@ -166,6 +194,29 @@
     '- Skip a container whose matchCount is high unless you want every match frosted.',
     '- Frosting nothing is a valid answer when every container is small or already subtle.',
     '',
+    'The user may attach images. They are numbered, and each one arrives with its',
+    'number stated just before it. An attachment is a reference for taste and palette',
+    'first: pull its colors into the gradient so the page picks up the mood of the',
+    'picture. When the user asks for the picture itself on the page — or when it is',
+    'plainly a wallpaper rather than a swatch — set `wallpaperImage.use` to true and',
+    '`wallpaperImage.index` to that image\'s number, and the picture becomes the page',
+    'background in place of the gradient.',
+    '',
+    'A picture makes readability harder, not easier: it has detail and contrast',
+    'everywhere, and the page\'s text does not move out of its way. So keep',
+    '`lightOpacity`/`darkOpacity` well below what a flat color could take (30-60 is',
+    'usually right), reach for some `lightBlur`/`darkBlur` on a busy picture, and frost',
+    'the containers carrying the body text. `fit` is `cover` for a photo, `contain` for',
+    'artwork that must not be cropped, `tile` for a small repeating pattern; `fixed`',
+    'true keeps the picture still while the page scrolls.',
+    '',
+    'Fill in `light` and `dark` even when you choose a picture: they are what the page',
+    'falls back to if that attachment is no longer available, so keep them in the',
+    'picture\'s own palette.',
+    '',
+    'With no image attached, `wallpaperImage.use` must be false. Never point `index` at',
+    'a number that was not attached.',
+    '',
     'Palette guidance: stay in the same family as the page\'s own accent colors so the',
     'wallpaper does not fight the site\'s branding. Prefer restraint — a low-contrast,',
     'two-to-three stop gradient reads as designed, while a saturated rainbow reads as a',
@@ -184,6 +235,35 @@
     'change and leave the rest recognizably intact — a revision request is not an invitation',
     'to start over.',
     '',
+    'WHEN THE USER SAYS THEY CANNOT READ THE PAGE. "The text is washed out", "too bright",',
+    '"too busy", "I can\'t see anything since the wallpaper" — treat it as a measurement,',
+    'not a matter of taste: something you chose is too strong, and the page they are',
+    'describing is the one in front of them. Turn it down in this order, and move each',
+    'number far enough to be felt — 15-25 points, not 2:',
+    '',
+    '- Wallpaper opacity first. It pulls the whole background back toward the page\'s own',
+    '  color and costs the design the least. On a picture, opacity is also how bright it',
+    '  reads: a photo at 30 is a tint, at 80 it competes with the text.',
+    '- Then the opacity of the frosted containers holding the body text, upward, so the',
+    '  panel behind the words sits closer to solid. Frost a text container you skipped if',
+    '  the profile offers one.',
+    '- Then blur. On a picture this is what turns detail into a wash of color, which is',
+    '  usually what "too busy" means; on a gradient it softens a hard band cutting across',
+    '  the text.',
+    '- Then the palette itself, away from the text color: lighter stops behind dark text,',
+    '  darker stops behind light text. A wallpaper bright in the same way the text is dark',
+    '  cannot be rescued by opacity alone.',
+    '',
+    'A picture that stays unreadable after opacity, frosting and blur is the wrong picture',
+    'for this page. Say so, set `wallpaperImage.use` to false, and fall back to the gradient',
+    'you built from its colors — the user keeps the palette they liked and gets their page',
+    'back.',
+    '',
+    'Do not answer a readability complaint by redesigning. They liked something or they',
+    'would have asked for something else: keep the idea, turn it down. Name in `reply`',
+    'which control you moved and by roughly how much, so they can ask for more of the same',
+    'rather than starting the conversation over.',
+    '',
     'Colors must be `#rrggbb` hex strings. Angles are 0-360. Opacity and blur are 0-100.',
     'Reply with a single JSON object matching the required schema and nothing else — no',
     'prose around it and no markdown code fence.'
@@ -191,6 +271,52 @@
 
   const MAX_STYLE_PROMPT_CHARS = 2000;
   const MAX_INSTRUCTION_CHARS = 1000;
+
+  // Attachments. Every one of them is re-sent on every later turn, so the
+  // conversation carries a handful at most; scripts/image.js keeps each one
+  // small before it is ever stored. The pattern is the real gate: a data URL
+  // here is posted to the API and, when it becomes the wallpaper, spliced into
+  // a CSS url() by content.js, so nothing but plain base64 of a format both
+  // providers accept gets past this point.
+  const MAX_IMAGES_PER_REQUEST = 6;
+  const MAX_IMAGE_DATA_CHARS = 2 * 1024 * 1024;
+  const IMAGE_DATA_URL_RE = /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*$/;
+  const WALLPAPER_FITS = ['cover', 'contain', 'stretch', 'tile'];
+
+  // The attachments of one conversation, numbered once so that the number the
+  // model is shown beside a picture is the number `wallpaperImage.index` means
+  // when it comes back. Duplicates collapse: the same picture attached twice is
+  // one picture, and two numbers pointing at it would only be a way to get the
+  // index wrong.
+  function collectImages(turns) {
+    const seen = new Set();
+    const found = [];
+    for (const turn of (Array.isArray(turns) ? turns : [])) {
+      if (!turn || turn.role !== 'user' || !Array.isArray(turn.images)) continue;
+      for (const image of turn.images) {
+        const dataUrl = image && typeof image.dataUrl === 'string' ? image.dataUrl.trim() : '';
+        if (!dataUrl || dataUrl.length > MAX_IMAGE_DATA_CHARS || !IMAGE_DATA_URL_RE.test(dataUrl)) continue;
+        if (seen.has(dataUrl)) continue;
+        seen.add(dataUrl);
+        found.push({ dataUrl, name: trimTo(image.name, 80) });
+      }
+    }
+    // Over the cap the oldest go, matching capTurns: a picture from twenty
+    // turns ago is rarely the one being talked about now.
+    return found.slice(-MAX_IMAGES_PER_REQUEST).map((image, index) => ({ ...image, number: index + 1 }));
+  }
+
+  function toImageBlock(provider, dataUrl) {
+    if (provider !== 'anthropic') return { type: 'image_url', image_url: { url: dataUrl } };
+    return {
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: dataUrl.slice('data:'.length, dataUrl.indexOf(';')),
+        data: dataUrl.slice(dataUrl.indexOf(',') + 1)
+      }
+    };
+  }
 
   function trimTo(value, limit) {
     return typeof value === 'string' ? value.trim().slice(0, limit) : '';
@@ -244,6 +370,10 @@
       apiKey: typeof source.apiKey === 'string' ? source.apiKey.trim() : '',
       model: (typeof source.model === 'string' && source.model.trim()) || preset.defaultModel,
       baseUrl: typeof source.baseUrl === 'string' ? source.baseUrl.trim() : '',
+      // Whether the chosen model reads images. Nothing can ask an endpoint
+      // this, so it is the user's answer, defaulting to what the provider
+      // makes true of every model it offers.
+      vision: typeof source.vision === 'boolean' ? source.vision : preset.vision === true,
       // A standing instruction applied to every generation, as opposed to the
       // per-run request the popup collects.
       stylePrompt: trimTo(source.stylePrompt, MAX_STYLE_PROMPT_CHARS)
@@ -385,12 +515,26 @@
   // both providers treat two consecutive same-role messages as a malformed
   // conversation. Editing a message mid-transcript can produce either, so the
   // list is repaired here rather than trusted.
+  function toBlocks(content) {
+    if (Array.isArray(content)) return content.slice();
+    return content ? [{ type: 'text', text: content }] : [];
+  }
+
   function mergeAdjacent(messages) {
     const merged = [];
     for (const message of messages) {
       const last = merged[merged.length - 1];
-      if (last && last.role === message.role) last.content = `${last.content}\n\n${message.content}`;
-      else merged.push({ ...message });
+      if (!last || last.role !== message.role) {
+        merged.push({ ...message });
+        continue;
+      }
+      // A message carrying an attachment is a list of blocks rather than a
+      // string, so two of those join as lists and a mixed pair is promoted.
+      if (typeof last.content === 'string' && typeof message.content === 'string') {
+        last.content = `${last.content}\n\n${message.content}`;
+      } else {
+        last.content = toBlocks(last.content).concat(toBlocks(message.content));
+      }
     }
     while (merged.length && merged[0].role !== 'user') merged.shift();
     return merged;
@@ -400,6 +544,13 @@
     const list = capTurns(turns);
     const firstUser = list.findIndex((turn) => turn.role === 'user');
     if (firstUser === -1) throw new Error('The conversation has no user message.');
+    // Keyed by the picture itself: what survived collectImages is what the
+    // model sees, under the number it will be asked to refer to. With vision
+    // off the map is empty, so a conversation that collected attachments while
+    // it was on stops replaying them rather than failing on every later turn.
+    const numbers = config.vision === false
+      ? new Map()
+      : new Map(collectImages(list).map((image) => [image.dataUrl, image.number]));
 
     const messages = [];
     list.forEach((turn, index) => {
@@ -419,7 +570,22 @@
       const content = index === firstUser
         ? buildUserPrompt(profile, { stylePrompt: config.stylePrompt, instruction: turn.content })
         : trimTo(turn.content, MAX_INSTRUCTION_CHARS);
-      if (content) messages.push({ role: 'user', content });
+
+      const blocks = [];
+      for (const image of (Array.isArray(turn.images) ? turn.images : [])) {
+        const dataUrl = image && typeof image.dataUrl === 'string' ? image.dataUrl.trim() : '';
+        const number = numbers.get(dataUrl);
+        if (!number) continue;
+        // The number is stated rather than left implicit: it is how the answer
+        // names which picture it chose. The filename is the user's own text,
+        // so it rides in that same line and nowhere the profile could reach.
+        const name = trimTo(image.name, 80);
+        blocks.push({ type: 'text', text: `Attached image ${number}${name ? ` (${name})` : ''}:` });
+        blocks.push(toImageBlock(config.provider, dataUrl));
+      }
+
+      if (blocks.length) messages.push({ role: 'user', content: toBlocks(content).concat(blocks) });
+      else if (content) messages.push({ role: 'user', content });
     });
 
     return mergeAdjacent(messages);
@@ -540,11 +706,29 @@
     };
   }
 
+  // Absent from every theme designed before attachments existed, and from any
+  // answer a server shaped its own way, so the whole object is optional and
+  // each field falls back rather than failing the turn.
+  function sanitizeWallpaperImage(raw) {
+    const source = raw && typeof raw === 'object' ? raw : {};
+    return {
+      use: source.use === true,
+      index: clampInt(source.index, 1, MAX_IMAGES_PER_REQUEST, 1),
+      fit: WALLPAPER_FITS.includes(source.fit) ? source.fit : 'cover',
+      fixed: source.fixed !== false,
+      lightOpacity: clampInt(source.lightOpacity, 0, 100, 50),
+      lightBlur: clampInt(source.lightBlur, 0, 100, 0),
+      darkOpacity: clampInt(source.darkOpacity, 0, 100, 40),
+      darkBlur: clampInt(source.darkBlur, 0, 100, 0)
+    };
+  }
+
   function sanitizeTheme(raw) {
     const source = raw && typeof raw === 'object' ? raw : {};
     return {
       themeName: String(source.themeName || '').slice(0, 80),
       rationale: String(source.rationale || '').slice(0, 400),
+      wallpaperImage: sanitizeWallpaperImage(source.wallpaperImage),
       light: sanitizeSlot(source.light, 'light'),
       dark: sanitizeSlot(source.dark, 'dark'),
       frostedGlass: (Array.isArray(source.frostedGlass) ? source.frostedGlass : []).slice(0, 6)
@@ -565,6 +749,18 @@
       throw new Error(`API returned a non-JSON response (HTTP ${response.status}).`);
     }
     return { response, payload };
+  }
+
+  // Whether the request being answered carried a picture. A model that cannot
+  // see one rejects the whole message rather than ignoring the attachment, and
+  // says so in terms of the wire format ("content must be a string") rather
+  // than in terms of images, so the request has to be the thing that is asked.
+  const IMAGES_REJECTED_PREFIX = 'This model or endpoint did not accept an attached image.';
+
+  function carriesImages(body) {
+    const messages = Array.isArray(body && body.messages) ? body.messages : [];
+    return messages.some((message) => Array.isArray(message && message.content) && message.content
+      .some((block) => block && (block.type === 'image' || block.type === 'image_url')));
   }
 
   function rejectedTheSchema(payload) {
@@ -598,6 +794,13 @@
       if (response.status === 401 || response.status === 403) {
         throw new Error(`${message} (sent as ${config.provider} to ${request.url})`);
       }
+      // Text-only models are the common case behind an OpenAI-compatible base
+      // URL, and their rejection names the wire format rather than the cause.
+      // The original message is kept: the status is also how an endpoint
+      // reports a genuinely unrelated problem with a picture in the request.
+      if (carriesImages(request.body) && [400, 415, 422].includes(response.status)) {
+        throw new Error(`${IMAGES_REJECTED_PREFIX} ${message}`);
+      }
       throw new Error(message);
     }
     return parseJsonLoosely(extractReply(config.provider, payload));
@@ -617,11 +820,48 @@
     };
   }
 
+  // Which attachment the answer picked, if it picked one. The index is clamped
+  // rather than rejected — a model that says "image 3" of two is asking for the
+  // last one, not for nothing — but the picture itself is re-tested against the
+  // data-URL pattern first: this string ends up inside a CSS url() in
+  // content.js, where a stray quote would close it and leave the rest of the
+  // value as CSS the page runs.
+  function pickWallpaperImage(theme, images) {
+    const wallpaper = theme && theme.wallpaperImage;
+    const list = Array.isArray(images) ? images : [];
+    if (!wallpaper || wallpaper.use !== true || !list.length) return '';
+    const chosen = list[Math.min(list.length, Math.max(1, clampInt(wallpaper.index, 1, list.length, 1))) - 1];
+    const dataUrl = chosen && typeof chosen.dataUrl === 'string' ? chosen.dataUrl.trim() : '';
+    if (!dataUrl || dataUrl.length > MAX_IMAGE_DATA_CHARS || !IMAGE_DATA_URL_RE.test(dataUrl)) return '';
+    return dataUrl;
+  }
+
+  function buildImageLayer(dataUrl, wallpaper, opacity, blur) {
+    return {
+      type: 'image',
+      value: dataUrl,
+      opacity,
+      blur,
+      // The same three keys the popup's own image controls write, so a theme
+      // that arrived this way is editable by hand afterwards like any other.
+      style: {
+        size: wallpaper.fit === 'tile' ? 'auto' : wallpaper.fit,
+        repeat: wallpaper.fit === 'tile',
+        fixed: wallpaper.fixed !== false
+      }
+    };
+  }
+
   // Translates the sanitized answer into the nested shape storage expects.
   // Selectors are filtered against the profile rather than trusted: a schema
   // guarantees a string, not that the string names a container that exists on
   // this page, and an invented selector would silently frost nothing.
-  function toSiteSettings(theme, profile) {
+  //
+  // `images` are the conversation's attachments, in the order they were
+  // numbered for the model. Without them — an older conversation, or a picture
+  // the history has since dropped — a theme that asked for one falls back to
+  // the gradient it was made to carry alongside it.
+  function toSiteSettings(theme, profile, images) {
     const knownSelectors = new Set(
       (profile && Array.isArray(profile.containers) ? profile.containers : [])
         .map((container) => container && container.selector)
@@ -635,6 +875,17 @@
         opacity: clampInt(entry.opacity, 0, 100, 55),
         blur: clampInt(entry.blur, 0, 100, 12)
       }));
+
+    const wallpaperImage = pickWallpaperImage(theme, images);
+    if (wallpaperImage) {
+      const wallpaper = theme.wallpaperImage;
+      const light = buildImageLayer(wallpaperImage, wallpaper, wallpaper.lightOpacity, wallpaper.lightBlur);
+      const dark = buildImageLayer(wallpaperImage, wallpaper, wallpaper.darkOpacity, wallpaper.darkBlur);
+      // Same as the gradient branch below: `mode: 'auto'` reads from
+      // light/dark, and the top level carries the light layer so the settings
+      // still validate as a layer in their own right.
+      return { ...light, mode: 'auto', light, dark, frostedGlass };
+    }
 
     return {
       type: 'color',
@@ -668,7 +919,15 @@
   // there) a matter of truncating an array rather than of server state.
   async function chat({ config, profile, turns, signal }) {
     const clean = readyConfig(config, profile);
-    const request = buildChatRequest(clean, profile, turns);
+    // Capped once here so the attachments the answer can point at are exactly
+    // the ones the request carried: buildChatRequest caps the same list again,
+    // which is a no-op, and numbers them the same way.
+    const list = capTurns(turns);
+    // Empty when the model cannot see: nothing was sent, so nothing can be
+    // pointed at, and a theme still asking for a picture falls back to its
+    // gradient rather than reaching for one the model never saw.
+    const images = clean.vision === false ? [] : collectImages(list);
+    const request = buildChatRequest(clean, profile, list);
     const answer = sanitizeChatReply(await sendRequest(clean, request, signal));
 
     return {
@@ -677,7 +936,7 @@
       // Handed back so the next turn can replay it: that is what makes "make
       // it darker" mean darker than THIS rather than darker than average.
       theme: answer.theme,
-      settings: answer.theme ? toSiteSettings(answer.theme, profile) : null
+      settings: answer.theme ? toSiteSettings(answer.theme, profile, images) : null
     };
   }
 
@@ -690,6 +949,8 @@
     CHAT_SYSTEM_PROMPT,
     MAX_CHAT_TURNS,
     MAX_INSTRUCTION_CHARS,
+    MAX_IMAGES_PER_REQUEST,
+    IMAGES_REJECTED_PREFIX,
     normalizeConfig,
     normalizeBaseUrl,
     resolveEndpoint,
@@ -697,6 +958,7 @@
     buildUserPrompt,
     buildChatRequest,
     capTurns,
+    collectImages,
     parseJsonLoosely,
     extractReply,
     sanitizeTheme,

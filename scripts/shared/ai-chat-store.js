@@ -34,6 +34,20 @@
   const MAX_CONTENT_CHARS = 4000;
   const MAX_TITLE_CHARS = 60;
 
+  // Attachments. The data URL is the picture itself, so these are the caps
+  // that decide how large the stored history can get: scripts/image.js keeps
+  // one attachment under a megabyte, and a conversation stops carrying the
+  // pixels of its older ones once the budget below is used up. Dropping the
+  // oldest first matches how the model already sees the conversation, which
+  // trims from the same end.
+  const MAX_IMAGES_PER_MESSAGE = 4;
+  const MAX_IMAGE_CHARS = 2 * 1024 * 1024;
+  const MAX_CONVERSATION_IMAGE_CHARS = 10 * 1024 * 1024;
+  // Only what both provider shapes accept, and only base64 — a data URL is
+  // spliced into an <img> src in the transcript and posted to the API, so a
+  // permissive parse here is a hole in both places at once.
+  const IMAGE_DATA_URL_RE = /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*$/;
+
   function isPlainObject(value) {
     return !!value && typeof value === 'object' && !Array.isArray(value);
   }
@@ -48,6 +62,41 @@
     return `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
   }
 
+  function normalizeImage(raw) {
+    if (!isPlainObject(raw)) return null;
+    const dataUrl = typeof raw.dataUrl === 'string' ? raw.dataUrl : '';
+    if (dataUrl.length > MAX_IMAGE_CHARS || !IMAGE_DATA_URL_RE.test(dataUrl)) return null;
+    const image = { dataUrl, name: trimTo(raw.name, 80) };
+    if (Number.isFinite(raw.width) && Number.isFinite(raw.height)) {
+      image.width = Math.max(0, Math.round(raw.width));
+      image.height = Math.max(0, Math.round(raw.height));
+    }
+    return image;
+  }
+
+  function normalizeImages(raw) {
+    return (Array.isArray(raw) ? raw : []).map(normalizeImage).filter(Boolean).slice(0, MAX_IMAGES_PER_MESSAGE);
+  }
+
+  // The pictures are kept for the newest messages and dropped from the oldest
+  // once the budget is spent. The message itself stays: a bubble that says
+  // what was asked reads better than a gap in the transcript.
+  function trimImageBudget(messages) {
+    let spent = 0;
+    for (let index = messages.length - 1; index >= 0; index--) {
+      const message = messages[index];
+      if (!message.images || !message.images.length) continue;
+      const kept = [];
+      for (const image of message.images) {
+        if (spent + image.dataUrl.length > MAX_CONVERSATION_IMAGE_CHARS) break;
+        spent += image.dataUrl.length;
+        kept.push(image);
+      }
+      message.images = kept;
+    }
+    return messages;
+  }
+
   function normalizeMessage(raw) {
     if (!isPlainObject(raw)) return null;
     const id = typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 64) : newId();
@@ -55,7 +104,7 @@
 
     if (raw.role === 'user') {
       const content = trimTo(raw.content, MAX_CONTENT_CHARS);
-      return { id, role: 'user', content, at };
+      return { id, role: 'user', content, images: normalizeImages(raw.images), at };
     }
     if (raw.role !== 'assistant') return null;
 
@@ -84,10 +133,10 @@
 
   function normalizeConversation(raw) {
     if (!isPlainObject(raw)) return null;
-    const messages = (Array.isArray(raw.messages) ? raw.messages : [])
+    const messages = trimImageBudget((Array.isArray(raw.messages) ? raw.messages : [])
       .map(normalizeMessage)
       .filter(Boolean)
-      .slice(-MAX_MESSAGES);
+      .slice(-MAX_MESSAGES));
 
     const conversation = {
       id: typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 64) : newId(),
@@ -126,8 +175,8 @@
     };
   }
 
-  function userMessage(content, at = 0) {
-    return { id: newId(), role: 'user', content: trimTo(content, MAX_CONTENT_CHARS), at };
+  function userMessage(content, at = 0, images = []) {
+    return { id: newId(), role: 'user', content: trimTo(content, MAX_CONTENT_CHARS), images: normalizeImages(images), at };
   }
 
   function assistantMessage(answer, at = 0) {
@@ -150,9 +199,16 @@
   function toTurns(conversation) {
     return (conversation && Array.isArray(conversation.messages) ? conversation.messages : [])
       .filter((message) => message.role === 'user' || (!message.error && (message.reply || message.theme)))
-      .map((message) => (message.role === 'user'
-        ? { role: 'user', content: message.content }
-        : { role: 'assistant', reply: message.reply, themeChanged: message.themeChanged, theme: message.theme }));
+      .map((message) => {
+        if (message.role !== 'user') {
+          return { role: 'assistant', reply: message.reply, themeChanged: message.themeChanged, theme: message.theme };
+        }
+        // Omitted rather than sent empty: a turn with no attachment is the
+        // common case, and an empty array would travel on every one of them.
+        const turn = { role: 'user', content: message.content };
+        if (message.images && message.images.length) turn.images = message.images;
+        return turn;
+      });
   }
 
   // Editing a message rewrites history from that point: everything after it
@@ -189,9 +245,13 @@
     MAX_CONVERSATIONS,
     MAX_MESSAGES,
     MAX_CONTENT_CHARS,
+    MAX_IMAGES_PER_MESSAGE,
+    MAX_IMAGE_CHARS,
+    MAX_CONVERSATION_IMAGE_CHARS,
     newId,
     deriveTitle,
     normalizeMessage,
+    normalizeImages,
     normalizeConversation,
     normalizeConversations,
     createConversation,

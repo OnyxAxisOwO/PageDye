@@ -42,6 +42,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       aiModel: "Model",
       aiModelHint: "Type any model id the selected endpoint accepts. With Anthropic, Opus gives the best results and Haiku is the fastest and cheapest.",
       aiModelExample: "gpt-4o",
+      aiVision: "This model can read images",
+      aiVisionHint: "Turns on the attach button in the AI chat, so you can hand the model a picture to take a palette from — or to use as the wallpaper itself. Leave it off for a text-only model: attaching a picture to one fails the whole message rather than being ignored. Every Anthropic model here can read images; for an OpenAI-compatible endpoint, check your provider's model list. Switching provider resets this to that provider's default.",
       aiStylePrompt: "Standing style preference",
       aiStylePromptHint: "Optional. Whatever you write here is added to every generation on every site — a palette you like, lower saturation, colour pairings to avoid for colour-vision reasons, or your own house style. It stays in effect until you change it; for a request that applies to one theme only, just say so in the AI chat.",
       aiStylePromptExample: "Prefer low-saturation, muted colors. Avoid pure black.",
@@ -356,6 +358,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       aiModel: "模型",
       aiModelHint: "可以填写所选接口支持的任意模型 ID。使用 Anthropic 时，Opus 效果最好，Haiku 最快也最省钱。",
       aiModelExample: "gpt-4o",
+      aiVision: "该模型可以看图",
+      aiVisionHint: "打开后，AI 对话里会出现添加图片的按钮，你可以给模型一张图，让它照着取色，或者直接把这张图用作背景。纯文本模型请不要勾选：给看不了图的模型发图片，整条消息会被拒绝，而不是忽略图片。这里的 Anthropic 模型都能看图；OpenAI 兼容接口请查阅你的服务商的模型列表。切换服务商时，这一项会恢复为该服务商的默认值。",
       aiStylePrompt: "固定风格偏好",
       aiStylePromptHint: "可选。这里填写的内容会附加到每一个网站的每一次生成中，例如你偏好的配色、更低的饱和度、出于色觉考虑需要避开的颜色搭配，或是你自己的统一风格。它会一直生效，直到你修改为止；如果只想对某一次生成提要求，直接在 AI 对话里说就行。",
       aiStylePromptExample: "偏好低饱和度的柔和配色，避免使用纯黑。",
@@ -829,6 +833,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     aiBaseUrlInput: document.getElementById('ai-base-url-input'),
     aiModelInput: document.getElementById('ai-model-input'),
     aiModelSuggestions: document.getElementById('ai-model-suggestions'),
+    aiVisionInput: document.getElementById('ai-vision-input'),
     aiStylePromptInput: document.getElementById('ai-style-prompt-input'),
     aiChatRoot: document.getElementById('ai-chat-root'),
     aiChatTabSelect: document.getElementById('ai-chat-tab-select'),
@@ -2295,6 +2300,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // suggestions and both placeholders only make sense for the current one.
   function syncAiProviderFields(provider) {
     const profile = getAiProviderProfile(provider);
+    if (els.aiVisionInput) els.aiVisionInput.checked = profile.vision === true;
     if (els.aiBaseUrlInput) els.aiBaseUrlInput.placeholder = profile.defaultBaseUrl;
     // OpenAI-compatible endpoints have no knowable default model, so the
     // placeholder falls back to a worked example instead of a real default.
@@ -2310,7 +2316,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function initAiConfig() {
-    if (!els.aiProviderSelect && !els.aiApiKeyInput && !els.aiBaseUrlInput && !els.aiModelInput && !els.aiStylePromptInput) return;
+    if (!els.aiProviderSelect && !els.aiApiKeyInput && !els.aiBaseUrlInput && !els.aiModelInput &&
+      !els.aiVisionInput && !els.aiStylePromptInput) return;
     const data = await chrome.storage.local.get(AI_CONFIG_KEY);
     const config = normalizeAiConfig(data[AI_CONFIG_KEY]);
     syncAiProviderFields(config.provider);
@@ -2322,7 +2329,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Refreshed before the write is awaited so the suggestions and
         // placeholders never lag a storage round-trip behind the picker.
         syncAiProviderFields(provider);
-        await saveAiConfig({ provider });
+        // Vision goes back to the new provider's default rather than carrying
+        // over: it describes the model, and the model is about to be a
+        // different one. Written explicitly because the stored config already
+        // holds a resolved boolean, which would otherwise win over the default.
+        await saveAiConfig({ provider, vision: getAiProviderProfile(provider).vision === true });
       });
     }
 
@@ -2344,6 +2355,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       els.aiModelInput.value = config.model;
       els.aiModelInput.addEventListener('input', () => {
         queueAiConfigSave('model', () => els.aiModelInput.value.trim());
+      });
+    }
+
+    if (els.aiVisionInput) {
+      // Set after syncAiProviderFields seeded the provider default, so a
+      // stored answer wins over it.
+      els.aiVisionInput.checked = config.vision === true;
+      els.aiVisionInput.addEventListener('change', () => {
+        saveAiConfig({ vision: els.aiVisionInput.checked });
       });
     }
 

@@ -15,7 +15,9 @@
 // Model output is never given to innerHTML. Prose goes through
 // scripts/shared/markdown.js, which builds elements; palettes are re-validated
 // here before they are interpolated into a CSS gradient, because a theme read
-// back from storage is not necessarily one this extension wrote.
+// back from storage is not necessarily one this extension wrote. Attachments
+// get the same treatment: a data URL is checked against the same pattern the
+// store and the generator use before it becomes an <img> src.
 
 (function (root, factory) {
   const api = factory();
@@ -26,7 +28,13 @@
 
   const AI_CONFIG_KEY = '__pagedye_ai_config__';
   const HEX_RE = /^#[0-9a-f]{6}$/i;
+  const IMAGE_DATA_URL_RE = /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*$/;
   const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  const PAPERCLIP = [
+    'M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'
+  ];
+  const CROSS = ['M18 6L6 18', 'M6 6l12 12'];
 
   const STRINGS = {
     en: {
@@ -39,6 +47,14 @@
       placeholder: 'Ask for a change…',
       placeholderFirst: 'Describe the look you want…',
       send: 'Send',
+      attach: 'Attach an image',
+      removeImage: 'Remove this image',
+      dropHint: 'Drop images here',
+      tooManyImages: 'Up to {count} images per message.',
+      imageTooLarge: 'That image is too large.',
+      imageFailed: 'That image could not be read.',
+      imageWallpaper: 'Your image as the wallpaper',
+      imagesUnsupported: 'This model cannot read images. Pick a vision model in AI settings, or edit the message and remove the picture.',
       thinking: 'Reading the page and designing…',
       thinkingAgain: 'Working on your change…',
       emptyTitle: 'Design a background by chatting',
@@ -61,7 +77,6 @@
       apply: 'Apply',
       applied: 'Applied to this site.',
       previewing: 'Previewing — not saved yet.',
-      unchanged: 'Theme unchanged',
       frostedCount: 'Frosted glass: {count}',
       light: 'Light',
       dark: 'Dark',
@@ -78,6 +93,14 @@
       placeholder: '想改哪里？直接说…',
       placeholderFirst: '描述你想要的风格…',
       send: '发送',
+      attach: '添加图片',
+      removeImage: '移除这张图片',
+      dropHint: '把图片拖到这里',
+      tooManyImages: '每条消息最多 {count} 张图片。',
+      imageTooLarge: '这张图片太大了。',
+      imageFailed: '这张图片读不出来。',
+      imageWallpaper: '用你上传的图片当背景',
+      imagesUnsupported: '这个模型看不了图片。去 AI 设置换一个支持看图的模型，或者编辑这条消息把图片去掉。',
       thinking: '正在读取页面并设计…',
       thinkingAgain: '正在按你的要求修改…',
       emptyTitle: '用聊天的方式设计背景',
@@ -100,7 +123,6 @@
       apply: '应用',
       applied: '已应用到该网站。',
       previewing: '正在预览，尚未保存。',
-      unchanged: '主题未改动',
       frostedCount: '磨砂玻璃：{count} 处',
       light: '浅色',
       dark: '深色',
@@ -162,6 +184,14 @@
     return `linear-gradient(${Math.round(angle)}deg, ${stops.join(', ')})`;
   }
 
+  // Same reasoning as swatchGradient above, for the same reason: an attachment
+  // read back from storage is not necessarily one this extension wrote, and
+  // this string becomes an <img> src.
+  function safeImageSrc(dataUrl) {
+    const candidate = typeof dataUrl === 'string' ? dataUrl.trim() : '';
+    return IMAGE_DATA_URL_RE.test(candidate) ? candidate : '';
+  }
+
   function mount(config) {
     const host = config.root;
     if (!host) throw new Error('PageDyeAiChat.mount needs a root element.');
@@ -171,6 +201,11 @@
     const browser = config.chrome || (typeof globalThis !== 'undefined' ? globalThis.chrome : null);
     const Store = config.store || (typeof globalThis !== 'undefined' ? globalThis.PageDyeAiChatStore : null);
     const Markdown = config.markdown || (typeof globalThis !== 'undefined' ? globalThis.PageDyeMarkdown : null);
+    // Looked up per call rather than captured: the page that hosts the chat
+    // loads scripts/image.js as a plain global, and a test that wants a
+    // different one substitutes it on the window.
+    const imageApi = () => config.image || (doc.defaultView && doc.defaultView.PageDyeImage) || null;
+    const maxImages = (Store && Store.MAX_IMAGES_PER_MESSAGE) || 4;
     const variant = config.variant === 'options' ? 'options' : 'popup';
     const lang = STRINGS[config.lang] ? config.lang : 'en';
     const resolveTarget = config.resolveTarget || (async () => null);
@@ -193,11 +228,20 @@
     let editingId = '';
     let previewId = '';
     let configured = false;
+    // Whether the configured model reads images, answered by the user in AI
+    // settings. Nothing can ask an endpoint, and a model that cannot see one
+    // rejects the whole message, so the attachment button is not offered until
+    // someone has said it is safe to.
+    let visionEnabled = false;
     // Wide options screens show the list as a permanent column via CSS, so this
     // only drives the overlay the popup and narrow screens use.
     let historyOpen = false;
     let lastWritten = '';
     let flash = '';
+    // Attachments picked but not sent yet. They belong to the composer, not to
+    // a conversation, so switching conversations clears them.
+    let pendingImages = [];
+    let dragging = false;
 
     // --- structure ------------------------------------------------------------
 
@@ -239,21 +283,39 @@
     flashLine.setAttribute('aria-live', 'polite');
 
     const composer = el('form', 'ai-chat-composer');
+    const pendingStrip = el('div', 'ai-chat-attachments');
+    const composerRow = el('div', 'ai-chat-composer-row');
     const input = el('textarea', 'ai-chat-input');
     input.rows = 1;
     input.spellcheck = false;
     input.maxLength = maxMessageChars;
+    const fileInput = el('input', 'ai-chat-file');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.multiple = true;
+    fileInput.hidden = true;
+    const attachBtn = button('ai-chat-attach', '', () => fileInput.click());
+    attachBtn.appendChild(icon(PAPERCLIP, 16));
+    attachBtn.title = str('attach');
+    attachBtn.setAttribute('aria-label', str('attach'));
     const sendBtn = button('ai-chat-send', '');
     sendBtn.appendChild(icon(['M12 19V5', 'M5 12l7-7 7 7'], 16));
     sendBtn.title = str('send');
     sendBtn.setAttribute('aria-label', str('send'));
-    composer.appendChild(input);
-    composer.appendChild(sendBtn);
+    composerRow.appendChild(attachBtn);
+    composerRow.appendChild(input);
+    composerRow.appendChild(sendBtn);
+    composer.appendChild(pendingStrip);
+    composer.appendChild(composerRow);
+    composer.appendChild(fileInput);
+
+    const dropHint = el('div', 'ai-chat-drop', str('dropHint'));
 
     main.appendChild(bar);
     main.appendChild(scroll);
     main.appendChild(flashLine);
     main.appendChild(composer);
+    main.appendChild(dropHint);
     host.appendChild(sidebar);
     host.appendChild(main);
 
@@ -298,6 +360,106 @@
       }
     }
 
+    // --- attachments ----------------------------------------------------------
+
+    function thumbnail(image, onRemove) {
+      const chip = el('div', 'ai-chat-attachment');
+      const src = safeImageSrc(image && image.dataUrl);
+      if (!src) return null;
+      const thumb = el('img', 'ai-chat-attachment-img');
+      thumb.src = src;
+      thumb.alt = (image && image.name) || '';
+      thumb.draggable = false;
+      chip.appendChild(thumb);
+      if (image && image.name) chip.title = image.name;
+      if (onRemove) {
+        const remove = button('ai-chat-attachment-remove', '', onRemove);
+        remove.appendChild(icon(CROSS, 11));
+        remove.title = str('removeImage');
+        remove.setAttribute('aria-label', str('removeImage'));
+        chip.appendChild(remove);
+      }
+      return chip;
+    }
+
+    // Repaints itself in place when a chip is removed, so an editor holds one
+    // array and one node instead of re-rendering the transcript around it.
+    function renderAttachmentStrip(images, editable) {
+      const strip = el('div', 'ai-chat-attachments');
+      const paint = () => {
+        strip.textContent = '';
+        images.forEach((image, index) => {
+          const chip = thumbnail(image, editable ? () => {
+            images.splice(index, 1);
+            paint();
+          } : null);
+          if (chip) strip.appendChild(chip);
+        });
+      };
+      paint();
+      return strip;
+    }
+
+    function renderComposerAttachments() {
+      pendingStrip.textContent = '';
+      pendingImages.forEach((image, index) => {
+        const chip = thumbnail(image, () => {
+          pendingImages.splice(index, 1);
+          renderComposerAttachments();
+        });
+        if (chip) pendingStrip.appendChild(chip);
+      });
+      attachBtn.hidden = !visionEnabled;
+      attachBtn.disabled = busy || !configured || pendingImages.length >= maxImages;
+    }
+
+    // One at a time rather than in parallel: each file is decoded and re-encoded
+    // through a canvas, and a handful of large photos at once is enough to lock
+    // up the popup for a noticeable moment.
+    async function addFiles(fileList) {
+      if (busy || !configured || !visionEnabled) return;
+      const files = Array.from(fileList || []).filter((file) => file && file.type && file.type.startsWith('image/'));
+      if (!files.length) return;
+
+      const room = maxImages - pendingImages.length;
+      if (files.length > room) setFlash(str('tooManyImages', { count: maxImages }));
+      if (room <= 0) return;
+
+      const api = imageApi();
+      if (!api || typeof api.prepareChatImage !== 'function') {
+        setFlash(str('imageFailed'));
+        return;
+      }
+      for (const file of files.slice(0, room)) {
+        try {
+          const prepared = await api.prepareChatImage(file);
+          pendingImages.push({
+            dataUrl: prepared.dataUrl,
+            name: prepared.name,
+            width: prepared.width,
+            height: prepared.height
+          });
+          renderComposerAttachments();
+        } catch (error) {
+          // The size limit is the one failure worth naming: it is the only one
+          // the user can do something about.
+          setFlash(/too large/i.test(String((error && error.message) || error)) ? str('imageTooLarge') : str('imageFailed'));
+        }
+      }
+    }
+
+    function carriesFiles(event) {
+      if (!visionEnabled) return false;
+      const types = event.dataTransfer && event.dataTransfer.types;
+      return !!types && Array.prototype.indexOf.call(types, 'Files') !== -1;
+    }
+
+    function setDragging(state) {
+      if (dragging === state) return;
+      dragging = state;
+      host.classList.toggle('dragging', state);
+    }
+
     // --- rendering ------------------------------------------------------------
 
     function renderSidebar() {
@@ -314,6 +476,7 @@
         open.addEventListener('click', () => {
           activeId = conversation.id;
           editingId = '';
+          pendingImages = [];
           historyOpen = false;
           render();
           scrollToEnd();
@@ -365,21 +528,36 @@
       const card = el('div', 'ai-chat-theme');
       const head = el('div', 'ai-chat-theme-head');
       head.appendChild(el('span', 'ai-chat-theme-name', (message.theme && message.theme.themeName) || ''));
-      if (!message.themeChanged) head.appendChild(el('span', 'ai-chat-theme-badge', str('unchanged')));
       card.appendChild(head);
 
-      const swatches = el('div', 'ai-chat-swatches');
-      [['light', str('light')], ['dark', str('dark')]].forEach(([slot, label]) => {
-        const gradient = swatchGradient(message.theme && message.theme[slot]);
-        if (!gradient) return;
-        const item = el('div', 'ai-chat-swatch');
-        const chip = el('div', 'ai-chat-swatch-chip');
-        chip.style.backgroundImage = gradient;
-        item.appendChild(chip);
-        item.appendChild(el('span', 'ai-chat-swatch-label', label));
-        swatches.appendChild(item);
-      });
-      if (swatches.childNodes.length) card.appendChild(swatches);
+      // A theme built on one of the user's own pictures is shown as that
+      // picture: the two gradient chips describe the fallback, not what the
+      // page would look like if it were applied.
+      const wallpaper = message.settings && message.settings.type === 'image'
+        ? safeImageSrc(message.settings.value)
+        : '';
+      if (wallpaper) {
+        const preview = el('div', 'ai-chat-theme-image');
+        const thumb = el('img', 'ai-chat-theme-image-src');
+        thumb.src = wallpaper;
+        thumb.alt = '';
+        preview.appendChild(thumb);
+        card.appendChild(preview);
+        card.appendChild(el('p', 'ai-chat-theme-meta', str('imageWallpaper')));
+      } else {
+        const swatches = el('div', 'ai-chat-swatches');
+        [['light', str('light')], ['dark', str('dark')]].forEach(([slot, label]) => {
+          const gradient = swatchGradient(message.theme && message.theme[slot]);
+          if (!gradient) return;
+          const item = el('div', 'ai-chat-swatch');
+          const chip = el('div', 'ai-chat-swatch-chip');
+          chip.style.backgroundImage = gradient;
+          item.appendChild(chip);
+          item.appendChild(el('span', 'ai-chat-swatch-label', label));
+          swatches.appendChild(item);
+        });
+        if (swatches.childNodes.length) card.appendChild(swatches);
+      }
 
       const frosted = message.theme && Array.isArray(message.theme.frostedGlass) ? message.theme.frostedGlass.length : 0;
       if (frosted) card.appendChild(el('p', 'ai-chat-theme-meta', str('frostedCount', { count: frosted })));
@@ -408,6 +586,12 @@
 
     function renderUserMessage(conversation, message) {
       const row = el('div', 'ai-msg ai-msg-user');
+      const images = Array.isArray(message.images) ? message.images : [];
+      // Shown above the bubble in both modes: what was attached is part of the
+      // question. Editing works on a copy, where a picture can also be taken
+      // off — which is the way out when the model turns out not to read them.
+      const edited = editingId === message.id ? images.slice() : images;
+      if (edited.length) row.appendChild(renderAttachmentStrip(edited, editingId === message.id));
       if (editingId === message.id) {
         const editor = el('div', 'ai-msg-editor');
         const area = el('textarea', 'ai-chat-input ai-msg-edit-input');
@@ -425,7 +609,7 @@
           // Everything after this message answered a question that no longer
           // exists, so the transcript is rewritten from here.
           conversation.messages = Store.truncateFrom(conversation, message.id);
-          conversation.messages.push(Store.userMessage(text, Date.now()));
+          conversation.messages.push(Store.userMessage(text, Date.now(), edited));
           conversation.updatedAt = Date.now();
           await persist();
           render();
@@ -437,7 +621,9 @@
         return row;
       }
 
-      row.appendChild(el('div', 'ai-bubble', message.content));
+      // An attachment on its own is a whole message; an empty bubble under it
+      // would only be a gap.
+      if (message.content || !edited.length) row.appendChild(el('div', 'ai-bubble', message.content));
       const actions = el('div', 'ai-msg-actions');
       actions.appendChild(button('ai-chat-mini-btn', str('edit'), () => {
         editingId = message.id;
@@ -470,7 +656,7 @@
       Markdown.renderInto(answer, message.reply);
       row.appendChild(answer);
 
-      if (message.theme && message.settings) row.appendChild(renderThemeCard(message));
+      if (message.theme && message.settings && message.themeChanged) row.appendChild(renderThemeCard(message));
 
       const actions = el('div', 'ai-msg-actions');
       actions.appendChild(button('ai-chat-mini-btn', str('regenerate'), async () => {
@@ -517,6 +703,7 @@
       input.placeholder = str(empty ? 'placeholderFirst' : 'placeholder');
       input.disabled = busy || !configured;
       sendBtn.disabled = busy || !configured;
+      renderComposerAttachments();
     }
 
     // --- preview --------------------------------------------------------------
@@ -571,6 +758,11 @@
         configured = false;
         return str('setupBody');
       }
+      // The endpoint's own words are kept after the explanation: "content must
+      // be a string" means nothing on its own, but it is what a user searching
+      // their provider's docs will match on.
+      const rejectedImage = message.match(/^This model or endpoint did not accept an attached image\.\s*(.*)$/is);
+      if (rejectedImage) return `${str('imagesUnsupported')} ${rejectedImage[1]}`.trim();
       return message || str('failed');
     }
 
@@ -634,14 +826,17 @@
       if (!conversation) conversation = await startNewConversation({ silent: true });
 
       const text = input.value.trim();
+      const images = pendingImages.slice();
       // An empty first message is a legitimate request — "just design one" —
-      // but an empty follow-up is a stray Enter.
-      if (!text && conversation.messages.length) return;
+      // but an empty follow-up is a stray Enter, unless a picture came with it.
+      if (!text && !images.length && conversation.messages.length) return;
 
       input.value = '';
+      pendingImages = [];
+      renderComposerAttachments();
       resizeInput();
       const at = Date.now();
-      conversation.messages.push(Store.userMessage(text, at));
+      conversation.messages.push(Store.userMessage(text, at, images));
       conversation.updatedAt = at;
       if (!conversation.title) conversation.title = Store.deriveTitle(conversation);
       await persist();
@@ -663,6 +858,7 @@
       activeId = conversation.id;
       editingId = '';
       previewId = '';
+      pendingImages = [];
       historyOpen = false;
       await persist();
       if (!silent) {
@@ -688,6 +884,41 @@
       submit();
     });
     input.addEventListener('input', resizeInput);
+    fileInput.addEventListener('change', () => {
+      // Copied out before the reset: `files` is live, and clearing the input
+      // empties the very list this is holding.
+      const files = Array.from(fileInput.files || []);
+      // Cleared so choosing the same file twice in a row still fires.
+      fileInput.value = '';
+      addFiles(files);
+    });
+    // A screenshot goes to the clipboard, not to a file, so pasting one has to
+    // work or half the images a user would want to send are out of reach.
+    input.addEventListener('paste', (event) => {
+      const files = Array.from((event.clipboardData && event.clipboardData.files) || []);
+      if (!files.length) return;
+      event.preventDefault();
+      addFiles(files);
+    });
+    ['dragenter', 'dragover'].forEach((type) => {
+      main.addEventListener(type, (event) => {
+        if (!carriesFiles(event)) return;
+        event.preventDefault();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+        setDragging(true);
+      });
+    });
+    main.addEventListener('dragleave', (event) => {
+      // Only the pointer actually leaving the panel counts; crossing between
+      // children fires dragleave too.
+      if (event.target === main || !main.contains(event.relatedTarget)) setDragging(false);
+    });
+    main.addEventListener('drop', (event) => {
+      if (!carriesFiles(event)) return;
+      event.preventDefault();
+      setDragging(false);
+      addFiles(event.dataTransfer.files);
+    });
     input.addEventListener('keydown', (event) => {
       // Enter sends, Shift+Enter is a newline — the convention every chat UI
       // shares. isComposing keeps an IME candidate selection from sending.
@@ -702,6 +933,10 @@
       const data = await browser.storage.local.get(AI_CONFIG_KEY);
       const normalized = globalThis.PageDyeAiTheme.normalizeConfig(data && data[AI_CONFIG_KEY]);
       configured = !!(normalized.apiKey && normalized.model);
+      visionEnabled = normalized.vision === true;
+      // Turning it off mid-composition drops what was staged: it could not be
+      // sent, and leaving it on screen next to a hidden button is a puzzle.
+      if (!visionEnabled && pendingImages.length) pendingImages = [];
     }
 
     async function start() {

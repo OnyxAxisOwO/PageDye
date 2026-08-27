@@ -33,6 +33,9 @@ const SAMPLE_THEME = {
   frostedGlass: [{ selector: '#main-panel', opacity: 70, blur: 14 }]
 };
 
+const PNG = 'data:image/png;base64,iVBORw0KGgo=';
+const JPEG = 'data:image/jpeg;base64,/9j/4AAQSkZJRg==';
+
 function renderMarkdown(text) {
   const dom = new JSDOM('<div id="out"></div>');
   const out = dom.window.document.getElementById('out');
@@ -146,6 +149,45 @@ test('a stored conversation is re-validated rather than trusted', () => {
   assert.equal(conversation.title, 'hi', 'the opening line names the conversation');
 });
 
+test('an attachment that is not a plain image data URL never reaches the transcript', () => {
+  // These strings become an <img> src in the transcript and a CSS url() when the
+  // model picks one as the wallpaper, so the store is the first of the three
+  // places that refuse anything but base64 of a format both providers accept.
+  const [conversation] = store.normalizeConversations([{
+    id: 'c1',
+    messages: [{
+      role: 'user',
+      content: 'like this',
+      at: 1,
+      images: [
+        { dataUrl: PNG, name: 'ok.png' },
+        { dataUrl: 'data:text/html;base64,PHNjcmlwdD4=' },
+        { dataUrl: 'data:image/svg+xml;base64,PHN2Zz4=' },
+        { dataUrl: 'javascript:alert(1)' },
+        { dataUrl: `data:image/png;base64,x") ; body { display: none }` },
+        'not-an-object'
+      ]
+    }]
+  }]);
+
+  assert.deepEqual(conversation.messages[0].images.map((image) => image.dataUrl), [PNG]);
+});
+
+test('a message carries at most four attachments, and a turn without one says nothing about them', () => {
+  const conversation = store.normalizeConversation({
+    id: 'c1',
+    messages: [
+      { role: 'user', content: 'a', at: 1, images: [PNG, PNG, JPEG, PNG, JPEG].map((dataUrl) => ({ dataUrl })) },
+      { role: 'user', content: 'b', at: 2 }
+    ]
+  });
+
+  assert.equal(conversation.messages[0].images.length, store.MAX_IMAGES_PER_MESSAGE);
+  const turns = store.toTurns(conversation);
+  assert.equal(turns[0].images.length, store.MAX_IMAGES_PER_MESSAGE);
+  assert.ok(!('images' in turns[1]), 'the common case must not grow an empty array on every turn');
+});
+
 test('a failed turn is kept on screen but never replayed to the model', () => {
   // Replaying "the API could not be reached" as though the assistant had said
   // it teaches the model that refusing is a valid answer shape.
@@ -217,6 +259,78 @@ test('a long conversation keeps the turn carrying the page profile', () => {
   assert.equal(capped[capped.length - 1].content, 'follow-up 39');
 });
 
+test('an attachment is sent as an image block, numbered, in whichever shape the provider takes', () => {
+  const turns = [{ role: 'user', content: 'match this poster', images: [{ dataUrl: PNG, name: 'poster.png' }] }];
+
+  const anthropic = aiTheme.buildChatRequest(aiTheme.normalizeConfig({ apiKey: 'k' }), SAMPLE_PROFILE, turns)
+    .body.messages[0].content;
+  const image = anthropic.find((block) => block.type === 'image');
+  assert.equal(image.source.media_type, 'image/png');
+  assert.equal(image.source.data, 'iVBORw0KGgo=', 'the base64 travels without the data: prefix');
+  assert.ok(anthropic.some((block) => block.type === 'text' && /Attached image 1 \(poster\.png\)/.test(block.text)));
+  assert.ok(anthropic.some((block) => block.type === 'text' && block.text.includes('match this poster')));
+
+  const openai = aiTheme.buildChatRequest(
+    aiTheme.normalizeConfig({ provider: 'openai', apiKey: 'k', model: 'gpt', vision: true }),
+    SAMPLE_PROFILE,
+    turns
+  ).body.messages[1].content;
+  assert.deepEqual(openai.find((block) => block.type === 'image_url').image_url, { url: PNG });
+});
+
+test('vision defaults to what the provider makes true of every model it offers', () => {
+  // Anthropic's models all read images; behind an arbitrary base URL it cannot
+  // be known, and guessing yes there is what fails a whole message.
+  assert.equal(aiTheme.normalizeConfig({ apiKey: 'k' }).vision, true);
+  assert.equal(aiTheme.normalizeConfig({ provider: 'openai', apiKey: 'k', model: 'gpt' }).vision, false);
+  // An explicit answer wins over the default in both directions.
+  assert.equal(aiTheme.normalizeConfig({ apiKey: 'k', vision: false }).vision, false);
+  assert.equal(aiTheme.normalizeConfig({ provider: 'openai', apiKey: 'k', model: 'gpt', vision: true }).vision, true);
+});
+
+test('with vision off, a picture already in the transcript stops being sent', () => {
+  // Otherwise turning the setting off would not rescue a conversation that
+  // collected attachments while it was on: every later turn would carry them
+  // back to a model that rejects the whole message over one.
+  const turns = [{ role: 'user', content: 'match this poster', images: [{ dataUrl: PNG, name: 'poster.png' }] }];
+  const body = aiTheme.buildChatRequest(
+    aiTheme.normalizeConfig({ provider: 'openai', apiKey: 'k', model: 'text-only', vision: false }),
+    SAMPLE_PROFILE,
+    turns
+  ).body;
+
+  assert.ok(body.messages.every((message) => typeof message.content === 'string'),
+    'no message is promoted to blocks, so nothing looks multimodal to the endpoint');
+  assert.ok(body.messages[1].content.includes('match this poster'), 'the words are still asked');
+  assert.ok(!JSON.stringify(body).includes('iVBORw0KGgo='), 'the picture itself never leaves');
+});
+
+test('attachments are numbered once across the conversation, and a repeat is one picture', () => {
+  const turns = [
+    { role: 'user', content: 'this one', images: [{ dataUrl: PNG }] },
+    { role: 'assistant', reply: 'ok', theme: SAMPLE_THEME },
+    { role: 'user', content: 'and this', images: [{ dataUrl: JPEG }, { dataUrl: PNG }] }
+  ];
+
+  assert.deepEqual(aiTheme.collectImages(turns).map((image) => [image.number, image.dataUrl]), [
+    [1, PNG],
+    [2, JPEG]
+  ]);
+});
+
+test('a message that is only a picture still becomes a turn', () => {
+  // Dropping it would leave the transcript showing a question the model was
+  // never asked.
+  const messages = aiTheme.buildChatRequest(
+    aiTheme.normalizeConfig({ apiKey: 'k' }),
+    SAMPLE_PROFILE,
+    [{ role: 'user', content: 'calm please' }, { role: 'assistant', reply: 'ok', theme: SAMPLE_THEME }, { role: 'user', content: '', images: [{ dataUrl: PNG }] }]
+  ).body.messages;
+
+  assert.equal(messages.length, 3);
+  assert.ok(messages[2].content.some((block) => block.type === 'image'));
+});
+
 test('a question the model answered without redesigning does not re-offer a theme', () => {
   const answer = aiTheme.sanitizeChatReply({
     reply: 'Blue because your links are blue.',
@@ -255,6 +369,44 @@ test('a botched palette costs the turn only when the model claimed to have desig
   assert.match(answered.reply, /nearly black/);
 });
 
+test('a theme that picks one of the attachments becomes an image background', () => {
+  const theme = aiTheme.sanitizeTheme({
+    ...SAMPLE_THEME,
+    wallpaperImage: { use: true, index: 2, fit: 'tile', fixed: false, lightOpacity: 40, lightBlur: 6, darkOpacity: 25, darkBlur: 6 }
+  });
+  const settings = aiTheme.toSiteSettings(theme, SAMPLE_PROFILE, [{ dataUrl: PNG }, { dataUrl: JPEG }]);
+
+  assert.equal(settings.type, 'image');
+  assert.equal(settings.value, JPEG, 'index 2 is the second picture the model was shown');
+  assert.deepEqual(settings.style, { size: 'auto', repeat: true, fixed: false });
+  assert.equal(settings.light.opacity, 40);
+  assert.equal(settings.dark.opacity, 25);
+  assert.equal(settings.frostedGlass[0].selector, '#main-panel', 'frosting is unaffected by what is behind it');
+});
+
+test('a picked attachment the history no longer has falls back to the gradient', () => {
+  const theme = aiTheme.sanitizeTheme({
+    ...SAMPLE_THEME,
+    wallpaperImage: { use: true, index: 1, fit: 'cover', fixed: true, lightOpacity: 50, lightBlur: 0, darkOpacity: 40, darkBlur: 0 }
+  });
+
+  // The conversation dropped the pixels of its oldest attachments; the theme
+  // was designed to carry a palette for exactly this case.
+  const settings = aiTheme.toSiteSettings(theme, SAMPLE_PROFILE, []);
+  assert.equal(settings.type, 'color');
+  assert.equal(settings.light.gradient.stops[0].color, '#dbeafe');
+
+  // And a picture that is not one of ours is not a picture.
+  const forged = aiTheme.toSiteSettings(theme, SAMPLE_PROFILE, [{ dataUrl: 'data:image/png;base64,a") ; x { }' }]);
+  assert.equal(forged.type, 'color');
+});
+
+test('a theme designed before attachments existed still translates', () => {
+  const settings = aiTheme.toSiteSettings(aiTheme.sanitizeTheme(SAMPLE_THEME), SAMPLE_PROFILE, [{ dataUrl: PNG }]);
+
+  assert.equal(settings.type, 'color', 'nothing asked for the picture, so nothing uses it');
+});
+
 // --- end to end through the real popup ----------------------------------------
 
 const AI_CONFIG_KEY = '__pagedye_ai_config__';
@@ -271,11 +423,11 @@ function chatReply(overrides = {}) {
   };
 }
 
-async function bootPopupChat({ configured = true, onMessage } = {}) {
+async function bootPopupChat({ configured = true, config, onMessage } = {}) {
   const sent = [];
   const mock = createChromeMock({
     initialStorage: configured
-      ? { [AI_CONFIG_KEY]: { provider: 'anthropic', apiKey: 'sk-test', model: 'claude-opus-5' } }
+      ? { [AI_CONFIG_KEY]: config || { provider: 'anthropic', apiKey: 'sk-test', model: 'claude-opus-5' } }
       : {},
     onMessage: (message) => {
       sent.push(message);
@@ -328,6 +480,160 @@ test('popup chat: a message round-trips into a rendered answer and a theme card'
   assert.ok(!JSON.stringify(request).includes('sk-test'), 'the key must never travel in the message');
 
   await waitFor(() => (page.store['__pagedye_ai_chats__'] || [])[0]?.messages.length === 2, { timeout: 3000 });
+});
+
+test('popup chat: a pasted image is attached, sent with the turn, and shown in the transcript', async () => {
+  const page = await bootPopupChat();
+  // The real one needs a canvas; what matters here is that whatever it returns
+  // is what travels.
+  page.window.PageDyeImage.prepareChatImage = async (file) => ({
+    dataUrl: PNG,
+    name: file.name,
+    mediaType: 'image/png',
+    width: 800,
+    height: 600,
+    bytes: 12
+  });
+
+  const paste = new page.window.Event('paste', { bubbles: true, cancelable: true });
+  paste.clipboardData = { files: [new page.window.File(['x'], 'shot.png', { type: 'image/png' })] };
+  page.root.querySelector('.ai-chat-input').dispatchEvent(paste);
+  await waitFor(() => page.root.querySelector('.ai-chat-composer .ai-chat-attachment-img'), { timeout: 3000 });
+
+  type(page, page.root, 'use these colours');
+  await waitFor(() => page.root.querySelector('.ai-answer'), { timeout: 3000 });
+
+  const request = page.sent.find((message) => message.action === 'pagedyeAiChat');
+  assert.deepEqual(plain(request.turns), [{
+    role: 'user',
+    content: 'use these colours',
+    images: [{ dataUrl: PNG, name: 'shot.png', width: 800, height: 600 }]
+  }]);
+  assert.equal(page.root.querySelector('.ai-msg-user .ai-chat-attachment-img').getAttribute('src'), PNG);
+  assert.equal(page.root.querySelectorAll('.ai-chat-composer .ai-chat-attachment').length, 0, 'sending empties the composer');
+});
+
+test('a text-only model rejecting the wire format is reported as "it cannot see images"', async () => {
+  // What a text-only model behind an OpenAI-compatible base URL actually says:
+  // nothing about images, only that the multimodal message is the wrong shape.
+  const request = aiTheme.buildChatRequest(
+    { provider: 'openai', apiKey: 'k', model: 'text-only', baseUrl: 'https://api.example.com/v1', vision: true },
+    SAMPLE_PROFILE,
+    [{ role: 'user', content: 'use this', images: [{ dataUrl: PNG, name: 'poster.png' }] }]
+  );
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => new Response(
+    JSON.stringify({ error: { message: 'messages[1].content must be a string' } }),
+    { status: 400, headers: { 'content-type': 'application/json' } }
+  );
+
+  try {
+    await assert.rejects(
+      aiTheme.chat({
+        config: { provider: 'openai', apiKey: 'k', model: 'text-only', baseUrl: 'https://api.example.com/v1', vision: true },
+        profile: SAMPLE_PROFILE,
+        turns: [{ role: 'user', content: 'use this', images: [{ dataUrl: PNG, name: 'poster.png' }] }]
+      }),
+      (error) => {
+        assert.ok(error.message.startsWith(aiTheme.IMAGES_REJECTED_PREFIX), error.message);
+        // The endpoint's own words survive: they are what a user searching
+        // their provider's docs will match on.
+        assert.match(error.message, /content must be a string/);
+        return true;
+      }
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+
+  // The same status without a picture in the request stays a plain error.
+  assert.ok(request.body.messages.some((message) => Array.isArray(message.content)));
+});
+
+test('popup chat: a rejected image is explained, and the picture can be taken off', async () => {
+  const page = await bootPopupChat({
+    onMessage: () => ({ ok: false, error: `${aiTheme.IMAGES_REJECTED_PREFIX} messages[1].content must be a string` })
+  });
+  page.window.PageDyeImage.prepareChatImage = async (file) => ({
+    dataUrl: PNG, name: file.name, mediaType: 'image/png', width: 40, height: 40, bytes: 12
+  });
+
+  const pasted = new page.window.Event('paste', { bubbles: true, cancelable: true });
+  pasted.clipboardData = { files: [new page.window.File(['x'], 'poster.png', { type: 'image/png' })] };
+  page.root.querySelector('.ai-chat-input').dispatchEvent(pasted);
+  await waitFor(() => page.root.querySelector('.ai-chat-composer .ai-chat-attachment-img'), { timeout: 3000 });
+  type(page, page.root, 'make a theme');
+  await waitFor(() => page.root.querySelector('.ai-chat-error-text'), { timeout: 3000 });
+
+  const shown = page.root.querySelector('.ai-chat-error-text').textContent;
+  assert.match(shown, /cannot read images/);
+  assert.match(shown, /content must be a string/, 'the endpoint\'s own words are kept');
+
+  // Editing is the way out the message points at, so the attachment has to be
+  // removable there — otherwise the advice cannot be followed.
+  buttonWithText(page.root, 'Edit').click();
+  const remove = page.root.querySelector('.ai-msg-user .ai-chat-attachment-remove');
+  assert.ok(remove, 'an attachment being edited can be taken off');
+  remove.click();
+  assert.equal(page.root.querySelector('.ai-msg-user .ai-chat-attachment-img'), null);
+});
+
+test('popup chat: with vision unticked there is nothing to attach with', async () => {
+  const page = await bootPopupChat({ config: { provider: 'openai', apiKey: 'sk-test', model: 'text-only' } });
+
+  const attach = page.root.querySelector('.ai-chat-attach');
+  assert.ok(attach, 'the button exists so the setting can be turned back on without a reload');
+  assert.equal(attach.hidden, true, 'but it is not offered');
+
+  // The routes that bypass the button have to close too, or the setting only
+  // hides the problem instead of preventing it.
+  const pasted = new page.window.Event('paste', { bubbles: true, cancelable: true });
+  pasted.clipboardData = { files: [new page.window.File(['x'], 'poster.png', { type: 'image/png' })] };
+  page.root.querySelector('.ai-chat-input').dispatchEvent(pasted);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  assert.equal(page.root.querySelector('.ai-chat-attachment-img'), null, 'a pasted picture is not staged');
+});
+
+test('popup chat: a file picked from the button survives the input being reset', async () => {
+  const page = await bootPopupChat();
+  page.window.PageDyeImage.prepareChatImage = async (file) => ({
+    dataUrl: PNG, name: file.name, mediaType: 'image/png', width: 40, height: 40, bytes: 12
+  });
+
+  // `input.files` is live, which jsdom does not model: in a browser, clearing
+  // the input so the same file can be picked twice in a row empties the very
+  // FileList object a change handler is holding — same object, length 0. That
+  // is what makes reading it after the reset a bug rather than a style
+  // question, so the fake empties in place rather than rebinding.
+  const fileInput = page.root.querySelector('.ai-chat-file');
+  const live = [new page.window.File(['x'], 'poster.png', { type: 'image/png' })];
+  Object.defineProperty(fileInput, 'files', { get: () => live });
+  Object.defineProperty(fileInput, 'value', { get: () => '', set: () => { live.length = 0; } });
+
+  fileInput.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+  await waitFor(() => page.root.querySelector('.ai-chat-composer .ai-chat-attachment-img'), { timeout: 3000 });
+
+  assert.equal(page.root.querySelector('.ai-chat-composer .ai-chat-attachment-img').getAttribute('src'), PNG);
+});
+
+test('popup chat: an image theme is previewed as the picture, not as a palette', async () => {
+  const theme = {
+    ...SAMPLE_THEME,
+    wallpaperImage: { use: true, index: 1, fit: 'cover', fixed: true, lightOpacity: 45, lightBlur: 4, darkOpacity: 30, darkBlur: 4 }
+  };
+  const page = await bootPopupChat({
+    onMessage: () => chatReply({
+      theme,
+      settings: aiTheme.toSiteSettings(aiTheme.sanitizeTheme(theme), SAMPLE_PROFILE, [{ dataUrl: PNG }])
+    })
+  });
+
+  type(page, page.root, 'use my photo');
+  await waitFor(() => page.root.querySelector('.ai-chat-theme'), { timeout: 3000 });
+
+  assert.equal(page.root.querySelector('.ai-chat-theme-image-src').getAttribute('src'), PNG);
+  assert.equal(page.root.querySelector('.ai-chat-swatch-chip'), null);
 });
 
 test('popup chat: a second message carries the first answer back as context', async () => {
@@ -414,6 +720,36 @@ test('the options page mounts the same chat and its own AI settings page', async
   // The API key fields moved out of Settings into their own page.
   assert.ok(document.querySelector('#section-ai #ai-api-key-input'));
   assert.equal(document.querySelector('#section-settings #ai-api-key-input'), null);
+});
+
+test('the vision checkbox is stored, and switching provider re-seeds it', async () => {
+  const mock = createChromeMock({
+    initialStorage: { [AI_CONFIG_KEY]: { provider: 'anthropic', apiKey: 'sk-test', model: 'claude-opus-5' } }
+  });
+  const { document, window, errors } = await loadExtensionPage('options/options.html', { chrome: mock.chrome });
+  assert.deepEqual(errors, []);
+
+  const vision = document.getElementById('ai-vision-input');
+  assert.ok(vision, 'AI settings needs the checkbox');
+  await waitFor(() => vision.checked, { timeout: 3000 });
+
+  vision.checked = false;
+  vision.dispatchEvent(new window.Event('change', { bubbles: true }));
+  await waitFor(() => mock.store[AI_CONFIG_KEY].vision === false, { timeout: 3000 });
+
+  // Switching provider is switching model, and the answer described the model.
+  const provider = document.getElementById('ai-provider-select');
+  provider.value = 'openai';
+  provider.dispatchEvent(new window.Event('change', { bubbles: true }));
+  await waitFor(() => mock.store[AI_CONFIG_KEY].provider === 'openai', { timeout: 3000 });
+  assert.equal(mock.store[AI_CONFIG_KEY].vision, false, 'an OpenAI-compatible endpoint starts without it');
+  assert.equal(vision.checked, false);
+
+  provider.value = 'anthropic';
+  provider.dispatchEvent(new window.Event('change', { bubbles: true }));
+  await waitFor(() => mock.store[AI_CONFIG_KEY].provider === 'anthropic', { timeout: 3000 });
+  assert.equal(mock.store[AI_CONFIG_KEY].vision, true, 'every Claude model here reads images');
+  assert.equal(vision.checked, true);
 });
 
 test('the popup has a third tab and it lands on the chat', async () => {
