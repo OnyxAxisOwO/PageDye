@@ -1,52 +1,63 @@
+/* The fallback palette, used for the first paint and any time applyUiTheme()
+   has not run. It must be what the DEFAULT accent produces, because that is
+   what the user sees when they have never opened Appearance: UI_THEME_ACCENTS
+   .neutral (#18181b) through getDisplayAccentColor() and
+   getNeutralSurfaceTones() in popup.js.
+   These values used to be a teal palette left over from before the theme
+   system moved into JS, which is why an unthemed popup rendered green chips
+   and badges that nothing in Appearance could explain or change. options.css
+   sidesteps the whole problem by declaring no fallback palette at all; the
+   popup needs one because it paints before storage has been read.
+   Regenerate rather than hand-edit if the derivation changes. */
 :root {
-  --primary-color: #006A6A;
+  --primary-color: #18181B;
   --primary-color-text: #ffffff;
-  --primary-hover: #005353;
-  --bg-color: #FAFDFC;
-  --text-color: #171D1C;
-  --text-secondary: #3F4948;
-  --border-color: #D9E5E3;
+  --primary-hover: #303033;
+  --bg-color: #FCFCFD;
+  --text-color: #19191A;
+  --text-secondary: #464649;
+  --border-color: #DADADD;
   --radius: 20px;
   --spacing: 12px;
-  --surface-bg: #EAF3F1;
-  --surface-card: #F2FBF9;
-  --surface-container-low: #F4FAF8;
-  --surface-container: #EEF7F5;
-  --surface-container-high: #E8F1EF;
-  --surface-container-highest: #E2ECEA;
-  --outline-variant: #BFC9C7;
-  --input-focus-shadow: rgba(0, 106, 106, 0.18);
-  --state-layer-hover: rgba(0, 106, 106, 0.08);
-  --state-layer-pressed: rgba(0, 106, 106, 0.12);
-  --badge-color-bg: rgba(0, 106, 106, 0.14);
-  --badge-color-text: #006A6A;
-  --shadow-sm: 0 1px 2px rgba(23, 29, 28, 0.10);
-  --shadow-md: 0 4px 12px rgba(23, 29, 28, 0.12);
-  --popup-corner-shadow-strong: rgba(23, 29, 28, 0.24);
-  --popup-corner-shadow-soft: rgba(23, 29, 28, 0.11);
+  --surface-bg: #ECECEE;
+  --surface-card: #F7F7F8;
+  --surface-container-low: #F7F7F8;
+  --surface-container: #F2F2F3;
+  --surface-container-high: #ECECEE;
+  --surface-container-highest: #E7E7E9;
+  --outline-variant: #BFBFC5;
+  --input-focus-shadow: rgba(24, 24, 27, 0.16);
+  --state-layer-hover: rgba(24, 24, 27, 0.08);
+  --state-layer-pressed: rgba(24, 24, 27, 0.12);
+  --badge-color-bg: rgba(24, 24, 27, 0.12);
+  --badge-color-text: #18181B;
+  --shadow-sm: 0 1px 2px rgba(24, 24, 27, 0.10);
+  --shadow-md: 0 4px 12px rgba(24, 24, 27, 0.12);
+  --popup-corner-shadow-strong: rgba(24, 24, 27, 0.24);
+  --popup-corner-shadow-soft: rgba(24, 24, 27, 0.11);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --primary-color: #80D5D1;
-    --primary-color-text: #003737;
-    --primary-hover: #9CEFEB;
-    --bg-color: #0E1514;
-    --text-color: #DEE4E2;
-    --text-secondary: #BEC9C7;
-    --border-color: #3F4948;
-    --surface-bg: #18211F;
-    --surface-card: #1C2523;
-    --surface-container-low: #171F1E;
-    --surface-container: #1C2523;
-    --surface-container-high: #26302E;
-    --surface-container-highest: #313B39;
-    --outline-variant: #3F4948;
-    --input-focus-shadow: rgba(128, 213, 209, 0.22);
-    --state-layer-hover: rgba(128, 213, 209, 0.10);
-    --state-layer-pressed: rgba(128, 213, 209, 0.16);
-    --badge-color-bg: rgba(128, 213, 209, 0.18);
-    --badge-color-text: #80D5D1;
+    --primary-color: #AEAEB7;
+    --primary-color-text: #000000;
+    --primary-hover: #8E8E97;
+    --bg-color: #0E0E10;
+    --text-color: #E0E0E1;
+    --text-secondary: #C1C1C3;
+    --border-color: #44444B;
+    --surface-bg: #1A1A1E;
+    --surface-card: #1F1F23;
+    --surface-container-low: #18181B;
+    --surface-container: #1F1F23;
+    --surface-container-high: #29292E;
+    --surface-container-highest: #35353B;
+    --outline-variant: #44444B;
+    --input-focus-shadow: rgba(174, 174, 183, 0.16);
+    --state-layer-hover: rgba(174, 174, 183, 0.10);
+    --state-layer-pressed: rgba(174, 174, 183, 0.16);
+    --badge-color-bg: rgba(174, 174, 183, 0.12);
+    --badge-color-text: #AEAEB7;
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
     --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.32);
     --popup-corner-shadow-strong: rgba(0, 0, 0, 0.44);
@@ -117,46 +128,21 @@ body:not(.advanced-mode) [data-advanced-only] {
   white-space: nowrap;
 }
 
-.target-hint-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+/* Carries the margin the wrapper row used to, so that hiding the hint (which
+   updateTargetHint does whenever the site has its own config) collapses the
+   gap with it instead of leaving one behind. Qualified by the tag because the
+   element also carries .hint, whose own margin is declared further down this
+   file and would otherwise win on source order. */
+p.target-hint {
   margin: -4px 0 8px;
-}
-
-.target-hint {
-  margin: 0;
-  flex: 1;
-}
-
-.hint-action-btn {
-  flex-shrink: 0;
-  padding: 2px 10px;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.6;
-  min-height: 22px;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  border: 1px solid var(--outline-variant);
-  border-radius: 12px;
-  background: transparent;
-  color: var(--primary-color);
-  white-space: nowrap;
-}
-
-.hint-action-btn:hover {
-  background: var(--state-layer-hover);
-  border-color: var(--primary-color);
 }
 
 .quick-preset-bar {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 0 2px 8px;
-  padding: 10px;
+  gap: 6px;
+  margin: 0 2px 6px;
+  padding: 8px;
   border: 1px solid transparent;
   border-radius: 16px;
   background: var(--surface-container);
@@ -349,183 +335,11 @@ body:not(.advanced-mode) [data-advanced-only] {
   color: #b91c1c;
 }
 
-.ai-theme-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0 2px 8px;
-  padding: 10px;
-  border: 1px solid transparent;
-  border-radius: 16px;
-  background: var(--surface-container);
-}
-
-.ai-theme-header {
-  display: flex;
-  align-items: center;
-  min-height: 28px;
-  gap: 7px;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.ai-theme-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  flex: 0 0 auto;
-  color: var(--primary-color);
-}
-
-.ai-prompt-input {
-  width: 100%;
-  min-height: 36px;
-  box-sizing: border-box;
-  padding: 0 12px;
-  border: 1px solid var(--outline, var(--text-secondary));
-  border-radius: 999px;
-  background: var(--surface, transparent);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 12px;
-}
-
-.ai-prompt-input::placeholder {
-  color: var(--text-secondary);
-  opacity: 0.75;
-}
-
-.ai-prompt-input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-}
-
-.ai-theme-refine-hint {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 10.5px;
-  line-height: 1.4;
-  opacity: 0.85;
-}
-
-.ai-generate-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 0 13px;
-  border: 1px solid var(--primary-color);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--primary-color);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
-}
-
-.ai-generate-btn:hover {
-  background: var(--primary-color);
-  color: var(--primary-color-text);
-}
-
-.ai-generate-btn:active {
-  transform: scale(0.97);
-}
-
-.ai-generate-btn:focus-visible {
-  outline: 2px solid var(--primary-color);
-  outline-offset: 2px;
-}
-
-.ai-generate-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-  transform: none;
-  background: transparent;
-  color: var(--primary-color);
-}
-
-.ai-theme-result {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  border-radius: 12px;
-  background: var(--surface-container-high, var(--surface-container));
-}
-
-.ai-theme-name {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.ai-theme-rationale {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-.ai-theme-result-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.ai-theme-keep,
-.ai-theme-discard {
-  flex: 1 1 0;
-  min-height: 32px;
-  border-radius: 999px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  transition: background 0.18s ease, color 0.18s ease;
-}
-
-.ai-theme-keep {
-  border: 1px solid var(--primary-color);
-  background: var(--primary-color);
-  color: var(--primary-color-text);
-}
-
-.ai-theme-keep:hover {
-  background: var(--primary-hover);
-  border-color: var(--primary-hover);
-}
-
-.ai-theme-discard {
-  border: 1px solid var(--outline, var(--text-secondary));
-  background: transparent;
-  color: var(--text-secondary);
-}
-
-.ai-theme-discard:hover {
-  background: var(--state-layer-hover);
-}
-
-/* The shared .quick-preset-status indent lines up with that bar's icon
-   column; this bar has no such column, so the status sits flush. */
-#ai-theme-status {
-  padding-left: 4px;
-}
-
-
-
-
-
 .control-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: 5px;
+  margin-bottom: 9px;
 }
 
 .control-group.row {
@@ -1775,8 +1589,8 @@ input:checked + .slider.round:before {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 4px 0;
+  gap: 2px;
+  padding: 2px 0;
   cursor: pointer;
   color: var(--text-secondary);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1788,7 +1602,7 @@ input:checked + .slider.round:before {
 }
 .nav-label {
   font-family: inherit;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
 }
 .bottom-nav input:checked + label {
@@ -1943,14 +1757,14 @@ body::before {
 }
 
 .container {
-  padding: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   height: 580px;
   max-height: 580px;
   min-height: 0;
   box-sizing: border-box;
-  gap: 10px;
+  gap: 8px;
   position: relative;
   overflow: hidden;
 }
@@ -1974,14 +1788,14 @@ header {
   align-items: center;
   padding-bottom: 12px;
   border-bottom: none;
-  padding: 4px 0 2px;
+  padding: 1px 0 0;
 }
 
 h1 {
   margin: 0;
   font-family: inherit;
   color: var(--primary-color);
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 700;
   letter-spacing: 0;
 }
@@ -2010,7 +1824,7 @@ h1 {
 
 
 .domain-badge {
-  font-size: 12px;
+  font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2018,7 +1832,7 @@ h1 {
   transition: all 0.2s ease;
   border-radius: 999px;
   max-width: 170px;
-  padding: 6px 10px;
+  padding: 4px 9px;
   background: var(--surface-container-high);
   color: var(--text-secondary);
   font-weight: 500;
@@ -2028,6 +1842,60 @@ h1 {
   background: var(--primary-color);
   color: var(--primary-color-text);
   box-shadow: var(--shadow-sm);
+}
+
+/* --- the AI tab claims the whole panel -------------------------------------
+   The global power switch and the save/reset footer both act on what the OTHER
+   two tabs edit, and between them they were holding about a third of the
+   popup's height away from the transcript. On the AI tab they step aside (they
+   are one tab away) and the chat stretches into what they leave, instead of
+   being capped at a fixed slice of the viewport.
+
+   The chain below exists because the panels live inside a horizontally sliding
+   flex row: each ancestor has to hand a definite height down before
+   .ai-chat-scroll's own `flex: 1` can mean anything. The viewport is switched
+   to a COLUMN so the slider stretches in height while keeping its 300% width —
+   in a column, stretch only applies to a cross-size of `auto`, and that width
+   is explicit. */
+body.ai-tab .extension-power-card,
+body.ai-tab footer {
+  display: none;
+}
+
+body.ai-tab main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body.ai-tab .editor-panels-slider-viewport {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+body.ai-tab .editor-panels-slider {
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+
+body.ai-tab #panel-ai {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+body.ai-tab #ai-chat-root {
+  flex: 1;
+  min-height: 0;
+}
+
+/* The cap is what keeps the chat a reasonable size on the other tabs' terms;
+   here there is nothing below it to protect. */
+body.ai-tab .ai-chat-popup .ai-chat-scroll {
+  max-height: none;
 }
 
 .extension-power-card {
@@ -2241,6 +2109,31 @@ label {
   width: calc((100% - 6px) / 3);
 }
 
+/* The target switch only chooses which configuration the panels below are
+   editing — it is chrome around them, not one of them — so it sits a size
+   under the segmented controls inside the panels. Overriding here rather than
+   next to .target-tabs's other rules because these share their specificity
+   with the .segmented-control defaults above and only win on source order. */
+.target-tabs {
+  padding: 2px;
+}
+
+.target-tabs label {
+  min-height: 0;
+  padding: 5px 6px;
+  font-size: 12px;
+}
+
+.target-tabs::before {
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+}
+
+.target-tabs:has(input:nth-of-type(2):last-of-type)::before {
+  width: calc((100% - 4px) / 2);
+}
+
 .bg-style-facade {
   display: flex;
   justify-content: space-between;
@@ -2319,7 +2212,7 @@ label {
 
 .accordion {
   border-radius: 18px;
-  margin: 0 2px 8px;
+  margin: 0 2px 6px;
 }
 
 .accordion[open] {
@@ -2337,8 +2230,8 @@ label {
   list-style: none;
   user-select: none;
   font-family: inherit;
-  min-height: 40px;
-  padding: 5px 14px;
+  min-height: 34px;
+  padding: 3px 12px;
   font-size: 13px;
   line-height: 1.25;
   gap: 8px;
@@ -2851,8 +2744,8 @@ footer {
   align-items: center;
   background: transparent;
   flex: 0 0 auto;
-  margin-top: 8px;
-  padding: 8px 4px 0;
+  margin-top: 5px;
+  padding: 5px 4px 0;
   border-top: none;
 }
 
@@ -2872,8 +2765,8 @@ footer {
   flex: 0 0 auto;
   position: relative;
   bottom: auto;
-  margin: 8px -16px -16px;
-  padding: 8px 16px 14px;
+  margin: 6px -12px -12px;
+  padding: 5px 12px 7px;
   background: var(--surface-container);
   border-top: 1px solid var(--outline-variant);
   border-radius: 16px 16px 0 0;
@@ -2891,10 +2784,10 @@ footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 32px;
+  width: 52px;
+  height: 26px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 18px;
+  border-radius: 13px;
 }
 
 .bottom-nav input:checked + label {

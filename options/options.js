@@ -23,8 +23,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       unlockAppearanceExtras: "Dashboard background images and reduced motion",
       unlockStorageTools: "Detailed storage and image tools",
       unlockDeveloperOptions: "Developer options, right below",
-      aiGroupTitle: "AI theme generation",
-      aiGroupHint: "Let PageDye propose a background and colour scheme for the page you are viewing, using your own API key.",
+      navAiChat: "AI Chat",
+      navAiSettings: "AI Settings",
+      aiChatTitle: "AI Chat",
+      aiChatHint: "Describe the background you want and refine it by asking for changes. Each conversation is about one page.",
+      aiChatTarget: "Page to design for",
+      aiChatTargetHint: "Pick one of your open tabs. PageDye reads its colours and layout — never its text — each time you send a message.",
+      aiChatRefreshTabs: "Refresh",
+      aiChatNoTabs: "No open tab PageDye can read.",
+      aiSettingsTitle: "AI Settings",
+      aiSettingsHint: "The provider, key and standing preferences the AI chat runs on. Nothing leaves this browser until you fill in a key.",
       aiProvider: "API provider",
       aiProviderHint: "Pick \"OpenAI Compatible\" for any service that exposes a /chat/completions endpoint — DeepSeek, OpenRouter, a local Ollama, and so on.",
       aiApiKey: "API key",
@@ -35,7 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       aiModelHint: "Type any model id the selected endpoint accepts. With Anthropic, Opus gives the best results and Haiku is the fastest and cheapest.",
       aiModelExample: "gpt-4o",
       aiStylePrompt: "Standing style preference",
-      aiStylePromptHint: "Optional. Whatever you write here is added to every generation on every site — a palette you like, lower saturation, colour pairings to avoid for colour-vision reasons, or your own house style. It stays in effect until you change it; for a request that applies to one theme only, use the prompt box in the popup when you generate.",
+      aiStylePromptHint: "Optional. Whatever you write here is added to every generation on every site — a palette you like, lower saturation, colour pairings to avoid for colour-vision reasons, or your own house style. It stays in effect until you change it; for a request that applies to one theme only, just say so in the AI chat.",
       aiStylePromptExample: "Prefer low-saturation, muted colors. Avoid pure black.",
       aiConfigSaved: "AI settings saved!",
       settingsDevGroupTitle: "Developer options",
@@ -329,8 +337,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       unlockAppearanceExtras: "设置页背景图片与减少动画",
       unlockStorageTools: "详细的存储与图片工具",
       unlockDeveloperOptions: "开发者选项（就在下方）",
-      aiGroupTitle: "AI 生成主题",
-      aiGroupHint: "使用你自己的 API 密钥，让 PageDye 为当前浏览的网页推荐背景和配色。",
+      navAiChat: "AI 对话",
+      navAiSettings: "AI 设置",
+      aiChatTitle: "AI 对话",
+      aiChatHint: "用一句话说出你想要的背景，再不断提要求慢慢改。每个对话只针对一个页面。",
+      aiChatTarget: "要配背景的页面",
+      aiChatTargetHint: "从你已打开的标签页里选一个。每次发送消息时，PageDye 都会重新读取它的配色和布局，不会读取正文内容。",
+      aiChatRefreshTabs: "刷新",
+      aiChatNoTabs: "没有可读取的已打开标签页。",
+      aiSettingsTitle: "AI 设置",
+      aiSettingsHint: "AI 对话使用的服务商、密钥和固定偏好。在你填写密钥之前，不会有任何数据离开这个浏览器。",
       aiProvider: "API 服务商",
       aiProviderHint: "只要服务提供 /chat/completions 接口，选择“OpenAI Compatible”即可接入，例如 DeepSeek、OpenRouter 或本地运行的 Ollama。",
       aiApiKey: "API 密钥",
@@ -341,7 +357,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       aiModelHint: "可以填写所选接口支持的任意模型 ID。使用 Anthropic 时，Opus 效果最好，Haiku 最快也最省钱。",
       aiModelExample: "gpt-4o",
       aiStylePrompt: "固定风格偏好",
-      aiStylePromptHint: "可选。这里填写的内容会附加到每一个网站的每一次生成中，例如你偏好的配色、更低的饱和度、出于色觉考虑需要避开的颜色搭配，或是你自己的统一风格。它会一直生效，直到你修改为止；如果只想对某一次生成提要求，请在弹窗中生成时填写当次需求。",
+      aiStylePromptHint: "可选。这里填写的内容会附加到每一个网站的每一次生成中，例如你偏好的配色、更低的饱和度、出于色觉考虑需要避开的颜色搭配，或是你自己的统一风格。它会一直生效，直到你修改为止；如果只想对某一次生成提要求，直接在 AI 对话里说就行。",
       aiStylePromptExample: "偏好低饱和度的柔和配色，避免使用纯黑。",
       aiConfigSaved: "AI 设置已保存!",
       settingsDevGroupTitle: "开发者选项",
@@ -814,6 +830,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     aiModelInput: document.getElementById('ai-model-input'),
     aiModelSuggestions: document.getElementById('ai-model-suggestions'),
     aiStylePromptInput: document.getElementById('ai-style-prompt-input'),
+    aiChatRoot: document.getElementById('ai-chat-root'),
+    aiChatTabSelect: document.getElementById('ai-chat-tab-select'),
+    aiChatTabRefresh: document.getElementById('ai-chat-tab-refresh'),
     advancedModeToggle: document.getElementById('advanced-mode-toggle'),
     advancedModeStatus: document.getElementById('advanced-mode-status'),
     debugModeToggle: document.getElementById('debug-mode-toggle'),
@@ -917,6 +936,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initUiTheme();
   await initPauseShortcut();
   await initAiConfig();
+  initAiChat();
 
   // Sidebar navigation switching
   els.navItems.forEach(item => {
@@ -2336,6 +2356,89 @@ document.addEventListener('DOMContentLoaded', async () => {
         queueAiConfigSave('stylePrompt', () => els.aiStylePromptInput.value.trim().slice(0, AI_STYLE_PROMPT_MAX_CHARS));
       });
     }
+  }
+
+  // --- AI chat --------------------------------------------------------------
+  // Same component as the popup (scripts/shared/ai-chat.js), wired differently:
+  // this page has no page of its own to design for, so the target tab is an
+  // explicit choice, and applying writes straight to that site's stored
+  // settings. There is deliberately no live preview here — the chosen tab may
+  // not even be visible, so painting it would be a promise this page cannot
+  // keep, and the user would have no way to see what they were undoing.
+  function initAiChat() {
+    if (!els.aiChatRoot || !window.PageDyeAiChat) return;
+
+    function hostnameOf(url) {
+      try {
+        return new URL(url).hostname;
+      } catch (_) {
+        return '';
+      }
+    }
+
+    async function refreshTabs() {
+      const select = els.aiChatTabSelect;
+      if (!select) return;
+      const previous = select.value;
+      select.textContent = '';
+
+      const tabs = await chrome.tabs.query({});
+      // Only pages a content script can actually be injected into: a profile
+      // cannot be read from about:, chrome:// or the extension's own pages.
+      const usable = tabs.filter((tab) => Number.isInteger(tab.id) && typeof tab.url === 'string' && /^https?:/i.test(tab.url));
+
+      if (!usable.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = t('aiChatNoTabs');
+        select.appendChild(option);
+        select.disabled = true;
+        return;
+      }
+
+      select.disabled = false;
+      usable.forEach((tab) => {
+        const option = document.createElement('option');
+        const hostname = hostnameOf(tab.url);
+        option.value = String(tab.id);
+        option.dataset.hostname = hostname;
+        const title = (tab.title || '').slice(0, 60);
+        option.textContent = hostname && title ? `${hostname} — ${title}` : (hostname || title || tab.url);
+        select.appendChild(option);
+      });
+
+      const active = usable.find((tab) => tab.active);
+      if (previous && Array.from(select.options).some((option) => option.value === previous)) select.value = previous;
+      else if (active) select.value = String(active.id);
+    }
+
+    if (els.aiChatTabRefresh) els.aiChatTabRefresh.addEventListener('click', () => { refreshTabs(); });
+
+    window.PageDyeAiChat.mount({
+      root: els.aiChatRoot,
+      variant: 'options',
+      lang,
+      resolveTarget: async () => {
+        const select = els.aiChatTabSelect;
+        const option = select && select.selectedOptions && select.selectedOptions[0];
+        if (!option || !option.value) return null;
+        return { tabId: Number(option.value), hostname: option.dataset.hostname || '' };
+      },
+      onApply: async (settings, conversation) => {
+        const hostname = (conversation && conversation.hostname) || '';
+        if (!hostname) throw new Error(t('aiChatNoTabs'));
+        // Re-validated here rather than trusted: the theme travelled through
+        // storage since it was generated, and this write lands on the key the
+        // content script reads on every page load.
+        const normalized = window.PageDyeStorage.normalizeSiteSettings(settings);
+        if (!normalized) throw new Error(t('error'));
+        await chrome.storage.local.set({ [hostname]: normalized });
+        await loadSitesList();
+      },
+      openAiSettings: () => navigateToSection('section-ai')
+    });
+
+    refreshTabs();
   }
 
   async function initUiTheme() {

@@ -427,6 +427,12 @@ function applyUiTheme(theme) {
   root.setProperty('--primary-color-text', onAccent);
   root.setProperty('--primary-hover', hover);
   root.setProperty('--input-focus-shadow', hexToRgba(accent, 0.16));
+  // popup.css tints every hover and press with these, but nothing here ever
+  // wrote them — so those tints sat on the stylesheet fallback and ignored the
+  // accent completely, which is how a themed popup still had patches of the
+  // default palette in it. The alphas match what the fallback declares.
+  root.setProperty('--state-layer-hover', hexToRgba(accent, isDark ? 0.1 : 0.08));
+  root.setProperty('--state-layer-pressed', hexToRgba(accent, isDark ? 0.16 : 0.12));
   root.setProperty('--primary-gradient', `linear-gradient(135deg, ${accent} 0%, ${hover} 100%)`);
   root.setProperty('--accent-glow', `0 0 12px ${hexToRgba(accent, 0.22)}`);
   root.setProperty('--table-hover-bg', hexToRgba(accent, 0.05));
@@ -504,20 +510,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       saved: "Saved!",
       resetMsg: "Reset!",
       error: "Error saving!",
-      aiThemeLabel: "AI Theme",
-      aiGenerate: "Generate from this page",
-      aiRegenerate: "Apply this change",
-      aiPromptPlaceholder: "Optional: describe the look you want",
-      aiRefinePlaceholder: "What should change? e.g. darker, warmer",
-      aiRefineHint: "Type a change above and generate again to refine this theme.",
-      aiKeep: "Keep",
-      aiDiscard: "Discard",
-      aiReadingPage: "Reading the page…",
-      aiThinking: "Designing a theme…",
-      aiRefining: "Applying your change…",
-      aiNoKey: "Set your API key and model in Settings first.",
-      aiKept: "Theme saved.",
-      aiDiscarded: "Discarded.",
+      tabAiChat: "AI",
       noTab: "No Active Tab",
       invalidUrl: "Invalid URL",
       restrictedTitle: "PageDye can't run here",
@@ -530,11 +523,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       extensionPowerHint: "Turn it off to stop all PageDye features on every page.",
       targetSite: "This Site",
       targetDefault: "Default (All Sites)",
-      targetHintInherited: "This site has no settings of its own — showing the global default. Editing will save a config just for this site.",
-      targetHintDefault: "Applies to every site that doesn't have its own settings.",
       targetHintRule: "A page rule is controlling this page: {pattern}. Changes will be saved to that rule.",
       targetHintExcluded: "PageDye is leaving this page unchanged because of a saved page rule: {pattern}.",
-      clearCurrentConfig: "Clear current config",
       confirmClearSite: "Clear this site's background config? This can't be undone.",
       confirmClearDefault: "Clear the global default background config? This can't be undone.",
       tabWallpaper: "Wallpaper",
@@ -722,31 +712,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       saved: "已保存!",
       resetMsg: "已重置!",
       error: "保存失败!",
-      aiThemeLabel: "AI 主题",
-      aiGenerate: "根据本页生成",
-      aiRegenerate: "按这个要求修改",
-      aiPromptPlaceholder: "可选：描述你想要的风格",
-      aiRefinePlaceholder: "想改哪里？例如：再暗一点、换暖色",
-      aiRefineHint: "在上方输入想改的地方，再次生成即可在当前主题上修改。",
-      aiKeep: "保留",
-      aiDiscard: "放弃",
-      aiReadingPage: "正在读取页面…",
-      aiThinking: "正在设计主题…",
-      aiRefining: "正在按你的要求修改…",
-      aiNoKey: "请先在设置页填写 API 密钥和模型。",
-      aiKept: "主题已保存。",
-      aiDiscarded: "已放弃。",
+      tabAiChat: "AI",
       noTab: "无活动标签页",
       invalidUrl: "无效的链接",
       restrictedTitle: "PageDye 无法在此页面运行",
       restrictedMessage: "由于浏览器安全限制，PageDye 无法作用于当前标签页，已自动禁用。",
       targetSite: "此网站",
       targetDefault: "全站默认",
-      targetHintInherited: "当前网站没有单独设置，正在使用全局默认背景。修改后将为此网站单独保存。",
-      targetHintDefault: "应用于所有没有单独设置背景的网站。",
       targetHintRule: "当前页面由一条页面规则控制：{pattern}。修改会保存到这条规则。",
       targetHintExcluded: "PageDye 会根据已保存的页面规则保持此页原样：{pattern}。",
-      clearCurrentConfig: "清除当前配置",
       confirmClearSite: "确定要清除此网站的独立背景配置吗？此操作无法撤销。",
       confirmClearDefault: "确定要清除全站默认背景配置吗？此操作无法撤销。",
       tabWallpaper: "壁纸",
@@ -989,7 +963,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     settingsBtn: document.getElementById('settings-btn'),
 
     resetBtn: document.getElementById('reset-btn'),
-    clearCurrentBtn: document.getElementById('clear-current-btn'),
 
     // Modes & Schemes
     wpModes: document.getElementsByName('wpMode'),
@@ -1014,17 +987,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     statusText: document.getElementById('status-text'),
     restrictedOverlay: document.getElementById('restricted-page-overlay'),
     restrictedEnableBtn: document.getElementById('restricted-enable-btn'),
-    extensionEnabledToggle: document.getElementById('extension-enabled-toggle'),
-    aiGenerateBtn: document.getElementById('ai-generate-btn'),
-    aiGenerateLabel: document.getElementById('ai-generate-label'),
-    aiPromptInput: document.getElementById('ai-prompt-input'),
-    aiThemeResult: document.getElementById('ai-theme-result'),
-    aiThemeName: document.getElementById('ai-theme-name'),
-    aiThemeRationale: document.getElementById('ai-theme-rationale'),
-    aiThemeKeep: document.getElementById('ai-theme-keep'),
-    aiThemeDiscard: document.getElementById('ai-theme-discard'),
-    aiThemeStatus: document.getElementById('ai-theme-status')
+    extensionEnabledToggle: document.getElementById('extension-enabled-toggle')
   };
+
+  // Assigned by initAiChat(); read by the tab handler so switching to the AI
+  // tab can put the caret in the composer.
+  let aiChat = null;
 
   // setAccordionOpen/handleAccordionSummaryClick live in scripts/shared/ui-accordion.js
   // (byte-identical to the options.js copies they were extracted from).
@@ -1189,7 +1157,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // State
   let currentDomain = ''; // key currently being edited/saved: siteDomain or DEFAULT_BG_KEY
   let siteDomain = ''; // the active tab's real hostname, always
-  let siteHasOwnConfig = false; // whether siteDomain has its own saved entry (vs. inheriting the default)
   let activePageUrl = '';
   let activeRuleId = null;
   let activeRulePattern = '';
@@ -1289,21 +1256,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const lastSelectedPopupTab = localStorage.getItem('pagedye_last_popup_tab') || 'wallpaper';
       const tabRadio = document.querySelector(`input[name="mainTab"][value="${lastSelectedPopupTab}"]`);
       if (tabRadio) tabRadio.checked = true;
-      const panelsSlider = document.getElementById('panels-slider');
-      if (panelsSlider) {
-        panelsSlider.style.transition = 'none';
-        panelsSlider.style.transform = lastSelectedPopupTab === 'frosted' ? 'translateX(-50%)' : 'translateX(0)';
-        panelsSlider.offsetHeight; // trigger reflow
-        panelsSlider.style.transition = '';
-      }
-      const panelWallpaper = document.getElementById('panel-wallpaper');
-      const panelFrosted = document.getElementById('panel-frosted');
-      if (panelWallpaper) {
-        panelWallpaper.classList.toggle('inactive', lastSelectedPopupTab === 'frosted');
-      }
-      if (panelFrosted) {
-        panelFrosted.classList.toggle('inactive', lastSelectedPopupTab !== 'frosted');
-      }
+      // Restored without animation so the popup does not open mid-slide.
+      showMainPanel(tabRadio ? lastSelectedPopupTab : 'wallpaper', false);
 
       els.targetTabs.forEach(radio => {
         radio.addEventListener('change', () => {
@@ -1745,28 +1699,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   els.deepCompatPickBtn.addEventListener('click', startDeepCompatPicker);
   els.textEditorStartBtn.addEventListener('click', startTextEditor);
 
-  // Top-level tabs: Wallpaper vs Frosted Glass sliding transition
-  const panelWallpaper = document.getElementById('panel-wallpaper');
-  const panelFrosted = document.getElementById('panel-frosted');
+  // Top-level tabs: Wallpaper / Frosted Glass / AI share one horizontal slider.
   const panelsSlider = document.getElementById('panels-slider');
 
   document.getElementsByName('mainTab').forEach((radio) => {
     radio.addEventListener('change', () => {
-      const isFrosted = radio.checked && radio.value === 'frosted';
+      if (!radio.checked) return;
       localStorage.setItem('pagedye_last_popup_tab', radio.value);
-      
-      if (panelsSlider) {
-        panelsSlider.classList.add('transitioning');
-      }
-      
-      if (panelWallpaper) panelWallpaper.classList.toggle('inactive', isFrosted);
-      if (panelFrosted) panelFrosted.classList.toggle('inactive', !isFrosted);
-      
-      requestAnimationFrame(() => {
-        if (panelsSlider) {
-          panelsSlider.style.transform = isFrosted ? 'translateX(-50%)' : 'translateX(0)';
-        }
-      });
+      showMainPanel(radio.value);
+      // The chat is the only panel whose first action is typing, so it gets
+      // the caret handed to it the moment its tab comes up.
+      if (radio.value === 'ai' && aiChat) aiChat.focus();
     });
   });
 
@@ -1937,13 +1880,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Actions
-  els.resetBtn.addEventListener('click', resetSettings);
-  els.clearCurrentBtn.addEventListener('click', () => {
+  // Reset deletes the stored entry for whichever target is selected, so it
+  // asks first. It used to be the unguarded twin of a "Clear current config"
+  // button that ran exactly the same function with a confirmation — two entry
+  // points to one destructive action, and the protection was on the wrong one.
+  els.resetBtn.addEventListener('click', () => {
     const msg = currentDomain === DEFAULT_BG_KEY ? t('confirmClearDefault') : t('confirmClearSite');
     if (window.confirm(msg)) resetSettings();
   });
 
-  initAiTheme();
+  initAiChat();
   
   // Copy domain hostname
   els.domainBadge.addEventListener('click', async () => {
@@ -2228,18 +2174,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
   }
 
+  // Only the two states a user could not deduce from the rest of the popup
+  // still get a line here: a page rule driving this page, or a rule holding
+  // PageDye off it. "This site has nothing of its own yet" and "this is the
+  // global default" were already said by the target tabs directly above, and
+  // restating them cost two rows of the panel below on every single open.
   function updateTargetHint() {
-    if (currentDomain === DEFAULT_BG_KEY) {
-      els.targetHint.textContent = t('targetHintDefault');
-      els.targetHint.style.display = '';
-    } else if (pageExcluded) {
+    if (pageExcluded) {
       els.targetHint.textContent = t('targetHintExcluded').replace('{pattern}', activeRulePattern);
       els.targetHint.style.display = '';
     } else if (activeRuleId) {
       els.targetHint.textContent = t('targetHintRule').replace('{pattern}', activeRulePattern);
-      els.targetHint.style.display = '';
-    } else if (!siteHasOwnConfig) {
-      els.targetHint.textContent = t('targetHintInherited');
       els.targetHint.style.display = '';
     } else {
       els.targetHint.textContent = '';
@@ -2309,7 +2254,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       activeRulePattern = resolved.rule ? resolved.rule.pattern : '';
       pageExcluded = resolved.excluded;
       ownEntry = resolved.settings;
-      siteHasOwnConfig = resolved.source === 'rule' || resolved.source === 'hostname';
       els.domainBadge.textContent = activeRulePattern || siteDomain;
     }
     // Editing "this site" with no override of its own falls back to the
@@ -3279,7 +3223,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       activeRuleId = rule.id;
       activeRulePattern = pattern;
       pageExcluded = false;
-      siteHasOwnConfig = true;
       updateTargetHint();
       return;
     }
@@ -3301,7 +3244,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       pendingSettingsWrite = write;
       await write;
       if (pendingSettingsWrite === write) pendingSettingsWrite = null;
-      if (currentDomain === siteDomain) { siteHasOwnConfig = true; updateTargetHint(); }
 
       try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -3322,169 +3264,121 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // --- AI theme generation ------------------------------------------------
-  // Preview-first: a generated theme is painted on the tab via updateBackground
-  // (which touches no storage) and only reaches saveSettingsToCurrentTarget if
-  // the user keeps it. Discarding re-sends the snapshot taken before the
-  // preview, so the page returns to exactly what was configured before —
-  // important because the first generations for any given site are the ones
-  // most likely to be wrong.
-  function initAiTheme() {
-    if (!els.aiGenerateBtn) return;
+  // --- AI theme chat --------------------------------------------------------
+  // Preview-first, as the one-shot bar this replaced was: a proposed theme is
+  // painted on the live tab through updateBackground (which touches no storage)
+  // and only reaches saveSettingsToCurrentTarget when the user presses Apply, so
+  // a bad answer costs one click instead of overwriting a configuration they
+  // spent time on.
+  //
+  // The transcript, editing, regeneration and markdown all live in
+  // scripts/shared/ai-chat.js, shared with the options page; what stays here is
+  // only the part that is specific to having a live tab to paint on.
+  function initAiChat() {
+    const root = document.getElementById('ai-chat-root');
+    if (!root || !window.PageDyeAiChat) return;
 
+    // Taken before the FIRST preview and reused for every later undo, so
+    // backing out after three refinements restores the user's own settings
+    // rather than the second-round theme.
     let previewSnapshot = null;
-    let pendingSettings = null;
-    // The theme currently being previewed. Its presence is what makes the next
-    // generate a refinement of this result rather than a fresh roll, so it is
-    // cleared everywhere the preview ends.
-    let previewTheme = null;
-    let generating = false;
-
-    // Swapping the button label and the placeholder is the only signal that
-    // the same field now means "change this" instead of "describe a look".
-    function setRefineMode(active) {
-      if (els.aiGenerateLabel) els.aiGenerateLabel.textContent = active ? t('aiRegenerate') : t('aiGenerate');
-      if (els.aiPromptInput) {
-        els.aiPromptInput.placeholder = active ? t('aiRefinePlaceholder') : t('aiPromptPlaceholder');
-      }
-    }
-
-    function setAiStatus(text, isError = false) {
-      if (!els.aiThemeStatus) return;
-      els.aiThemeStatus.textContent = text || '';
-      els.aiThemeStatus.classList.toggle('error', !!isError);
-      els.aiThemeStatus.classList.toggle('visible', !!text);
-    }
-
-    function showResult(result) {
-      if (els.aiThemeName) els.aiThemeName.textContent = result.themeName || '';
-      if (els.aiThemeRationale) els.aiThemeRationale.textContent = result.rationale || '';
-      if (els.aiThemeResult) els.aiThemeResult.hidden = false;
-      // Clear the box so the next request is read as a fresh change rather
-      // than silently re-sending the instruction that produced this result.
-      if (els.aiPromptInput) els.aiPromptInput.value = '';
-      setRefineMode(true);
-    }
-
-    function hideResult() {
-      if (els.aiThemeResult) els.aiThemeResult.hidden = true;
-      previewSnapshot = null;
-      pendingSettings = null;
-      previewTheme = null;
-      setRefineMode(false);
-    }
 
     async function sendToActiveTab(settings) {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab) return;
+      if (!tab) throw new Error(t('noTab'));
       await window.PageDyeInjection.ensure(tab.id);
       await window.PageDyeInjection.send(tab.id, { action: 'updateBackground', settings });
     }
 
-    async function runGeneration() {
-      if (generating) return;
-      generating = true;
-      els.aiGenerateBtn.disabled = true;
-
-      const instruction = els.aiPromptInput ? els.aiPromptInput.value.trim() : '';
-      const refining = !!previewTheme;
-      // A refinement keeps the snapshot taken before the FIRST preview, so
-      // discarding after three rounds still restores the user's own settings
-      // rather than the second-round theme.
-      const snapshot = refining ? previewSnapshot : JSON.parse(JSON.stringify(collectSettings()));
-      const basis = previewTheme;
-      if (els.aiThemeResult) els.aiThemeResult.hidden = true;
-      setAiStatus(refining ? t('aiRefining') : t('aiReadingPage'));
-
-      try {
+    aiChat = window.PageDyeAiChat.mount({
+      root,
+      variant: 'popup',
+      lang,
+      autoPreview: true,
+      resolveTarget: async () => {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab) throw new Error(t('noTab'));
-
-        previewSnapshot = snapshot;
-        if (!refining) setAiStatus(t('aiThinking'));
-
-        const response = await chrome.runtime.sendMessage({
-          action: 'pagedyeGenerateTheme',
-          tabId: tab.id,
-          instruction,
-          previousTheme: basis
-        });
-        if (!response) throw new Error(t('error'));
-        if (!response.ok) throw new Error(response.error || t('error'));
-
-        pendingSettings = response.settings;
-        previewTheme = response.theme || null;
-        await sendToActiveTab(pendingSettings);
-        showResult(response);
-        setAiStatus('');
-      } catch (error) {
-        // A failed refinement must not strand the page on a preview with no
-        // way back, so the snapshot survives while the previous result stays
-        // available to try again from.
-        if (!refining) previewSnapshot = null;
-        if (refining && els.aiThemeResult) els.aiThemeResult.hidden = false;
-        const message = String((error && error.message) || error);
-        // Both configuration errors point at the same fix, so they get a
-        // localized hint; anything else is a server or network message worth
-        // showing verbatim rather than flattening into "something went wrong".
-        const misconfigured = /No API key|No model/i.test(message);
-        setAiStatus(misconfigured ? t('aiNoKey') : message, true);
-      } finally {
-        generating = false;
-        els.aiGenerateBtn.disabled = false;
-      }
-    }
-
-    els.aiGenerateBtn.addEventListener('click', runGeneration);
-
-    if (els.aiPromptInput) {
-      // Enter is the reflex in a single-line prompt box; without this the key
-      // does nothing and the field feels broken.
-      els.aiPromptInput.addEventListener('keydown', (event) => {
-        if (event.key !== 'Enter' || event.isComposing) return;
-        event.preventDefault();
-        runGeneration();
-      });
-    }
-
-    if (els.aiThemeKeep) {
-      els.aiThemeKeep.addEventListener('click', async () => {
-        if (!pendingSettings) return;
-        const settings = pendingSettings;
-        hideResult();
+        if (!tab || !tab.url) return null;
+        try {
+          return { tabId: tab.id, hostname: new URL(tab.url).hostname };
+        } catch (_) {
+          return null;
+        }
+      },
+      onPreview: async (settings) => {
+        if (!previewSnapshot) previewSnapshot = JSON.parse(JSON.stringify(collectSettings()));
+        await sendToActiveTab(settings);
+      },
+      onRestore: async () => {
+        const snapshot = previewSnapshot;
+        previewSnapshot = null;
+        if (snapshot) await sendToActiveTab(snapshot);
+      },
+      onApply: async (settings) => {
+        previewSnapshot = null;
         setSavingState();
         try {
           await saveSettingsToCurrentTarget(settings);
-          if (currentDomain === siteDomain) { siteHasOwnConfig = true; updateTargetHint(); }
           await loadSettings(currentDomain);
           setSyncedState();
-          setAiStatus(t('aiKept'));
         } catch (error) {
           els.statusText.textContent = t('error');
-          setAiStatus(String((error && error.message) || error), true);
+          throw error;
         }
-      });
-    }
+      },
+      openAiSettings: openAiSettingsPage
+    });
+  }
 
-    if (els.aiThemeDiscard) {
-      els.aiThemeDiscard.addEventListener('click', async () => {
-        const snapshot = previewSnapshot;
-        hideResult();
-        setAiStatus(t('aiDiscarded'));
-        if (!snapshot) return;
-        try {
-          await sendToActiveTab(snapshot);
-        } catch (error) {
-          console.error(error);
-        }
-      });
+  // Deep-links straight to the AI settings page rather than the settings root:
+  // the whole point of the prompt that leads here is that one field is missing.
+  function openAiSettingsPage() {
+    const url = chrome.runtime.getURL('options/options.html#section-ai');
+    if (chrome.tabs && chrome.tabs.create) chrome.tabs.create({ url });
+    else if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
+  }
+
+  // Wallpaper / Frosted Glass / AI ride one horizontal slider, so this array is
+  // the single definition of the tab order; the transform is derived from it.
+  function showMainPanel(value, animate = true) {
+    const order = ['wallpaper', 'frosted', 'ai'];
+    const index = Math.max(0, order.indexOf(value));
+    order.forEach((name, position) => {
+      const panel = document.getElementById(`panel-${name}`);
+      if (panel) panel.classList.toggle('inactive', position !== index);
+    });
+    // The AI tab is a conversation, not a settings panel, and popup.css uses
+    // this to give the transcript the height the other tabs' chrome was
+    // holding on to.
+    document.body.classList.toggle('ai-tab', order[index] === 'ai');
+
+    const slider = document.getElementById('panels-slider');
+    if (!slider) return;
+
+    // An overflow:hidden box is still scrollable programmatically, and the
+    // slider is three popup-widths wide inside one. Anything that brings an
+    // element in an off-screen panel into view — focus(), scrollIntoView(),
+    // tabbing into it — scrolls the viewport sideways, and that offset then
+    // applies to every panel, leaving the visible one clipped off its left
+    // edge. Resetting on each switch is what keeps the transform the only
+    // thing deciding which panel is on screen.
+    const viewport = slider.parentElement;
+    if (viewport) viewport.scrollLeft = 0;
+
+    const transform = `translateX(-${(index * 100) / order.length}%)`;
+    if (!animate) {
+      slider.style.transition = 'none';
+      slider.style.transform = transform;
+      slider.offsetHeight; // flush the jump before transitions come back
+      slider.style.transition = '';
+      return;
     }
+    slider.classList.add('transitioning');
+    requestAnimationFrame(() => { slider.style.transform = transform; });
   }
 
   async function resetSettings() {
     setSavingState();
     if (!activeRuleId && !pageExcluded) await chrome.storage.local.remove(currentDomain);
-    if (currentDomain === siteDomain) { siteHasOwnConfig = false; updateTargetHint(); }
 
     currentSettings = {
       mode: 'single',

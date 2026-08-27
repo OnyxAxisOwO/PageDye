@@ -59,46 +59,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-// --- AI theme generation ---------------------------------------------------
+// --- AI theme chat ---------------------------------------------------------
 // Runs here rather than in the popup for two reasons: capturing the page
 // profile needs chrome.scripting, which the popup would have to round-trip
 // through this worker anyway, and a fetch started here is not torn down the
-// instant the popup loses focus.
+// instant the popup loses focus — which a popup-hosted chat would otherwise do
+// on every stray click outside it.
 //
 // The API key is read from storage at call time and never travels in the
 // message, so a compromised content script cannot obtain it by spoofing this
 // request — the worst it could do is spend the user's own quota.
+async function capturePageProfile(tabId) {
+  // Two-step injection: the file installs window.PageDyeProfile, the second
+  // call collects a profile from it. Both run in the same isolated world, and
+  // splitting them avoids depending on the completion value of a `files`
+  // injection.
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ['scripts/page-profile.js']
+  });
+  const [captured] = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => window.PageDyeProfile.build()
+  });
+  const profile = captured && captured.result;
+  if (!profile) throw new Error('Could not read this page.');
+  return profile;
+}
+
+// A conversation opened days ago against a tab that is now closed still has to
+// be answerable, so the caller may replay the profile captured when the chat
+// started. That is only honoured for extension pages (`sender.tab` is unset
+// there): a content script must never be able to describe the page it is
+// running on as something other than what page-profile.js would report.
+async function resolveChatProfile(message, sender) {
+  if (Number.isInteger(message.tabId)) return capturePageProfile(message.tabId);
+  const replayed = message.profile;
+  if (!sender.tab && replayed && typeof replayed === 'object') return replayed;
+  throw new Error('No target tab.');
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!message || message.action !== 'pagedyeGenerateTheme') return false;
+  if (!message || message.action !== 'pagedyeAiChat') return false;
 
   (async () => {
     try {
-      const tabId = message.tabId;
-      if (!Number.isInteger(tabId)) throw new Error('No target tab.');
-
-      // Two-step injection: the file installs window.PageDyeProfile, the
-      // second call collects a profile from it. Both run in the same isolated
-      // world, and splitting them avoids depending on the completion value of
-      // a `files` injection.
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        files: ['scripts/page-profile.js']
-      });
-      const [captured] = await chrome.scripting.executeScript({
-        target: { tabId },
-        func: () => window.PageDyeProfile.build()
-      });
-      const profile = captured && captured.result;
-      if (!profile) throw new Error('Could not read this page.');
-
+      const profile = await resolveChatProfile(message, sender);
       const data = await chrome.storage.local.get(AI_CONFIG_KEY);
-      const result = await self.PageDyeAiTheme.generate({
+      const result = await self.PageDyeAiTheme.chat({
         config: (data && data[AI_CONFIG_KEY]) || {},
         profile,
-        // Both come from the popup: what the user typed for this run, and the
-        // theme they are refining, if any.
-        instruction: message.instruction,
-        previousTheme: message.previousTheme
+        // The whole visible transcript, owned by the caller: the API is
+        // stateless, so editing an earlier message is just a shorter array.
+        turns: message.turns
       });
       sendResponse({ ok: true, ...result, profile });
     } catch (error) {

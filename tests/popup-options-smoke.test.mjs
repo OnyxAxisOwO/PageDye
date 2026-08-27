@@ -66,7 +66,7 @@ test('popup: switching to video type shows the video panel and persists type:vid
   assert.equal(document.getElementById('image-repeat-row').classList.contains('hidden'), true, 'Repeat has no meaning for a looping video');
 });
 
-test('popup: the inline "clear current config" button next to the target hint resets the active target', async () => {
+test('popup: Reset clears the active target, and only after confirmation', async () => {
   const { chrome, store } = createChromeMock({
     initialStorage: {
       'example.com': { type: 'color', value: '#112233', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } }
@@ -75,8 +75,9 @@ test('popup: the inline "clear current config" button next to the target hint re
   const { document, window, errors } = await loadExtensionPage('popup/popup.html', { chrome });
   assert.deepEqual(errors, []);
 
-  const clearBtn = document.getElementById('clear-current-btn');
-  assert.ok(clearBtn, 'clear-current-btn should exist next to the target hint');
+  const clearBtn = document.getElementById('reset-btn');
+  assert.ok(clearBtn, 'Reset is the single entry point for clearing a target');
+  assert.equal(document.getElementById('clear-current-btn'), null, 'its duplicate must not come back');
 
   let confirmMessage = null;
   window.confirm = (msg) => { confirmMessage = msg; return false; };

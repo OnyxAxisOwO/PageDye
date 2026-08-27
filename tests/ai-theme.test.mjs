@@ -33,6 +33,10 @@ const SAMPLE_PROFILE = {
   ]
 };
 
+// The opening turn of a conversation: enough to build a request from when a
+// test only cares about where it is sent and how it is authenticated.
+const FIRST_TURN = [{ role: 'user', content: '' }];
+
 const SAMPLE_THEME = {
   themeName: 'Quiet Harbor',
   rationale: 'Muted blues that keep the dark body text readable.',
@@ -171,22 +175,24 @@ test('base URL validation refuses to send the API key over plaintext', () => {
 });
 
 test('anthropic requests target /v1/messages without doubling an existing /v1', () => {
-  const plain = aiTheme.buildRequest(aiTheme.normalizeConfig({ apiKey: 'k' }), SAMPLE_PROFILE);
+  const plain = aiTheme.buildChatRequest(aiTheme.normalizeConfig({ apiKey: 'k' }), SAMPLE_PROFILE, FIRST_TURN);
   assert.equal(plain.url, 'https://api.anthropic.com/v1/messages');
   assert.equal(plain.headers['x-api-key'], 'k');
   assert.equal(plain.headers['anthropic-version'], '2023-06-01');
 
-  const alreadyVersioned = aiTheme.buildRequest(
+  const alreadyVersioned = aiTheme.buildChatRequest(
     aiTheme.normalizeConfig({ apiKey: 'k', baseUrl: 'https://proxy.example/v1' }),
-    SAMPLE_PROFILE
+    SAMPLE_PROFILE,
+    FIRST_TURN
   );
   assert.equal(alreadyVersioned.url, 'https://proxy.example/v1/messages');
 });
 
 test('openai-compatible requests use bearer auth and a strict-safe schema', () => {
-  const request = aiTheme.buildRequest(
+  const request = aiTheme.buildChatRequest(
     aiTheme.normalizeConfig({ provider: 'openai', apiKey: 'k', model: 'gpt-4o', baseUrl: 'https://openrouter.ai/api/v1' }),
-    SAMPLE_PROFILE
+    SAMPLE_PROFILE,
+    FIRST_TURN
   );
 
   assert.equal(request.url, 'https://openrouter.ai/api/v1/chat/completions');
@@ -203,10 +209,10 @@ test('openai-compatible requests use bearer auth and a strict-safe schema', () =
 });
 
 test('the user request and standing preference both reach the prompt', () => {
-  const request = aiTheme.buildRequest(
+  const request = aiTheme.buildChatRequest(
     aiTheme.normalizeConfig({ apiKey: 'k', stylePrompt: 'Prefer muted colors.' }),
     SAMPLE_PROFILE,
-    { instruction: 'make it cyberpunk' }
+    [{ role: 'user', content: 'make it cyberpunk' }]
   );
   const prompt = request.body.messages[0].content;
 
@@ -217,31 +223,39 @@ test('the user request and standing preference both reach the prompt', () => {
   assert.ok(prompt.indexOf('Page profile') < prompt.indexOf('make it cyberpunk'));
 });
 
-test('a refinement carries the previous theme and reads as a revision', () => {
+test('a refinement replays the previous theme as the assistant turn it was', () => {
   const previousTheme = aiTheme.sanitizeTheme({
     themeName: 'Quiet Harbor',
     light: { angle: 135, opacity: 85, blur: 0, stops: [{ color: '#dbeafe', position: 0 }, { color: '#eff6ff', position: 100 }] },
     dark: { angle: 135, opacity: 90, blur: 0, stops: [{ color: '#0f172a', position: 0 }, { color: '#1e293b', position: 100 }] },
     frostedGlass: []
   });
-  const prompt = aiTheme.buildRequest(
+  const messages = aiTheme.buildChatRequest(
     aiTheme.normalizeConfig({ apiKey: 'k' }),
     SAMPLE_PROFILE,
-    { instruction: 'darker', previousTheme }
-  ).body.messages[0].content;
+    [
+      { role: 'user', content: 'design something calm' },
+      { role: 'assistant', reply: 'Muted blues.', themeChanged: true, theme: previousTheme },
+      { role: 'user', content: 'darker' }
+    ]
+  ).body.messages;
 
-  assert.match(prompt, /Revise the existing theme below/);
-  assert.match(prompt, /What the user wants changed:\ndarker/);
-  assert.ok(prompt.includes('Quiet Harbor'));
-  assert.ok(prompt.includes('#dbeafe'), 'the previous palette must be visible for "darker" to mean darker than THIS');
+  assert.deepEqual(messages.map((message) => message.role), ['user', 'assistant', 'user']);
+  // The previous palette has to be visible for "darker" to mean darker than
+  // THIS rather than darker than average, and it is replayed in the answer
+  // shape it arrived in so the model reads it as its own last design.
+  assert.ok(messages[1].content.includes('#dbeafe'));
+  assert.deepEqual(JSON.parse(messages[1].content).theme.themeName, 'Quiet Harbor');
+  assert.equal(messages[2].content, 'darker');
 });
 
-test('a first-run prompt says design, not revise', () => {
-  const prompt = aiTheme.buildRequest(aiTheme.normalizeConfig({ apiKey: 'k' }), SAMPLE_PROFILE, {})
-    .body.messages[0].content;
+test('a first-run prompt carries the profile and nothing the user did not say', () => {
+  const request = aiTheme.buildChatRequest(aiTheme.normalizeConfig({ apiKey: 'k' }), SAMPLE_PROFILE, FIRST_TURN);
+  const prompt = request.body.messages[0].content;
 
+  assert.equal(request.body.messages.length, 1);
   assert.match(prompt, /Design a PageDye theme/);
-  assert.ok(!prompt.includes('Revise the existing theme'));
+  assert.ok(prompt.includes('#main-panel'), 'the page profile has to reach the model');
   // Nothing typed means no empty labelled sections cluttering the prompt.
   assert.ok(!prompt.includes('Standing preferences'));
   assert.ok(!prompt.includes('What the user'));
@@ -253,13 +267,13 @@ test('an over-long standing preference is capped before it is stored or sent', (
   assert.equal(config.stylePrompt.length, 2000);
 });
 
-test('generate hands the theme back so the next run can refine it', async () => {
+test('chat hands the theme back so the next turn can refine it', async () => {
   const result = await withMockApi(
     () => ({ payload: { content: [{ type: 'text', text: MODEL_REPLY }] } }),
-    (baseUrl) => aiTheme.generate({
+    (baseUrl) => aiTheme.chat({
       config: { provider: 'anthropic', apiKey: 'k', model: 'claude-opus-5', baseUrl },
       profile: SAMPLE_PROFILE,
-      instruction: 'warmer'
+      turns: [{ role: 'user', content: 'warmer' }]
     })
   );
 
@@ -271,20 +285,22 @@ test('a base URL pasted as the full endpoint is not doubled', () => {
   // Regression: providers document the full endpoint, so that is what gets
   // pasted. Appending the path produced
   // https://api.groq.com/openai/v1/chat/completions/chat/completions.
-  const groq = aiTheme.buildRequest(
+  const groq = aiTheme.buildChatRequest(
     aiTheme.normalizeConfig({
       provider: 'openai',
       apiKey: 'k',
       model: 'openai/gpt-oss-120b',
       baseUrl: 'https://api.groq.com/openai/v1/chat/completions'
     }),
-    SAMPLE_PROFILE
+    SAMPLE_PROFILE,
+    FIRST_TURN
   );
   assert.equal(groq.url, 'https://api.groq.com/openai/v1/chat/completions');
 
-  const anthropicFull = aiTheme.buildRequest(
+  const anthropicFull = aiTheme.buildChatRequest(
     aiTheme.normalizeConfig({ apiKey: 'k', baseUrl: 'https://api.anthropic.com/v1/messages' }),
-    SAMPLE_PROFILE
+    SAMPLE_PROFILE,
+    FIRST_TURN
   );
   assert.equal(anthropicFull.url, 'https://api.anthropic.com/v1/messages');
 });
@@ -294,14 +310,14 @@ test('every way a user might write the endpoint resolves to the same URL', () =>
   // so all of them have to work.
   for (const base of ['https://api.groq.com/openai/v1', 'https://api.groq.com/openai/v1/', 'https://api.groq.com/openai/v1/chat/completions']) {
     assert.equal(
-      aiTheme.buildRequest(aiTheme.normalizeConfig({ provider: 'openai', apiKey: 'k', model: 'm', baseUrl: base }), SAMPLE_PROFILE).url,
+      aiTheme.buildChatRequest(aiTheme.normalizeConfig({ provider: 'openai', apiKey: 'k', model: 'm', baseUrl: base }), SAMPLE_PROFILE, FIRST_TURN).url,
       'https://api.groq.com/openai/v1/chat/completions',
       `failed for ${base}`
     );
   }
   for (const base of ['https://api.anthropic.com', 'https://api.anthropic.com/', 'https://api.anthropic.com/v1', 'https://api.anthropic.com/v1/messages']) {
     assert.equal(
-      aiTheme.buildRequest(aiTheme.normalizeConfig({ apiKey: 'k', baseUrl: base }), SAMPLE_PROFILE).url,
+      aiTheme.buildChatRequest(aiTheme.normalizeConfig({ apiKey: 'k', baseUrl: base }), SAMPLE_PROFILE, FIRST_TURN).url,
       'https://api.anthropic.com/v1/messages',
       `failed for ${base}`
     );
@@ -361,7 +377,7 @@ test('a gradient the model botched fails loudly instead of painting white', () =
   }), /unusable light gradient/);
 });
 
-// Drives the real generate() against a loopback server standing in for the
+// Drives the real chat() against a loopback server standing in for the
 // API. Covers everything the live path does except the remote model itself:
 // request construction, auth headers, per-provider response parsing, local
 // sanitization, and the translation into storage shape. It also exercises the
@@ -393,34 +409,36 @@ const MODEL_REPLY = JSON.stringify({
   frostedGlass: [{ selector: '#main-panel', opacity: 70, blur: 14 }, { selector: '.invented', opacity: 50, blur: 5 }]
 });
 
-test('end-to-end generate against an Anthropic-shaped endpoint', async () => {
+test('end-to-end chat against an Anthropic-shaped endpoint', async () => {
   const seen = {};
   const result = await withMockApi(({ url, headers, body }) => {
     Object.assign(seen, { url, apiKey: headers['x-api-key'], version: headers['anthropic-version'], model: body.model });
     return { payload: { content: [{ type: 'text', text: MODEL_REPLY }] } };
-  }, (baseUrl) => aiTheme.generate({
+  }, (baseUrl) => aiTheme.chat({
     config: { provider: 'anthropic', apiKey: 'test-key', model: 'claude-opus-5', baseUrl },
-    profile: SAMPLE_PROFILE
+    profile: SAMPLE_PROFILE,
+    turns: FIRST_TURN
   }));
 
   assert.equal(seen.url, '/v1/messages');
   assert.equal(seen.apiKey, 'test-key');
   assert.equal(seen.version, '2023-06-01');
-  assert.equal(result.themeName, 'Quiet Harbor');
+  assert.equal(result.theme.themeName, 'Quiet Harbor');
   assert.equal(result.settings.light.gradient.stops[0].color, '#dbeafe');
   assert.deepEqual(result.settings.frostedGlass.map((e) => e.selector), ['#main-panel']);
   assert.ok(storageSchema.normalizeSiteSettings(result.settings));
 });
 
-test('end-to-end generate against an OpenAI-compatible endpoint', async () => {
+test('end-to-end chat against an OpenAI-compatible endpoint', async () => {
   const seen = {};
   const result = await withMockApi(({ url, headers, body }) => {
     Object.assign(seen, { url, auth: headers.authorization, model: body.model });
     // Fenced output, as a server that ignored response_format would send.
     return { payload: { choices: [{ message: { content: '```json\n' + MODEL_REPLY + '\n```' } }] } };
-  }, (baseUrl) => aiTheme.generate({
+  }, (baseUrl) => aiTheme.chat({
     config: { provider: 'openai', apiKey: 'test-key', model: 'deepseek-chat', baseUrl },
-    profile: SAMPLE_PROFILE
+    profile: SAMPLE_PROFILE,
+    turns: FIRST_TURN
   }));
 
   assert.equal(seen.url, '/chat/completions');
@@ -440,13 +458,14 @@ test('a provider that rejects json_schema is retried without it', async () => {
       return { status: 400, payload: { error: { message: "'response_format.json_schema' is not supported for this model" } } };
     }
     return { payload: { choices: [{ message: { content: MODEL_REPLY } }] } };
-  }, (baseUrl) => aiTheme.generate({
+  }, (baseUrl) => aiTheme.chat({
     config: { provider: 'openai', apiKey: 'k', model: 'openai/gpt-oss-120b', baseUrl },
-    profile: SAMPLE_PROFILE
+    profile: SAMPLE_PROFILE,
+    turns: FIRST_TURN
   }));
 
   assert.deepEqual(attempts, [true, false], 'expected one schema attempt then one without');
-  assert.equal(result.themeName, 'Quiet Harbor');
+  assert.equal(result.theme.themeName, 'Quiet Harbor');
 });
 
 test('a 400 unrelated to the schema is not retried', async () => {
@@ -455,9 +474,10 @@ test('a 400 unrelated to the schema is not retried', async () => {
     withMockApi(() => {
       calls++;
       return { status: 400, payload: { error: { message: 'model not found' } } };
-    }, (baseUrl) => aiTheme.generate({
+    }, (baseUrl) => aiTheme.chat({
       config: { provider: 'openai', apiKey: 'k', model: 'nope', baseUrl },
-      profile: SAMPLE_PROFILE
+      profile: SAMPLE_PROFILE,
+      turns: FIRST_TURN
     })),
     /model not found/
   );
@@ -468,9 +488,10 @@ test('an API error body is surfaced instead of a bare status code', async () => 
   await assert.rejects(
     withMockApi(
       () => ({ status: 500, payload: { error: { message: 'overloaded' } } }),
-      (baseUrl) => aiTheme.generate({
+      (baseUrl) => aiTheme.chat({
         config: { provider: 'anthropic', apiKey: 'k', model: 'claude-opus-5', baseUrl },
-        profile: SAMPLE_PROFILE
+        profile: SAMPLE_PROFILE,
+        turns: FIRST_TURN
       })
     ),
     /overloaded/
@@ -483,9 +504,10 @@ test('an auth failure names the provider and endpoint the key was sent to', asyn
   await assert.rejects(
     withMockApi(
       () => ({ status: 401, payload: { error: { message: 'invalid x-api-key' } } }),
-      (baseUrl) => aiTheme.generate({
+      (baseUrl) => aiTheme.chat({
         config: { provider: 'anthropic', apiKey: 'bad', model: 'claude-opus-5', baseUrl },
-        profile: SAMPLE_PROFILE
+        profile: SAMPLE_PROFILE,
+        turns: FIRST_TURN
       })
     ),
     (error) => {
