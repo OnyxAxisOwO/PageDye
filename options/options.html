@@ -114,7 +114,7 @@
       </nav>
       
       <div class="sidebar-footer">
-        <span id="version" class="version-label">v0.10.1</span>
+        <span id="version" class="version-label">v0.11.0</span>
       </div>
     </aside>
     
@@ -694,6 +694,48 @@
           </div>
         </div>
 
+        <div class="settings-group">
+          <div class="subsection-heading">
+            <h3 data-i18n="aiGroupTitle">AI theme generation</h3>
+            <p data-i18n="aiGroupHint">Let PageDye propose a background and colour scheme for the page you are viewing, using your own API key.</p>
+          </div>
+
+          <div class="card">
+            <div class="control-group">
+              <label for="ai-provider-select" data-i18n="aiProvider">API provider</label>
+              <p class="hint" data-i18n="aiProviderHint">Pick "OpenAI Compatible" for any service that exposes a /chat/completions endpoint — DeepSeek, OpenRouter, a local Ollama, and so on.</p>
+              <select id="ai-provider-select">
+                <option value="anthropic">Anthropic</option>
+                <option value="openai">OpenAI Compatible</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label for="ai-api-key-input" data-i18n="aiApiKey">API key</label>
+              <p class="hint" data-i18n="aiApiKeyHint">The key is stored only in this browser's local extension storage and is never included in exported backups. Generating a theme sends a description of the page's colours and layout — never the page text — to the API endpoint you chose.</p>
+              <input type="password" id="ai-api-key-input" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="control-group">
+              <label for="ai-base-url-input" data-i18n="aiBaseUrl">API base URL</label>
+              <p class="hint" data-i18n="aiBaseUrlHint">Leave this empty to use the selected provider's default endpoint. Your API key is sent to whatever host you enter here, so only fill in an endpoint you trust.</p>
+              <input type="url" id="ai-base-url-input" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="control-group">
+              <label for="ai-model-input" data-i18n="aiModel">Model</label>
+              <p class="hint" data-i18n="aiModelHint">Type any model id the selected endpoint accepts. With Anthropic, Opus gives the best results and Haiku is the fastest and cheapest.</p>
+              <!-- Free text rather than a dropdown: with a custom base URL the
+                   set of valid model ids is unknowable, so the datalist below
+                   only offers suggestions, filled in from JS per provider. -->
+              <input type="text" id="ai-model-input" autocomplete="off" spellcheck="false" list="ai-model-suggestions">
+              <datalist id="ai-model-suggestions"></datalist>
+            </div>
+            <div class="control-group" style="margin-bottom: 0;">
+              <label for="ai-style-prompt-input" data-i18n="aiStylePrompt">Standing style preference</label>
+              <p class="hint" data-i18n="aiStylePromptHint">Optional. Whatever you write here is added to every generation on every site — a palette you like, lower saturation, colour pairings to avoid for colour-vision reasons, or your own house style. It stays in effect until you change it; for a request that applies to one theme only, use the prompt box in the popup when you generate.</p>
+              <textarea id="ai-style-prompt-input" rows="3" spellcheck="false" data-i18n-placeholder="aiStylePromptExample"></textarea>
+            </div>
+          </div>
+        </div>
+
         <!-- Developer options: nested here (not a separate nav page) so its
              relationship to Advanced mode above is explicit — it only shows
              up once Advanced mode is on, same as everything in the list above. -->
@@ -751,7 +793,7 @@
           <div class="about-logo">
             <div class="logo-circle"><img src="../icons/icon128.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: block;"></div>
             <h3>PageDye</h3>
-            <span class="badge" id="about-version">v0.10.1</span>
+            <span class="badge" id="about-version">v0.11.0</span>
           </div>
           
           <p class="about-desc" data-i18n="aboutText">PageDye lets you give each website its own color, image, gradient, or animated background. Your choices are saved in this browser and return automatically.</p>
@@ -1414,7 +1456,7 @@
           </div>
           <div class="edit-actions-right">
             <button type="button" id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
-            <span class="version-text" id="edit-version">v0.10.1</span>
+            <span class="version-text" id="edit-version">v0.11.0</span>
             <span class="divider">|</span>
             <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; display: block;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
@@ -1537,6 +1579,10 @@
     </div>
   </div>
   <script src="../scripts/storage-schema.js"></script>
+  <!-- Loaded for its PROVIDERS table and normalizeConfig only; the settings UI
+       must not keep its own copy of the endpoints and model ids the generator
+       actually uses, or the two drift apart. -->
+  <script src="../scripts/ai-theme.js"></script>
   <script src="../scripts/storage-manager.js"></script>
   <script src="../scripts/gradient.js"></script>
   <script src="../scripts/config-presets.js"></script>

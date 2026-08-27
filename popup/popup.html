@@ -123,6 +123,42 @@
         <span id="quick-preset-status" class="quick-preset-status" role="status" aria-live="polite"></span>
       </section>
 
+      <!-- AI theme generation. Preview-first by design: the generated theme is
+           painted on the live page immediately but is not written to storage
+           until "Keep" is pressed, so a bad result costs one click to undo
+           instead of overwriting whatever the user had configured. -->
+      <section class="ai-theme-bar" aria-labelledby="ai-theme-label">
+        <div class="ai-theme-header">
+          <span class="ai-theme-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v4"></path><path d="M12 17v4"></path>
+              <path d="M3 12h4"></path><path d="M17 12h4"></path>
+              <path d="M18.4 5.6 15.5 8.5"></path><path d="M8.5 15.5l-2.9 2.9"></path>
+              <path d="M18.4 18.4 15.5 15.5"></path><path d="M8.5 8.5 5.6 5.6"></path>
+            </svg>
+          </span>
+          <span id="ai-theme-label" data-i18n="aiThemeLabel">AI Theme</span>
+        </div>
+        <input type="text" id="ai-prompt-input" class="ai-prompt-input" autocomplete="off"
+               data-i18n-placeholder="aiPromptPlaceholder" placeholder="Optional: describe the look you want">
+        <button type="button" id="ai-generate-btn" class="ai-generate-btn">
+          <span id="ai-generate-label" data-i18n="aiGenerate">Generate from this page</span>
+        </button>
+        <div id="ai-theme-result" class="ai-theme-result" hidden>
+          <h4 id="ai-theme-name" class="ai-theme-name"></h4>
+          <p id="ai-theme-rationale" class="ai-theme-rationale"></p>
+          <!-- The prompt field above stays live while this panel is open, so a
+               follow-up like "darker" refines this theme instead of rolling a
+               new one from scratch. -->
+          <p class="ai-theme-refine-hint" data-i18n="aiRefineHint">Type a change above and generate again to refine this theme.</p>
+          <div class="ai-theme-result-actions">
+            <button type="button" id="ai-theme-keep" class="ai-theme-keep" data-i18n="aiKeep">Keep</button>
+            <button type="button" id="ai-theme-discard" class="ai-theme-discard" data-i18n="aiDiscard">Discard</button>
+          </div>
+        </div>
+        <span id="ai-theme-status" class="quick-preset-status" role="status" aria-live="polite"></span>
+      </section>
+
       <!-- Details 1: Wallpaper Mode & Rotation -->
       <details class="accordion" id="accordion-mode" open>
         <summary class="accordion-summary">
@@ -886,7 +922,7 @@
         <div class="footer-actions">
           <button type="button" id="reset-btn" class="ghost-link-btn" data-i18n="reset">Reset</button>
           <span class="divider">|</span>
-          <span id="version" class="version-text">v0.10.1</span>
+          <span id="version" class="version-text">v0.11.0</span>
           <span class="divider">|</span>
           <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 13px; height: 13px; display: block;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>

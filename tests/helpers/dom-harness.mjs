@@ -5,11 +5,30 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createContext, runInContext } from 'node:vm';
 import jsdomPkg from 'jsdom';
 
 const { JSDOM, ResourceLoader } = jsdomPkg;
 
 export const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
+
+// Evaluates the real scripts/background.js the way an MV3 service worker would:
+// `self` is the global object, and importScripts() pulls sibling scripts into
+// that same global rather than into a fresh scope. A plain runInNewContext
+// throws on background.js's top-level importScripts, which would leave every
+// message listener unregistered and fail the arbiter tests for a reason that
+// has nothing to do with what they are testing.
+export function runBackgroundScript(sandbox) {
+  const context = createContext(sandbox);
+  context.self = context;
+  context.importScripts = (...files) => {
+    for (const file of files) {
+      runInContext(readFileSync(resolve(root, 'scripts', file), 'utf8'), context, { filename: file });
+    }
+  };
+  runInContext(readFileSync(resolve(root, 'scripts/background.js'), 'utf8'), context, { filename: 'background.js' });
+  return context;
+}
 
 // Creates an isolated in-memory chrome.storage.local + chrome.tabs/scripting/runtime
 // mock. Each call returns a fresh store so tests don't leak state into each other.
@@ -208,7 +227,10 @@ export async function loadExtensionPage(relHtmlPath, { chrome, patches = [], set
 export async function waitFor(conditionFn, { timeout = 2000, interval = 20 } = {}) {
   const start = Date.now();
   for (;;) {
-    const value = conditionFn();
+    // Awaited so an async condition is judged by what it resolves to. Testing
+    // the raw return value would see a pending promise, which is truthy, and
+    // every async condition would "succeed" on its first poll.
+    const value = await conditionFn();
     if (value) return value;
     if (Date.now() - start > timeout) throw new Error('waitFor: timed out');
     await new Promise((r) => setTimeout(r, interval));

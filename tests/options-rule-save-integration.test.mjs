@@ -8,10 +8,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { runInNewContext } from 'node:vm';
-import { createChromeMock, loadExtensionPage, waitFor, root } from './helpers/dom-harness.mjs';
+import { createChromeMock, loadExtensionPage, runBackgroundScript, waitFor, root } from './helpers/dom-harness.mjs';
 
-const background = readFileSync(resolve(root, 'scripts/background.js'), 'utf8');
 const RULES_KEY = '__pagedye_url_rules_v081__';
 
 function fire(el, type) {
@@ -20,7 +18,7 @@ function fire(el, type) {
 
 function attachRealBackground(chrome) {
   const backgroundListeners = [];
-  runInNewContext(background, {
+  runBackgroundScript({
     chrome: { storage: chrome.storage, runtime: { onMessage: { addListener: (fn) => backgroundListeners.push(fn) } } },
     console
   });

@@ -1772,7 +1772,7 @@ label {
 }
 
 /* Inputs */
-input[type="text"], input[type="url"] {
+input[type="text"], input[type="url"], input[type="password"] {
   padding: 10px 14px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -1784,7 +1784,7 @@ input[type="text"], input[type="url"] {
   color: var(--text-color);
 }
 
-input[type="text"]:focus, input[type="url"]:focus {
+input[type="text"]:focus, input[type="url"]:focus, input[type="password"]:focus {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 2px var(--input-focus-shadow);
@@ -4259,7 +4259,7 @@ body {
   color: var(--md-sys-color-on-secondary-container);
 }
 
-input[type="text"], input[type="url"] {
+input[type="text"], input[type="url"], input[type="password"] {
   min-height: 40px;
   border-radius: var(--md-radius-sm);
   border-color: var(--md-sys-color-outline);
@@ -4309,7 +4309,7 @@ textarea {
   color: var(--md-sys-color-on-surface);
 }
 
-input[type="text"]:focus, input[type="url"]:focus, textarea:focus {
+input[type="text"]:focus, input[type="url"]:focus, input[type="password"]:focus, textarea:focus {
   border-color: var(--md-sys-color-primary);
   box-shadow: 0 0 0 3px var(--md-state-focus);
 }
@@ -4697,6 +4697,7 @@ input:checked + .slider.round:before {
 
 #section-edit-site input[type="text"],
 #section-edit-site input[type="url"],
+#section-edit-site input[type="password"],
 #section-edit-site textarea {
   border-color: var(--md-sys-color-outline-variant);
   border-radius: 12px;
@@ -4903,6 +4904,7 @@ input:checked + .slider.round:before {
 
 input[type="text"],
 input[type="url"],
+input[type="password"],
 select,
 textarea,
 .color-preview-container,
@@ -4910,6 +4912,7 @@ textarea,
 .gradient-stop-row .gradient-stop-pos,
 #section-edit-site input[type="text"],
 #section-edit-site input[type="url"],
+#section-edit-site input[type="password"],
 #section-edit-site textarea,
 .rule-form input,
 .rule-form select,
@@ -4926,6 +4929,7 @@ textarea,
 
 input[type="text"]:focus,
 input[type="url"]:focus,
+input[type="password"]:focus,
 select:focus,
 textarea:focus,
 .pagedye-code-editor:focus-within {
@@ -4937,6 +4941,7 @@ textarea:focus,
    legible against it. */
 .accordion-content input[type="text"],
 .accordion-content input[type="url"],
+.accordion-content input[type="password"],
 .accordion-content select,
 .accordion-content textarea,
 .accordion-content .color-preview-container,

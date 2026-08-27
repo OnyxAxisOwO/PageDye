@@ -1,7 +1,10 @@
 // Service-worker-only script injection for optional debugging tools.
 // The regular content runtime asks for these files only when debug mode is on.
+importScripts('ai-theme.js');
+
 const ABANDONED_URL_RULES_KEY = '__pagedye_url_rules__';
 const URL_RULES_RECOVERY_KEY = '__pagedye_url_rules_recovered_v080__';
+const AI_CONFIG_KEY = '__pagedye_ai_config__';
 
 restoreDomainSettingsFromAbandonedRules().catch((error) => {
   console.warn('Could not recover PageDye domain settings:', error);
@@ -51,6 +54,55 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ ok: true });
     } catch (error) {
       sendResponse({ ok: false, error: String(error && error.message || error) });
+    }
+  })();
+  return true;
+});
+
+// --- AI theme generation ---------------------------------------------------
+// Runs here rather than in the popup for two reasons: capturing the page
+// profile needs chrome.scripting, which the popup would have to round-trip
+// through this worker anyway, and a fetch started here is not torn down the
+// instant the popup loses focus.
+//
+// The API key is read from storage at call time and never travels in the
+// message, so a compromised content script cannot obtain it by spoofing this
+// request — the worst it could do is spend the user's own quota.
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!message || message.action !== 'pagedyeGenerateTheme') return false;
+
+  (async () => {
+    try {
+      const tabId = message.tabId;
+      if (!Number.isInteger(tabId)) throw new Error('No target tab.');
+
+      // Two-step injection: the file installs window.PageDyeProfile, the
+      // second call collects a profile from it. Both run in the same isolated
+      // world, and splitting them avoids depending on the completion value of
+      // a `files` injection.
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['scripts/page-profile.js']
+      });
+      const [captured] = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => window.PageDyeProfile.build()
+      });
+      const profile = captured && captured.result;
+      if (!profile) throw new Error('Could not read this page.');
+
+      const data = await chrome.storage.local.get(AI_CONFIG_KEY);
+      const result = await self.PageDyeAiTheme.generate({
+        config: (data && data[AI_CONFIG_KEY]) || {},
+        profile,
+        // Both come from the popup: what the user typed for this run, and the
+        // theme they are refining, if any.
+        instruction: message.instruction,
+        previousTheme: message.previousTheme
+      });
+      sendResponse({ ok: true, ...result, profile });
+    } catch (error) {
+      sendResponse({ ok: false, error: String((error && error.message) || error) });
     }
   })();
   return true;

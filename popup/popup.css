@@ -349,6 +349,174 @@ body:not(.advanced-mode) [data-advanced-only] {
   color: #b91c1c;
 }
 
+.ai-theme-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 2px 8px;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background: var(--surface-container);
+}
+
+.ai-theme-header {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  gap: 7px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ai-theme-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  color: var(--primary-color);
+}
+
+.ai-prompt-input {
+  width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid var(--outline, var(--text-secondary));
+  border-radius: 999px;
+  background: var(--surface, transparent);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.ai-prompt-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.75;
+}
+
+.ai-prompt-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.ai-theme-refine-hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  line-height: 1.4;
+  opacity: 0.85;
+}
+
+.ai-generate-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 13px;
+  border: 1px solid var(--primary-color);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--primary-color);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.ai-generate-btn:hover {
+  background: var(--primary-color);
+  color: var(--primary-color-text);
+}
+
+.ai-generate-btn:active {
+  transform: scale(0.97);
+}
+
+.ai-generate-btn:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.ai-generate-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+  background: transparent;
+  color: var(--primary-color);
+}
+
+.ai-theme-result {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--surface-container-high, var(--surface-container));
+}
+
+.ai-theme-name {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ai-theme-rationale {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.ai-theme-result-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ai-theme-keep,
+.ai-theme-discard {
+  flex: 1 1 0;
+  min-height: 32px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.ai-theme-keep {
+  border: 1px solid var(--primary-color);
+  background: var(--primary-color);
+  color: var(--primary-color-text);
+}
+
+.ai-theme-keep:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.ai-theme-discard {
+  border: 1px solid var(--outline, var(--text-secondary));
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.ai-theme-discard:hover {
+  background: var(--state-layer-hover);
+}
+
+/* The shared .quick-preset-status indent lines up with that bar's icon
+   column; this bar has no such column, so the status sits flush. */
+#ai-theme-status {
+  padding-left: 4px;
+}
+
 
 
 

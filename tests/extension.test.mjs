@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
+import { runBackgroundScript } from './helpers/dom-harness.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const read = (file) => readFileSync(resolve(root, file), 'utf8');
@@ -226,7 +227,7 @@ test('the abandoned URL-rule migration restores domain settings once', async () 
     runtime: { onMessage: { addListener() {} } }
   };
 
-  runInNewContext(background, { chrome, console });
+  runBackgroundScript({ chrome, console });
   await writeFinished;
 
   assert.deepEqual(written, {

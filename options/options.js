@@ -23,6 +23,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       unlockAppearanceExtras: "Dashboard background images and reduced motion",
       unlockStorageTools: "Detailed storage and image tools",
       unlockDeveloperOptions: "Developer options, right below",
+      aiGroupTitle: "AI theme generation",
+      aiGroupHint: "Let PageDye propose a background and colour scheme for the page you are viewing, using your own API key.",
+      aiProvider: "API provider",
+      aiProviderHint: "Pick \"OpenAI Compatible\" for any service that exposes a /chat/completions endpoint — DeepSeek, OpenRouter, a local Ollama, and so on.",
+      aiApiKey: "API key",
+      aiApiKeyHint: "The key is stored only in this browser's local extension storage and is never included in exported backups. Generating a theme sends a description of the page's colours and layout — never the page text — to the API endpoint you chose.",
+      aiBaseUrl: "API base URL",
+      aiBaseUrlHint: "Leave this empty to use the selected provider's default endpoint. You can paste either the base (https://api.groq.com/openai/v1) or the full endpoint your provider documents (…/chat/completions) — both work. Your API key is sent to whatever host you enter here, so only fill in an endpoint you trust.",
+      aiModel: "Model",
+      aiModelHint: "Type any model id the selected endpoint accepts. With Anthropic, Opus gives the best results and Haiku is the fastest and cheapest.",
+      aiModelExample: "gpt-4o",
+      aiStylePrompt: "Standing style preference",
+      aiStylePromptHint: "Optional. Whatever you write here is added to every generation on every site — a palette you like, lower saturation, colour pairings to avoid for colour-vision reasons, or your own house style. It stays in effect until you change it; for a request that applies to one theme only, use the prompt box in the popup when you generate.",
+      aiStylePromptExample: "Prefer low-saturation, muted colors. Avoid pure black.",
+      aiConfigSaved: "AI settings saved!",
       settingsDevGroupTitle: "Developer options",
       settingsDevGroupHint: "Extra troubleshooting tools for checking why PageDye may not work as expected on a website.",
       debugEnable: "Show diagnostics on websites",
@@ -314,6 +329,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       unlockAppearanceExtras: "设置页背景图片与减少动画",
       unlockStorageTools: "详细的存储与图片工具",
       unlockDeveloperOptions: "开发者选项（就在下方）",
+      aiGroupTitle: "AI 生成主题",
+      aiGroupHint: "使用你自己的 API 密钥，让 PageDye 为当前浏览的网页推荐背景和配色。",
+      aiProvider: "API 服务商",
+      aiProviderHint: "只要服务提供 /chat/completions 接口，选择“OpenAI Compatible”即可接入，例如 DeepSeek、OpenRouter 或本地运行的 Ollama。",
+      aiApiKey: "API 密钥",
+      aiApiKeyHint: "密钥仅保存在本浏览器的扩展本地存储中，导出备份时绝不会包含它。生成主题时只会把网页的配色和布局描述发送给你所选的 API 接口，绝不会发送网页正文内容。",
+      aiBaseUrl: "API 地址",
+      aiBaseUrlHint: "留空则使用所选服务商的默认接口地址。填基础地址（https://api.groq.com/openai/v1）或服务商文档里的完整端点（…/chat/completions）都可以。你的 API 密钥会被发送到这里填写的任意主机，请只填写你信任的接口地址。",
+      aiModel: "模型",
+      aiModelHint: "可以填写所选接口支持的任意模型 ID。使用 Anthropic 时，Opus 效果最好，Haiku 最快也最省钱。",
+      aiModelExample: "gpt-4o",
+      aiStylePrompt: "固定风格偏好",
+      aiStylePromptHint: "可选。这里填写的内容会附加到每一个网站的每一次生成中，例如你偏好的配色、更低的饱和度、出于色觉考虑需要避开的颜色搭配，或是你自己的统一风格。它会一直生效，直到你修改为止；如果只想对某一次生成提要求，请在弹窗中生成时填写当次需求。",
+      aiStylePromptExample: "偏好低饱和度的柔和配色，避免使用纯黑。",
+      aiConfigSaved: "AI 设置已保存!",
       settingsDevGroupTitle: "开发者选项",
       settingsDevGroupHint: "用于排查 PageDye 在某些网站上没有按预期显示的问题的额外工具。",
       debugEnable: "在网页上显示诊断入口",
@@ -571,6 +601,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
   const DEBUG_MODE_KEY = '__pagedye_debug_mode__';
   const DEFAULT_BG_KEY = '__pagedye_default_background__';
+  const AI_CONFIG_KEY = '__pagedye_ai_config__';
+  // Mirrors MAX_STYLE_PROMPT_CHARS in scripts/ai-theme.js: the generator trims
+  // to the same length anyway, so storing more would only hide the truncation.
+  const AI_STYLE_PROMPT_MAX_CHARS = 2000;
   const URL_RULES_KEY = '__pagedye_url_rules_v081__';
   const SYSTEM_DARK_QUERY = window.matchMedia('(prefers-color-scheme: dark)');
   const UI_THEME_BASE_DEFAULTS = { pageBgImage: null, containerBgImage: null, accent: 'neutral', customAccent: '#18181b', disableAnimation: false };
@@ -774,6 +808,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     uiThemeCustomColorText: document.getElementById('ui-theme-custom-color-text'),
     pauseShortcutInput: document.getElementById('pause-shortcut-input'),
     pauseShortcutReset: document.getElementById('pause-shortcut-reset'),
+    aiProviderSelect: document.getElementById('ai-provider-select'),
+    aiApiKeyInput: document.getElementById('ai-api-key-input'),
+    aiBaseUrlInput: document.getElementById('ai-base-url-input'),
+    aiModelInput: document.getElementById('ai-model-input'),
+    aiModelSuggestions: document.getElementById('ai-model-suggestions'),
+    aiStylePromptInput: document.getElementById('ai-style-prompt-input'),
     advancedModeToggle: document.getElementById('advanced-mode-toggle'),
     advancedModeStatus: document.getElementById('advanced-mode-status'),
     debugModeToggle: document.getElementById('debug-mode-toggle'),
@@ -876,6 +916,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load & wire up dashboard appearance (page/container background colors)
   await initUiTheme();
   await initPauseShortcut();
+  await initAiConfig();
 
   // Sidebar navigation switching
   els.navItems.forEach(item => {
@@ -2180,6 +2221,121 @@ document.addEventListener('DOMContentLoaded', async () => {
       await chrome.storage.local.set({ [PAUSE_SHORTCUT_KEY]: shortcut });
       showStatus(t('appearanceSaved'));
     });
+  }
+
+  // One timer per field instead of a single shared one: the text fields are
+  // debounced independently so tabbing from the key to the base URL mid-burst
+  // cannot cancel the pending write of the field just left.
+  const aiConfigSaveTimers = new Map();
+  // Writes are chained because each one is a read-modify-write; two fields
+  // flushing at the same moment would otherwise both read the pre-change
+  // object and the second set() would drop the first field's edit.
+  let aiConfigWriteChain = Promise.resolve();
+
+  // The provider, key, model and base URL share one storage key, so every
+  // write re-reads the stored object first: without that, saving the model
+  // would overwrite the key with whatever this page happened to hold (and vice
+  // versa) when a second options tab or a later version changes another field.
+  function saveAiConfig(partial) {
+    aiConfigWriteChain = aiConfigWriteChain.catch(() => {}).then(async () => {
+      const data = await chrome.storage.local.get(AI_CONFIG_KEY);
+      const stored = normalizeAiConfig(data[AI_CONFIG_KEY]);
+      await chrome.storage.local.set({ [AI_CONFIG_KEY]: Object.assign({}, stored, partial) });
+      showStatus(t('aiConfigSaved'));
+    });
+    return aiConfigWriteChain;
+  }
+
+  // Debounced like saveUiTheme so pasting or typing does not write to storage
+  // (and flash the saved toast) on every keystroke. The value is read when the
+  // timer fires rather than captured, so the write always carries the latest text.
+  function queueAiConfigSave(field, readValue) {
+    clearTimeout(aiConfigSaveTimers.get(field));
+    aiConfigSaveTimers.set(field, setTimeout(async () => {
+      aiConfigSaveTimers.delete(field);
+      await saveAiConfig({ [field]: readValue() });
+    }, 400));
+  }
+
+  // Delegated to the generator itself rather than reimplemented, so the
+  // legacy-config migration and the per-provider defaults can only ever have
+  // one definition. An empty baseUrl survives on purpose: it is the client's
+  // signal to use the provider default, and storing that default instead would
+  // pin the endpoint even after the client's own default moves.
+  function normalizeAiConfig(value) {
+    return window.PageDyeAiTheme.normalizeConfig(value);
+  }
+
+  function getAiProviderProfile(provider) {
+    const providers = window.PageDyeAiTheme.PROVIDERS;
+    return providers[provider] || providers[window.PageDyeAiTheme.DEFAULT_PROVIDER];
+  }
+
+  // Kept in one place because the provider can change after load: the model
+  // suggestions and both placeholders only make sense for the current one.
+  function syncAiProviderFields(provider) {
+    const profile = getAiProviderProfile(provider);
+    if (els.aiBaseUrlInput) els.aiBaseUrlInput.placeholder = profile.defaultBaseUrl;
+    // OpenAI-compatible endpoints have no knowable default model, so the
+    // placeholder falls back to a worked example instead of a real default.
+    if (els.aiModelInput) els.aiModelInput.placeholder = profile.defaultModel || t('aiModelExample');
+    if (els.aiModelSuggestions) {
+      els.aiModelSuggestions.textContent = '';
+      profile.models.forEach((model) => {
+        const option = document.createElement('option');
+        option.value = model;
+        els.aiModelSuggestions.appendChild(option);
+      });
+    }
+  }
+
+  async function initAiConfig() {
+    if (!els.aiProviderSelect && !els.aiApiKeyInput && !els.aiBaseUrlInput && !els.aiModelInput && !els.aiStylePromptInput) return;
+    const data = await chrome.storage.local.get(AI_CONFIG_KEY);
+    const config = normalizeAiConfig(data[AI_CONFIG_KEY]);
+    syncAiProviderFields(config.provider);
+
+    if (els.aiProviderSelect) {
+      els.aiProviderSelect.value = config.provider;
+      els.aiProviderSelect.addEventListener('change', async () => {
+        const provider = els.aiProviderSelect.value;
+        // Refreshed before the write is awaited so the suggestions and
+        // placeholders never lag a storage round-trip behind the picker.
+        syncAiProviderFields(provider);
+        await saveAiConfig({ provider });
+      });
+    }
+
+    if (els.aiApiKeyInput) {
+      els.aiApiKeyInput.value = config.apiKey;
+      els.aiApiKeyInput.addEventListener('input', () => {
+        queueAiConfigSave('apiKey', () => els.aiApiKeyInput.value.trim());
+      });
+    }
+
+    if (els.aiBaseUrlInput) {
+      els.aiBaseUrlInput.value = config.baseUrl;
+      els.aiBaseUrlInput.addEventListener('input', () => {
+        queueAiConfigSave('baseUrl', () => els.aiBaseUrlInput.value.trim());
+      });
+    }
+
+    if (els.aiModelInput) {
+      els.aiModelInput.value = config.model;
+      els.aiModelInput.addEventListener('input', () => {
+        queueAiConfigSave('model', () => els.aiModelInput.value.trim());
+      });
+    }
+
+    if (els.aiStylePromptInput) {
+      els.aiStylePromptInput.value = config.stylePrompt || '';
+      els.aiStylePromptInput.addEventListener('input', () => {
+        // Capped on write as well as in the prompt builder: this text is
+        // interpolated into every request, so an accidental paste of a whole
+        // document should not be stored and re-sent on every generation.
+        queueAiConfigSave('stylePrompt', () => els.aiStylePromptInput.value.trim().slice(0, AI_STYLE_PROMPT_MAX_CHARS));
+      });
+    }
   }
 
   async function initUiTheme() {

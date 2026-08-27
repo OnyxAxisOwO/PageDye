@@ -504,6 +504,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       saved: "Saved!",
       resetMsg: "Reset!",
       error: "Error saving!",
+      aiThemeLabel: "AI Theme",
+      aiGenerate: "Generate from this page",
+      aiRegenerate: "Apply this change",
+      aiPromptPlaceholder: "Optional: describe the look you want",
+      aiRefinePlaceholder: "What should change? e.g. darker, warmer",
+      aiRefineHint: "Type a change above and generate again to refine this theme.",
+      aiKeep: "Keep",
+      aiDiscard: "Discard",
+      aiReadingPage: "Reading the page…",
+      aiThinking: "Designing a theme…",
+      aiRefining: "Applying your change…",
+      aiNoKey: "Set your API key and model in Settings first.",
+      aiKept: "Theme saved.",
+      aiDiscarded: "Discarded.",
       noTab: "No Active Tab",
       invalidUrl: "Invalid URL",
       restrictedTitle: "PageDye can't run here",
@@ -708,6 +722,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       saved: "已保存!",
       resetMsg: "已重置!",
       error: "保存失败!",
+      aiThemeLabel: "AI 主题",
+      aiGenerate: "根据本页生成",
+      aiRegenerate: "按这个要求修改",
+      aiPromptPlaceholder: "可选：描述你想要的风格",
+      aiRefinePlaceholder: "想改哪里？例如：再暗一点、换暖色",
+      aiRefineHint: "在上方输入想改的地方，再次生成即可在当前主题上修改。",
+      aiKeep: "保留",
+      aiDiscard: "放弃",
+      aiReadingPage: "正在读取页面…",
+      aiThinking: "正在设计主题…",
+      aiRefining: "正在按你的要求修改…",
+      aiNoKey: "请先在设置页填写 API 密钥和模型。",
+      aiKept: "主题已保存。",
+      aiDiscarded: "已放弃。",
       noTab: "无活动标签页",
       invalidUrl: "无效的链接",
       restrictedTitle: "PageDye 无法在此页面运行",
@@ -986,7 +1014,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     statusText: document.getElementById('status-text'),
     restrictedOverlay: document.getElementById('restricted-page-overlay'),
     restrictedEnableBtn: document.getElementById('restricted-enable-btn'),
-    extensionEnabledToggle: document.getElementById('extension-enabled-toggle')
+    extensionEnabledToggle: document.getElementById('extension-enabled-toggle'),
+    aiGenerateBtn: document.getElementById('ai-generate-btn'),
+    aiGenerateLabel: document.getElementById('ai-generate-label'),
+    aiPromptInput: document.getElementById('ai-prompt-input'),
+    aiThemeResult: document.getElementById('ai-theme-result'),
+    aiThemeName: document.getElementById('ai-theme-name'),
+    aiThemeRationale: document.getElementById('ai-theme-rationale'),
+    aiThemeKeep: document.getElementById('ai-theme-keep'),
+    aiThemeDiscard: document.getElementById('ai-theme-discard'),
+    aiThemeStatus: document.getElementById('ai-theme-status')
   };
 
   // setAccordionOpen/handleAccordionSummaryClick live in scripts/shared/ui-accordion.js
@@ -1905,6 +1942,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const msg = currentDomain === DEFAULT_BG_KEY ? t('confirmClearDefault') : t('confirmClearSite');
     if (window.confirm(msg)) resetSettings();
   });
+
+  initAiTheme();
   
   // Copy domain hostname
   els.domainBadge.addEventListener('click', async () => {
@@ -3280,6 +3319,165 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (pendingSettingsWrite === write) pendingSettingsWrite = null;
       els.statusText.textContent = t('error');
       console.error(err);
+    }
+  }
+
+  // --- AI theme generation ------------------------------------------------
+  // Preview-first: a generated theme is painted on the tab via updateBackground
+  // (which touches no storage) and only reaches saveSettingsToCurrentTarget if
+  // the user keeps it. Discarding re-sends the snapshot taken before the
+  // preview, so the page returns to exactly what was configured before —
+  // important because the first generations for any given site are the ones
+  // most likely to be wrong.
+  function initAiTheme() {
+    if (!els.aiGenerateBtn) return;
+
+    let previewSnapshot = null;
+    let pendingSettings = null;
+    // The theme currently being previewed. Its presence is what makes the next
+    // generate a refinement of this result rather than a fresh roll, so it is
+    // cleared everywhere the preview ends.
+    let previewTheme = null;
+    let generating = false;
+
+    // Swapping the button label and the placeholder is the only signal that
+    // the same field now means "change this" instead of "describe a look".
+    function setRefineMode(active) {
+      if (els.aiGenerateLabel) els.aiGenerateLabel.textContent = active ? t('aiRegenerate') : t('aiGenerate');
+      if (els.aiPromptInput) {
+        els.aiPromptInput.placeholder = active ? t('aiRefinePlaceholder') : t('aiPromptPlaceholder');
+      }
+    }
+
+    function setAiStatus(text, isError = false) {
+      if (!els.aiThemeStatus) return;
+      els.aiThemeStatus.textContent = text || '';
+      els.aiThemeStatus.classList.toggle('error', !!isError);
+      els.aiThemeStatus.classList.toggle('visible', !!text);
+    }
+
+    function showResult(result) {
+      if (els.aiThemeName) els.aiThemeName.textContent = result.themeName || '';
+      if (els.aiThemeRationale) els.aiThemeRationale.textContent = result.rationale || '';
+      if (els.aiThemeResult) els.aiThemeResult.hidden = false;
+      // Clear the box so the next request is read as a fresh change rather
+      // than silently re-sending the instruction that produced this result.
+      if (els.aiPromptInput) els.aiPromptInput.value = '';
+      setRefineMode(true);
+    }
+
+    function hideResult() {
+      if (els.aiThemeResult) els.aiThemeResult.hidden = true;
+      previewSnapshot = null;
+      pendingSettings = null;
+      previewTheme = null;
+      setRefineMode(false);
+    }
+
+    async function sendToActiveTab(settings) {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab) return;
+      await window.PageDyeInjection.ensure(tab.id);
+      await window.PageDyeInjection.send(tab.id, { action: 'updateBackground', settings });
+    }
+
+    async function runGeneration() {
+      if (generating) return;
+      generating = true;
+      els.aiGenerateBtn.disabled = true;
+
+      const instruction = els.aiPromptInput ? els.aiPromptInput.value.trim() : '';
+      const refining = !!previewTheme;
+      // A refinement keeps the snapshot taken before the FIRST preview, so
+      // discarding after three rounds still restores the user's own settings
+      // rather than the second-round theme.
+      const snapshot = refining ? previewSnapshot : JSON.parse(JSON.stringify(collectSettings()));
+      const basis = previewTheme;
+      if (els.aiThemeResult) els.aiThemeResult.hidden = true;
+      setAiStatus(refining ? t('aiRefining') : t('aiReadingPage'));
+
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab) throw new Error(t('noTab'));
+
+        previewSnapshot = snapshot;
+        if (!refining) setAiStatus(t('aiThinking'));
+
+        const response = await chrome.runtime.sendMessage({
+          action: 'pagedyeGenerateTheme',
+          tabId: tab.id,
+          instruction,
+          previousTheme: basis
+        });
+        if (!response) throw new Error(t('error'));
+        if (!response.ok) throw new Error(response.error || t('error'));
+
+        pendingSettings = response.settings;
+        previewTheme = response.theme || null;
+        await sendToActiveTab(pendingSettings);
+        showResult(response);
+        setAiStatus('');
+      } catch (error) {
+        // A failed refinement must not strand the page on a preview with no
+        // way back, so the snapshot survives while the previous result stays
+        // available to try again from.
+        if (!refining) previewSnapshot = null;
+        if (refining && els.aiThemeResult) els.aiThemeResult.hidden = false;
+        const message = String((error && error.message) || error);
+        // Both configuration errors point at the same fix, so they get a
+        // localized hint; anything else is a server or network message worth
+        // showing verbatim rather than flattening into "something went wrong".
+        const misconfigured = /No API key|No model/i.test(message);
+        setAiStatus(misconfigured ? t('aiNoKey') : message, true);
+      } finally {
+        generating = false;
+        els.aiGenerateBtn.disabled = false;
+      }
+    }
+
+    els.aiGenerateBtn.addEventListener('click', runGeneration);
+
+    if (els.aiPromptInput) {
+      // Enter is the reflex in a single-line prompt box; without this the key
+      // does nothing and the field feels broken.
+      els.aiPromptInput.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' || event.isComposing) return;
+        event.preventDefault();
+        runGeneration();
+      });
+    }
+
+    if (els.aiThemeKeep) {
+      els.aiThemeKeep.addEventListener('click', async () => {
+        if (!pendingSettings) return;
+        const settings = pendingSettings;
+        hideResult();
+        setSavingState();
+        try {
+          await saveSettingsToCurrentTarget(settings);
+          if (currentDomain === siteDomain) { siteHasOwnConfig = true; updateTargetHint(); }
+          await loadSettings(currentDomain);
+          setSyncedState();
+          setAiStatus(t('aiKept'));
+        } catch (error) {
+          els.statusText.textContent = t('error');
+          setAiStatus(String((error && error.message) || error), true);
+        }
+      });
+    }
+
+    if (els.aiThemeDiscard) {
+      els.aiThemeDiscard.addEventListener('click', async () => {
+        const snapshot = previewSnapshot;
+        hideResult();
+        setAiStatus(t('aiDiscarded'));
+        if (!snapshot) return;
+        try {
+          await sendToActiveTab(snapshot);
+        } catch (error) {
+          console.error(error);
+        }
+      });
     }
   }
 
