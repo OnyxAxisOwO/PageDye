@@ -898,7 +898,12 @@
         previewMessage = message;
         renderPreview();
       },
-      openAiSettings
+      openAiSettings,
+      // The first-run wizard, in this same tab: it is a fullscreen ceremony,
+      // and it ends by navigating back to this page's AI section itself.
+      openOnboarding: () => {
+        location.href = chrome.runtime.getURL('options/welcome.html');
+      }
     });
 
     // --- boot -----------------------------------------------------------------

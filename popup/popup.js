@@ -3591,8 +3591,17 @@ document.addEventListener('DOMContentLoaded', async () => {
           throw error;
         }
       },
-      openAiSettings: openAiSettingsPage
+      openAiSettings: openAiSettingsPage,
+      openOnboarding: openWelcomePage,
+      openWorkspace: openAiWorkspacePage
     });
+  }
+
+  // The fullscreen chat, in a tab of its own. A popup cannot hold the
+  // conversation rail, the live preview or the model manager, so the offer to
+  // continue there is the one thing this panel cannot do for itself.
+  function openAiWorkspacePage() {
+    chrome.tabs.create({ url: chrome.runtime.getURL('options/options.html#section-ai') });
   }
 
   // Deep-links straight to the AI settings page rather than the settings root:
@@ -3601,6 +3610,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const url = chrome.runtime.getURL('options/options.html#section-ai');
     if (chrome.tabs && chrome.tabs.create) chrome.tabs.create({ url });
     else if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
+  }
+
+  // The first-run wizard lives in its own tab: a 400px popup cannot give the
+  // walkthrough (or the key entry) the room it deserves, and clicking anything
+  // that opens a tab closes the popup anyway.
+  function openWelcomePage() {
+    chrome.tabs.create({ url: chrome.runtime.getURL('options/welcome.html') });
   }
 
   // Wallpaper / Frosted Glass / AI ride one horizontal slider, so this array is

@@ -114,6 +114,9 @@
       setupTitle: 'Add an API key to start',
       setupBody: 'The chat runs on your own API key — Anthropic, or any OpenAI-compatible endpoint. Nothing is sent anywhere until you add one.',
       setupAction: 'Open AI settings',
+      setupStart: 'Set up step by step',
+      workspaceOpen: 'Open the full workspace',
+      workspaceHint: 'More room, with the conversation list, a live preview and model management.',
       edit: 'Edit',
       copy: 'Copy',
       copied: 'Copied',
@@ -201,6 +204,9 @@
       setupTitle: '先填一个 API 密钥',
       setupBody: '对话使用你自己的 API 密钥，支持 Anthropic 和任意 OpenAI 兼容接口。在你填写之前，不会向任何地方发送数据。',
       setupAction: '打开 AI 设置',
+      setupStart: '开始引导设置',
+      workspaceOpen: '在完整页面中打开',
+      workspaceHint: '更大的工作台：会话历史、实时预览、模型管理。',
       edit: '编辑',
       copy: '复制',
       copied: '已复制',
@@ -334,6 +340,14 @@
     const onPreview = config.onPreview || null;
     const onRestore = config.onRestore || null;
     const openAiSettings = config.openAiSettings || (() => {});
+    // The first-run wizard, when the host page has one to offer. With it, the
+    // setup card leads there first and keeps plain settings as the side door;
+    // without it the card behaves as it always has.
+    const openOnboarding = typeof config.openOnboarding === 'function' ? config.openOnboarding : null;
+    // Leaves this surface for the fullscreen one. Absent on the dashboard,
+    // which already IS that surface; the popup passes it, and gets both a
+    // button in the bar and a one-time invitation under the first answer.
+    const openWorkspace = typeof config.openWorkspace === 'function' ? config.openWorkspace : null;
     // Absent on a surface that does not offer it; the card is simply not
     // rendered there, rather than offering a button that does nothing.
     const onApplyPreferences = config.onApplyPreferences || null;
@@ -508,6 +522,18 @@
     barNewBtn.setAttribute('aria-label', str('newChat'));
     bar.appendChild(historyBtn);
     bar.appendChild(barTitle);
+    if (openWorkspace) {
+      const barWorkspaceBtn = button('ai-chat-bar-btn', '', () => openWorkspace());
+      // The "leave for a bigger window" glyph: a box with an arrow escaping
+      // its top-right corner.
+      barWorkspaceBtn.appendChild(icon([
+        'M14 4h6v6', 'M20 4l-8 8',
+        'M20 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4'
+      ], 15));
+      barWorkspaceBtn.title = str('workspaceOpen');
+      barWorkspaceBtn.setAttribute('aria-label', str('workspaceOpen'));
+      bar.appendChild(barWorkspaceBtn);
+    }
     bar.appendChild(barNewBtn);
 
     const scroll = el('div', 'ai-chat-scroll');
@@ -750,7 +776,32 @@
       const card = el('div', 'ai-chat-setup');
       card.appendChild(el('h3', 'ai-chat-setup-title', str('setupTitle')));
       card.appendChild(el('p', 'ai-chat-setup-body', str('setupBody')));
-      card.appendChild(button('ai-chat-setup-action', str('setupAction'), () => openAiSettings()));
+      if (openOnboarding) {
+        card.appendChild(button('ai-chat-setup-action', str('setupStart'), () => openOnboarding()));
+        card.appendChild(button('ai-chat-setup-alt', str('setupAction'), () => openAiSettings()));
+      } else {
+        card.appendChild(button('ai-chat-setup-action', str('setupAction'), () => openAiSettings()));
+      }
+      return card;
+    }
+
+    // Shown once, under the first answer, and never again: by then the user
+    // has seen the popup do the job and knows what it is they would be taking
+    // somewhere bigger. Offering it before that is advertising a room they
+    // have no reason to want yet, and offering it every turn is nagging.
+    function renderWorkspaceInvite() {
+      const card = button('ai-chat-workspace', '', () => openWorkspace());
+      const mark = el('span', 'ai-chat-workspace-mark');
+      mark.appendChild(icon([
+        'M14 4h6v6', 'M20 4l-8 8',
+        'M20 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4'
+      ], 15));
+      card.appendChild(mark);
+      const copy = el('span', 'ai-chat-workspace-copy');
+      copy.appendChild(el('strong', null, str('workspaceOpen')));
+      copy.appendChild(el('span', null, str('workspaceHint')));
+      card.appendChild(copy);
+      card.appendChild(icon(['m9 6 6 6-6 6'], 14));
       return card;
     }
 
@@ -1101,10 +1152,17 @@
       scroll.textContent = '';
       if (!configured) scroll.appendChild(renderSetup());
       if (conversation && conversation.messages.length) {
+        // Exactly one answer so far means the first round just landed, which
+        // is the single moment the workspace invitation belongs in — see
+        // renderWorkspaceInvite. From the second answer on it is gone.
+        const answers = conversation.messages.filter((message) => message.role !== 'user').length;
+        const inviteAfterFirstAnswer = !!openWorkspace && answers === 1 && !busy;
         conversation.messages.forEach((message) => {
-          scroll.appendChild(message.role === 'user'
+          const isUser = message.role === 'user';
+          scroll.appendChild(isUser
             ? renderUserMessage(conversation, message)
             : renderAssistantMessage(conversation, message));
+          if (!isUser && inviteAfterFirstAnswer) scroll.appendChild(renderWorkspaceInvite());
         });
       } else if (configured) {
         scroll.appendChild(renderEmpty(conversation));

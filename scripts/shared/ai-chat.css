@@ -812,6 +812,83 @@
   cursor: pointer;
 }
 
+/* The one-time invitation under the first answer, and its permanent twin in
+   the bar. Sized like a message rather than a banner, because that is where
+   it sits — in the transcript, not above it. */
+.ai-chat-workspace {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 2px 0 4px;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 14px;
+  background: var(--surface-container, rgba(127, 127, 127, 0.08));
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.ai-chat-workspace:hover {
+  background: var(--state-layer-hover, rgba(127, 127, 127, 0.14));
+}
+
+.ai-chat-workspace-mark {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--badge-color-bg, rgba(127, 127, 127, 0.14));
+  color: var(--badge-color-text, inherit);
+}
+
+.ai-chat-workspace-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ai-chat-workspace-copy strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ai-chat-workspace-copy span {
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.ai-chat-workspace > svg:last-child {
+  flex: none;
+  color: var(--text-secondary);
+}
+
+/* The quieter way in, next to the primary one: for whoever already knows the
+   settings card and does not want the ceremony. */
+.ai-chat-setup-alt {
+  margin-left: 10px;
+  padding: 7px 4px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.ai-chat-setup-alt:hover {
+  color: var(--text-color, inherit);
+}
+
 .ai-chat-error {
   display: flex;
   flex-wrap: wrap;

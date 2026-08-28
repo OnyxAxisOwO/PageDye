@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome · PageDye</title>
+  <link rel="icon" href="../icons/icon48.png">
+  <link rel="stylesheet" href="welcome.css">
+</head>
+<body>
+  <!-- The Material 3 shape family, defined once and referenced everywhere on
+       this page. These are generated outlines, not hand-drawn curves: each
+       scalloped shape is n convex lobe arcs joined by concave fillet arcs,
+       every join tangent, which is what keeps them crisp instead of wobbly.
+       Parameters (lobes, valley radius / outer radius, fillet radius / lobe
+       radius): clover (4, 0.52, 0.55) · flower (5, 0.62, 0.55) · cookie
+       (7, 0.80, 0.60) · sunny (12, 0.86, 0.70); gem and squircle are regular
+       polygons with corner fillets at 0.34 and 0.46 of the circumradius.
+
+       Each is then scaled to the SAME AREA — that of a circle of radius 80 —
+       inside a shared 220-unit box. Without that a clover and a sunny drawn
+       at one box size look like two different sizes, because a clover fills
+       far less of its box; equal area is what makes a row of different
+       shapes read as one size. -->
+  <svg class="sprite" aria-hidden="true" width="0" height="0">
+    <defs>
+      <symbol id="s-clover" viewBox="-110 -110 220 220"><path d="M55.38 -32.04A33.69 33.69 0 0 1 55.38 32.04A18.53 18.53 0 0 0 32.04 55.38A33.69 33.69 0 0 1 -32.04 55.38A18.53 18.53 0 0 0 -55.38 32.04A33.69 33.69 0 0 1 -55.38 -32.04A18.53 18.53 0 0 0 -32.04 -55.38A33.69 33.69 0 0 1 32.04 -55.38A18.53 18.53 0 0 0 55.38 -32.04Z"/></symbol>
+      <symbol id="s-flower" viewBox="-110 -110 220 220"><path d="M62.37 -28.23A28.5 28.5 0 0 1 62.37 28.23A15.67 15.67 0 0 0 46.12 50.59A28.5 28.5 0 0 1 -7.57 68.04A15.67 15.67 0 0 0 -33.87 59.5A28.5 28.5 0 0 1 -67.05 13.82A15.67 15.67 0 0 0 -67.05 -13.82A28.5 28.5 0 0 1 -33.87 -59.5A15.67 15.67 0 0 0 -7.57 -68.04A28.5 28.5 0 0 1 46.12 -50.59A15.67 15.67 0 0 0 62.37 -28.23Z"/></symbol>
+      <symbol id="s-cookie" viewBox="-110 -110 220 220"><path d="M71.23 -22.91A24.33 24.33 0 0 1 71.23 22.91A14.6 14.6 0 0 0 62.32 41.4A24.33 24.33 0 0 1 26.49 69.97A14.6 14.6 0 0 0 6.49 74.54A24.33 24.33 0 0 1 -38.19 64.34A14.6 14.6 0 0 0 -54.23 51.55A24.33 24.33 0 0 1 -74.11 10.26A14.6 14.6 0 0 0 -74.11 -10.26A24.33 24.33 0 0 1 -54.23 -51.55A14.6 14.6 0 0 0 -38.19 -64.34A24.33 24.33 0 0 1 6.49 -74.54A14.6 14.6 0 0 0 26.49 -69.97A24.33 24.33 0 0 1 62.32 -41.4A14.6 14.6 0 0 0 71.23 -22.91Z"/></symbol>
+      <symbol id="s-sunny" viewBox="-110 -110 220 220"><path d="M76.64 -12.61A13.5 13.5 0 0 1 76.64 12.61A9.45 9.45 0 0 0 72.68 27.4A13.5 13.5 0 0 1 60.07 49.24A9.45 9.45 0 0 0 49.24 60.07A13.5 13.5 0 0 1 27.4 72.68A9.45 9.45 0 0 0 12.61 76.64A13.5 13.5 0 0 1 -12.61 76.64A9.45 9.45 0 0 0 -27.4 72.68A13.5 13.5 0 0 1 -49.24 60.07A9.45 9.45 0 0 0 -60.07 49.24A13.5 13.5 0 0 1 -72.68 27.4A9.45 9.45 0 0 0 -76.64 12.61A13.5 13.5 0 0 1 -76.64 -12.61A9.45 9.45 0 0 0 -72.68 -27.4A13.5 13.5 0 0 1 -60.07 -49.24A9.45 9.45 0 0 0 -49.24 -60.07A13.5 13.5 0 0 1 -27.4 -72.68A9.45 9.45 0 0 0 -12.61 -76.64A13.5 13.5 0 0 1 12.61 -76.64A9.45 9.45 0 0 0 27.4 -72.68A13.5 13.5 0 0 1 49.24 -60.07A9.45 9.45 0 0 0 60.07 -49.24A13.5 13.5 0 0 1 72.68 -27.4A9.45 9.45 0 0 0 76.64 -12.61Z"/></symbol>
+      <symbol id="s-gem" viewBox="-110 -110 220 220"><path d="M-15.06 -79.91A30.13 30.13 0 0 1 15.06 -79.91L61.67 -53A30.13 30.13 0 0 1 76.74 -26.91L76.74 26.91A30.13 30.13 0 0 1 61.67 53L15.06 79.91A30.13 30.13 0 0 1 -15.06 79.91L-61.67 53A30.13 30.13 0 0 1 -76.74 26.91L-76.74 -26.91A30.13 30.13 0 0 1 -61.67 -53Z"/></symbol>
+      <symbol id="s-squircle" viewBox="-110 -110 220 220"><path d="M25.98 -74.35A48.37 48.37 0 0 1 74.35 -25.98L74.35 25.98A48.37 48.37 0 0 1 25.98 74.35L-25.98 74.35A48.37 48.37 0 0 1 -74.35 25.98L-74.35 -25.98A48.37 48.37 0 0 1 -25.98 -74.35Z"/></symbol>
+      <symbol id="s-pill" viewBox="-110 -110 220 220"><path d="M-41.79 -57.7L41.79 -57.7A57.7 57.7 0 0 1 41.79 57.7L-41.79 57.7A57.7 57.7 0 0 1 -41.79 -57.7Z"/></symbol>
+    </defs>
+  </svg>
+
+  <!-- Two shape columns, one down each margin. Sizes step large / medium /
+       small so the two sides read as a composition rather than scattering,
+       and each turns at its own slow rate. Decorative; frozen when motion is
+       unwelcome, dropped entirely when the window is too narrow to have
+       margins worth decorating. -->
+  <div class="shapes" aria-hidden="true">
+    <svg class="deco deco-l1"><use href="#s-clover"/></svg>
+    <svg class="deco deco-l2"><use href="#s-pill"/></svg>
+    <svg class="deco deco-l3"><use href="#s-sunny"/></svg>
+    <svg class="deco deco-r1"><use href="#s-cookie"/></svg>
+    <svg class="deco deco-r2"><use href="#s-gem"/></svg>
+    <svg class="deco deco-r3"><use href="#s-squircle"/></svg>
+  </div>
+
+  <header class="top">
+    <button type="button" id="back-btn" class="top-btn" hidden>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+      <span data-i18n="back">Back</span>
+    </button>
+    <span class="top-spacer"></span>
+    <button type="button" id="skip-btn" class="top-link" data-i18n="skip">Maybe later</button>
+  </header>
+
+  <main class="stage" id="stage">
+
+    <!-- ============================== 1 · hello =========================== -->
+    <section class="step" data-step="hello">
+      <!-- The app icon on its own. It already is a shape, and putting it on
+           one of the family shapes only draws a halo around it. -->
+      <img src="../icons/icon128.png" alt="" class="hero-icon reveal" style="--d: 0s">
+      <p class="kicker reveal" style="--d: .18s" data-i18n="helloKicker">PageDye AI</p>
+      <h1 class="headline display reveal" style="--d: .28s" data-i18n="helloTitle">Design themes by talking</h1>
+      <p class="sub reveal" style="--d: .4s" data-i18n="helloBody">A few steps from now, an AI you run on your own key will be designing wallpapers for any site you visit. Nothing leaves this browser until you say so.</p>
+      <div class="actions reveal" style="--d: .52s">
+        <button type="button" class="btn primary" data-next data-i18n="helloAction">Begin</button>
+      </div>
+    </section>
+
+    <!-- ============================= 2 · privacy ========================== -->
+    <section class="step" data-step="privacy">
+      <h2 class="headline reveal" style="--d: 0s" data-i18n="privacyTitle">First, the promises</h2>
+      <p class="sub reveal" style="--d: .1s" data-i18n="privacyBody">Before anything gets filled in, this is how PageDye treats what you're about to enter.</p>
+      <ul class="promise-list">
+        <li class="promise reveal" style="--d: .22s">
+          <!-- A squircle, not one of the lobed shapes: the padlock glyph is
+               square-cornered, and square corners land in a clover's valleys. -->
+          <span class="badge">
+            <svg class="badge-shape"><use href="#s-squircle"/></svg>
+            <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </span>
+          <span data-i18n="privacyKey">Your key is stored only in this browser's local extension storage — exported backups never include it.</span>
+        </li>
+        <li class="promise reveal" style="--d: .32s">
+          <span class="badge">
+            <svg class="badge-shape"><use href="#s-cookie"/></svg>
+            <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path><line x1="4" y1="20" x2="20" y2="4"></line></svg>
+          </span>
+          <span data-i18n="privacyContent">Generating a theme sends only a description of a page's colours and layout — never the text you read or write there.</span>
+        </li>
+        <li class="promise reveal" style="--d: .42s">
+          <span class="badge">
+            <svg class="badge-shape"><use href="#s-gem"/></svg>
+            <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v13"></path><path d="M7 11l5 5 5-5"></path><path d="M4 21h16"></path></svg>
+          </span>
+          <span data-i18n="privacyDirect">Requests go straight from this browser to the endpoint you choose. There is no middleman server.</span>
+        </li>
+        <li class="promise reveal" style="--d: .52s">
+          <span class="badge">
+            <svg class="badge-shape"><use href="#s-sunny"/></svg>
+            <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><line x1="5.6" y1="5.6" x2="18.4" y2="18.4"></line></svg>
+          </span>
+          <span data-i18n="privacyTracking">No analytics, no telemetry, no accounts. PageDye has nothing to phone home to.</span>
+        </li>
+      </ul>
+      <div class="actions reveal" style="--d: .64s">
+        <button type="button" class="btn primary" data-next data-i18n="privacyAction">Understood, continue</button>
+      </div>
+    </section>
+
+    <!-- ============================ 3 · provider ========================== -->
+    <section class="step" data-step="provider">
+      <h2 class="headline reveal" style="--d: 0s" data-i18n="providerTitle">How do you want to connect?</h2>
+      <p class="sub reveal" style="--d: .1s" data-i18n="providerBody">Both run on a key you already own. You can switch at any time in AI settings.</p>
+      <div class="provider-grid" role="radiogroup" aria-label="API provider">
+        <button type="button" class="provider reveal" style="--d: .2s" role="radio" aria-checked="false" data-provider="anthropic">
+          <span class="badge badge-lg">
+            <svg class="badge-shape"><use href="#s-flower"/></svg>
+            <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"></path></svg>
+          </span>
+          <span class="provider-name">Anthropic</span>
+          <span class="provider-desc" data-i18n="providerAnthropic">The Claude models, straight from api.anthropic.com. Works out of the box with an Anthropic API key.</span>
+        </button>
+        <button type="button" class="provider reveal" style="--d: .3s" role="radio" aria-checked="false" data-provider="openai">
+          <span class="badge badge-lg">
+            <svg class="badge-shape"><use href="#s-sunny"/></svg>
+            <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"></circle><path d="M12 2.6v3.5"></path><path d="M12 17.9v3.5"></path><path d="M2.6 12h3.5"></path><path d="M17.9 12h3.5"></path><path d="M5.3 5.3l2.5 2.5"></path><path d="M16.2 16.2l2.5 2.5"></path><path d="M18.7 5.3l-2.5 2.5"></path><path d="M7.8 16.2l-2.5 2.5"></path></svg>
+          </span>
+          <span class="provider-name" data-i18n="providerOpenaiName">OpenAI Compatible</span>
+          <span class="provider-desc" data-i18n="providerOpenai">Any service with a /chat/completions endpoint — DeepSeek, OpenRouter, Groq, or an Ollama running on this machine.</span>
+        </button>
+      </div>
+      <div class="actions reveal" style="--d: .42s">
+        <button type="button" class="btn primary" id="provider-next" data-i18n="next">Next</button>
+      </div>
+    </section>
+
+    <!-- ============================== 4 · keys ============================ -->
+    <section class="step" data-step="keys">
+      <h2 class="headline reveal" style="--d: 0s" data-i18n="keysTitle">Your key, your endpoint</h2>
+      <p class="sub reveal" style="--d: .1s" data-i18n="keysBody">Paste the API key for the service you picked. The endpoint address is optional — leave it empty to use the default.</p>
+
+      <div class="form reveal" style="--d: .2s">
+        <label class="field">
+          <span class="field-label" data-i18n="keysKeyLabel">API key</span>
+          <span class="field-secret">
+            <input type="password" id="key-input" autocomplete="off" spellcheck="false" placeholder="sk-…">
+            <button type="button" id="key-reveal" class="field-reveal" aria-pressed="false" data-i18n-title="keysReveal" title="Show key">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </span>
+        </label>
+        <label class="field">
+          <span class="field-label"><span data-i18n="keysUrlLabel">API base URL</span> <em class="field-optional" data-i18n="keysOptional">optional</em></span>
+          <input type="url" id="url-input" autocomplete="off" spellcheck="false">
+        </label>
+        <span class="field-hint" id="url-hint"></span>
+        <p class="field-error" id="keys-error" role="alert" hidden></p>
+      </div>
+
+      <p class="privacy-note reveal" style="--d: .3s">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        <span data-i18n="keysPrivacy">Stored on this device only. Sent exclusively to the endpoint above.</span>
+      </p>
+
+      <div class="actions reveal" style="--d: .4s">
+        <button type="button" class="btn primary" id="keys-next" disabled data-i18n="next">Next</button>
+      </div>
+    </section>
+
+    <!-- ============================== 5 · model =========================== -->
+    <section class="step" data-step="model">
+      <h2 class="headline reveal" style="--d: 0s" data-i18n="modelTitle">Pick a model</h2>
+      <p class="sub reveal" style="--d: .1s" data-i18n="modelBody">PageDye asks your endpoint what it offers, so you choose from what is really there.</p>
+
+      <div class="model-stage reveal" style="--d: .2s">
+        <!-- state: loading -->
+        <div class="model-loading" id="model-loading" hidden>
+          <svg class="m3-progress" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="20"></circle></svg>
+          <p data-i18n="modelDetecting">Asking the endpoint which models it serves…</p>
+        </div>
+        <!-- state: error -->
+        <div class="model-error" id="model-error" hidden>
+          <p id="model-error-text"></p>
+          <div class="model-error-actions">
+            <button type="button" class="btn ghost" id="model-retry" data-i18n="modelRetry">Try again</button>
+            <button type="button" class="btn ghost" id="model-manual-link" data-i18n="modelManual">Type a model id instead</button>
+          </div>
+        </div>
+        <!-- state: list -->
+        <div class="model-picker" id="model-picker" hidden>
+          <p class="model-count" id="model-count"></p>
+          <input type="text" id="model-filter" class="model-filter" hidden autocomplete="off" spellcheck="false">
+          <div class="model-list" id="model-list" role="radiogroup" aria-label="Model"></div>
+          <button type="button" class="model-manual-toggle" id="model-manual-link-2" data-i18n="modelManual">Type a model id instead</button>
+        </div>
+        <!-- state: manual -->
+        <div class="model-manual" id="model-manual" hidden>
+          <label class="field">
+            <span class="field-label" data-i18n="modelManualLabel">Model id</span>
+            <input type="text" id="model-manual-input" autocomplete="off" spellcheck="false" list="model-manual-suggestions">
+            <datalist id="model-manual-suggestions"></datalist>
+          </label>
+          <span class="field-hint" data-i18n="modelManualHint">Exactly as your provider's documentation spells it.</span>
+          <button type="button" class="model-manual-toggle" id="model-detect-link" data-i18n="modelDetectAgain">Detect models instead</button>
+        </div>
+      </div>
+
+      <div class="actions reveal" style="--d: .3s">
+        <button type="button" class="btn primary" id="model-next" disabled data-i18n="finish">Finish</button>
+      </div>
+    </section>
+
+    <!-- ============================== 6 · done ============================ -->
+    <section class="step" data-step="done">
+      <div class="hero-emblem done-emblem reveal" style="--d: 0s">
+        <svg class="hero-shape done-shape"><use href="#s-flower"/></svg>
+        <svg class="done-check" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+          <path class="done-tick" d="M16 29l8.5 8.5 15.5-17.5"></path>
+        </svg>
+        <span class="spark spark-1"></span><span class="spark spark-2"></span><span class="spark spark-3"></span>
+        <span class="spark spark-4"></span><span class="spark spark-5"></span><span class="spark spark-6"></span>
+      </div>
+      <h2 class="headline display reveal" style="--d: .3s" data-i18n="doneTitle">All set</h2>
+      <p class="done-summary reveal" style="--d: .4s" id="done-summary"></p>
+      <p class="sub reveal" style="--d: .5s" data-i18n="doneBody">Open any website, tell the AI what mood you're after, and watch the page change. Everything here can be revisited in AI settings.</p>
+      <div class="actions reveal" style="--d: .62s">
+        <button type="button" class="btn primary" id="done-open" data-i18n="doneAction">Enter the AI workspace</button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="dots" id="dots" aria-hidden="true"></footer>
+
+  <script src="../scripts/shared/color-utils.js"></script>
+  <script src="../scripts/ai-theme.js"></script>
+  <script src="welcome.js"></script>
+</body>
+</html>

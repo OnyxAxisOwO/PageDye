@@ -1,0 +1,860 @@
+/* The first-run wizard, in the same Material 3 language as the rest of
+   PageDye. It does NOT share options.css — an OOBE is a single fullscreen
+   ceremony, not another dashboard page — but it speaks the same system:
+   md-sys colour roles, tonal surfaces derived from the user's own accent seed
+   (welcome.js repeats options.js's derivation and overrides the neutral
+   fallbacks below), the M3 shape family, and the M3 emphasized easing set.
+
+   Two rules hold the whole page together:
+     · Nothing draws a border. Grouping is tone and whitespace.
+     · Every rounded thing is a shape from the family in welcome.html, or a
+       full pill. There are no arbitrary corner radii.
+
+   Every animation is killed by prefers-reduced-motion and by the .no-anim
+   class welcome.js sets from PageDye's own "reduce motion" preference. */
+
+:root {
+  /* Neutral-seed fallbacks (the values the popup falls back to); welcome.js
+     re-derives all of them from the stored accent. */
+  --md-sys-color-primary: #18181B;
+  --md-sys-color-on-primary: #FFFFFF;
+  --md-sys-color-primary-container: rgba(24, 24, 27, 0.16);
+  --md-sys-color-on-primary-container: #18181B;
+  --md-sys-color-secondary-container: rgba(24, 24, 27, 0.10);
+  --md-sys-color-on-secondary-container: #18181B;
+  --md-sys-color-surface: #F7F7F8;
+  --md-sys-color-surface-container-low: #F1F1F3;
+  --md-sys-color-surface-container: #ECECEE;
+  --md-sys-color-surface-container-high: #E6E6E9;
+  --md-sys-color-surface-container-highest: #E1E1E4;
+  --md-sys-color-on-surface: #161617;
+  --md-sys-color-on-surface-variant: #46464A;
+  --md-sys-color-error-container: #F9DEDC;
+  --md-sys-color-on-error-container: #410E0B;
+  --md-state-hover: rgba(24, 24, 27, 0.07);
+  --md-elevation-2: 0 1px 2px rgba(0, 0, 0, 0.18), 0 3px 10px rgba(0, 0, 0, 0.08);
+  /* The three tones the decorative shapes are drawn in. */
+  --deco-1: rgba(24, 24, 27, 0.10);
+  --deco-2: rgba(24, 24, 27, 0.06);
+  --deco-3: rgba(24, 24, 27, 0.14);
+  /* M3 motion. */
+  --ease-emph: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-accel: cubic-bezier(0.3, 0, 0.8, 0.15);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --md-sys-color-primary: #AEAEB7;
+    --md-sys-color-on-primary: #000000;
+    --md-sys-color-primary-container: rgba(174, 174, 183, 0.16);
+    --md-sys-color-on-primary-container: #AEAEB7;
+    --md-sys-color-secondary-container: rgba(174, 174, 183, 0.10);
+    --md-sys-color-on-secondary-container: #AEAEB7;
+    --md-sys-color-surface: #0E0E10;
+    --md-sys-color-surface-container-low: #18181B;
+    --md-sys-color-surface-container: #1F1F23;
+    --md-sys-color-surface-container-high: #29292E;
+    --md-sys-color-surface-container-highest: #35353B;
+    --md-sys-color-on-surface: #E2E2E4;
+    --md-sys-color-on-surface-variant: #C2C2C5;
+    --md-sys-color-error-container: #8C1D18;
+    --md-sys-color-on-error-container: #F9DEDC;
+    --md-state-hover: rgba(174, 174, 183, 0.09);
+    --md-elevation-2: 0 2px 10px rgba(0, 0, 0, 0.55);
+    --deco-1: rgba(174, 174, 183, 0.085);
+    --deco-2: rgba(174, 174, 183, 0.05);
+    --deco-3: rgba(174, 174, 183, 0.11);
+  }
+}
+
+* { box-sizing: border-box; }
+
+/* Several hidden-toggled elements below carry their own display value, which
+   would silently win over the attribute without this. */
+[hidden] { display: none !important; }
+
+html, body { height: 100%; margin: 0; }
+
+body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sprite { position: absolute; }
+
+/* ------------------------------------------------------------- shapes ----- */
+/* One shape column down each margin: large, medium, small, on a staggered
+   vertical rhythm so the two sides answer each other instead of mirroring.
+   They turn slowly and at different rates — a shape family in motion is the
+   Material You signature; a shape family sitting still is wallpaper. */
+
+.shapes {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.deco {
+  position: absolute;
+  display: block;
+  color: var(--deco-1);
+  fill: currentColor;
+}
+
+.deco use { fill: currentColor; }
+
+/* left */
+.deco-l1 { top: 8%;  left: -3.5vw; width: clamp(150px, 15vw, 230px); aspect-ratio: 1; color: var(--deco-3); animation: turn 120s linear infinite; }
+.deco-l2 { top: 47%; left: 4.5vw;  width: clamp(58px, 6vw, 92px);   aspect-ratio: 1; color: var(--deco-2); animation: turn 84s linear infinite reverse; }
+.deco-l3 { top: 71%; left: -2vw;   width: clamp(96px, 10vw, 150px);  aspect-ratio: 1; color: var(--deco-1); animation: turn 150s linear infinite; }
+
+/* right */
+.deco-r1 { top: 14%; right: -4vw;   width: clamp(120px, 12vw, 185px); aspect-ratio: 1; color: var(--deco-1); animation: turn 132s linear infinite reverse; }
+.deco-r2 { top: 44%; right: 3.5vw;  width: clamp(64px, 7vw, 105px);  aspect-ratio: 1; color: var(--deco-3); animation: turn 96s linear infinite; }
+.deco-r3 { top: 70%; right: -3vw;   width: clamp(140px, 14vw, 215px); aspect-ratio: 1; color: var(--deco-2); animation: turn 168s linear infinite reverse; }
+
+@keyframes turn { to { transform: rotate(360deg); } }
+
+/* ------------------------------------------------------------------- top -- */
+
+.top {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 22px 0;
+}
+
+.top-spacer { flex: 1; }
+
+/* M3 text buttons: no outline, a state layer on hover. */
+.top-btn,
+.top-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s var(--ease-emph), color 0.2s;
+}
+
+.top-btn .chev { width: 16px; height: 16px; }
+
+.top-btn:hover,
+.top-link:hover { background: var(--md-state-hover); color: var(--md-sys-color-on-surface); }
+
+/* ----------------------------------------------------------------- stage -- */
+
+.stage {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 8px 24px;
+}
+
+.step {
+  grid-area: 1 / 1;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 560px;
+  width: 100%;
+  max-height: 100%;
+  /* Scrollable only as a safety net for very short windows. The bar itself
+     is hidden: a wizard that shows a scroll track beside its own artwork
+     reads as a page that overflowed, even when nothing is cut off. */
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 8px 4px;
+}
+
+.step::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+.step.active { display: flex; }
+
+/* Everything tagged .reveal rises in when its step becomes active, offset by
+   the per-element --d delay set in the markup — M3 emphasized-decelerate,
+   the curve Android's own setup screens enter with. */
+.step.active .reveal {
+  opacity: 0;
+  animation: rise 0.5s var(--ease-decel) both;
+  animation-delay: var(--d, 0s);
+}
+
+.step.leaving-forward.active .reveal,
+.step.leaving-back.active .reveal { animation: none; opacity: 1; }
+
+.step.leaving-forward { animation: leave-fwd 0.25s var(--ease-accel) both; }
+.step.leaving-back { animation: leave-back 0.25s var(--ease-accel) both; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes leave-fwd { to { opacity: 0; transform: translateY(-18px); } }
+@keyframes leave-back { to { opacity: 0; transform: translateY(18px); } }
+
+/* ------------------------------------------------------------ typography -- */
+
+.kicker {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* M3 display type is regular weight — the size carries it. */
+.headline {
+  margin: 0 0 12px;
+  font-size: clamp(26px, 3.6vw, 34px);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.22;
+}
+
+.headline.display { font-size: clamp(30px, 4.6vw, 44px); }
+
+.sub {
+  margin: 0 0 26px;
+  max-width: 440px;
+  font-size: 14.5px;
+  line-height: 1.72;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.actions { margin-top: 2px; }
+
+/* --------------------------------------------------------------- buttons -- */
+
+.btn {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 999px;
+  transition: background 0.2s var(--ease-emph), border-radius 0.3s var(--ease-emph), color 0.2s;
+}
+
+/* M3 filled button. Pressing squares the corners a little — the shape
+   response M3 Expressive gives its buttons in place of a bounce. */
+.btn.primary {
+  height: 50px;
+  padding: 0 34px;
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--md-sys-color-on-primary) 10%, var(--md-sys-color-primary));
+}
+
+.btn.primary:active:not(:disabled) { border-radius: 16px; }
+
+.btn.primary:disabled {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 10%, transparent);
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 36%, transparent);
+  cursor: default;
+}
+
+/* The quiet button: tonal, so it adds no frame. */
+.btn.ghost {
+  height: 40px;
+  padding: 0 20px;
+  background: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
+  color: var(--md-sys-color-primary);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.btn.ghost:hover { background: color-mix(in srgb, var(--md-sys-color-primary) 20%, transparent); }
+.btn.ghost:active { border-radius: 14px; }
+
+/* -------------------------------------------------------------- badges ----- */
+/* An icon riding on one of the family shapes. The shape is what carries the
+   colour, so nothing here needs a container behind it. */
+
+.badge {
+  position: relative;
+  flex: none;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.badge-shape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--md-sys-color-primary-container);
+  fill: currentColor;
+  transition: transform 0.45s var(--ease-emph), color 0.3s var(--ease-emph);
+}
+
+.badge-shape use { fill: currentColor; }
+
+/* Sized against the shape's inscribed circle rather than the badge box: these
+   shapes are lobed, and a glyph scaled to the box pushes its corners out into
+   the valleys between the lobes. */
+.badge-icon {
+  position: relative;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  transition: color 0.3s var(--ease-emph);
+}
+
+.badge-lg { width: 78px; height: 78px; }
+.badge-lg .badge-icon { width: 33px; height: 33px; }
+
+/* ----------------------------------------------------------- 1 · hello ---- */
+
+.hero-emblem {
+  position: relative;
+  width: 172px;
+  height: 172px;
+  margin-bottom: 22px;
+  display: grid;
+  place-items: center;
+}
+
+.hero-shape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--md-sys-color-primary-container);
+  fill: currentColor;
+  animation: turn 40s linear infinite;
+}
+
+.hero-shape use { fill: currentColor; }
+
+/* Nothing behind it, no radius, no shadow: the PNG already carries its own
+   rounded silhouette on transparency, and anything placed under or around it
+   reads as a frame. */
+.hero-icon {
+  width: 96px;
+  height: 96px;
+  margin-bottom: 24px;
+}
+
+/* --------------------------------------------------------- 2 · privacy ---- */
+/* No cards: a shape for the icon, text beside it, air between rows. Four
+   outlined boxes turned four promises into a form. */
+
+.promise-list {
+  list-style: none;
+  margin: 0 0 26px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 470px;
+  text-align: left;
+}
+
+.promise {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* -------------------------------------------------------- 3 · provider ---- */
+/* Also no cards. The shape is the target: it grows and fills when chosen,
+   and the label under it takes the accent. */
+
+.provider-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  max-width: 520px;
+  margin-bottom: 26px;
+}
+
+.provider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 14px;
+  border: none;
+  border-radius: 28px;
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.25s var(--ease-emph);
+}
+
+.provider:hover { background: var(--md-state-hover); }
+
+.provider .badge-shape { color: var(--md-sys-color-primary-container); }
+
+.provider[aria-checked="true"] .badge-shape {
+  color: var(--md-sys-color-primary);
+  transform: rotate(45deg) scale(1.06);
+}
+
+.provider[aria-checked="true"] .badge-icon { color: var(--md-sys-color-on-primary); }
+
+.provider-name {
+  font-size: 15px;
+  font-weight: 500;
+  transition: color 0.25s;
+}
+
+.provider[aria-checked="true"] .provider-name { color: var(--md-sys-color-primary); }
+
+.provider-desc {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* ------------------------------------------------------------ 4 · keys ---- */
+/* Underlined fields rather than filled boxes: on a page with no other
+   containers, a filled text box reads as the odd one out. The indicator
+   line is the only rule on the page, and it is the one place a line means
+   something. */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 18px;
+  text-align: left;
+}
+
+.field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 2px 8px;
+  background: linear-gradient(var(--md-sys-color-on-surface-variant), var(--md-sys-color-on-surface-variant)) bottom / 100% 1px no-repeat;
+  cursor: text;
+  transition: background-size 0.25s var(--ease-emph);
+}
+
+.field:focus-within {
+  background-image: linear-gradient(var(--md-sys-color-primary), var(--md-sys-color-primary));
+  background-size: 100% 2px;
+}
+
+.field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface-variant);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  transition: color 0.2s;
+}
+
+.field:focus-within .field-label { color: var(--md-sys-color-primary); }
+
+.field-optional {
+  font-style: normal;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.field input {
+  width: 100%;
+  padding: 2px 0 0;
+  border: none;
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font: inherit;
+  font-size: 15.5px;
+}
+
+.field input:focus { outline: none; }
+
+.field input::placeholder { color: var(--md-sys-color-on-surface-variant); opacity: 0.5; }
+
+.field-secret { position: relative; display: block; }
+
+.field-secret input { padding-right: 40px; }
+
+.field-reveal {
+  position: absolute;
+  top: 50%;
+  right: -6px;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.field-reveal:hover { background: var(--md-state-hover); }
+.field-reveal svg { width: 18px; height: 18px; }
+.field-reveal[aria-pressed="true"] { color: var(--md-sys-color-primary); }
+
+.field-hint {
+  display: block;
+  margin: -10px 0 0;
+  padding: 0 2px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* The one place a fill is the message rather than a container. */
+.field-error {
+  margin: 0;
+  padding: 12px 18px;
+  border-radius: 20px 20px 20px 6px;
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.field-error.shake { animation: shake 0.4s var(--ease-emph); }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+}
+
+/* Plain text with an icon — a chip here would have been one more box. */
+.privacy-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 22px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 12px;
+}
+
+.privacy-note svg { width: 14px; height: 14px; flex: none; }
+
+/* ----------------------------------------------------------- 5 · model ---- */
+
+.model-stage { width: 100%; max-width: 420px; margin-bottom: 22px; }
+
+.model-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 26px 0 20px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 13.5px;
+}
+
+.model-loading p { margin: 0; }
+
+/* M3 circular progress: a rotating arc whose sweep grows and shrinks. */
+.m3-progress { width: 44px; height: 44px; animation: turn 1.6s linear infinite; }
+
+.m3-progress circle {
+  stroke: var(--md-sys-color-primary);
+  stroke-width: 4;
+  stroke-linecap: round;
+  fill: none;
+  stroke-dasharray: 125.6;
+  animation: progress-arc 1.2s var(--ease-emph) infinite;
+}
+
+@keyframes progress-arc {
+  0% { stroke-dashoffset: 119; }
+  50% { stroke-dashoffset: 40; }
+  100% { stroke-dashoffset: 119; }
+}
+
+.model-error {
+  padding: 18px 20px;
+  border-radius: 28px 28px 28px 8px;
+  background: var(--md-sys-color-error-container);
+}
+
+.model-error p {
+  margin: 0 0 14px;
+  color: var(--md-sys-color-on-error-container);
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.model-error .btn.ghost {
+  background: color-mix(in srgb, var(--md-sys-color-on-error-container) 12%, transparent);
+  color: var(--md-sys-color-on-error-container);
+}
+
+.model-error .btn.ghost:hover { background: color-mix(in srgb, var(--md-sys-color-on-error-container) 22%, transparent); }
+
+.model-error-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+.model-count { margin: 0 0 12px; font-size: 12.5px; color: var(--md-sys-color-on-surface-variant); }
+
+.model-filter {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  font: inherit;
+  font-size: 13px;
+}
+
+.model-filter:focus { outline: none; background: var(--md-sys-color-surface-container-highest); }
+
+/* Rows carry no fill of their own; only the chosen one does, as a pill. */
+.model-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: min(270px, 34vh);
+  overflow-y: auto;
+  scrollbar-width: none;
+  text-align: left;
+}
+
+.model-list::-webkit-scrollbar { width: 0; display: none; }
+
+.model-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 18px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s var(--ease-emph);
+  animation: rise 0.4s var(--ease-decel) both;
+  animation-delay: var(--d, 0s);
+}
+
+.model-option:hover { background: var(--md-state-hover); }
+
+.model-option[aria-checked="true"] {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.model-option-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.model-option-label { font-size: 13.5px; font-weight: 500; overflow-wrap: anywhere; }
+
+.model-option-id { font-size: 11.5px; color: var(--md-sys-color-on-surface-variant); overflow-wrap: anywhere; }
+
+/* The tick, not a radio ring: nothing else on this page draws a ring. */
+.model-check {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--md-sys-color-primary);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.2s, transform 0.25s var(--ease-decel);
+}
+
+.model-option[aria-checked="true"] .model-check { opacity: 1; transform: scale(1); }
+
+.model-manual-toggle {
+  margin-top: 12px;
+  height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--md-sys-color-primary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.model-manual-toggle:hover { background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent); }
+
+.model-manual { text-align: left; }
+.model-manual .field-hint { margin-top: 8px; }
+
+/* ------------------------------------------------------------ 6 · done ---- */
+
+.done-emblem { width: 148px; height: 148px; }
+
+/* The one shape that arrives rather than sits there. */
+.done-shape {
+  color: var(--md-sys-color-primary);
+  animation: turn 40s linear infinite, shape-in 0.55s var(--ease-decel) both;
+}
+
+@keyframes shape-in {
+  from { opacity: 0; transform: scale(0.55); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.done-check { position: relative; z-index: 2; width: 74px; height: 74px; }
+
+.done-tick {
+  stroke: var(--md-sys-color-on-primary);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 34;
+  stroke-dashoffset: 34;
+}
+
+.step.active .done-tick { animation: draw-tick 0.45s var(--ease-decel) 0.45s forwards; }
+
+@keyframes draw-tick { to { stroke-dashoffset: 0; } }
+
+.spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--md-sys-color-primary);
+  opacity: 0;
+}
+
+.step.active .spark { animation: spark 0.9s var(--ease-decel) 0.65s; }
+
+.spark-1 { --fly: translate(-88px, -60px); }
+.spark-2 { --fly: translate(84px, -72px); animation-delay: 0.7s !important; }
+.spark-3 { --fly: translate(102px, 24px); animation-delay: 0.75s !important; }
+.spark-4 { --fly: translate(-102px, 30px); animation-delay: 0.72s !important; }
+.spark-5 { --fly: translate(-36px, -98px); animation-delay: 0.8s !important; }
+.spark-6 { --fly: translate(42px, 92px); animation-delay: 0.77s !important; }
+
+@keyframes spark {
+  0% { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: var(--fly) scale(0.2); }
+}
+
+.done-summary {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--md-sys-color-primary);
+}
+
+/* ------------------------------------------------------------------ dots -- */
+
+.dots {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 0 24px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 16%, transparent);
+  transition: width 0.35s var(--ease-emph), background 0.35s;
+}
+
+.dot.active { width: 28px; background: var(--md-sys-color-primary); }
+
+.dot.passed { background: color-mix(in srgb, var(--md-sys-color-primary) 40%, transparent); }
+
+/* ------------------------------------------------------------ responsive -- */
+
+/* Under this width the margins stop being margins and the shapes would sit
+   under the text, so the composition steps down rather than crowding. */
+@media (max-width: 1080px) {
+  .deco-l2, .deco-r2 { display: none; }
+}
+
+@media (max-width: 820px) {
+  .shapes { display: none; }
+}
+
+@media (max-width: 620px) {
+  .provider-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-height: 680px) {
+  .hero-emblem { width: 124px; height: 124px; margin-bottom: 14px; }
+  .hero-icon { width: 60px; height: 60px; border-radius: 18px; }
+  .done-emblem { width: 108px; height: 108px; }
+  .done-check { width: 54px; height: 54px; }
+  .sub { margin-bottom: 18px; }
+  .promise-list { gap: 13px; margin-bottom: 20px; }
+}
+
+/* --------------------------------------------------------- motion off ----- */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.001s !important;
+  }
+}
+
+.no-anim *, .no-anim *::before, .no-anim *::after {
+  animation-duration: 0.001s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0.001s !important;
+}
