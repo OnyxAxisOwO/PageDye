@@ -3576,6 +3576,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       onApplyPreferences: async (preferences) => {
         await window.PageDyeAiPreferences.apply(chrome.storage.local, preferences);
       },
+      onSaveTheme: async (settings, theme) => window.PageDyeConfigPresets.saveToLibrary(
+        chrome.storage.local, settings, theme && theme.themeName
+      ),
       onApply: async (settings) => {
         previewSnapshot = null;
         setSavingState();

@@ -615,8 +615,43 @@
     return url.href.replace(/\/+$/, '');
   }
 
+  // The user's own shortlist of models, each optionally carrying a display
+  // label (a nickname shown in the UI in place of the raw id — `model` still
+  // always holds the real id every request is sent with). Kept per config
+  // rather than per provider: switching provider empties what the ids mean
+  // anyway, and the UI re-seeds the list from the endpoint's own /models.
+  const MAX_SAVED_MODELS = 40;
+  const MAX_MODEL_ID_CHARS = 120;
+  const MAX_MODEL_LABEL_CHARS = 60;
+
+  function sanitizeModels(raw) {
+    const seen = new Set();
+    const models = [];
+    for (const entry of (Array.isArray(raw) ? raw : [])) {
+      if (!entry || typeof entry !== 'object') continue;
+      const id = trimTo(entry.id, MAX_MODEL_ID_CHARS);
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      const label = trimTo(entry.label, MAX_MODEL_LABEL_CHARS);
+      models.push(label ? { id, label } : { id });
+      if (models.length >= MAX_SAVED_MODELS) break;
+    }
+    return models;
+  }
+
+  // The name a model is shown under: its saved label if the user gave it one,
+  // the raw id otherwise. One definition so the chat's model chip and the
+  // settings list cannot disagree about what a model is called.
+  function modelLabel(config, modelId) {
+    const id = typeof modelId === 'string' ? modelId.trim() : '';
+    if (!id) return '';
+    const saved = (config && Array.isArray(config.models) ? config.models : [])
+      .find((entry) => entry && entry.id === id);
+    return (saved && saved.label) || id;
+  }
+
   // Accepts a stored config of either shape: the original {apiKey, model} from
-  // before providers existed, or the current four-field object.
+  // before providers existed, or the current multi-field object.
   function normalizeConfig(raw) {
     const source = raw && typeof raw === 'object' ? raw : {};
     const provider = Object.prototype.hasOwnProperty.call(PROVIDERS, source.provider)
@@ -627,6 +662,7 @@
       provider,
       apiKey: typeof source.apiKey === 'string' ? source.apiKey.trim() : '',
       model: (typeof source.model === 'string' && source.model.trim()) || preset.defaultModel,
+      models: sanitizeModels(source.models),
       baseUrl: typeof source.baseUrl === 'string' ? source.baseUrl.trim() : '',
       // Whether the chosen model reads images. Nothing can ask an endpoint
       // this, so it is the user's answer, defaulting to what the provider
@@ -657,6 +693,72 @@
     }
     if (/\/chat\/completions$/.test(base)) return base;
     return `${base}/chat/completions`;
+  }
+
+  // Where a provider lists its models, from the same base URL the chat uses —
+  // including the pasted-a-full-endpoint forms resolveEndpoint accepts, which
+  // are stripped back to the root the models path hangs off.
+  function modelsEndpoint(provider, base) {
+    if (provider === 'anthropic') {
+      const root = base.replace(/\/v1\/messages$/, '').replace(/\/messages$/, '').replace(/\/v1$/, '');
+      return `${root}/v1/models?limit=200`;
+    }
+    const root = base.replace(/\/chat\/completions$/, '');
+    return `${root}/models`;
+  }
+
+  // Asks the configured endpoint what models it offers. Returns [{id, label}]
+  // — label only when the provider names one (Anthropic's display_name); the
+  // caller decides what to do with the list, nothing is written here. Both
+  // providers happen to answer {data: [...]}, but each entry is re-validated
+  // rather than trusted: this list is rendered into the settings UI.
+  async function listModels(config, signal) {
+    const clean = normalizeConfig(config);
+    if (!clean.apiKey) throw new Error('No API key configured.');
+    const preset = PROVIDERS[clean.provider];
+    const base = normalizeBaseUrl(clean.baseUrl, preset.defaultBaseUrl);
+    const url = modelsEndpoint(clean.provider, base);
+    const headers = clean.provider === 'anthropic'
+      ? {
+        'x-api-key': clean.apiKey,
+        'anthropic-version': ANTHROPIC_VERSION,
+        'anthropic-dangerous-direct-browser-access': 'true'
+      }
+      : { authorization: `Bearer ${clean.apiKey}` };
+
+    let response;
+    try {
+      response = await fetch(url, { method: 'GET', signal, headers });
+    } catch (error) {
+      throw new Error(`Network request failed: ${(error && error.message) || error}`);
+    }
+    let payload;
+    try {
+      payload = await response.json();
+    } catch (_) {
+      throw new Error(`The endpoint answered with something other than JSON (HTTP ${response.status}).`);
+    }
+    if (!response.ok) {
+      const detail = payload && payload.error && (payload.error.message || payload.error);
+      const message = typeof detail === 'string' && detail ? detail : `Listing models failed with HTTP ${response.status}.`;
+      // Same diagnostic as a failed chat turn: an auth rejection here is
+      // usually a key for a different service, and naming the endpoint the
+      // key was sent to makes that visible.
+      if (response.status === 401 || response.status === 403) {
+        throw new Error(`${message} (sent as ${clean.provider} to ${url})`);
+      }
+      throw new Error(message);
+    }
+
+    const entries = Array.isArray(payload && payload.data) ? payload.data : [];
+    const models = sanitizeModels(entries.map((entry) => (entry && typeof entry === 'object'
+      ? { id: entry.id, label: typeof entry.display_name === 'string' ? entry.display_name : '' }
+      : null)).filter(Boolean));
+    if (!models.length) throw new Error('The endpoint listed no models.');
+    // Anthropic already lists newest first; OpenAI-compatible servers return
+    // an arbitrary jumble, which alphabetical order at least makes scannable.
+    if (clean.provider !== 'anthropic') models.sort((a, b) => a.id.localeCompare(b.id));
+    return models;
   }
 
   // Where the request goes and who it says it is. Split out from the body so
@@ -1999,6 +2101,10 @@
     normalizeConfig,
     normalizeBaseUrl,
     resolveEndpoint,
+    modelsEndpoint,
+    listModels,
+    sanitizeModels,
+    modelLabel,
     toStrictSchema,
     buildUserPrompt,
     buildChatRequest,

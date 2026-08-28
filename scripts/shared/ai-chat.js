@@ -35,6 +35,29 @@
     'M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'
   ];
   const CROSS = ['M18 6L6 18', 'M6 6l12 12'];
+  const MENU = ['M3 6h18', 'M3 12h18', 'M3 18h18'];
+
+  // The opening prompts. Far more than fit on screen, so each visit offers a
+  // different three — a fixed trio is read once and then becomes furniture,
+  // while a rotating one keeps suggesting things the user did not know to ask
+  // for. Every string is sent verbatim as the message, so each has to read as
+  // something a person would actually type.
+  const SUGGESTION_KEYS = [
+    'suggestionCalm', 'suggestionDark', 'suggestionSurprise', 'suggestionWarm',
+    'suggestionCool', 'suggestionSolid', 'suggestionSoftGradient', 'suggestionFrosted',
+    'suggestionTimeOfDay', 'suggestionEffect', 'suggestionBrand', 'suggestionReading',
+    'suggestionMono', 'suggestionRetro', 'suggestionDeep', 'suggestionSubtle'
+  ];
+  const SUGGESTIONS_SHOWN = 3;
+
+  function pickSuggestions(count) {
+    const pool = SUGGESTION_KEYS.slice();
+    const picked = [];
+    while (picked.length < count && pool.length) {
+      picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    }
+    return picked;
+  }
 
   const STRINGS = {
     en: {
@@ -64,10 +87,10 @@
       statsTokens: '{input} in / {output} out',
       statsOutputOnly: '{output} out',
       statsSpeed: '{tps} tok/s',
-      reasoning: '思考过程',
-      reasoningLive: '正在思考…',
       reasoning: 'Reasoning',
       reasoningLive: 'Thinking…',
+      stop: 'Stop',
+      stopped: 'Stopped.',
       thinking: 'Reading the page and designing…',
       thinkingAgain: 'Working on your change…',
       emptyTitle: 'Design a background by chatting',
@@ -75,6 +98,19 @@
       suggestionCalm: 'Something calm and low contrast',
       suggestionDark: 'A dark theme that matches this site',
       suggestionSurprise: 'Surprise me',
+      suggestionWarm: 'Warm sunset colours',
+      suggestionCool: 'Cool blues and greens',
+      suggestionSolid: 'Just a plain colour, nothing fancy',
+      suggestionSoftGradient: 'A soft gradient that stays out of the way',
+      suggestionFrosted: 'Frost the panels so the text stays sharp',
+      suggestionTimeOfDay: 'Change through the day, warmer at night',
+      suggestionEffect: 'Add a slow animated effect',
+      suggestionBrand: 'Follow this site\'s own colours',
+      suggestionReading: 'Easy on the eyes for long reading',
+      suggestionMono: 'Almost no colour — greys only',
+      suggestionRetro: 'Something retro',
+      suggestionDeep: 'Deep and dark, like late at night',
+      suggestionSubtle: 'Barely there — I should hardly notice it',
       setupTitle: 'Add an API key to start',
       setupBody: 'The chat runs on your own API key — Anthropic, or any OpenAI-compatible endpoint. Nothing is sent anywhere until you add one.',
       setupAction: 'Open AI settings',
@@ -89,6 +125,8 @@
       undoPreview: 'Undo preview',
       apply: 'Apply',
       applied: 'Applied to this site.',
+      saveTheme: 'Add to themes',
+      themeSaved: 'Kept as “{name}” in your themes.',
       prefsTitle: 'PageDye settings',
       prefsBody: 'This changes PageDye itself, not this page.',
       prefsApply: 'Change settings',
@@ -136,6 +174,10 @@
       statsTokens: '输入 {input} / 输出 {output}',
       statsOutputOnly: '输出 {output}',
       statsSpeed: '{tps} tok/s',
+      reasoning: '思考过程',
+      reasoningLive: '正在思考…',
+      stop: '停止',
+      stopped: '已停止。',
       thinking: '正在读取页面并设计…',
       thinkingAgain: '正在按你的要求修改…',
       emptyTitle: '用聊天的方式设计背景',
@@ -143,6 +185,19 @@
       suggestionCalm: '来点安静、低对比度的',
       suggestionDark: '做一个和这个网站搭的深色主题',
       suggestionSurprise: '随便来一个惊喜',
+      suggestionWarm: '暖一点的落日色',
+      suggestionCool: '清爽的蓝绿色调',
+      suggestionSolid: '就要一个纯色，别太花',
+      suggestionSoftGradient: '柔和的渐变，别抢正文',
+      suggestionFrosted: '把面板做成磨砂，让字更清楚',
+      suggestionTimeOfDay: '随时间变化，晚上暖一点',
+      suggestionEffect: '加一个慢慢动的特效',
+      suggestionBrand: '跟着这个网站自己的配色走',
+      suggestionReading: '适合长时间阅读，不刺眼',
+      suggestionMono: '近乎无彩，只要黑白灰',
+      suggestionRetro: '来点复古感',
+      suggestionDeep: '深一点，像深夜那种',
+      suggestionSubtle: '很淡就行，几乎察觉不到',
       setupTitle: '先填一个 API 密钥',
       setupBody: '对话使用你自己的 API 密钥，支持 Anthropic 和任意 OpenAI 兼容接口。在你填写之前，不会向任何地方发送数据。',
       setupAction: '打开 AI 设置',
@@ -157,6 +212,8 @@
       undoPreview: '撤销预览',
       apply: '应用',
       applied: '已应用到该网站。',
+      saveTheme: '添加到主题',
+      themeSaved: '已收进主题库，名字是“{name}”。',
       prefsTitle: 'PageDye 设置',
       prefsBody: '这一项改的是 PageDye 自己，不是当前网页。',
       prefsApply: '更改设置',
@@ -280,6 +337,25 @@
     // Absent on a surface that does not offer it; the card is simply not
     // rendered there, rather than offering a button that does nothing.
     const onApplyPreferences = config.onApplyPreferences || null;
+    // Keeps a designed theme in the library instead of only on this one site,
+    // so it can be applied to others later. Absent on a surface that has no
+    // library to put it in; the button is then simply not offered.
+    const onSaveTheme = config.onSaveTheme || null;
+    // A second pane for the sidebar, supplied by the host page: the dashboard
+    // hands over its own navigation so the fullscreen chat still offers a way
+    // back to the rest of PageDye. When present the sidebar grows a two-tab
+    // head; the popup passes nothing and keeps its plain history list.
+    const navPanel = config.navPanel || null;
+    const navLabel = config.navLabel || '';
+    // A host-owned row (target page, model picker…) parked above the
+    // transcript. The component only places it; what it does is the host's.
+    const mainHeader = config.mainHeader || null;
+    // Fired with the latest designed theme of the active conversation (or
+    // null) whenever that changes — it is what the dashboard's live preview
+    // panel tracks. The message handed over is the stored one: theme,
+    // settings and id all present.
+    const onThemeUpdate = typeof config.onThemeUpdate === 'function' ? config.onThemeUpdate : null;
+    let lastThemeSignature = null;
     // The generator trims a message to this before sending, so the field stops
     // there too rather than silently dropping the tail of a long one.
     const maxMessageChars = (globalThis.PageDyeAiTheme && globalThis.PageDyeAiTheme.MAX_INSTRUCTION_CHARS) || 1000;
@@ -289,9 +365,16 @@
       return vars ? value.replace(/\{(\w+)\}/g, (match, name) => (name in vars ? String(vars[name]) : match)) : value;
     }
 
+    // A different three every time the page is opened.
+    const shownSuggestions = pickSuggestions(SUGGESTIONS_SHOWN);
+
     let conversations = [];
     let activeId = '';
     let busy = false;
+    // Ends the turn in flight, when there is one that can be ended: set by the
+    // port path of requestTurn (disconnecting the port aborts the request in
+    // the worker), null on the sendMessage fallback, which cannot be stopped.
+    let cancelTurn = null;
     let editingId = '';
     let previewId = '';
     let configured = false;
@@ -324,6 +407,10 @@
     // restarts the spinner's animation several times a second — which reads
     // as a twitch — and throws away the reasoning box's scroll position.
     let pendingNodes = null;
+    // Which conversation the transcript on screen belongs to, so a switch (or
+    // a brand new one) can be told apart from the many renders a single turn
+    // causes while it streams — only the former is worth animating.
+    let lastRenderedId = null;
 
     // --- structure ------------------------------------------------------------
 
@@ -331,11 +418,17 @@
     host.textContent = '';
 
     const sidebar = el('div', 'ai-chat-sidebar');
+    // One full-width row, the way every chat app starts its rail: the single
+    // most common action gets the single most obvious control.
     const sidebarHead = el('div', 'ai-chat-sidebar-head');
     const newChatBtn = button('ai-chat-new', '', () => startNewConversation());
     newChatBtn.appendChild(icon(['M12 5v14', 'M5 12h14'], 14));
     newChatBtn.appendChild(el('span', null, str('newChat')));
-    const sidebarHeadActions = el('div', 'ai-chat-sidebar-head-actions');
+    sidebarHead.appendChild(el('span', 'ai-chat-sidebar-title', str('history')));
+    sidebarHead.appendChild(newChatBtn);
+    // Destructive-for-everything lives at the bottom, small and quiet: it is
+    // used once a month, not once a conversation, and a trash can enthroned
+    // above the list read as a primary action.
     const clearAllBtn = button('ai-chat-clear-all', '', async () => {
       if (!conversations.length) return;
       if (!doc.defaultView.confirm(str('confirmClearAll'))) return;
@@ -344,16 +437,58 @@
       await persist();
       await startNewConversation();
     });
-    clearAllBtn.appendChild(icon(['M3 6h18', 'M8 6V4h8v2', 'M19 6l-1 14H6L5 6', 'M10 11v6', 'M14 11v6'], 13));
-    clearAllBtn.title = str('clearAll');
-    clearAllBtn.setAttribute('aria-label', str('clearAll'));
-    sidebarHeadActions.appendChild(clearAllBtn);
-    sidebarHeadActions.appendChild(newChatBtn);
-    sidebarHead.appendChild(el('span', 'ai-chat-sidebar-title', str('history')));
-    sidebarHead.appendChild(sidebarHeadActions);
+    clearAllBtn.appendChild(icon(['M3 6h18', 'M8 6V4h8v2', 'M19 6l-1 14H6L5 6', 'M10 11v6', 'M14 11v6'], 12));
+    clearAllBtn.appendChild(el('span', null, str('clearAll')));
+    const sidebarFoot = el('div', 'ai-chat-sidebar-foot');
+    sidebarFoot.appendChild(clearAllBtn);
     const sidebarList = el('div', 'ai-chat-list');
-    sidebar.appendChild(sidebarHead);
-    sidebar.appendChild(sidebarList);
+    if (navPanel) {
+      // Two panes behind two tabs: the conversation list, and whatever the
+      // host page parked in navPanel (the dashboard passes its navigation).
+      let railTab = 'history';
+      const railTabs = el('div', 'ai-chat-rail-tabs');
+      railTabs.setAttribute('role', 'tablist');
+      const historyPane = el('div', 'ai-chat-rail-pane');
+      historyPane.appendChild(sidebarHead);
+      historyPane.appendChild(sidebarList);
+      historyPane.appendChild(sidebarFoot);
+      const navPane = el('div', 'ai-chat-rail-pane ai-chat-rail-nav');
+      navPane.appendChild(navPanel);
+      const tabs = [
+        { key: 'history', label: str('history'), pane: historyPane },
+        { key: 'nav', label: navLabel, pane: navPane }
+      ].map((entry, index) => {
+        const tab = button('ai-chat-rail-tab', entry.label, () => {
+          if (railTab === entry.key) return;
+          // The pane arrives from the side the tab moved towards, which is
+          // what the dashboard's own tabs do.
+          const from = tabs.findIndex((item) => item.key === railTab);
+          railTab = entry.key;
+          paintRail(index > from ? 'enter-forward' : 'enter-back');
+        });
+        tab.setAttribute('role', 'tab');
+        railTabs.appendChild(tab);
+        return { ...entry, tab, index };
+      });
+      const paintRail = (direction) => {
+        tabs.forEach((entry) => {
+          const active = railTab === entry.key;
+          entry.tab.classList.toggle('active', active);
+          entry.tab.setAttribute('aria-selected', String(active));
+          entry.pane.classList.remove('enter-forward', 'enter-back');
+          entry.pane.classList.toggle('active', active);
+          if (active && direction) entry.pane.classList.add(direction);
+        });
+      };
+      paintRail();
+      sidebar.appendChild(railTabs);
+      sidebar.appendChild(historyPane);
+      sidebar.appendChild(navPane);
+    } else {
+      sidebar.appendChild(sidebarHead);
+      sidebar.appendChild(sidebarList);
+      sidebar.appendChild(sidebarFoot);
+    }
 
     const main = el('div', 'ai-chat-main');
     const bar = el('div', 'ai-chat-bar');
@@ -361,7 +496,9 @@
       historyOpen = !historyOpen;
       render();
     });
-    historyBtn.appendChild(icon(['M3 12a9 9 0 1 0 3-6.7L3 8', 'M3 3v5h5', 'M12 7v5l3 2'], 15));
+    // A menu glyph, not a clock: this opens the list of conversations, and the
+    // history icon read as "go back to something you were looking at".
+    historyBtn.appendChild(icon(MENU, 16));
     historyBtn.title = str('history');
     historyBtn.setAttribute('aria-label', str('history'));
     const barTitle = el('span', 'ai-chat-bar-title', str('chatTitle'));
@@ -395,7 +532,14 @@
     attachBtn.title = str('attach');
     attachBtn.setAttribute('aria-label', str('attach'));
     const sendBtn = button('ai-chat-send', '');
-    sendBtn.appendChild(icon(['M12 19V5', 'M5 12l7-7 7 7'], 16));
+    // One button, two jobs: send when idle, stop while a turn is being
+    // generated — the convention every chat app has settled on, and the only
+    // discoverable place for "stop paying for tokens I no longer want".
+    const sendIcon = icon(['M12 19V5', 'M5 12l7-7 7 7'], 16);
+    const stopIcon = icon(['M7 7h10v10H7z'], 14);
+    stopIcon.style.display = 'none';
+    sendBtn.appendChild(sendIcon);
+    sendBtn.appendChild(stopIcon);
     sendBtn.title = str('send');
     sendBtn.setAttribute('aria-label', str('send'));
     composerRow.appendChild(attachBtn);
@@ -408,6 +552,7 @@
     const dropHint = el('div', 'ai-chat-drop', str('dropHint'));
 
     main.appendChild(bar);
+    if (mainHeader) main.appendChild(mainHeader);
     main.appendChild(scroll);
     main.appendChild(flashLine);
     main.appendChild(composer);
@@ -558,18 +703,24 @@
 
     // --- rendering ------------------------------------------------------------
 
-    function renderSidebar() {
-      clearAllBtn.hidden = !conversations.length;
+    function renderSidebar(switched) {
+      sidebarFoot.hidden = !conversations.length;
       sidebarList.textContent = '';
       if (!conversations.length) {
         sidebarList.appendChild(el('p', 'ai-chat-list-empty', str('noHistory')));
         return;
       }
       conversations.forEach((conversation) => {
-        const row = el('div', `ai-chat-list-item${conversation.id === activeId ? ' active' : ''}`);
+        const isActive = conversation.id === activeId;
+        const row = el('div', `ai-chat-list-item${isActive ? ' active' : ''}${isActive && switched ? ' switched' : ''}`);
         const open = button('ai-chat-list-open', '');
-        open.appendChild(el('span', 'ai-chat-list-title', conversation.title || conversation.hostname || str('newChat')));
-        if (conversation.hostname) open.appendChild(el('span', 'ai-chat-list-host', conversation.hostname));
+        const title = conversation.title || conversation.hostname || str('newChat');
+        open.appendChild(el('span', 'ai-chat-list-title', title));
+        // Only when it says something the title does not: a conversation named
+        // after its site would otherwise show the same hostname twice.
+        if (conversation.hostname && conversation.hostname !== title) {
+          open.appendChild(el('span', 'ai-chat-list-host', conversation.hostname));
+        }
         open.addEventListener('click', () => {
           activeId = conversation.id;
           editingId = '';
@@ -611,7 +762,9 @@
         empty.appendChild(el('span', 'ai-chat-empty-host', conversation.hostname));
       }
       const suggestions = el('div', 'ai-chat-suggestions');
-      ['suggestionCalm', 'suggestionDark', 'suggestionSurprise'].forEach((key) => {
+      // Chosen once per mount rather than per render: re-rolling them as the
+      // transcript repaints would shuffle the buttons under the pointer.
+      shownSuggestions.forEach((key) => {
         suggestions.appendChild(button('ai-chat-suggestion', str(key), () => {
           input.value = str(key);
           submit();
@@ -675,6 +828,19 @@
           if (isPreviewing) await stopPreview();
           else await startPreview(message);
         }));
+      }
+      if (onSaveTheme) {
+        const save = button('ai-chat-theme-btn', str('saveTheme'), async () => {
+          save.disabled = true;
+          try {
+            const name = await onSaveTheme(message.settings, message.theme, active());
+            setFlash(str('themeSaved', { name: name || '' }));
+          } catch (error) {
+            save.disabled = false;
+            setFlash(String((error && error.message) || error));
+          }
+        });
+        actions.appendChild(save);
       }
       actions.appendChild(button('ai-chat-theme-btn primary', str('apply'), async () => {
         try {
@@ -910,9 +1076,27 @@
     function render() {
       pendingNodes = null;
       const conversation = active();
+      // Whether this render is a different conversation than the one on
+      // screen, decided before anything is rebuilt: a turn in flight causes
+      // many renders of the same conversation, and only an actual switch is
+      // worth animating.
+      const switched = activeId !== lastRenderedId;
+      lastRenderedId = activeId;
       host.classList.toggle('history-open', historyOpen);
       barTitle.textContent = (conversation && (conversation.title || conversation.hostname)) || str('chatTitle');
-      renderSidebar();
+      renderSidebar(switched);
+
+      // Switching conversations replaces the whole transcript at once, which
+      // reads as a flicker without something to mark it as a different page
+      // arriving. Restarted by hand: the scroll node is reused across renders,
+      // so nothing about it would re-trigger the animation on its own.
+      if (switched) {
+        scroll.classList.remove('ai-chat-switching');
+        // Reading a layout property is what makes the removal land before the
+        // class goes back on; without it the two changes coalesce into none.
+        void scroll.offsetWidth;
+        scroll.classList.add('ai-chat-switching');
+      }
 
       scroll.textContent = '';
       if (!configured) scroll.appendChild(renderSetup());
@@ -933,8 +1117,32 @@
       host.classList.toggle('is-empty', empty);
       input.placeholder = str(empty ? 'placeholderFirst' : 'placeholder');
       input.disabled = busy || !configured;
-      sendBtn.disabled = busy || !configured;
+      syncSendButton();
       renderComposerAttachments();
+
+      if (onThemeUpdate) {
+        const latest = conversation ? Store.latestTheme(conversation) : null;
+        const signature = `${conversation ? conversation.id : ''}:${latest ? latest.id : ''}`;
+        if (signature !== lastThemeSignature) {
+          lastThemeSignature = signature;
+          onThemeUpdate(latest, conversation);
+        }
+      }
+    }
+
+    // The send button flips to a stop square only while there is actually a
+    // turn that can be stopped; the sendMessage fallback keeps the old
+    // disabled state, because a button that promises to stop and cannot is
+    // worse than one that is greyed out.
+    function syncSendButton() {
+      const stoppable = busy && !!cancelTurn;
+      sendBtn.classList.toggle('stop', stoppable);
+      sendBtn.disabled = busy ? !stoppable : !configured;
+      sendIcon.style.display = stoppable ? 'none' : '';
+      stopIcon.style.display = stoppable ? '' : 'none';
+      const label = str(stoppable ? 'stop' : 'send');
+      sendBtn.title = label;
+      sendBtn.setAttribute('aria-label', label);
     }
 
     // --- preview --------------------------------------------------------------
@@ -1022,6 +1230,7 @@
         const finish = (fn, value) => {
           if (settled) return;
           settled = true;
+          cancelTurn = null;
           try {
             port.disconnect();
           } catch (_) {
@@ -1029,6 +1238,11 @@
           }
           fn(value);
         };
+
+        // Disconnecting is the abort: the worker cancels the request the
+        // moment its end of the port closes. Resolved rather than rejected —
+        // a stop is an outcome the user asked for, not a failure.
+        cancelTurn = () => finish(resolve, { ok: true, stopped: true });
 
         port.onMessage.addListener((message) => {
           if (!message) return;
@@ -1050,6 +1264,7 @@
         });
 
         port.postMessage({ action: 'start', ...payload });
+        syncSendButton();
       });
     }
 
@@ -1086,6 +1301,27 @@
         );
         if (!response) throw new Error(str('failed'));
         if (!response.ok) throw new Error(response.error || str('failed'));
+        // The user pressed stop. What had already streamed in is kept as the
+        // answer — it is what they read while deciding to stop — and a turn
+        // stopped before any text arrived simply leaves no message.
+        if (response.stopped) {
+          const at = Date.now();
+          const target = byId(conversationId);
+          if (!target) return;
+          const partial = streamingReply.trim();
+          if (partial) {
+            target.messages.push(Store.assistantMessage({ reply: partial, thinking: streamingThinking }, at));
+            target.updatedAt = at;
+            await persist();
+          }
+          streamingReply = '';
+          streamingThinking = '';
+          busy = false;
+          setFlash(str('stopped'));
+          render();
+          scrollToEnd();
+          return;
+        }
         // The endpoint refused to stream and the turn was quietly re-sent
         // one-shot. Worth saying: otherwise a working fallback is
         // indistinguishable from streaming being broken. Held rather than
@@ -1136,6 +1372,7 @@
         streamingReply = '';
         streamingThinking = '';
         busy = false;
+        cancelTurn = null;
       }
     }
 
@@ -1200,6 +1437,10 @@
     });
     sendBtn.addEventListener('click', (event) => {
       event.preventDefault();
+      if (busy) {
+        if (cancelTurn) cancelTurn();
+        return;
+      }
       submit();
     });
     input.addEventListener('input', resizeInput);

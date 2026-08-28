@@ -12,17 +12,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const zh = presetApi.language() === 'zh';
   const copy = zh ? {
-    label: '预设', apply: '应用', saveCurrent: '保存', manage: '管理预设',
-    customGroup: '我的预设', builtInGroup: '内置预设',
+    label: '主题', apply: '应用', saveCurrent: '保存', manage: '管理主题',
+    customGroup: '我的主题', builtInGroup: '内置主题',
     saved: '已把当前站点保存为“{name}”', applied: '已应用“{name}”',
-    noSettings: '当前页面还没有可保存的配置', unavailable: '此页面无法使用预设',
-    limit: '最多可保存 100 个自定义预设'
+    noSettings: '当前页面还没有可保存的配置', unavailable: '此页面无法使用主题',
+    limit: '最多可保存 100 个自定义主题'
   } : {
-    label: 'Preset', apply: 'Apply', saveCurrent: 'Save', manage: 'Manage presets',
-    customGroup: 'My presets', builtInGroup: 'Built-in presets',
+    label: 'Theme', apply: 'Apply', saveCurrent: 'Save', manage: 'Manage themes',
+    customGroup: 'My themes', builtInGroup: 'Built-in themes',
     saved: 'Saved this site as “{name}”', applied: 'Applied “{name}”',
-    noSettings: 'This page has no configuration to save yet', unavailable: 'Presets are unavailable on this page',
-    limit: 'You can save up to 100 custom presets'
+    noSettings: 'This page has no configuration to save yet', unavailable: 'Themes are unavailable on this page',
+    limit: 'You can save up to 100 custom themes'
   };
 
   let activeTab = null;

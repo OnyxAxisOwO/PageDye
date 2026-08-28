@@ -826,23 +826,24 @@ test('popup chat: with no API key the first thing shown is how to add one', asyn
   assert.equal(page.root.querySelector('.ai-chat-setup'), null);
 });
 
-test('the chat page is only the conversation, and its settings live under Settings', async () => {
+test('the chat page carries its own settings and preview in the side column', async () => {
   const { chrome } = createChromeMock();
   const { document, errors } = await loadExtensionPage('options/options.html', { chrome });
 
   assert.deepEqual(errors, []);
   assert.ok(document.querySelector('#section-ai-chat #ai-chat-root .ai-chat-composer'), 'the chat mounts');
   assert.ok(document.querySelector('.nav-item[data-target="section-ai-chat"]'));
-  assert.equal(document.querySelector('.nav-item[data-target="section-ai"]'), null, 'AI Settings no longer has its own nav item');
-  assert.equal(document.getElementById('section-ai'), null, 'AI Settings no longer has its own section');
-  // Every preference lives on Settings, so the chat page is just the chat.
-  assert.ok(document.querySelector('#section-settings #settings-ai #ai-api-key-input'));
-  assert.equal(document.querySelector('#section-ai-chat #ai-api-key-input'), null);
-  // ...and the chat page still offers a way to get there.
-  assert.ok(document.querySelector('#section-ai-chat [data-nav-target="section-settings"]'));
+  assert.equal(document.querySelector('.nav-item[data-target="section-ai"]'), null, 'AI Settings still has no nav item of its own');
+  assert.equal(document.getElementById('section-ai'), null, 'AI Settings still has no section of its own');
+  // The provider/key form lives beside the chat now, not on Settings.
+  assert.ok(document.querySelector('#section-ai-chat #settings-ai #ai-api-key-input'));
+  assert.equal(document.querySelector('#section-settings #ai-api-key-input'), null);
+  // The side column also carries the mock preview the current design paints.
+  assert.ok(document.querySelector('#section-ai-chat #ai-preview-frame .ai-mock'), 'the preview mock renders');
+  assert.ok(document.querySelector('#section-ai-chat #ai-model-detect'), 'models can be detected from the settings card');
 });
 
-test('the chat page is all conversation, with its controls behind one menu', async () => {
+test('the chat page is all conversation, with its controls in the header chips and the rail', async () => {
   const { chrome, store } = createChromeMock();
   store[AI_CONFIG_KEY] = { provider: 'anthropic', apiKey: 'sk-test', model: 'claude-opus-5' };
   const { document, window, errors } = await loadExtensionPage('options/options.html', { chrome });
@@ -853,32 +854,41 @@ test('the chat page is all conversation, with its controls behind one menu', asy
   const heading = document.querySelector('#section-ai-chat h2');
   assert.ok(heading && heading.classList.contains('sr-only'), 'the title survives for screen readers only');
 
-  const bar = document.querySelector('#section-ai-chat .ai-topbar');
-  assert.ok(bar, 'a slim bar replaces it');
-  assert.ok(bar.querySelector('select#ai-chat-tab-select'), 'the page being designed for stays on the left');
+  // The old topbar (select + corner menu) is gone entirely.
+  assert.equal(document.querySelector('.ai-topbar'), null);
+  assert.equal(document.getElementById('ai-chat-tab-select'), null);
+  assert.equal(document.getElementById('ai-menu-panel'), null);
 
-  // Everything that is not the conversation lives in the corner menu.
-  const toggle = document.getElementById('ai-menu-toggle');
-  const panel = document.getElementById('ai-menu-panel');
-  assert.ok(toggle && panel);
-  assert.equal(panel.hidden, true, 'the menu starts closed');
-  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
-  assert.ok(panel.querySelector('#ai-chat-tab-refresh'), 'refreshing the tab list moved into the menu');
-  assert.ok(panel.querySelector('[data-nav-target="section-settings"]'), 'so did the way to AI settings');
+  // The page being designed for and the model both sit as chips above the
+  // transcript, inside the chat component's own main column.
+  const targetChip = document.getElementById('ai-target-chip');
+  const modelChip = document.getElementById('ai-model-chip');
+  assert.ok(targetChip && targetChip.closest('.ai-chat-main'), 'the target chip mounts above the transcript');
+  assert.ok(modelChip && modelChip.closest('.ai-chat-main'), 'so does the model chip');
+  assert.equal(document.getElementById('ai-target-menu').hidden, true, 'its menu starts closed');
 
   const click = (node) => node.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-
-  click(toggle);
-  assert.equal(panel.hidden, false, 'the button opens it');
-  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
-
-  click(document.body);
-  assert.equal(panel.hidden, true, 'clicking away closes it');
-  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
-
-  click(toggle);
+  click(targetChip);
+  assert.equal(document.getElementById('ai-target-menu').hidden, false, 'the chip opens it');
   document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-  assert.equal(panel.hidden, true, 'so does Escape');
+  assert.equal(document.getElementById('ai-target-menu').hidden, true, 'Escape closes it');
+
+  // The rail carries two tabs: the history, and the dashboard's navigation —
+  // which is the way back out of the fullscreen chat.
+  const railTabs = document.querySelectorAll('#section-ai-chat .ai-chat-rail-tab');
+  assert.equal(railTabs.length, 2, 'history and PageDye');
+  const navPane = document.querySelector('#section-ai-chat .ai-chat-rail-nav');
+  assert.ok(navPane, 'the rail hosts the navigation pane');
+  const toSettings = navPane.querySelector('[data-ai-nav="section-settings"]');
+  assert.ok(toSettings, 'the rail offers the way to the other sections');
+
+  // Leaving through the rail lands on the picked section (after the collapse
+  // animation options.js plays first).
+  click(document.querySelector('.nav-item[data-target="section-ai-chat"]'));
+  assert.ok(document.getElementById('section-ai-chat').classList.contains('active'));
+  click(toSettings);
+  await waitFor(() => document.getElementById('section-settings').classList.contains('active'), { timeout: 3000 });
+  assert.ok(!document.getElementById('section-ai-chat').classList.contains('active'), 'the chat closed');
 });
 
 test('a proposed PageDye setting is shown as its own card and only applied on request', async () => {
@@ -1119,4 +1129,292 @@ test('a stream that dies before answering leaves a retryable error, not a stuck 
 
   await waitFor(() => root.querySelector('.ai-chat-error'), { timeout: 3000 });
   assert.equal(root.querySelector('.ai-chat-pending'), null, 'the spinner must not outlive the turn');
+});
+
+// --- model shortlist and detection ------------------------------------------
+
+test('the Chinese UI names the reasoning box in Chinese', () => {
+  // Regression: the zh labels were once misfiled inside the en block as
+  // duplicate keys, so Chinese users saw "Reasoning" / "Thinking…".
+  assert.equal(chat.STRINGS.zh.reasoning, '思考过程');
+  assert.equal(chat.STRINGS.zh.reasoningLive, '正在思考…');
+  assert.equal(chat.STRINGS.en.reasoning, 'Reasoning');
+  assert.equal(chat.STRINGS.en.reasoningLive, 'Thinking…');
+});
+
+test('the model shortlist survives normalizeConfig, cleaned rather than trusted', () => {
+  const config = aiTheme.normalizeConfig({
+    apiKey: 'sk-test',
+    model: 'claude-opus-5',
+    models: [
+      { id: ' claude-opus-5 ', label: ' Best one ' },
+      { id: 'claude-opus-5', label: 'duplicate is dropped' },
+      { id: '', label: 'no id, no entry' },
+      'not an object',
+      { id: 'claude-haiku-4-5' }
+    ]
+  });
+  assert.deepEqual(config.models, [
+    { id: 'claude-opus-5', label: 'Best one' },
+    { id: 'claude-haiku-4-5' }
+  ]);
+  // A config from before shortlists existed reads back as an empty list.
+  assert.deepEqual(aiTheme.normalizeConfig({ apiKey: 'k', model: 'm' }).models, []);
+});
+
+test('a saved nickname is how the model is shown; the raw id is the fallback', () => {
+  const config = { models: [{ id: 'claude-opus-5', label: 'The good one' }, { id: 'claude-haiku-4-5' }] };
+  assert.equal(aiTheme.modelLabel(config, 'claude-opus-5'), 'The good one');
+  assert.equal(aiTheme.modelLabel(config, 'claude-haiku-4-5'), 'claude-haiku-4-5');
+  assert.equal(aiTheme.modelLabel(config, 'never-saved'), 'never-saved');
+  assert.equal(aiTheme.modelLabel(config, ''), '');
+});
+
+test('the models endpoint hangs off the same base URL the chat uses', () => {
+  // Every pasted form resolveEndpoint accepts has to land on the same list.
+  assert.equal(aiTheme.modelsEndpoint('anthropic', 'https://api.anthropic.com'), 'https://api.anthropic.com/v1/models?limit=200');
+  assert.equal(aiTheme.modelsEndpoint('anthropic', 'https://proxy.example/v1'), 'https://proxy.example/v1/models?limit=200');
+  assert.equal(aiTheme.modelsEndpoint('anthropic', 'https://proxy.example/v1/messages'), 'https://proxy.example/v1/models?limit=200');
+  assert.equal(aiTheme.modelsEndpoint('openai', 'https://api.openai.com/v1'), 'https://api.openai.com/v1/models');
+  assert.equal(aiTheme.modelsEndpoint('openai', 'https://api.groq.com/openai/v1/chat/completions'), 'https://api.groq.com/openai/v1/models');
+});
+
+test('listModels asks the endpoint and hands back a cleaned, labelled list', async (t) => {
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: [
+          { id: 'claude-opus-5', display_name: 'Claude Opus 5' },
+          { id: 'claude-haiku-4-5', display_name: 'Claude Haiku 4.5' }
+        ]
+      })
+    };
+  };
+
+  const models = await aiTheme.listModels({ provider: 'anthropic', apiKey: 'sk-test', model: 'claude-opus-5' });
+  assert.deepEqual(models, [
+    { id: 'claude-opus-5', label: 'Claude Opus 5' },
+    { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' }
+  ]);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://api.anthropic.com/v1/models?limit=200');
+  assert.equal(calls[0].options.headers['x-api-key'], 'sk-test');
+  assert.equal(calls[0].options.method, 'GET');
+});
+
+test('listModels sorts an OpenAI-compatible list and refuses an empty one', async (t) => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+
+  globalThis.fetch = async (url, options) => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ data: [{ id: 'zeta' }, { id: 'alpha' }] })
+  });
+  const models = await aiTheme.listModels({ provider: 'openai', apiKey: 'sk-x', model: 'alpha' });
+  assert.deepEqual(models.map((entry) => entry.id), ['alpha', 'zeta']);
+
+  globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: [] }) });
+  await assert.rejects(
+    () => aiTheme.listModels({ provider: 'openai', apiKey: 'sk-x', model: 'alpha' }),
+    /listed no models/
+  );
+
+  // An auth rejection names the provider and endpoint the key was sent to,
+  // same as a failed chat turn.
+  globalThis.fetch = async () => ({ ok: false, status: 401, json: async () => ({ error: { message: 'bad key' } }) });
+  await assert.rejects(
+    () => aiTheme.listModels({ provider: 'openai', apiKey: 'sk-x', model: 'alpha' }),
+    /bad key \(sent as openai to https:\/\/api\.openai\.com\/v1\/models\)/
+  );
+});
+
+test('stop ends the turn and keeps what had already streamed in', async () => {
+  // The send button flips to a stop square while a turn is generating;
+  // pressing it disconnects the port (which is what aborts the request in the
+  // worker) and keeps the partial text as the answer.
+  const mock = createChromeMock({
+    initialStorage: { [AI_CONFIG_KEY]: { provider: 'anthropic', apiKey: 'sk-test', model: 'claude-opus-5' } },
+    onStream: (request, emit) => {
+      emit('A calm pair of blues, starting with');
+      return new Promise(() => {});
+    }
+  });
+  const page = await loadExtensionPage('popup/popup.html', { chrome: mock.chrome });
+  assert.deepEqual(page.errors, []);
+  const root = page.document.getElementById('ai-chat-root');
+
+  type(page, root, 'something calm');
+  await waitFor(() => root.querySelector('.ai-answer-streaming'), { timeout: 3000 });
+
+  const sendBtn = root.querySelector('.ai-chat-send');
+  assert.ok(sendBtn.classList.contains('stop'), 'the send button became a stop button');
+  assert.equal(sendBtn.disabled, false, 'and it is pressable');
+  sendBtn.dispatchEvent(new page.window.MouseEvent('click', { bubbles: true, cancelable: true }));
+
+  await waitFor(() => !root.querySelector('.ai-answer-streaming'), { timeout: 3000 });
+  assert.equal(root.querySelector('.ai-chat-error'), null, 'a stop is not an error');
+  assert.equal(root.querySelector('.ai-chat-pending'), null, 'nothing is left spinning');
+  const answers = [...root.querySelectorAll('.ai-answer')];
+  assert.ok(answers.some((node) => node.textContent.includes('A calm pair of blues')), 'the partial answer survives');
+  assert.ok(!sendBtn.classList.contains('stop'), 'the button went back to sending');
+  const stored = mock.store['__pagedye_ai_chats__'][0].messages;
+  assert.equal(stored[stored.length - 1].reply, 'A calm pair of blues, starting with');
+});
+
+
+test('switching conversations animates the transcript, and a streaming turn does not', async () => {
+  const now = 1700000000000;
+  const mock = createChromeMock({
+    initialStorage: {
+      [AI_CONFIG_KEY]: { provider: 'anthropic', apiKey: 'sk-test', model: 'claude-opus-5' },
+      __pagedye_ai_chats__: [
+        {
+          id: 'c1', hostname: 'example.com', title: 'first', createdAt: now, updatedAt: now + 1,
+          messages: [{ id: 'm1', role: 'user', content: 'one', images: [], at: now }]
+        },
+        {
+          // Same site as the mock tab: a conversation about another host has
+          // no page to read here, and the turn below would fail on that
+          // instead of streaming.
+          id: 'c2', hostname: 'example.com', title: 'second', createdAt: now, updatedAt: now,
+          messages: [{ id: 'm2', role: 'user', content: 'two', images: [], at: now }]
+        }
+      ]
+    },
+    onStream: (request, emit) => {
+      emit('still writing');
+      return new Promise(() => {});
+    }
+  });
+  const page = await loadExtensionPage('popup/popup.html', { chrome: mock.chrome });
+  assert.deepEqual(page.errors, []);
+  const root = page.document.getElementById('ai-chat-root');
+  const click = (node) => node.dispatchEvent(new page.window.MouseEvent('click', { bubbles: true }));
+
+  await waitFor(() => root.querySelectorAll('.ai-chat-list-item').length === 2, { timeout: 3000 });
+  const scroll = root.querySelector('.ai-chat-scroll');
+
+  // Opening another conversation marks both the transcript and the row that
+  // took over, so the swap reads as a different page rather than a flicker.
+  click(root.querySelectorAll('.ai-chat-list-open')[1]);
+  assert.ok(scroll.classList.contains('ai-chat-switching'), 'the transcript animates');
+  assert.ok(root.querySelector('.ai-chat-list-item.active.switched'), 'so does the row that took over');
+  assert.equal(root.querySelector('.ai-chat-list-item.active .ai-chat-list-title').textContent, 'second');
+
+  // A turn in flight repaints the same conversation many times; none of those
+  // repaints may replay the switch.
+  type(page, root, 'make it darker');
+  await waitFor(() => root.querySelector('.ai-answer-streaming'), { timeout: 3000 });
+  assert.equal(root.querySelector('.ai-chat-list-item.active.switched'), null, 'a streamed render is not a switch');
+});
+
+
+test('a designed theme can be kept in the library, under a name nothing else uses', async () => {
+  const now = 1700000000000;
+  const mock = createChromeMock({
+    initialStorage: {
+      [AI_CONFIG_KEY]: { provider: 'anthropic', apiKey: 'sk-test', model: 'claude-opus-5' },
+      // A theme of that name is already saved, so the second one has to be
+      // filed under something that tells them apart.
+      __pagedye_config_presets__: [
+        { id: 'preset-existing', name: 'Quiet Harbor', settings: { type: 'color', value: '#123456' }, createdAt: now, updatedAt: now }
+      ],
+      __pagedye_ai_chats__: [{
+        id: 'c1', hostname: 'example.com', title: 'example.com', createdAt: now, updatedAt: now,
+        messages: [
+          { id: 'm1', role: 'user', content: 'something calm', images: [], at: now },
+          {
+            id: 'm2', role: 'assistant', reply: 'Here you go.', themeChanged: true, at: now,
+            theme: SAMPLE_THEME,
+            settings: { mode: 'single', type: 'color', value: '#dbeafe', opacity: 88, blur: 0 }
+          }
+        ]
+      }]
+    }
+  });
+  const page = await loadExtensionPage('popup/popup.html', { chrome: mock.chrome });
+  assert.deepEqual(page.errors, []);
+  const root = page.document.getElementById('ai-chat-root');
+
+  const card = await waitFor(() => root.querySelector('.ai-chat-theme'), { timeout: 3000 });
+  const save = [...card.querySelectorAll('button')].find((node) => /Add to themes|添加到主题/.test(node.textContent));
+  assert.ok(save, 'the theme card offers to keep the design');
+
+  save.dispatchEvent(new page.window.MouseEvent('click', { bubbles: true }));
+  await waitFor(() => mock.store.__pagedye_config_presets__.length === 2, { timeout: 3000 });
+
+  const saved = mock.store.__pagedye_config_presets__[1];
+  assert.equal(saved.name, 'Quiet Harbor 2', 'the name is made unique rather than duplicated');
+  assert.equal(saved.settings.value, '#dbeafe', 'the design itself is what was kept');
+  assert.match(saved.id, /^preset-/);
+  assert.notEqual(saved.id, 'preset-existing');
+  // The library is a whole-site setting, so what lands there is re-validated
+  // rather than stored as the model wrote it.
+  assert.ok(saved.settings.mode, 'the settings went through the schema');
+});
+
+
+test('the preview panel lists what the design actually sets, per scheme', async () => {
+  const now = 1700000000000;
+  const settings = {
+    mode: 'auto', type: 'color', value: '#dbeafe', opacity: 88, blur: 6,
+    deepCompat: true, deepCompatAggressive: false, deepCompatExclude: '.modal',
+    light: {
+      type: 'color', colorMode: 'gradient', opacity: 88, blur: 6,
+      gradient: { kind: 'linear', angle: 135, animated: true, speed: 24, stops: [{ color: '#ffd9e8', position: 0 }, { color: '#eff6ff', position: 100 }] }
+    },
+    dark: {
+      type: 'color', colorMode: 'gradient', opacity: 90, blur: 0,
+      gradient: { kind: 'radial', shape: 'ellipse', stops: [{ color: '#1e293b', position: 0 }, { color: '#0f172a', position: 100 }] }
+    },
+    frostedGlass: [{ selector: '#main', opacity: 62, blur: 14, color: '#2a1b2e' }]
+  };
+  const mock = createChromeMock({
+    initialStorage: {
+      [AI_CONFIG_KEY]: { provider: 'anthropic', apiKey: 'sk-test', model: 'claude-opus-5' },
+      __pagedye_ai_chats__: [{
+        id: 'c1', hostname: 'example.com', title: 'example.com', createdAt: now, updatedAt: now,
+        messages: [
+          { id: 'm1', role: 'user', content: 'spring please', images: [], at: now },
+          { id: 'm2', role: 'assistant', reply: 'Done.', themeChanged: true, at: now, theme: SAMPLE_THEME, settings }
+        ]
+      }]
+    }
+  });
+  const { document, window, errors } = await loadExtensionPage('options/options.html', { chrome: mock.chrome });
+  assert.deepEqual(errors, []);
+
+  const list = document.getElementById('ai-preview-config');
+  assert.ok(list, 'the preview card has a place for the configuration');
+  const rows = () => [...list.querySelectorAll('dt')].map((dt, index) => `${dt.textContent}=${list.querySelectorAll('dd')[index].textContent}`);
+
+  await waitFor(() => rows().length > 0, { timeout: 3000 });
+  const shown = rows().join('\n');
+
+  // Whichever scheme it opened on, the rows describe that one layer — never a
+  // mix of the two.
+  const light = /135/.test(shown);
+  assert.match(shown, light ? /#ffd9e8/ : /#1e293b/);
+  assert.ok(!shown.includes(light ? '#1e293b' : '#ffd9e8'), 'one scheme at a time');
+  assert.match(shown, light ? /88%/ : /90%/);
+
+  // Settings that apply to the page rather than to one scheme are listed once.
+  assert.match(shown, /#main/, 'the frosted container is named');
+  assert.match(shown, /#2a1b2e/, 'including its tint');
+  assert.match(shown, /\.modal/, 'and what run mode leaves alone');
+  assert.ok(list.querySelectorAll('.ai-preview-swatch').length >= 2, 'colours are shown as swatches, not only as hex');
+
+  // Switching scheme re-describes the other layer.
+  document.getElementById(light ? 'ai-preview-scheme-dark' : 'ai-preview-scheme-light')
+    .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  const after = rows().join('\n');
+  assert.match(after, light ? /#1e293b/ : /#ffd9e8/);
+  assert.ok(!after.includes(light ? '#ffd9e8' : '#1e293b'));
 });

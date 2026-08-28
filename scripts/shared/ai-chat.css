@@ -81,9 +81,115 @@
 
 .ai-chat-sidebar-head {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  flex-shrink: 0;
+  align-items: stretch;
   gap: 8px;
+}
+
+/* The scrollable parts of the chat keep their scrollbars to themselves: no
+   track, no arrows, a thin thumb only while the pointer is over the list.
+   The standard properties are set per element on purpose — they also switch
+   the browser off its native chrome for these boxes. */
+.ai-chat-list,
+.ai-chat-scroll,
+.ai-thinking-body,
+.ai-chat-rail-nav {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.ai-chat-list:hover,
+.ai-chat-scroll:hover,
+.ai-thinking-body:hover,
+.ai-chat-rail-nav:hover {
+  scrollbar-color: var(--outline-variant) transparent;
+}
+
+/* Only rendered when the host page hands over a second pane (the dashboard
+   passes its navigation): a segmented switcher on top of the rail, and one
+   pane visible at a time. The popup never gets these nodes at all. */
+.ai-chat-rail-tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface-container-high);
+}
+
+.ai-chat-rail-tab {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.ai-chat-rail-tab:hover {
+  color: var(--text-color);
+}
+
+.ai-chat-rail-tab.active {
+  background: var(--surface-card);
+  color: var(--text-color);
+}
+
+.ai-chat-rail-pane {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+/* The tab above the pane already says "History", so the pane's own title
+   would say it twice. */
+.ai-chat-rail-pane .ai-chat-sidebar-title {
+  display: none;
+}
+
+/* The same move the dashboard's own tabs make, with the same timing: the pane
+   comes in from the side the tab bar moved towards. */
+.ai-chat-rail-pane.active {
+  display: flex;
+  animation: aiRailPaneIn 0.24s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.ai-chat-rail-pane.active.enter-forward {
+  animation-name: aiRailPaneForward;
+}
+
+.ai-chat-rail-pane.active.enter-back {
+  animation-name: aiRailPaneBack;
+}
+
+@keyframes aiRailPaneIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes aiRailPaneForward {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes aiRailPaneBack {
+  from { opacity: 0; transform: translateX(-18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.ai-chat-rail-nav {
+  overflow-y: auto;
 }
 
 .ai-chat-sidebar-title {
@@ -94,40 +200,47 @@
   color: var(--text-secondary);
 }
 
-.ai-chat-sidebar-head-actions {
+/* One full-width row, like every chat rail's "new chat". */
+.ai-chat-new {
   display: flex;
   align-items: center;
-  gap: 4px;
-}
-
-.ai-chat-new {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
   border: 1px solid var(--outline-variant);
-  border-radius: 999px;
+  border-radius: 12px;
   background: transparent;
   color: var(--text-color);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
 .ai-chat-new:hover {
   background: var(--state-layer-hover);
 }
 
+/* Tucked under the list: it destroys everything, so it is the least
+   prominent thing on the rail rather than the most. */
+.ai-chat-sidebar-foot {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: center;
+  padding-top: 4px;
+}
+
 .ai-chat-clear-all {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
+  gap: 6px;
+  padding: 5px 12px;
   border: none;
-  border-radius: 50%;
+  border-radius: 999px;
   background: transparent;
   color: var(--text-secondary);
+  font-size: 11.5px;
   cursor: pointer;
 }
 
@@ -226,6 +339,32 @@
   padding: 12px 2px 4px;
   overflow-y: auto;
   overflow-wrap: anywhere;
+}
+
+/* Switching to another conversation, or starting a new one, swaps every
+   message at once. A short rise says "a different page" instead of leaving the
+   transcript to flicker into something else within a single frame. */
+.ai-chat-scroll.ai-chat-switching {
+  animation: aiChatSwitch 0.34s cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes aiChatSwitch {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* The row that just took over in the rail, marked as it happens rather than
+   only by the background it lands on: the list is where the switch was
+   clicked, so that is where the acknowledgement belongs. `switched` is set by
+   render() for that one repaint only — the rows are rebuilt on every render,
+   so without it the mark would replay on every streamed chunk. */
+.ai-chat-list-item.active.switched .ai-chat-list-title {
+  animation: aiChatRowMark 0.34s cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes aiChatRowMark {
+  from { opacity: 0.4; transform: translateX(-5px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .ai-msg {
@@ -965,19 +1104,43 @@
    on the right, and the composer parked under it. options.css sizes the host;
    everything here only fills what it is given. */
 .ai-chat-options {
-  gap: 14px;
+  /* The rail's own width and the gap beside it, named because the collapsed
+     state has to travel exactly their sum — a hand-computed number there went
+     wrong once already (the width was content-box, so the rail was really 24px
+     wider than the margin that was supposed to park it off-screen, and folding
+     it left a bare strip behind). */
+  --ai-rail-width: 260px;
+  --ai-rail-gap: 14px;
+  gap: var(--ai-rail-gap);
   height: 100%;
   min-height: 0;
 }
 
 .ai-chat-options .ai-chat-sidebar {
+  box-sizing: border-box;
   flex-shrink: 0;
   gap: 12px;
-  width: 236px;
+  width: var(--ai-rail-width);
   padding: 14px 12px;
   border: none;
   border-radius: 18px;
   background: var(--surface-container);
+  /* Slid out by a negative margin rather than collapsed by width: the rail
+     keeps its own width the whole way, so its contents never reflow mid
+     animation, and the transcript widens smoothly into the space. */
+  transition: margin-left 0.34s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease,
+    visibility 0s linear 0s;
+}
+
+.ai-chat-options.rail-collapsed .ai-chat-sidebar {
+  margin-left: calc(-1 * (var(--ai-rail-width) + var(--ai-rail-gap)));
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  /* Hidden only once it is out of sight, so it is not tabbable while parked
+     but is still visible on the way there. */
+  transition: margin-left 0.34s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease,
+    visibility 0s linear 0.34s;
 }
 
 .ai-chat-options .ai-chat-list {
@@ -997,8 +1160,25 @@
   background: var(--surface-container);
 }
 
+/* 14 of padding plus the 10 the gutter reserves on each side is the 24 this
+   used to carry outright. Reserved on both edges so the reading column and the
+   composer below it — which is centred on the full width, outside this box —
+   stay centred on the same axis instead of 5px apart. */
 .ai-chat-options .ai-chat-scroll {
-  padding: 26px 24px 18px;
+  padding: 26px 14px 18px;
+  scrollbar-gutter: stable both-edges;
+}
+
+/* The rail is narrow and cannot spare 20px of it for a gutter, so its list
+   scrolls without reserving one at all: the rows stay symmetric inside the
+   column, and a list cut off mid-row says "there is more" by itself. */
+.ai-chat-options .ai-chat-list {
+  scrollbar-width: none;
+}
+
+.ai-chat-options .ai-chat-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 /* One reading column, centred: a paragraph set across the full width of a
@@ -1142,13 +1322,14 @@
 }
 
 @media (max-width: 900px) {
-  /* Too narrow for a permanent rail: it becomes the overlay the popup uses,
-     and the page goes back to scrolling as one document. */
-  .ai-chat-options {
-    height: auto;
-    min-height: 0;
-  }
+  /* Too narrow for a permanent rail: it becomes the overlay the popup uses.
+     The chat still fills the height — it used to fall back to content height
+     here, from when this page scrolled as one document, which left the panel
+     ending partway down a fullscreen workspace with dead space under it. */
 
+  /* An overlay with its own toggle in the bar, so the header's fold button is
+     hidden here (options.css) and its class must not move this one. */
+  .ai-chat-options.rail-collapsed .ai-chat-sidebar,
   .ai-chat-options .ai-chat-sidebar {
     position: absolute;
     z-index: 5;
@@ -1156,6 +1337,11 @@
     right: 0;
     left: 0;
     width: auto;
+    margin-left: 0;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: none;
     max-height: 300px;
     padding: 12px;
     border: 1px solid var(--outline-variant);
@@ -1168,15 +1354,18 @@
     display: none;
   }
 
+  /* No rule of its own: the header row directly below already draws one, and
+     two hairlines eight pixels apart read as a mistake. */
   .ai-chat-options .ai-chat-bar {
     display: flex;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--outline-variant);
+    padding: 10px 12px 2px;
+    border-bottom: none;
   }
 
+  /* No max-height: the transcript is the flexible part of a full-height
+     column, and capping it at 58vh is what parked the composer halfway up
+     the screen. */
   .ai-chat-options .ai-chat-scroll {
-    max-height: 58vh;
-    min-height: 260px;
     padding: 18px 14px 12px;
   }
 
@@ -1199,7 +1388,22 @@
     animation-duration: 2.4s;
   }
 
-  .ai-msg-actions {
+  .ai-chat-scroll.ai-chat-switching,
+  .ai-chat-list-item.active.switched .ai-chat-list-title {
+    animation: none;
+  }
+
+  .ai-msg-actions,
+  .ai-chat-new,
+  .ai-chat-rail-tab {
+    transition: none;
+  }
+
+  /* The rail appears and disappears rather than sliding; the visibility delay
+     goes with it, or it would linger for a third of a second after the space
+     it occupied is already gone. */
+  .ai-chat-options .ai-chat-sidebar,
+  .ai-chat-options.rail-collapsed .ai-chat-sidebar {
     transition: none;
   }
 }

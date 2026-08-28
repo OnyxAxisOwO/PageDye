@@ -100,7 +100,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <span id="version" class="version-label">v0.12.2</span>
+        <span id="version" class="version-label">v0.13.0</span>
       </div>
     </aside>
 
@@ -248,7 +248,7 @@
               </div>
             </div>
             <div class="config-action-block">
-              <label for="config-apply-preset" data-config-i18n="applyPreset">Apply preset</label>
+              <label for="config-apply-preset" data-config-i18n="applyPreset">Apply theme</label>
               <div class="config-action-row">
                 <select id="config-apply-preset"></select>
                 <button type="button" id="config-apply-btn" class="btn primary-btn" disabled data-config-i18n="apply">Apply</button>
@@ -323,7 +323,7 @@
 
         <div class="page-tabs" role="tablist" data-tabs="library">
           <button type="button" class="page-tab active" role="tab" data-pane="pane-library-presets">
-            <span data-i18n="tabPresets">Presets</span>
+            <span data-i18n="tabPresets">Themes</span>
           </button>
           <button type="button" class="page-tab" role="tab" data-pane="pane-library-effects">
             <span data-i18n="customEffectsTitle">Custom Effects</span>
@@ -334,14 +334,14 @@
         <div class="tab-pane active" id="pane-library-presets" role="tabpanel">
           <div class="pane-intro">
             <div>
-              <h3 data-config-i18n="presetsTitle">Saved setups</h3>
-              <p data-config-i18n="presetsHint">A saved setup keeps the complete look of a website so you can reuse it elsewhere.</p>
+              <h3 data-config-i18n="presetsTitle">Saved themes</h3>
+              <p data-config-i18n="presetsHint">A saved theme keeps the complete look of a website so you can reuse it elsewhere.</p>
             </div>
           </div>
 
           <form id="config-save-preset-form" class="card config-inline-form">
             <label>
-              <span data-config-i18n="presetName">Preset name</span>
+              <span data-config-i18n="presetName">Theme name</span>
               <input type="text" id="config-preset-name" maxlength="80" required placeholder="My preset" data-config-i18n-placeholder="presetNamePlaceholder">
             </label>
             <label>
@@ -396,54 +396,245 @@
       </section>
 
       <!-- ==================================================================
-           AI chat. The transcript is the feature, so the page gives it the
-           whole width: which tab to design for is one bar above it, and the
-           provider/key form lives on Settings with every other preference.
+           AI chat. The one destination that is not a settings page: switching
+           to it expands the section into a fullscreen workspace over the
+           whole dashboard. The chat component fills the left and centre (its
+           rail carries the conversation list plus the dashboard's own
+           navigation, handed over via mount options); the right column is a
+           live mock preview of the current design and the AI settings, so
+           nothing about the chat lives on another page any more.
            ================================================================== -->
-      <!-- The one destination that is not a settings page: switching to it
-           hands the whole area to the conversation. What would have been a
-           page header and a row of controls is a slim bar — the page being
-           designed for on the left, everything else behind the menu. -->
       <section id="section-ai-chat" class="content-section">
         <h2 class="sr-only" data-i18n="aiChatTitle">AI Chat</h2>
 
         <div class="ai-workspace">
-          <div class="ai-topbar">
-            <!-- Unlike the popup, this page has no page of its own to read, so
-                 the tab to design for is picked explicitly. -->
-            <label class="sr-only" for="ai-chat-tab-select" data-i18n="aiChatTarget">Page to design for</label>
-            <select id="ai-chat-tab-select" class="ai-target-select"></select>
+          <div id="ai-chat-root"></div>
 
-            <div class="ai-menu">
-              <button type="button" id="ai-menu-toggle" class="icon-btn ai-menu-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="ai-menu-panel" data-i18n-title="aiMenu" title="More">
+          <aside class="ai-side" id="ai-side">
+            <div class="ai-side-scroll">
+              <section class="ai-side-card" id="ai-preview-card">
+                <div class="ai-side-card-head">
+                  <h3 data-i18n="aiPreviewTitle">Preview</h3>
+                  <div class="ai-preview-scheme" role="tablist">
+                    <button type="button" id="ai-preview-scheme-light" class="ai-preview-scheme-btn" role="tab" data-i18n="aiPreviewLight">Light</button>
+                    <button type="button" id="ai-preview-scheme-dark" class="ai-preview-scheme-btn" role="tab" data-i18n="aiPreviewDark">Dark</button>
+                  </div>
+                </div>
+                <div id="ai-preview-frame" class="ai-preview-frame"></div>
+                <p id="ai-preview-meta" class="ai-preview-meta"></p>
+                <!-- The numbers behind the picture above: what this design
+                     actually sets, for the scheme the toggle is on. Filled by
+                     ai-workspace.js; empty until a theme exists. -->
+                <dl id="ai-preview-config" class="ai-preview-config"></dl>
+              </section>
+
+              <!-- The provider/key form, moved here from the Settings page:
+                   the chat is the only thing that reads it, and "the settings
+                   are next to the thing they configure" is the whole point of
+                   this column. The ids are unchanged so the wiring in
+                   options.js did not have to move with the markup. -->
+              <section class="settings-card ai-side-card" id="settings-ai">
+                <div class="settings-card-head">
+                  <div>
+                    <h3 data-i18n="aiSettingsTitle">AI settings</h3>
+                    <p data-i18n="aiSettingsHint">The provider, key and standing preferences the AI chat runs on. Nothing leaves this browser until you fill in a key.</p>
+                  </div>
+                  <span class="status-pill" id="ai-config-status" data-state="idle" aria-live="polite"></span>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-main">
+                    <label class="settings-row-title" for="ai-provider-select" data-i18n="aiProvider">API provider</label>
+                    <p class="settings-row-desc" data-i18n="aiProviderHint">Pick "OpenAI Compatible" for any service that exposes a /chat/completions endpoint — DeepSeek, OpenRouter, a local Ollama, and so on.</p>
+                  </div>
+                  <div class="settings-row-control settings-row-control-field">
+                    <select id="ai-provider-select">
+                      <option value="anthropic">Anthropic</option>
+                      <option value="openai">OpenAI Compatible</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-main">
+                    <label class="settings-row-title" for="ai-api-key-input" data-i18n="aiApiKey">API key</label>
+                    <p class="settings-row-desc" data-i18n="aiApiKeyHint">The key is stored only in this browser's local extension storage and is never included in exported backups. Generating a theme sends a description of the page's colours and layout — never the page text — to the API endpoint you chose.</p>
+                  </div>
+                  <div class="settings-row-control settings-row-control-field">
+                    <div class="secret-field">
+                      <input type="password" id="ai-api-key-input" autocomplete="off" spellcheck="false">
+                      <button type="button" id="ai-api-key-reveal" class="icon-btn secret-field-reveal" aria-pressed="false" data-i18n-title="aiApiKeyReveal" title="Show key">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <span class="sr-only" data-i18n="aiApiKeyReveal">Show key</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-main">
+                    <label class="settings-row-title" for="ai-base-url-input" data-i18n="aiBaseUrl">API base URL</label>
+                    <p class="settings-row-desc" data-i18n="aiBaseUrlHint">Leave this empty to use the selected provider's default endpoint. Your API key is sent to whatever host you enter here, so only fill in an endpoint you trust.</p>
+                  </div>
+                  <div class="settings-row-control settings-row-control-field">
+                    <input type="url" id="ai-base-url-input" autocomplete="off" spellcheck="false">
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-main">
+                    <label class="settings-row-title" for="ai-model-input" data-i18n="aiModel">Model</label>
+                    <p class="settings-row-desc" data-i18n="aiModelHint">Type any model id the selected endpoint accepts. With Anthropic, Opus gives the best results and Haiku is the fastest and cheapest.</p>
+                  </div>
+                  <div class="settings-row-control settings-row-control-field">
+                    <!-- Free text rather than a dropdown: with a custom base URL the
+                         set of valid model ids is unknowable, so the datalist below
+                         only offers suggestions, filled in from JS per provider. -->
+                    <input type="text" id="ai-model-input" autocomplete="off" spellcheck="false" list="ai-model-suggestions">
+                    <datalist id="ai-model-suggestions"></datalist>
+                  </div>
+                </div>
+
+                <div class="settings-row settings-row-stack">
+                  <div class="settings-row-main">
+                    <span class="settings-row-title" data-i18n="aiModels">Model shortlist</span>
+                    <p class="settings-row-desc" data-i18n="aiModelsHint">The models offered by the picker in the chat. Ask the endpoint what it serves, keep the ones you use, and give any of them a nickname — requests are always sent with the real id.</p>
+                  </div>
+                  <div class="settings-row-control">
+                    <div id="ai-model-list" class="ai-model-list"></div>
+                    <div class="ai-model-actions">
+                      <button type="button" id="ai-model-detect" class="btn secondary-btn" data-i18n="aiModelDetect">Detect available models</button>
+                      <button type="button" id="ai-model-add" class="btn secondary-btn" data-i18n="aiModelAdd">Save current model</button>
+                    </div>
+                    <div id="ai-model-detect-panel" class="ai-model-detect" hidden>
+                      <p id="ai-model-detect-status" class="ai-model-detect-status" aria-live="polite"></p>
+                      <div id="ai-model-detect-list" class="ai-model-detect-list"></div>
+                      <div class="ai-model-actions" id="ai-model-detect-actions" hidden>
+                        <button type="button" id="ai-model-detect-add" class="btn primary-btn" data-i18n="aiModelDetectAdd">Add selected</button>
+                        <button type="button" id="ai-model-detect-cancel" class="btn secondary-btn" data-i18n="aiModelDetectCancel">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-main">
+                    <span class="settings-row-title" data-i18n="aiVision">This model can read images</span>
+                    <p class="settings-row-desc" data-i18n="aiVisionHint">Turns on the attach button in the AI chat, so you can hand the model a picture to take a palette from — or to use as the wallpaper itself. Leave it off for a text-only model: attaching a picture to one fails the whole message rather than being ignored. Every Anthropic model here can read images; for an OpenAI-compatible endpoint, check your provider's model list. Switching provider resets this to that provider's default.</p>
+                  </div>
+                  <label class="mode-toggle" for="ai-vision-input">
+                    <input type="checkbox" id="ai-vision-input">
+                    <span class="mode-toggle-track" aria-hidden="true"><span></span></span>
+                    <span class="sr-only" data-i18n="aiVision">This model can read images</span>
+                  </label>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-main">
+                    <span class="settings-row-title" data-i18n="aiStreaming">Stream the reply</span>
+                    <p class="settings-row-desc" data-i18n="aiStreamingHint">Shows the answer as it is written instead of waiting for the whole thing. If the endpoint cannot stream, PageDye quietly asks again without streaming and tells you why in the chat — turn this off to skip that second request.</p>
+                  </div>
+                  <label class="mode-toggle" for="ai-streaming-input">
+                    <input type="checkbox" id="ai-streaming-input">
+                    <span class="mode-toggle-track" aria-hidden="true"><span></span></span>
+                    <span class="sr-only" data-i18n="aiStreaming">Stream the reply</span>
+                  </label>
+                </div>
+
+                <div class="settings-row settings-row-stack">
+                  <div class="settings-row-main">
+                    <label class="settings-row-title" for="ai-style-prompt-input" data-i18n="aiStylePrompt">Standing style preference</label>
+                    <p class="settings-row-desc" data-i18n="aiStylePromptHint">Optional. Whatever you write here is added to every generation on every site — a palette you like, lower saturation, colour pairings to avoid for colour-vision reasons, or your own house style. It stays in effect until you change it; for a request that applies to one theme only, use the prompt box in the popup when you generate.</p>
+                  </div>
+                  <div class="settings-row-control">
+                    <textarea id="ai-style-prompt-input" rows="3" spellcheck="false" data-i18n-placeholder="aiStylePromptExample"></textarea>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </aside>
+        </div>
+
+        <!-- Parked here until mount() adopts them: the header row the chat
+             places above its transcript, and the dashboard navigation its rail
+             shows behind the second tab. Never rendered in this spot. -->
+        <div hidden id="ai-mount-parts">
+          <div id="ai-main-header" class="ai-main-header">
+            <button type="button" id="ai-rail-toggle" class="icon-btn ai-rail-toggle" aria-expanded="true" data-i18n-title="aiRailToggle" title="Conversation list">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M9 4v16"></path>
+              </svg>
+              <span class="sr-only" data-i18n="aiRailToggle">Conversation list</span>
+            </button>
+            <div class="ai-chip-group">
+              <button type="button" id="ai-target-chip" class="ai-chip" aria-haspopup="true" aria-expanded="false" aria-controls="ai-target-menu">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <circle cx="12" cy="5" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="12" cy="19" r="1.4"></circle>
+                  <circle cx="12" cy="12" r="9"></circle><path d="M3 12h18"></path><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"></path>
                 </svg>
-                <span class="sr-only" data-i18n="aiMenu">More</span>
+                <span class="ai-chip-label" id="ai-target-chip-label"></span>
+                <svg class="ai-chip-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
               </button>
-              <div class="ai-menu-panel" id="ai-menu-panel" role="menu" hidden>
-                <button type="button" id="ai-chat-tab-refresh" class="ai-menu-item" role="menuitem">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M20 11a8 8 0 1 0-2.3 5.7"></path>
-                    <path d="M20 4v7h-7"></path>
-                  </svg>
-                  <span data-i18n="aiChatRefreshTabs">Refresh</span>
-                </button>
-                <button type="button" class="ai-menu-item" role="menuitem" data-nav-target="section-settings" data-nav-focus="ai-api-key-input">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M4 21v-7"></path><path d="M4 10V3"></path><path d="M12 21v-9"></path><path d="M12 8V3"></path>
-                    <path d="M20 21v-5"></path><path d="M20 12V3"></path><path d="M1 14h6"></path><path d="M9 8h6"></path><path d="M17 16h6"></path>
-                  </svg>
-                  <span data-i18n="aiSettingsTitle">AI settings</span>
-                </button>
-                <!-- The reassurance the removed paragraph used to carry: still
-                     one click away rather than permanently taking two lines. -->
-                <p class="ai-menu-note" data-i18n="aiChatTargetHint">Pick one of your open tabs. PageDye reads its colours and layout — never its text — each time you send a message.</p>
+              <div id="ai-target-menu" class="ai-chip-menu" hidden>
+                <p class="ai-chip-menu-note" data-i18n="aiChatTargetHint">Pick one of your open tabs. PageDye reads its colours and layout — never its text — each time you send a message.</p>
+                <div id="ai-target-menu-list" class="ai-chip-menu-list"></div>
               </div>
             </div>
+            <div class="ai-chip-group">
+              <button type="button" id="ai-model-chip" class="ai-chip" aria-haspopup="true" aria-expanded="false" aria-controls="ai-model-menu">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"></path>
+                </svg>
+                <span class="ai-chip-label" id="ai-model-chip-label"></span>
+                <svg class="ai-chip-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+              </button>
+              <div id="ai-model-menu" class="ai-chip-menu" hidden>
+                <div id="ai-model-menu-list" class="ai-chip-menu-list"></div>
+                <button type="button" id="ai-model-menu-manage" class="ai-chip-menu-foot" data-i18n="aiModelManage">Manage models…</button>
+              </div>
+            </div>
+            <span class="ai-main-header-spacer"></span>
+            <button type="button" id="ai-side-toggle" class="icon-btn ai-side-toggle" aria-expanded="true" data-i18n-title="aiSideToggle" title="Preview and settings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16"></path>
+              </svg>
+              <span class="sr-only" data-i18n="aiSideToggle">Preview and settings</span>
+            </button>
           </div>
 
-          <div id="ai-chat-root"></div>
+          <div id="ai-rail-nav-panel" class="ai-rail-nav-list">
+            <button type="button" class="ai-rail-nav-item" data-ai-nav="section-sites">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"></circle><path d="M3 12h18"></path><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"></path>
+              </svg>
+              <span data-i18n="navSites">Websites</span>
+            </button>
+            <button type="button" class="ai-rail-nav-item" data-ai-nav="section-configs">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3z"></path><path d="m12 12 8-4.5"></path><path d="M12 12v9"></path><path d="m12 12-8-4.5"></path>
+              </svg>
+              <span data-i18n="navLibrary">Library</span>
+            </button>
+            <button type="button" class="ai-rail-nav-item" data-ai-nav="section-storage">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path>
+              </svg>
+              <span data-i18n="navData">Data</span>
+            </button>
+            <button type="button" class="ai-rail-nav-item" data-ai-nav="section-settings">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 21v-7"></path><path d="M4 10V3"></path><path d="M12 21v-9"></path><path d="M12 8V3"></path><path d="M20 21v-5"></path><path d="M20 12V3"></path><path d="M1 14h6"></path><path d="M9 8h6"></path><path d="M17 16h6"></path>
+              </svg>
+              <span data-i18n="navSettings">Settings</span>
+            </button>
+            <button type="button" class="ai-rail-nav-item" data-ai-nav="section-about">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <span data-i18n="navAbout">About</span>
+            </button>
+          </div>
         </div>
       </section>
 
@@ -621,7 +812,7 @@
           <div class="pane-intro">
             <div>
               <h3 data-storage-i18n="sourceUsage">Usage by site and source</h3>
-              <p data-storage-i18n="sourceUsageHint">Includes configuration data and embedded image strings. Rule and preset rows are shown separately.</p>
+              <p data-storage-i18n="sourceUsageHint">Includes configuration data and embedded image strings. Rule and theme rows are shown separately.</p>
             </div>
           </div>
           <div class="card table-card">
@@ -782,112 +973,6 @@
           </div>
         </div>
 
-        <div class="settings-card" id="settings-ai">
-          <div class="settings-card-head">
-            <span class="settings-card-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 3v4"></path><path d="M12 17v4"></path><path d="M3 12h4"></path><path d="M17 12h4"></path>
-                <path d="M18.4 5.6 15.5 8.5"></path><path d="M8.5 15.5 5.6 18.4"></path>
-                <path d="M18.4 18.4 15.5 15.5"></path><path d="M8.5 8.5 5.6 5.6"></path>
-              </svg>
-            </span>
-            <div>
-              <h3 data-i18n="aiSettingsTitle">AI settings</h3>
-              <p data-i18n="aiSettingsHint">The provider, key and standing preferences the AI chat runs on. Nothing leaves this browser until you fill in a key.</p>
-            </div>
-            <span class="status-pill" id="ai-config-status" data-state="idle" aria-live="polite"></span>
-          </div>
-
-          <div class="settings-row">
-            <div class="settings-row-main">
-              <label class="settings-row-title" for="ai-provider-select" data-i18n="aiProvider">API provider</label>
-              <p class="settings-row-desc" data-i18n="aiProviderHint">Pick "OpenAI Compatible" for any service that exposes a /chat/completions endpoint — DeepSeek, OpenRouter, a local Ollama, and so on.</p>
-            </div>
-            <div class="settings-row-control settings-row-control-field">
-              <select id="ai-provider-select">
-                <option value="anthropic">Anthropic</option>
-                <option value="openai">OpenAI Compatible</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="settings-row">
-            <div class="settings-row-main">
-              <label class="settings-row-title" for="ai-api-key-input" data-i18n="aiApiKey">API key</label>
-              <p class="settings-row-desc" data-i18n="aiApiKeyHint">The key is stored only in this browser's local extension storage and is never included in exported backups. Generating a theme sends a description of the page's colours and layout — never the page text — to the API endpoint you chose.</p>
-            </div>
-            <div class="settings-row-control settings-row-control-field">
-              <div class="secret-field">
-                <input type="password" id="ai-api-key-input" autocomplete="off" spellcheck="false">
-                <button type="button" id="ai-api-key-reveal" class="icon-btn secret-field-reveal" aria-pressed="false" data-i18n-title="aiApiKeyReveal" title="Show key">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                  <span class="sr-only" data-i18n="aiApiKeyReveal">Show key</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="settings-row">
-            <div class="settings-row-main">
-              <label class="settings-row-title" for="ai-base-url-input" data-i18n="aiBaseUrl">API base URL</label>
-              <p class="settings-row-desc" data-i18n="aiBaseUrlHint">Leave this empty to use the selected provider's default endpoint. Your API key is sent to whatever host you enter here, so only fill in an endpoint you trust.</p>
-            </div>
-            <div class="settings-row-control settings-row-control-field">
-              <input type="url" id="ai-base-url-input" autocomplete="off" spellcheck="false">
-            </div>
-          </div>
-
-          <div class="settings-row">
-            <div class="settings-row-main">
-              <label class="settings-row-title" for="ai-model-input" data-i18n="aiModel">Model</label>
-              <p class="settings-row-desc" data-i18n="aiModelHint">Type any model id the selected endpoint accepts. With Anthropic, Opus gives the best results and Haiku is the fastest and cheapest.</p>
-            </div>
-            <div class="settings-row-control settings-row-control-field">
-              <!-- Free text rather than a dropdown: with a custom base URL the
-                   set of valid model ids is unknowable, so the datalist below
-                   only offers suggestions, filled in from JS per provider. -->
-              <input type="text" id="ai-model-input" autocomplete="off" spellcheck="false" list="ai-model-suggestions">
-              <datalist id="ai-model-suggestions"></datalist>
-            </div>
-          </div>
-
-          <div class="settings-row">
-            <div class="settings-row-main">
-              <span class="settings-row-title" data-i18n="aiVision">This model can read images</span>
-              <p class="settings-row-desc" data-i18n="aiVisionHint">Turns on the attach button in the AI chat, so you can hand the model a picture to take a palette from — or to use as the wallpaper itself. Leave it off for a text-only model: attaching a picture to one fails the whole message rather than being ignored. Every Anthropic model here can read images; for an OpenAI-compatible endpoint, check your provider's model list. Switching provider resets this to that provider's default.</p>
-            </div>
-            <label class="mode-toggle" for="ai-vision-input">
-              <input type="checkbox" id="ai-vision-input">
-              <span class="mode-toggle-track" aria-hidden="true"><span></span></span>
-              <span class="sr-only" data-i18n="aiVision">This model can read images</span>
-            </label>
-          </div>
-
-          <div class="settings-row">
-            <div class="settings-row-main">
-              <span class="settings-row-title" data-i18n="aiStreaming">Stream the reply</span>
-              <p class="settings-row-desc" data-i18n="aiStreamingHint">Shows the answer as it is written instead of waiting for the whole thing. If the endpoint cannot stream, PageDye quietly asks again without streaming and tells you why in the chat — turn this off to skip that second request.</p>
-            </div>
-            <label class="mode-toggle" for="ai-streaming-input">
-              <input type="checkbox" id="ai-streaming-input">
-              <span class="mode-toggle-track" aria-hidden="true"><span></span></span>
-              <span class="sr-only" data-i18n="aiStreaming">Stream the reply</span>
-            </label>
-          </div>
-
-          <div class="settings-row settings-row-stack">
-            <div class="settings-row-main">
-              <label class="settings-row-title" for="ai-style-prompt-input" data-i18n="aiStylePrompt">Standing style preference</label>
-              <p class="settings-row-desc" data-i18n="aiStylePromptHint">Optional. Whatever you write here is added to every generation on every site — a palette you like, lower saturation, colour pairings to avoid for colour-vision reasons, or your own house style. It stays in effect until you change it; for a request that applies to one theme only, use the prompt box in the popup when you generate.</p>
-            </div>
-            <div class="settings-row-control">
-              <textarea id="ai-style-prompt-input" rows="3" spellcheck="false" data-i18n-placeholder="aiStylePromptExample"></textarea>
-            </div>
-          </div>
-        </div>
-
         <div class="settings-card" id="settings-developer">
           <div class="settings-card-head">
             <span class="settings-card-icon" aria-hidden="true">
@@ -940,7 +1025,7 @@
           <div class="about-logo">
             <div class="logo-circle"><img src="../icons/icon128.png" alt="Logo"></div>
             <h3>PageDye</h3>
-            <span class="badge" id="about-version">v0.12.2</span>
+            <span class="badge" id="about-version">v0.13.0</span>
           </div>
 
           <p class="about-desc" data-i18n="aboutText">PageDye lets you give each website its own color, image, gradient, or animated background. Your choices are saved in this browser and return automatically.</p>
@@ -1595,7 +1680,7 @@
           </div>
           <div class="edit-actions-right">
             <button type="button" id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
-            <span class="version-text" id="edit-version">v0.12.2</span>
+            <span class="version-text" id="edit-version">v0.13.0</span>
             <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
             </a>
@@ -1743,6 +1828,7 @@
   <script src="editor-filters.js"></script>
   <script src="editor-gradient.js"></script>
   <script src="editor-frosted.js"></script>
+  <script src="ai-workspace.js"></script>
   <script src="options.js"></script>
   <script src="config-manager.js"></script>
   <script src="storage-manager-ui.js"></script>

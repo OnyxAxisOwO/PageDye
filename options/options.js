@@ -14,11 +14,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       settingsTitle: "Settings",
       settingsHint: "How PageDye itself looks and behaves. None of this changes your websites' backgrounds.",
       tabSavedSites: "Saved sites",
-      tabPresets: "Presets",
+      tabPresets: "Themes",
       tabPageRules: "Page rules",
       tabGroupsBatch: "Groups & batch",
       libraryTitle: "Library",
-      libraryHint: "Looks you can reuse anywhere: complete saved setups, and animated wallpapers you write yourself.",
+      libraryHint: "Looks you can reuse anywhere: complete saved themes, and animated wallpapers you write yourself.",
       dataTitle: "Data",
       dataHint: "Keep a copy of everything PageDye has saved, or clear out what it no longer needs.",
       shortcutGroupTitle: "Keyboard shortcut",
@@ -26,11 +26,70 @@ document.addEventListener('DOMContentLoaded', async () => {
       navAiChat: "AI Chat",
       aiChatTitle: "AI Chat",
       aiChatHint: "Describe the background you want and refine it by asking for changes. Each conversation is about one page.",
-      aiChatTarget: "Page to design for",
       aiChatTargetHint: "Pick one of your open tabs. PageDye reads its colours and layout — never its text — each time you send a message.",
-      aiChatRefreshTabs: "Refresh tab list",
-      aiMenu: "More",
       aiChatNoTabs: "No open tab PageDye can read.",
+      aiRailNav: "PageDye",
+      aiRailToggle: "Conversation list",
+      aiSideToggle: "Preview and settings",
+      aiPreviewTitle: "Preview",
+      aiPreviewLight: "Light",
+      aiPreviewDark: "Dark",
+      aiPreviewEmpty: "No design yet — ask for one in the chat.",
+      aiPreviewOff: "Background turned off",
+      aiPreviewTimeRange: "Changes through the day: {count} periods · now: {name}",
+      aiPreviewSlideshow: "Slideshow: {count} slides (first shown)",
+      aiPreviewFrosted: "Frosted glass: {count}",
+      aiPreviewEffect: "Effect: {name}",
+      aiCfgKind: "Background",
+      aiCfgKindSolid: "Solid colour",
+      aiCfgKindImage: "Picture",
+      aiCfgGradientLinear: "Linear gradient",
+      aiCfgGradientRadial: "Radial gradient",
+      aiCfgShapeEllipse: "ellipse",
+      aiCfgShapeCircle: "circle",
+      aiCfgColors: "Colours",
+      aiCfgOpacity: "Opacity",
+      aiCfgBlur: "Blur",
+      aiCfgAnimated: "Animated",
+      aiCfgAnimatedValue: "{seconds}s per cycle",
+      aiCfgFit: "Fit",
+      aiCfgFitCover: "cover",
+      aiCfgFitContain: "contain",
+      aiCfgFitStretch: "stretch",
+      aiCfgFitTile: "tile",
+      aiCfgFixed: "fixed",
+      aiCfgFilters: "Filters",
+      aiCfgBrightness: "brightness",
+      aiCfgContrast: "contrast",
+      aiCfgGrayscale: "grayscale",
+      aiCfgHue: "hue",
+      aiCfgInvert: "invert",
+      aiCfgEffect: "Effect",
+      aiCfgDensity: "density",
+      aiCfgSpeed: "speed",
+      aiCfgFrosted: "Frosted glass",
+      aiCfgRunMode: "Run mode",
+      aiCfgRunNormal: "Normal",
+      aiCfgRunEnhanced: "Enhanced",
+      aiCfgRunStrong: "Strong",
+      aiCfgRunExclude: "Keeps its own background",
+      aiCfgTarget: "Painted element",
+      aiModels: "Model shortlist",
+      aiModelsHint: "The models offered by the picker in the chat. Ask the endpoint what it serves, keep the ones you use, and give any of them a nickname — requests are always sent with the real id.",
+      aiModelsEmpty: "No saved models yet.",
+      aiModelNone: "Pick a model",
+      aiModelMenuEmpty: "No models yet — add some in AI settings.",
+      aiModelUse: "Use this model",
+      aiModelRemove: "Remove from shortlist",
+      aiModelLabelPlaceholder: "Nickname (optional)",
+      aiModelAdd: "Save current model",
+      aiModelDetect: "Detect available models",
+      aiModelDetecting: "Asking the endpoint…",
+      aiModelDetected: "The endpoint lists {count} models. Tick the ones to add:",
+      aiModelAlreadySaved: "saved",
+      aiModelDetectAdd: "Add selected",
+      aiModelDetectCancel: "Cancel",
+      aiModelManage: "Manage models…",
       aiSettingsTitle: "AI Settings",
       aiSettingsHint: "The provider, key and standing preferences the AI chat runs on. Nothing leaves this browser until you fill in a key.",
       aiProvider: "API provider",
@@ -328,7 +387,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       title: "PageDye 设置",
       appName: "PageDye",
       navSites: "网站",
-      navLibrary: "预设与动效",
+      navLibrary: "主题与动效",
       navData: "数据",
       navCustomEffects: "自定义动效",
       navAppearance: "界面外观",
@@ -338,11 +397,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       settingsTitle: "设置",
       settingsHint: "PageDye 自己的外观和行为。这里的选项不会改变网站背景。",
       tabSavedSites: "已保存网站",
-      tabPresets: "预设",
+      tabPresets: "主题",
       tabPageRules: "页面规则",
       tabGroupsBatch: "分组与批量",
-      libraryTitle: "预设与动效",
-      libraryHint: "可以反复使用的素材：整套保存好的效果，以及你自己写的动态壁纸。",
+      libraryTitle: "主题与动效",
+      libraryHint: "可以反复使用的素材：整套保存好的主题，以及你自己写的动态壁纸。",
       dataTitle: "数据",
       dataHint: "把 PageDye 保存的内容备份下来，或者清理掉不再需要的部分。",
       shortcutGroupTitle: "键盘快捷键",
@@ -350,11 +409,70 @@ document.addEventListener('DOMContentLoaded', async () => {
       navAiChat: "AI 对话",
       aiChatTitle: "AI 对话",
       aiChatHint: "用一句话说出你想要的背景，再不断提要求慢慢改。每个对话只针对一个页面。",
-      aiChatTarget: "要配背景的页面",
       aiChatTargetHint: "从你已打开的标签页里选一个。每次发送消息时，PageDye 都会重新读取它的配色和布局，不会读取正文内容。",
-      aiChatRefreshTabs: "刷新标签页列表",
-      aiMenu: "更多",
       aiChatNoTabs: "没有可读取的已打开标签页。",
+      aiRailNav: "PageDye",
+      aiRailToggle: "对话列表",
+      aiSideToggle: "预览与设置",
+      aiPreviewTitle: "预览",
+      aiPreviewLight: "浅色",
+      aiPreviewDark: "深色",
+      aiPreviewEmpty: "还没有主题——先在对话里要一个吧。",
+      aiPreviewOff: "背景已关闭",
+      aiPreviewTimeRange: "按时段切换：{count} 个时段 · 当前：{name}",
+      aiPreviewSlideshow: "轮播：{count} 张（显示第一张）",
+      aiPreviewFrosted: "磨砂玻璃：{count} 处",
+      aiPreviewEffect: "特效：{name}",
+      aiCfgKind: "背景",
+      aiCfgKindSolid: "纯色",
+      aiCfgKindImage: "图片",
+      aiCfgGradientLinear: "线性渐变",
+      aiCfgGradientRadial: "径向渐变",
+      aiCfgShapeEllipse: "椭圆",
+      aiCfgShapeCircle: "正圆",
+      aiCfgColors: "配色",
+      aiCfgOpacity: "不透明度",
+      aiCfgBlur: "模糊",
+      aiCfgAnimated: "动画",
+      aiCfgAnimatedValue: "每圈 {seconds} 秒",
+      aiCfgFit: "填充方式",
+      aiCfgFitCover: "覆盖",
+      aiCfgFitContain: "包含",
+      aiCfgFitStretch: "拉伸",
+      aiCfgFitTile: "平铺",
+      aiCfgFixed: "固定不滚动",
+      aiCfgFilters: "滤镜",
+      aiCfgBrightness: "亮度",
+      aiCfgContrast: "对比度",
+      aiCfgGrayscale: "灰度",
+      aiCfgHue: "色相",
+      aiCfgInvert: "反色",
+      aiCfgEffect: "动效",
+      aiCfgDensity: "密度",
+      aiCfgSpeed: "速度",
+      aiCfgFrosted: "磨砂玻璃",
+      aiCfgRunMode: "运行模式",
+      aiCfgRunNormal: "普通",
+      aiCfgRunEnhanced: "增强",
+      aiCfgRunStrong: "强力",
+      aiCfgRunExclude: "保留自身背景",
+      aiCfgTarget: "只给这个元素上色",
+      aiModels: "常用模型",
+      aiModelsHint: "对话里模型选择器提供的选项。可以让接口报出它支持的模型、留下常用的几个，并给任意模型起一个昵称——实际请求始终使用真实的模型 ID。",
+      aiModelsEmpty: "还没有保存的模型。",
+      aiModelNone: "选择模型",
+      aiModelMenuEmpty: "还没有模型——去 AI 设置里添加。",
+      aiModelUse: "使用这个模型",
+      aiModelRemove: "从常用列表移除",
+      aiModelLabelPlaceholder: "昵称（可选）",
+      aiModelAdd: "保存当前模型",
+      aiModelDetect: "识别可用模型",
+      aiModelDetecting: "正在询问接口…",
+      aiModelDetected: "接口列出了 {count} 个模型，勾选要添加的：",
+      aiModelAlreadySaved: "已保存",
+      aiModelDetectAdd: "添加所选",
+      aiModelDetectCancel: "取消",
+      aiModelManage: "管理模型…",
       aiSettingsTitle: "AI 设置",
       aiSettingsHint: "AI 对话使用的服务商、密钥和固定偏好。在你填写密钥之前，不会有任何数据离开这个浏览器。",
       aiProvider: "API 服务商",
@@ -637,7 +755,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     'section-custom-effects': { section: 'section-configs', pane: 'pane-library-effects' },
     'section-backup': { section: 'section-storage', pane: 'pane-data-backup' },
     'section-appearance': { section: 'section-settings' },
-    'section-ai': { section: 'section-settings' },
+    // The AI settings card moved into the chat's side panel, so its old deep
+    // link follows it there.
+    'section-ai': { section: 'section-ai-chat' },
     'section-rules': { section: 'section-sites', pane: 'pane-sites-rules' }
   };
 
@@ -863,10 +983,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     aiStreamingInput: document.getElementById('ai-streaming-input'),
     aiStylePromptInput: document.getElementById('ai-style-prompt-input'),
     aiChatRoot: document.getElementById('ai-chat-root'),
-    aiChatTabSelect: document.getElementById('ai-chat-tab-select'),
-    aiChatTabRefresh: document.getElementById('ai-chat-tab-refresh'),
-    aiMenuToggle: document.getElementById('ai-menu-toggle'),
-    aiMenuPanel: document.getElementById('ai-menu-panel'),
     aiApiKeyReveal: document.getElementById('ai-api-key-reveal'),
     aiConfigStatus: document.getElementById('ai-config-status'),
     debugModeToggle: document.getElementById('debug-mode-toggle'),
@@ -965,6 +1081,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (Object.prototype.hasOwnProperty.call(changes, DEBUG_MODE_KEY) && els.debugModeToggle) {
       els.debugModeToggle.checked = !!changes[DEBUG_MODE_KEY].newValue;
     }
+    // The chat's model chip writes the same config this card edits, so the
+    // model field follows it — unless it is the field being typed in, whose
+    // own debounced save is what fired this event.
+    if (Object.prototype.hasOwnProperty.call(changes, AI_CONFIG_KEY) && els.aiModelInput
+      && document.activeElement !== els.aiModelInput) {
+      els.aiModelInput.value = normalizeAiConfig(changes[AI_CONFIG_KEY].newValue).model;
+    }
     if (Object.prototype.hasOwnProperty.call(changes, PAUSE_SHORTCUT_KEY) && els.pauseShortcutInput) {
       els.pauseShortcutInput.value = formatPauseShortcut(normalizePauseShortcut(changes[PAUSE_SHORTCUT_KEY].newValue));
     }
@@ -991,13 +1114,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   initPageTabs();
-  initAiMenu();
 
   // Anything anywhere on the page can send the reader to a section (and, if it
   // names one, focus a field once there) without knowing how navigation works.
   document.querySelectorAll('[data-nav-target]').forEach((trigger) => {
     trigger.addEventListener('click', () => {
-      closeAiMenu();
       navigateToSection(trigger.dataset.navTarget);
       const focusTarget = trigger.dataset.navFocus && document.getElementById(trigger.dataset.navFocus);
       if (focusTarget) focusTarget.focus();
@@ -1064,15 +1185,84 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (els.mobileNavToggle) els.mobileNavToggle.setAttribute('aria-expanded', 'false');
   }
 
+  // Whether motion is welcome right now — the OS preference and the page's own
+  // Appearance toggle both count. Checked at navigation time rather than once:
+  // either can change while the page is open.
+  function motionDisabled() {
+    return document.documentElement.classList.contains('pagedye-no-animation')
+      || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  // The fullscreen chat grows out of the dashboard rather than appearing on
+  // top of it: the overlay is clipped to the rectangle the content column
+  // occupies right now and that clip expands to the whole viewport, corners
+  // flattening on the way. The rectangle is measured per navigation because
+  // the window can be resized between two of them.
+  //
+  // `var`, not `let`: navigateToSection is hoisted and runs for deep links
+  // during init, before this line — a `let` here would throw the same TDZ
+  // regression SECTION_ALIASES once did.
+  var aiLeaveTimer = 0;
+  var aiUnderTimer = 0;
+
+  function setAiOrigin(section) {
+    const host = document.querySelector('.main-content');
+    if (!host || typeof host.getBoundingClientRect !== 'function') return;
+    const rect = host.getBoundingClientRect();
+    // Clamped into the viewport: the content column is usually taller than the
+    // screen, and a negative inset would start the clip outside it — which
+    // reads as the animation beginning halfway through.
+    const clamp = (value, limit) => `${Math.round(Math.min(Math.max(value, 0), limit))}px`;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    section.style.setProperty('--ai-from-top', clamp(rect.top, height));
+    section.style.setProperty('--ai-from-right', clamp(width - rect.right, width));
+    section.style.setProperty('--ai-from-bottom', clamp(height - rect.bottom, height));
+    section.style.setProperty('--ai-from-left', clamp(rect.left, width));
+  }
+
   function navigateToSection(targetId) {
     const alias = SECTION_ALIASES[targetId];
     const sectionId = alias ? alias.section : targetId;
     if (!document.getElementById(sectionId)) return;
+
+    const aiSection = document.getElementById('section-ai-chat');
+    const enteringAi = sectionId === 'section-ai-chat';
+    const leavingAi = !!aiSection && aiSection.classList.contains('active') && !enteringAi;
+    const animate = !motionDisabled();
+    if (aiSection && (enteringAi || leavingAi) && animate) setAiOrigin(aiSection);
+
+    // The page being covered stays on screen underneath while the overlay
+    // grows over it; without it the dashboard would blank out at the first
+    // frame and there would be nothing for the chat to look like it is
+    // growing in front of.
+    const covered = enteringAi && animate
+      ? Array.prototype.find.call(els.sections, (section) => section !== aiSection && section.classList.contains('active'))
+      : null;
+
+    clearTimeout(aiLeaveTimer);
+    if (aiSection) aiSection.classList.remove('ai-leaving');
+    // Scoped on the root so the page behind the fullscreen chat cannot scroll
+    // (and cannot show a second scrollbar) while the overlay is up.
+    document.documentElement.classList.toggle('pd-ai-open', enteringAi);
+
     window.PageDyeEffects.stopEffect();
     els.navItems.forEach((item) => item.classList.toggle('active', item.dataset.target === sectionId));
     els.sections.forEach((section) => section.classList.toggle('active', section.id === sectionId));
+
+    if (covered) {
+      covered.classList.add('pd-under');
+      clearTimeout(aiUnderTimer);
+      aiUnderTimer = setTimeout(() => covered.classList.remove('pd-under'), 500);
+    }
+    // Leaving is the same move backwards: the section that was picked is
+    // already in place underneath, and the overlay shrinks back into the
+    // column it came out of on top of it.
+    if (leavingAi && animate) {
+      aiSection.classList.add('ai-leaving');
+      aiLeaveTimer = setTimeout(() => aiSection.classList.remove('ai-leaving'), 340);
+    }
     if (alias && alias.pane) showPane(alias.pane);
-    if (sectionId !== 'section-ai-chat') closeAiMenu();
     // Otherwise a new page opens at whatever scroll offset the last one was
     // left at, which reads as arriving halfway down a page you never scrolled.
     // Both scrollers are reset because which one moves depends on the width:
@@ -1128,43 +1318,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!pane || !pane.classList.contains('active')) return false;
     const section = pane.closest('.content-section');
     return !!section && section.classList.contains('active');
-  }
-
-  // The chat page has no header and no toolbar — everything that is not the
-  // conversation lives behind one button in its top-right corner.
-  function initAiMenu() {
-    if (!els.aiMenuToggle || !els.aiMenuPanel) return;
-
-    els.aiMenuToggle.addEventListener('click', (event) => {
-      event.stopPropagation();
-      setAiMenuOpen(els.aiMenuPanel.hidden);
-    });
-
-    // Every item either acts and leaves, or navigates away; either way the menu
-    // has served its purpose.
-    els.aiMenuPanel.addEventListener('click', (event) => {
-      if (event.target.closest('.ai-menu-item')) closeAiMenu();
-    });
-
-    document.addEventListener('click', (event) => {
-      if (!els.aiMenuPanel.hidden && !event.target.closest('.ai-menu')) closeAiMenu();
-    });
-
-    document.addEventListener('keydown', (event) => {
-      if (event.key !== 'Escape' || els.aiMenuPanel.hidden) return;
-      closeAiMenu();
-      els.aiMenuToggle.focus();
-    });
-  }
-
-  function setAiMenuOpen(open) {
-    if (!els.aiMenuToggle || !els.aiMenuPanel) return;
-    els.aiMenuPanel.hidden = !open;
-    els.aiMenuToggle.setAttribute('aria-expanded', String(open));
-  }
-
-  function closeAiMenu() {
-    setAiMenuOpen(false);
   }
 
   // Counts on the tab itself, so "how many rules do I have" is answered
@@ -2535,96 +2688,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // --- AI chat --------------------------------------------------------------
-  // Same component as the popup (scripts/shared/ai-chat.js), wired differently:
-  // this page has no page of its own to design for, so the target tab is an
-  // explicit choice, and applying writes straight to that site's stored
-  // settings. There is deliberately no live preview here — the chosen tab may
-  // not even be visible, so painting it would be a promise this page cannot
-  // keep, and the user would have no way to see what they were undoing.
+  // The chat itself is the shared component; everything this page builds
+  // around it — the target-page and model chips, the mock preview, the model
+  // shortlist manager, the rail's navigation pane — lives in ai-workspace.js.
   function initAiChat() {
-    if (!els.aiChatRoot || !window.PageDyeAiChat) return;
-
-    function hostnameOf(url) {
-      try {
-        return new URL(url).hostname;
-      } catch (_) {
-        return '';
-      }
-    }
-
-    async function refreshTabs() {
-      const select = els.aiChatTabSelect;
-      if (!select) return;
-      const previous = select.value;
-      select.textContent = '';
-
-      const tabs = await chrome.tabs.query({});
-      // Only pages a content script can actually be injected into: a profile
-      // cannot be read from about:, chrome:// or the extension's own pages.
-      const usable = tabs.filter((tab) => Number.isInteger(tab.id) && typeof tab.url === 'string' && /^https?:/i.test(tab.url));
-
-      if (!usable.length) {
-        const option = document.createElement('option');
-        option.value = '';
-        option.textContent = t('aiChatNoTabs');
-        select.appendChild(option);
-        select.disabled = true;
-        return;
-      }
-
-      select.disabled = false;
-      usable.forEach((tab) => {
-        const option = document.createElement('option');
-        const hostname = hostnameOf(tab.url);
-        option.value = String(tab.id);
-        option.dataset.hostname = hostname;
-        const title = (tab.title || '').slice(0, 60);
-        option.textContent = hostname && title ? `${hostname} — ${title}` : (hostname || title || tab.url);
-        select.appendChild(option);
-      });
-
-      const active = usable.find((tab) => tab.active);
-      if (previous && Array.from(select.options).some((option) => option.value === previous)) select.value = previous;
-      else if (active) select.value = String(active.id);
-    }
-
-    if (els.aiChatTabRefresh) els.aiChatTabRefresh.addEventListener('click', () => { refreshTabs(); });
-
-    window.PageDyeAiChat.mount({
-      root: els.aiChatRoot,
-      variant: 'options',
+    if (!els.aiChatRoot || !window.PageDyeAiChat || !window.PageDyeAiWorkspace) return;
+    window.PageDyeAiWorkspace.init({
+      t,
       lang,
-      resolveTarget: async () => {
-        const select = els.aiChatTabSelect;
-        const option = select && select.selectedOptions && select.selectedOptions[0];
-        if (!option || !option.value) return null;
-        return { tabId: Number(option.value), hostname: option.dataset.hostname || '' };
-      },
-      onApply: async (settings, conversation) => {
-        const hostname = (conversation && conversation.hostname) || '';
-        if (!hostname) throw new Error(t('aiChatNoTabs'));
-        // Re-validated here rather than trusted: the theme travelled through
-        // storage since it was generated, and this write lands on the key the
-        // content script reads on every page load.
-        const normalized = window.PageDyeStorage.normalizeSiteSettings(settings);
-        if (!normalized) throw new Error(t('error'));
-        await chrome.storage.local.set({ [hostname]: normalized });
-        await loadSitesList();
-      },
-      // PageDye's own preferences, applied only when the card's button is
-      // pressed. The shared applier re-validates and merges rather than
-      // replacing, so a proposal about the accent leaves the shortcut alone.
-      onApplyPreferences: async (preferences) => {
-        await window.PageDyeAiPreferences.apply(chrome.storage.local, preferences);
-      },
-      openAiSettings: () => {
-        navigateToSection('section-settings');
-        document.getElementById('settings-ai')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        els.aiApiKeyInput?.focus();
-      }
+      navigateToSection,
+      onSiteSaved: loadSitesList
     });
-
-    refreshTabs();
   }
 
   async function initUiTheme() {

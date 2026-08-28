@@ -1950,127 +1950,833 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 /* --------------------------------------------------------------------------
-   10. AI chat page
+   10. AI chat — fullscreen workspace
    --------------------------------------------------------------------------
-   The transcript is the feature, so the target picker is one bar above it —
-   a full-width dropdown with an icon-sized refresh beside it, not a dropdown
-   fighting a full-width button for the row.
+   Switching to AI hands the entire viewport to the chat: the section leaves
+   the main column and becomes a fixed overlay over the dashboard shell,
+   growing out of it with a springy scale and shrinking back on the way out
+   (options.js plays .ai-closing before it actually switches). The way back is
+   the rail's PageDye tab. Under the modal z-range (2000) and above the mobile
+   drawer (200).
    -------------------------------------------------------------------------- */
 
-/* The chat gets the whole page, not a box inside one: no section header, no
-   row of controls above it — just a slim bar and then the conversation, the
-   way a chat app is laid out. .main-content is a stretched flex item with a
-   definite height on desktop, which is what makes the 100% below resolve;
-   under 768px it falls back to content height and the page scrolls instead
-   (see the phone block). */
-#section-ai-chat.active {
+#section-ai-chat.active,
+/* Kept on screen after it stops being the active section, so it can shrink
+   back down over the page that replaced it. */
+#section-ai-chat.ai-leaving {
   display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  box-sizing: border-box;
   flex-direction: column;
-  height: 100%;
+  padding: 14px;
+  overflow: hidden;
+  /* The canvas the three columns sit on, one step below them on the elevation
+     ramp. It used to be the same token the columns use, which in light mode is
+     the identical hex — so the rail, the transcript and the side panel had no
+     visible edges at all and the whole workspace read as loose text on a
+     background. */
+  background: var(--md-sys-color-surface);
+}
+
+/* The container itself grows. The overlay is already laid out at full size and
+   clipped down to the rectangle the dashboard's content column occupies —
+   measured by options.js into the four --ai-from-* variables — and it is that
+   clip which expands to the whole viewport, so the panel's edges travel
+   outwards instead of a finished page fading in. The percentages are only a
+   fallback for the frame before JS has measured anything. */
+#section-ai-chat.active {
+  animation: aiGrow 0.52s cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* The content grows with the box rather than sitting at full size inside it,
+   which is the difference between a container opening and a window revealing
+   what was already behind it. */
+#section-ai-chat.active .ai-workspace {
+  animation: aiGrowInner 0.52s cubic-bezier(0.2, 0, 0, 1);
+}
+
+#section-ai-chat.ai-leaving {
+  pointer-events: none;
+  animation: aiShrink 0.3s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+#section-ai-chat.ai-leaving .ai-workspace {
+  animation: aiShrinkInner 0.3s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+@keyframes aiGrow {
+  from {
+    clip-path: inset(
+      var(--ai-from-top, 6%) var(--ai-from-right, 14%)
+      var(--ai-from-bottom, 6%) var(--ai-from-left, 22%) round 24px);
+  }
+  to { clip-path: inset(0 0 0 0 round 0); }
+}
+
+@keyframes aiGrowInner {
+  from { transform: scale(0.93); opacity: 0.35; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes aiShrink {
+  from { clip-path: inset(0 0 0 0 round 0); opacity: 1; }
+  62% { opacity: 1; }
+  to {
+    clip-path: inset(
+      var(--ai-from-top, 6%) var(--ai-from-right, 14%)
+      var(--ai-from-bottom, 6%) var(--ai-from-left, 22%) round 24px);
+    opacity: 0;
+  }
+}
+
+@keyframes aiShrinkInner {
+  from { transform: scale(1); }
+  to { transform: scale(0.94); }
+}
+
+/* The page the overlay is growing over stays visible underneath for the
+   length of that animation. */
+.content-section.pd-under {
+  display: block;
+  pointer-events: none;
+}
+
+/* The dashboard behind the overlay must not keep a scrollbar of its own. */
+html.pd-ai-open,
+html.pd-ai-open body {
+  overflow: hidden;
 }
 
 .ai-workspace {
   display: flex;
   flex: 1;
-  flex-direction: column;
+  gap: 14px;
   min-height: 0;
 }
 
-.ai-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
+/* The mount host: the chat component (rail + transcript) fills whatever the
+   side panel leaves it. */
+#ai-chat-root {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
 }
 
-/* Reads as a label showing which page is being designed for, not as a form
-   field: the chevron is the only thing that says it can be changed. */
-.ai-target-select {
+/* --- the header row above the transcript ----------------------------------- */
+
+.ai-main-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--pd-hairline);
+}
+
+.ai-main-header-spacer {
+  flex: 1;
+}
+
+.ai-chip-group {
+  position: relative;
   min-width: 0;
-  max-width: min(460px, 70%);
-  height: 38px;
-  min-height: 38px;
-  padding: 0 34px 0 14px;
+}
+
+.ai-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 280px;
+  height: 34px;
+  padding: 0 12px;
   border: none;
   border-radius: 999px;
-  background: var(--pd-surface-card);
+  background: transparent;
   color: var(--md-sys-color-on-surface);
+  font-family: inherit;
   font-size: 13px;
   font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.ai-chip:hover {
+  background: var(--md-state-hover);
+}
+
+.ai-chip.placeholder {
+  color: var(--md-sys-color-on-surface-variant);
+  font-weight: 500;
+}
+
+.ai-chip svg {
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.ai-chip .ai-chip-caret {
+  flex-basis: 12px;
+  width: 12px;
+  height: 12px;
+}
+
+.ai-chip-label {
+  overflow: hidden;
+  min-width: 0;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.ai-target-select:hover {
-  background: var(--pd-surface-nested);
-}
-
-/* --- the top-right menu ---------------------------------------------------- */
-
-.ai-menu {
-  position: relative;
-  flex: 0 0 auto;
-}
-
-.ai-menu-toggle svg {
-  width: 20px;
-  height: 20px;
-}
-
-.ai-menu-panel {
+.ai-chip-menu {
   position: absolute;
   top: calc(100% + 6px);
-  right: 0;
-  z-index: 40;
-  width: 268px;
+  left: 0;
+  z-index: 60;
+  width: min(340px, 74vw);
+  max-height: 340px;
   padding: 6px;
+  overflow-y: auto;
   border-radius: var(--pd-radius-nested);
   background: var(--md-sys-color-surface-container-high);
   box-shadow: var(--md-elevation-2);
 }
 
-.ai-menu-item {
+.ai-chip-menu-note {
+  margin: 0;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--pd-hairline);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.ai-chip-menu-empty {
+  margin: 0;
+  padding: 10px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 12px;
+}
+
+.ai-chip-menu-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ai-chip-menu-item:hover {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+}
+
+.ai-chip-menu-item.active {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
+}
+
+.ai-chip-menu-item-title {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-chip-menu-item-sub {
+  overflow: hidden;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-chip-menu-foot {
+  width: 100%;
+  margin-top: 4px;
+  padding: 9px 10px;
+  border: none;
+  border-top: 1px solid var(--pd-hairline);
+  background: transparent;
+  color: var(--md-sys-color-primary);
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ai-side-toggle svg,
+.ai-rail-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Under 900px the rail is an overlay with its own button in the chat's bar,
+   so this one would be a second control for the same panel. */
+@media (max-width: 900px) {
+  .ai-rail-toggle {
+    display: none;
+  }
+}
+
+/* --- the rail's PageDye pane ----------------------------------------------- */
+
+.ai-rail-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ai-rail-nav-item {
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
-  min-height: 40px;
-  padding: 0 12px;
+  padding: 9px 10px;
   border: none;
   border-radius: 12px;
   background: transparent;
   color: var(--md-sys-color-on-surface);
   font-family: inherit;
   font-size: 13px;
-  font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: background-color 0.15s ease;
 }
 
-.ai-menu-item svg {
+.ai-rail-nav-item:hover {
+  background: var(--md-state-hover);
+}
+
+.ai-rail-nav-item .nav-icon {
+  flex: 0 0 17px;
   width: 17px;
   height: 17px;
-  flex: 0 0 17px;
   color: var(--md-sys-color-on-surface-variant);
 }
 
-.ai-menu-item:hover {
-  background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+/* --- the right column: preview and settings -------------------------------- */
+
+.ai-side {
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 340px;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--pd-surface-card);
+  /* Slides out to the right the way the rail slides out to the left: a
+     negative margin, so the panel keeps its width (nothing inside it reflows)
+     and the chat widens into the space it leaves. */
+  transition: margin-right 0.34s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease,
+    visibility 0s linear 0s;
 }
 
-.ai-menu-note {
-  margin: 6px 0 2px;
-  padding: 10px 12px 4px;
-  border-top: 1px solid var(--pd-hairline);
+.ai-workspace.side-hidden .ai-side {
+  margin-right: -354px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: margin-right 0.34s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease,
+    visibility 0s linear 0.34s;
+}
+
+.ai-side-scroll {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  /* 4 of padding plus the 10 the gutter below reserves on each side is the
+     14 the cards sit at vertically. Reserving it on BOTH edges is the point:
+     with the gutter only on the right, the cards sat 14 from the left and 24
+     from the right, and the column looked visibly off-centre. */
+  padding: 14px 4px;
+  overflow-y: auto;
+  scrollbar-gutter: stable both-edges;
+  /* Overlay-style: no track, and a thumb only while the pointer is in the
+     column. A permanent groove down the side of a 340px panel is the single
+     loudest thing in it. */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.ai-side-scroll:hover {
+  scrollbar-color: var(--md-sys-color-outline-variant) transparent;
+}
+
+.ai-side-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ai-side-scroll::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: transparent;
+}
+
+.ai-side-scroll:hover::-webkit-scrollbar-thumb {
+  background: var(--md-sys-color-outline-variant);
+}
+
+.ai-side-card {
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: var(--pd-surface-nested);
+}
+
+#ai-preview-card {
+  padding: 14px;
+}
+
+.ai-side-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ai-side-card-head h3 {
+  margin: 0;
+  color: var(--md-sys-color-on-surface);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ai-preview-scheme {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--pd-surface-card);
+}
+
+.ai-preview-scheme-btn {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ai-preview-scheme-btn.active {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+}
+
+.ai-preview-meta {
+  margin: 10px 0 0;
   color: var(--md-sys-color-on-surface-variant);
   font-size: 11.5px;
   line-height: 1.55;
 }
 
-#ai-chat-root {
+/* The numbers behind the picture. A label column that shrinks to its longest
+   word and a value column that takes the rest, so the values line up and a
+   long selector wraps inside its own cell instead of pushing the row wide. */
+.ai-preview-config {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 5px 12px;
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.ai-preview-config:empty {
+  display: none;
+}
+
+.ai-preview-config dt {
+  color: var(--md-sys-color-on-surface-variant);
+  white-space: nowrap;
+}
+
+.ai-preview-config dd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  color: var(--md-sys-color-on-surface);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.ai-preview-swatches {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 3px;
+}
+
+/* Outlined rather than bare: a near-white stop on the card's own surface would
+   otherwise have no edge at all. */
+.ai-preview-swatch {
+  width: 11px;
+  height: 11px;
+  border: 1px solid var(--pd-hairline);
+  border-radius: 3px;
+}
+
+/* The miniature fake page the current design is painted onto. Its own base
+   colors are fixed per scheme rather than the dashboard's tokens: it stands
+   for someone else's website, not for this UI. */
+.ai-preview-frame {
+  overflow: hidden;
+  border: 1px solid var(--pd-hairline);
+  border-radius: 12px;
+}
+
+.ai-mock {
+  position: relative;
+  height: 190px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.ai-mock[data-scheme='dark'] {
+  background: #0d1117;
+}
+
+.ai-mock-backdrop {
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.25s ease;
+}
+
+.ai-mock-backdrop.animated {
+  background-size: 300% 300% !important;
+  animation: aiMockDrift 14s ease-in-out infinite;
+}
+
+@keyframes aiMockDrift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.ai-mock-page {
+  display: flex;
+  position: relative;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+}
+
+.ai-mock-panel {
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  transition: background-color 0.25s ease;
+}
+
+.ai-mock[data-scheme='dark'] .ai-mock-panel {
+  background: rgba(13, 17, 23, 0.92);
+}
+
+.ai-mock-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 7px 10px;
+}
+
+.ai-mock-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 10px;
+}
+
+.ai-mock-cards {
+  display: flex;
   flex: 1;
+  gap: 10px;
   min-height: 0;
+}
+
+.ai-mock-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px;
+}
+
+.ai-mock-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(60, 70, 90, 0.55);
+}
+
+.ai-mock-line {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(60, 70, 90, 0.45);
+}
+
+.ai-mock[data-scheme='dark'] .ai-mock-dot,
+.ai-mock[data-scheme='dark'] .ai-mock-line {
+  background: rgba(205, 215, 230, 0.5);
+}
+
+.ai-mock-line-nav {
+  width: 42%;
+}
+
+.ai-mock-line-title {
+  width: 55%;
+  height: 8px;
+}
+
+.ai-mock-line-short {
+  width: 60%;
+}
+
+/* --- the model shortlist manager ------------------------------------------- */
+
+.ai-model-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-model-list-empty {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 12px;
+}
+
+.ai-model-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--pd-hairline);
+  border-radius: 12px;
+}
+
+.ai-model-row.active {
+  border-color: color-mix(in srgb, var(--md-sys-color-primary) 55%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+}
+
+/* The pick-me dot: filled when this row's model is the active one. */
+.ai-model-use {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 2px solid var(--md-sys-color-outline-variant);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ai-model-row.active .ai-model-use {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary);
+  box-shadow: inset 0 0 0 2.5px var(--pd-surface-nested);
+}
+
+.ai-model-fields {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ai-model-label {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 2px 0;
+  border: none;
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ai-model-label:focus {
+  outline: none;
+  border-bottom: 1px dashed var(--md-sys-color-primary);
+}
+
+.ai-model-id {
+  overflow: hidden;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-model-remove {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ai-model-remove:hover {
+  background: var(--md-state-hover);
+  color: #b91c1c;
+}
+
+.ai-model-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* `display` on the class would otherwise beat the UA's [hidden] rule, which
+   has the same specificity and loses on order. Same for the detect panel. */
+.ai-model-actions[hidden],
+.ai-model-detect[hidden] {
+  display: none;
+}
+
+.ai-model-detect {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px dashed var(--md-sys-color-outline-variant);
+  border-radius: 12px;
+}
+
+.ai-model-detect-status {
+  margin: 0 0 8px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.ai-model-detect-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.ai-model-detect-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ai-model-detect-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-model-detect-known {
+  flex-shrink: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 11px;
+}
+
+/* Narrower than three columns: the side panel floats over the chat as a
+   drawer from the right, opened and closed by the header's toggle.
+   ai-workspace.js starts it hidden at these widths when nothing is stored. */
+@media (max-width: 1100px) {
+  .ai-workspace {
+    position: relative;
+  }
+
+  /* Starts under the header rather than at the top of the workspace: anchored
+     at 0 it covered its own toggle, so the drawer could be opened and then
+     never closed. ai-workspace.js measures the header's bottom edge into
+     --ai-drawer-top. */
+  .ai-side {
+    position: absolute;
+    top: var(--ai-drawer-top, 56px);
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    width: min(360px, calc(100vw - 40px));
+    box-shadow: var(--md-elevation-2);
+  }
+
+  /* A floating drawer has no layout space to give back, so it slides on its
+     own transform instead of on the margin the column layout used. */
+  .ai-workspace.side-hidden .ai-side {
+    margin-right: 0;
+    transform: translateX(calc(100% + 16px));
+  }
+}
+
+/* The settings card, compacted for a 340px column: rows stack instead of
+   splitting into a label column and a control column. */
+.ai-side .settings-card {
+  margin-bottom: 0;
+  padding: 2px 14px 12px;
+}
+
+.ai-side .settings-card-head {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 0 12px;
+}
+
+.ai-side .settings-card-head h3 {
+  font-size: 14px;
+}
+
+.ai-side .settings-card-head p {
+  font-size: 12px;
+}
+
+.ai-side .settings-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.ai-side .settings-row-control-field {
+  width: 100%;
+}
+
+/* The image/streaming toggles keep label and switch on one line even in the
+   narrow column — a lone switch under a paragraph reads as unattached. */
+.ai-side .settings-row:has(.mode-toggle) {
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
 }
 
 /* --------------------------------------------------------------------------
@@ -3953,6 +4659,28 @@ input[type="color"]::-webkit-color-swatch {
     height: 20px;
   }
 
+  /* The close cross had no size rule of its own — the hamburger beside it has
+     one — so it rendered at the SVG's own default and towered over every
+     other glyph in the drawer. Sized to match, on a tonal disc so it reads as
+     a control at rest rather than as a stray mark next to the wordmark. */
+  .sidebar-close-btn {
+    width: 34px;
+    height: 34px;
+    background: color-mix(in srgb, var(--md-sys-color-on-surface) 7%, transparent);
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .sidebar-close-btn svg {
+    width: 17px;
+    height: 17px;
+    stroke-width: 2.2;
+  }
+
+  .sidebar-close-btn:hover {
+    background: color-mix(in srgb, var(--md-sys-color-on-surface) 13%, transparent);
+    color: var(--md-sys-color-on-surface);
+  }
+
   .sidebar-backdrop {
     display: block;
     position: fixed;
@@ -4061,15 +4789,19 @@ input[type="color"]::-webkit-color-swatch {
     font-size: 13px;
   }
 
-  /* The bar is the only chrome the chat has, so on a phone the dropdown takes
-     whatever the menu button leaves it. */
-  .ai-target-select {
-    flex: 1 1 auto;
-    max-width: none;
+  /* The chips are the only chrome the chat has, so on a phone their menus
+     take the width the screen actually offers. */
+  .ai-chip {
+    max-width: 44vw;
+    padding: 0 9px;
   }
 
-  .ai-menu-panel {
-    width: min(280px, calc(100vw - 48px));
+  .ai-chip-menu {
+    width: min(300px, calc(100vw - 48px));
+  }
+
+  #section-ai-chat.active {
+    padding: 8px;
   }
 
   /* Mobile navigation and table formatting */
@@ -4154,7 +4886,18 @@ input[type="color"]::-webkit-color-swatch {
      have to be named here or they would out-rank the reset below. */
   .tab-pane.active.enter-forward,
   .tab-pane.active.enter-back,
+  /* The fullscreen chat opens and closes in place; options.js also skips the
+     measuring and the leaving overlay entirely when motion is off. */
+  #section-ai-chat.active,
+  #section-ai-chat.active .ai-workspace,
+  .ai-mock-backdrop.animated,
   .status-msg {
     animation: none;
+  }
+
+  /* The two panels appear and disappear rather than sliding. */
+  .ai-side,
+  .ai-workspace.side-hidden .ai-side {
+    transition: none;
   }
 }

@@ -546,6 +546,10 @@ test('both pages that host the chat define every token it consumes', () => {
   // their surface, and no control had a hover state.
   const chat = read('scripts/shared/ai-chat.css');
   const used = new Set([...chat.matchAll(/var\((--[a-z0-9-]+)/g)].map((match) => match[1]));
+  // Minus the handful the chat declares for itself (the rail's width and the
+  // gap beside it, which the collapsed state has to travel exactly): those are
+  // its own measurements, not something a host page could know to provide.
+  for (const own of chat.matchAll(/^\s*(--[a-z0-9-]+):/gm)) used.delete(own[1]);
   assert.ok(used.size > 5, 'the chat should consume some tokens');
 
   for (const page of ['popup/popup.css', 'options/options.css']) {
@@ -582,10 +586,10 @@ test('the dashboard stays usable at phone width', () => {
   const next = css.indexOf('@media', start + 1);
   const phone = css.slice(start, next === -1 ? css.length : next);
 
-  // The chat's only chrome is one bar; on a phone the dropdown takes whatever
-  // the menu button leaves it, and the menu cannot be wider than the screen.
-  assert.match(phone, /\.ai-target-select\s*\{[^}]*max-width:\s*none;/s);
-  assert.match(phone, /\.ai-menu-panel\s*\{[^}]*width:\s*min\(/s);
+  // The chat's only chrome is the chip row; on a phone the chips shrink and
+  // their menus cannot be wider than the screen.
+  assert.match(phone, /\.ai-chip\s*\{[^}]*max-width:/s);
+  assert.match(phone, /\.ai-chip-menu\s*\{[^}]*width:\s*min\(/s);
 
   // The top bar is sticky, so anything scrolled to needs to clear it.
   assert.match(phone, /\.content-section,\s*\.settings-card\s*\{[^}]*scroll-margin-top:/s);

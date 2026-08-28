@@ -123,12 +123,71 @@
     return { background: effectPreviews[kind] || 'linear-gradient(135deg, #1B2425, #667876)' };
   }
 
+  // A name no saved theme is using yet. The AI names most of what lands here,
+  // and it will happily call two designs for the same site the same thing —
+  // which would leave the library with rows nothing but their preview tells
+  // apart.
+  function uniqueName(presets, wanted) {
+    const taken = new Set(presets.map((preset) => preset.name));
+    const base = String(wanted || '').trim().slice(0, 70) || (language() === 'zh' ? '未命名主题' : 'Untitled theme');
+    if (!taken.has(base)) return base;
+    for (let index = 2; index < 100; index += 1) {
+      const candidate = `${base} ${index}`;
+      if (!taken.has(candidate)) return candidate;
+    }
+    return `${base} ${Date.now().toString(36)}`;
+  }
+
+  function newPresetId() {
+    const crypto = root.crypto;
+    const random = crypto && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID().replace(/-/g, '')
+      : Math.random().toString(36).slice(2, 12);
+    return `preset-${Date.now().toString(36)}-${random}`.slice(0, 100);
+  }
+
+  // Keeps one background in the library under a name of its own. Shared by the
+  // popup and the dashboard because both offer the AI chat's "add to themes"
+  // button, and what a saved theme looks like in storage must have exactly one
+  // definition. Returns the name it ended up under, which is not necessarily
+  // the one asked for (see uniqueName).
+  async function saveToLibrary(storageLocal, settings, wantedName, schemaApi) {
+    const schema = schemaApi || root.PageDyeStorage;
+    const zh = language() === 'zh';
+    if (!schema) throw new Error(zh ? '存储模块不可用。' : 'Storage schema unavailable.');
+
+    const stored = await storageLocal.get(schema.KEYS.configPresets);
+    const presets = schema.normalizeConfigPresets(stored && stored[schema.KEYS.configPresets]);
+    if (presets.length >= schema.MAX_CONFIG_PRESETS) {
+      throw new Error(zh
+        ? `最多只能保存 ${schema.MAX_CONFIG_PRESETS} 个主题，请先删掉一些。`
+        : `You can keep at most ${schema.MAX_CONFIG_PRESETS} themes; delete some first.`);
+    }
+
+    const now = Date.now();
+    // Re-validated rather than trusted: this settings object came from a model
+    // by way of the transcript, and the library is applied to whole sites.
+    const preset = schema.normalizeConfigPreset({
+      id: newPresetId(),
+      name: uniqueName(presets, wantedName),
+      settings,
+      createdAt: now,
+      updatedAt: now
+    });
+    if (!preset) throw new Error(zh ? '这套主题保存不了。' : 'This theme cannot be saved.');
+
+    await storageLocal.set({ [schema.KEYS.configPresets]: presets.concat([preset]) });
+    return preset.name;
+  }
+
   root.PageDyeConfigPresets = Object.freeze({
     BUILT_INS,
     language,
     displayName,
     cloneSettings,
     settingsForApply,
-    previewStyle
+    previewStyle,
+    uniqueName,
+    saveToLibrary
   });
 })(typeof globalThis !== 'undefined' ? globalThis : this);
