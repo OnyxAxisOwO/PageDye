@@ -47,6 +47,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       aiModelHint: "Type any model id the selected endpoint accepts. With Anthropic, Opus gives the best results and Haiku is the fastest and cheapest.",
       aiModelExample: "gpt-4o",
       aiVision: "This model can read images",
+      aiStreaming: "Stream the reply",
+      aiStreamingHint: "Shows the answer as it is written instead of waiting for the whole thing. If the endpoint cannot stream, PageDye quietly asks again without streaming and tells you why in the chat — turn this off to skip that second request.",
       aiVisionHint: "Turns on the attach button in the AI chat, so you can hand the model a picture to take a palette from — or to use as the wallpaper itself. Leave it off for a text-only model: attaching a picture to one fails the whole message rather than being ignored. Every Anthropic model here can read images; for an OpenAI-compatible endpoint, check your provider's model list. Switching provider resets this to that provider's default.",
       aiStylePrompt: "Standing style preference",
       aiStylePromptHint: "Optional. Whatever you write here is added to every generation on every site — a palette you like, lower saturation, colour pairings to avoid for colour-vision reasons, or your own house style. It stays in effect until you change it; for a request that applies to one theme only, just say so in the AI chat.",
@@ -369,6 +371,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       aiModelHint: "可以填写所选接口支持的任意模型 ID。使用 Anthropic 时，Opus 效果最好，Haiku 最快也最省钱。",
       aiModelExample: "gpt-4o",
       aiVision: "该模型可以看图",
+      aiStreaming: "流式返回",
+      aiStreamingHint: "一边生成一边显示，不用等整段答案写完。如果接口不支持流式，PageDye 会自动改用一次性请求重发一遍，并在对话里说明原因——不想要这次重发就把它关掉。",
       aiVisionHint: "打开后，AI 对话里会出现添加图片的按钮，你可以给模型一张图，让它照着取色，或者直接把这张图用作背景。纯文本模型请不要勾选：给看不了图的模型发图片，整条消息会被拒绝，而不是忽略图片。这里的 Anthropic 模型都能看图；OpenAI 兼容接口请查阅你的服务商的模型列表。切换服务商时，这一项会恢复为该服务商的默认值。",
       aiStylePrompt: "固定风格偏好",
       aiStylePromptHint: "可选。这里填写的内容会附加到每一个网站的每一次生成中，例如你偏好的配色、更低的饱和度、出于色觉考虑需要避开的颜色搭配，或是你自己的统一风格。它会一直生效，直到你修改为止；如果只想对某一次生成提要求，直接在 AI 对话里说就行。",
@@ -856,6 +860,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     aiModelInput: document.getElementById('ai-model-input'),
     aiModelSuggestions: document.getElementById('ai-model-suggestions'),
     aiVisionInput: document.getElementById('ai-vision-input'),
+    aiStreamingInput: document.getElementById('ai-streaming-input'),
     aiStylePromptInput: document.getElementById('ai-style-prompt-input'),
     aiChatRoot: document.getElementById('ai-chat-root'),
     aiChatTabSelect: document.getElementById('ai-chat-tab-select'),
@@ -2436,7 +2441,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function initAiConfig() {
     if (!els.aiProviderSelect && !els.aiApiKeyInput && !els.aiBaseUrlInput && !els.aiModelInput &&
-      !els.aiVisionInput && !els.aiStylePromptInput) return;
+      !els.aiVisionInput && !els.aiStreamingInput && !els.aiStylePromptInput) return;
     const data = await chrome.storage.local.get(AI_CONFIG_KEY);
     const config = normalizeAiConfig(data[AI_CONFIG_KEY]);
     syncAiProviderFields(config.provider);
@@ -2497,6 +2502,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       els.aiVisionInput.checked = config.vision === true;
       els.aiVisionInput.addEventListener('change', () => {
         saveAiConfig({ vision: els.aiVisionInput.checked });
+      });
+    }
+
+    // Not reset on a provider change the way vision is: whether streaming is
+    // wanted is a preference about the chat, not a fact about the model.
+    if (els.aiStreamingInput) {
+      els.aiStreamingInput.checked = config.streaming !== false;
+      els.aiStreamingInput.addEventListener('change', () => {
+        saveAiConfig({ streaming: els.aiStreamingInput.checked });
       });
     }
 

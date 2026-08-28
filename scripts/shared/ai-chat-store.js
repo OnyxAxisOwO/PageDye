@@ -97,6 +97,25 @@
     return messages;
   }
 
+  // What the turn cost and how fast it was, as ai-theme measured it. Kept with
+  // the message so the numbers survive a reload; every field is optional
+  // because plenty of endpoints report no token counts at all.
+  const MAX_THINKING_CHARS = 12000;
+
+  function normalizeStats(raw) {
+    if (!isPlainObject(raw)) return null;
+    const count = (value) => (Number.isFinite(value) && value >= 0 ? value : null);
+    const stats = {
+      ms: count(raw.ms),
+      firstTokenMs: count(raw.firstTokenMs),
+      streamed: raw.streamed === true,
+      inputTokens: count(raw.inputTokens),
+      outputTokens: count(raw.outputTokens),
+      tps: count(raw.tps)
+    };
+    return stats.ms === null ? null : stats;
+  }
+
   function normalizeMessage(raw) {
     if (!isPlainObject(raw)) return null;
     const id = typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 64) : newId();
@@ -121,6 +140,9 @@
       // button survives a reload. Re-validated by ai-theme before it is
       // written, the same as `settings`.
       preferences: isPlainObject(raw.preferences) ? raw.preferences : null,
+      stats: normalizeStats(raw.stats),
+      // The model's own reasoning, shown collapsed under the answer.
+      thinking: trimTo(raw.thinking, MAX_THINKING_CHARS),
       error: trimTo(raw.error, 400),
       at
     };
@@ -193,6 +215,8 @@
       theme: isPlainObject(source.theme) ? source.theme : null,
       settings: isPlainObject(source.settings) ? source.settings : null,
       preferences: isPlainObject(source.preferences) ? source.preferences : null,
+      stats: normalizeStats(source.stats),
+      thinking: trimTo(source.thinking, MAX_THINKING_CHARS),
       error: trimTo(source.error, 400),
       at
     };

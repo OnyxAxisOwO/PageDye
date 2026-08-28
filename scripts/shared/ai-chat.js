@@ -57,6 +57,17 @@
       imageFailed: 'That image could not be read.',
       imageWallpaper: 'Your image as the wallpaper',
       imagesUnsupported: 'This model cannot read images. Pick a vision model in AI settings, or edit the message and remove the picture.',
+      streamFallback: 'Streaming was not available this time, so the whole answer arrived at once — {reason}.',
+      statsStreamed: 'streamed',
+      statsOneShot: 'one-shot',
+      statsFirstToken: 'first token {seconds}s',
+      statsTokens: '{input} in / {output} out',
+      statsOutputOnly: '{output} out',
+      statsSpeed: '{tps} tok/s',
+      reasoning: '思考过程',
+      reasoningLive: '正在思考…',
+      reasoning: 'Reasoning',
+      reasoningLive: 'Thinking…',
       thinking: 'Reading the page and designing…',
       thinkingAgain: 'Working on your change…',
       emptyTitle: 'Design a background by chatting',
@@ -118,6 +129,13 @@
       imageFailed: '这张图片读不出来。',
       imageWallpaper: '用你上传的图片当背景',
       imagesUnsupported: '这个模型看不了图片。去 AI 设置换一个支持看图的模型，或者编辑这条消息把图片去掉。',
+      streamFallback: '这次没能流式返回，整段答案一次性到达——{reason}。',
+      statsStreamed: '流式',
+      statsOneShot: '一次性',
+      statsFirstToken: '首字 {seconds}s',
+      statsTokens: '输入 {input} / 输出 {output}',
+      statsOutputOnly: '输出 {output}',
+      statsSpeed: '{tps} tok/s',
       thinking: '正在读取页面并设计…',
       thinkingAgain: '正在按你的要求修改…',
       emptyTitle: '用聊天的方式设计背景',
@@ -282,6 +300,9 @@
     // rejects the whole message, so the attachment button is not offered until
     // someone has said it is safe to.
     let visionEnabled = false;
+    // Only used to decide whether a one-shot answer is worth remarking on:
+    // with streaming switched off it is exactly what the user asked for.
+    let streamingEnabled = true;
     // Wide options screens show the list as a permanent column via CSS, so this
     // only drives the overlay the popup and narrow screens use.
     let historyOpen = false;
@@ -295,6 +316,14 @@
     // of the "thinking" line, so a long answer reads as it is written instead
     // of appearing all at once after a spinner.
     let streamingReply = '';
+    // The model's reasoning for the turn in flight. On a thinking model this
+    // is the only thing there is to show for most of the wait.
+    let streamingThinking = '';
+    // The nodes of the turn in flight, so a delta can patch the text it
+    // changed instead of rebuilding the transcript. A full render per chunk
+    // restarts the spinner's animation several times a second — which reads
+    // as a twitch — and throws away the reasoning box's scroll position.
+    let pendingNodes = null;
 
     // --- structure ------------------------------------------------------------
 
@@ -752,6 +781,42 @@
       return row;
     }
 
+    // The model's reasoning. Open while the turn is running — it is the only
+    // sign of life on a model that thinks for ten seconds before writing a
+    // word — and collapsed once the answer it produced is there to read.
+    function renderThinking(text, live) {
+      const box = el('details', 'ai-thinking');
+      if (live) box.open = true;
+      const head = el('summary', 'ai-thinking-head', str(live ? 'reasoningLive' : 'reasoning'));
+      box.appendChild(head);
+      // Plain text, not markdown: reasoning is full of half-finished lists and
+      // stray backticks that a renderer turns into a mess mid-stream.
+      const body = el('div', 'ai-thinking-body', text);
+      box.appendChild(body);
+      // Follows the newest line while it is being written, the way a log does.
+      if (live) requestAnimationFrame(() => { body.scrollTop = body.scrollHeight; });
+      return box;
+    }
+
+    // The measured cost of one turn, as a single muted line: how long it took,
+    // how long the first character took to appear, what it spent, and how fast
+    // it generated. Parts the endpoint did not report are simply left out.
+    function renderStats(stats) {
+      const seconds = (ms) => (ms >= 10000 ? String(Math.round(ms / 1000)) : (Math.round(ms / 100) / 10).toFixed(1));
+      const parts = [`${seconds(stats.ms)}s`];
+      parts.push(str(stats.streamed ? 'statsStreamed' : 'statsOneShot'));
+      if (stats.firstTokenMs !== null && stats.firstTokenMs !== undefined) {
+        parts.push(str('statsFirstToken', { seconds: seconds(stats.firstTokenMs) }));
+      }
+      if (stats.outputTokens !== null && stats.outputTokens !== undefined) {
+        parts.push(stats.inputTokens === null || stats.inputTokens === undefined
+          ? str('statsOutputOnly', { output: stats.outputTokens })
+          : str('statsTokens', { input: stats.inputTokens, output: stats.outputTokens }));
+      }
+      if (stats.tps !== null && stats.tps !== undefined) parts.push(str('statsSpeed', { tps: stats.tps }));
+      return el('div', 'ai-msg-stats', parts.join(' · '));
+    }
+
     function renderAssistantMessage(conversation, message) {
       const row = el('div', 'ai-msg ai-msg-assistant');
 
@@ -767,6 +832,8 @@
         row.appendChild(failure);
         return row;
       }
+
+      if (message.thinking) row.appendChild(renderThinking(message.thinking, false));
 
       // The assistant's own words are plain prose on the page — no bubble —
       // so a long answer reads like a document instead of a chat log.
@@ -789,16 +856,26 @@
       }));
       actions.appendChild(button('ai-chat-mini-btn', str('copy'), () => copyText(message.reply)));
       row.appendChild(actions);
+      if (message.stats) row.appendChild(renderStats(message.stats));
       return row;
     }
 
     function renderPending(conversation) {
       const row = el('div', 'ai-msg ai-msg-assistant');
+      pendingNodes = { thinking: null, answer: null };
+      // Reasoning shows above whichever of the two follows it, because that is
+      // the order it was written in.
+      if (streamingThinking) {
+        const box = renderThinking(streamingThinking, true);
+        pendingNodes.thinking = box.querySelector('.ai-thinking-body');
+        row.appendChild(box);
+      }
       // Once text is arriving it replaces the spinner entirely: two indicators
       // for one turn is noise, and the words are the better progress bar.
       if (streamingReply) {
         const answer = el('div', 'ai-answer ai-answer-streaming');
         Markdown.renderInto(answer, streamingReply);
+        pendingNodes.answer = answer;
         row.appendChild(answer);
         return row;
       }
@@ -810,7 +887,28 @@
       return row;
     }
 
+    // Writes the newest text into the nodes already on screen. Refuses — and
+    // leaves it to render() — when the turn has moved to a different shape,
+    // which happens twice at most: when reasoning starts, and when the answer
+    // does.
+    function updatePending() {
+      if (!pendingNodes) return false;
+      if (!!streamingThinking !== !!pendingNodes.thinking) return false;
+      if (!!streamingReply !== !!pendingNodes.answer) return false;
+      const box = pendingNodes.thinking;
+      if (box) {
+        // Same rule as the transcript: follow the newest line only while the
+        // reader was already at the bottom of it.
+        const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 24;
+        box.textContent = streamingThinking;
+        if (atEnd) box.scrollTop = box.scrollHeight;
+      }
+      if (pendingNodes.answer) Markdown.renderInto(pendingNodes.answer, streamingReply);
+      return true;
+    }
+
     function render() {
+      pendingNodes = null;
       const conversation = active();
       host.classList.toggle('history-open', historyOpen);
       barTitle.textContent = (conversation && (conversation.title || conversation.hostname)) || str('chatTitle');
@@ -906,7 +1004,7 @@
     // Falls back to sendMessage when the port cannot be opened at all (an older
     // service worker, or a test harness that only mocks sendMessage), because a
     // turn that works without streaming beats a turn that does not work.
-    function requestTurn(payload, onDelta) {
+    function requestTurn(payload, onDelta, onThinking) {
       const connect = browser.runtime && browser.runtime.connect;
       if (typeof connect !== 'function') {
         return browser.runtime.sendMessage({ action: 'pagedyeAiChat', ...payload });
@@ -938,6 +1036,10 @@
             onDelta(String(message.reply || ''));
             return;
           }
+          if (message.type === 'thinking') {
+            onThinking(String(message.thinking || ''));
+            return;
+          }
           if (message.type === 'done') finish(resolve, message);
         });
 
@@ -957,28 +1059,41 @@
       if (!conversation) return;
       busy = true;
       streamingReply = '';
+      streamingThinking = '';
       setFlash('');
       render();
       scrollToEnd();
 
       try {
         const args = await resolveProfileArgs(conversation);
+        // Both callbacks do the same bookkeeping around one assignment, so
+        // what is worth explaining is written once here.
+        const stream = (apply) => {
+          // Ignore a straggling delta from a turn that is no longer the one
+          // on screen: switching conversations mid-request is allowed.
+          if (!busy || activeId !== conversationId) return;
+          const atEnd = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 40;
+          apply();
+          if (!updatePending()) render();
+          // Only follow along while the reader was already at the bottom, so
+          // scrolling up to re-read something is not fought by every chunk.
+          if (atEnd) scrollToEnd();
+        };
         const response = await requestTurn(
           { turns: Store.toTurns(conversation), ...args },
-          (text) => {
-            // Ignore a straggling delta from a turn that is no longer the one
-            // on screen: switching conversations mid-request is allowed.
-            if (!busy || activeId !== conversationId) return;
-            const atEnd = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 40;
-            streamingReply = text;
-            render();
-            // Only follow along while the reader was already at the bottom, so
-            // scrolling up to re-read something is not fought by every chunk.
-            if (atEnd) scrollToEnd();
-          }
+          (text) => stream(() => { streamingReply = text; }),
+          (text) => stream(() => { streamingThinking = text; })
         );
         if (!response) throw new Error(str('failed'));
         if (!response.ok) throw new Error(response.error || str('failed'));
+        // The endpoint refused to stream and the turn was quietly re-sent
+        // one-shot. Worth saying: otherwise a working fallback is
+        // indistinguishable from streaming being broken. Held rather than
+        // shown here because the auto-preview below writes to the same line.
+        const streamNotice = streamingEnabled && response.streamed === false && response.streamFallback
+          ? str('streamFallback', { reason: response.streamFallback })
+          : '';
+        if (streamNotice) setFlash(streamNotice);
 
         const at = Date.now();
         const target = byId(conversationId);
@@ -993,12 +1108,16 @@
         target.updatedAt = at;
         await persist();
         streamingReply = '';
+        streamingThinking = '';
         busy = false;
         render();
         scrollToEnd();
         // The popup paints a new theme on the live tab straight away: seeing it
         // is the whole point, and nothing is written to storage until Apply.
         if (onPreview && config.autoPreview && message.settings && message.themeChanged) await startPreview(message);
+        // Why the answer arrived all at once outlives "previewing…", which the
+        // painted page says by itself.
+        if (streamNotice) setFlash(streamNotice);
       } catch (error) {
         const at = Date.now();
         const target = byId(conversationId);
@@ -1009,11 +1128,13 @@
         target.updatedAt = at;
         await persist();
         streamingReply = '';
+        streamingThinking = '';
         busy = false;
         render();
         scrollToEnd();
       } finally {
         streamingReply = '';
+        streamingThinking = '';
         busy = false;
       }
     }
@@ -1132,6 +1253,7 @@
       const normalized = globalThis.PageDyeAiTheme.normalizeConfig(data && data[AI_CONFIG_KEY]);
       configured = !!(normalized.apiKey && normalized.model);
       visionEnabled = normalized.vision === true;
+      streamingEnabled = normalized.streaming !== false;
       // Turning it off mid-composition drops what was staged: it could not be
       // sent, and leaving it on screen next to a hidden button is a puzzle.
       if (!visionEnabled && pendingImages.length) pendingImages = [];

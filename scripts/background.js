@@ -184,6 +184,12 @@ chrome.runtime.onConnect.addListener((port) => {
           onReply: (text) => {
             if (closed) return;
             port.postMessage({ type: 'delta', reply: text });
+          },
+          // A reasoning model spends most of the turn here, so this is the
+          // only thing the page has to show while it waits.
+          onThinking: (text) => {
+            if (closed) return;
+            port.postMessage({ type: 'thinking', thinking: text });
           }
         });
         if (closed) return;

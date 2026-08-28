@@ -346,6 +346,64 @@
   transition: opacity 0.15s ease;
 }
 
+/* The model's reasoning. Quiet and boxed off: it is context for the answer,
+   never the answer, and on a thinking model it is far longer than one. */
+.ai-thinking {
+  margin: 0 0 8px;
+  border-left: 2px solid var(--outline-variant);
+  padding-left: 10px;
+}
+
+.ai-thinking-head {
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  padding: 2px 0;
+}
+
+.ai-thinking-head::-webkit-details-marker {
+  display: none;
+}
+
+/* A caret of its own, because the native marker is hidden to keep the row
+   flush with the answer below it. */
+.ai-thinking-head::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 0.15s ease;
+}
+
+.ai-thinking[open] > .ai-thinking-head::before {
+  transform: rotate(90deg);
+}
+
+.ai-thinking-body {
+  margin-top: 4px;
+  /* Capped and scrollable: a long reasoning pass would otherwise push the
+     answer off the screen while it is still being written. */
+  max-height: 220px;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Measured cost of the turn. Deliberately the quietest thing in the message:
+   it is diagnostic, wanted only when the answer felt slow or expensive. */
+.ai-msg-stats {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
 .ai-msg-user .ai-msg-actions {
   justify-content: flex-end;
 }
@@ -822,11 +880,17 @@
   display: flex;
 }
 
+/* The row is bottom-aligned so the buttons stay with the last line of a long
+   message, which only reads as centred while an empty box is exactly as tall
+   as the two round buttons beside it: 19.5px of line box + 12 of padding + 2
+   of border is 33.5, and the min-height rounds that up to their 34. */
 .ai-chat-input {
+  box-sizing: border-box;
   flex: 1;
   min-width: 0;
+  min-height: 34px;
   max-height: 160px;
-  padding: 9px 12px;
+  padding: 6px 12px;
   border: 1px solid var(--outline-variant);
   border-radius: 14px;
   background: var(--surface-container-low);
@@ -1040,9 +1104,12 @@
   gap: 6px;
 }
 
+/* Same sum against this skin's larger type and 36px buttons: 21 of line box
+   plus 14 of padding, with no border of its own. */
 .ai-chat-options .ai-chat-input {
+  min-height: 36px;
   max-height: 200px;
-  padding: 9px 6px;
+  padding: 7px 6px;
   border: none;
   border-radius: 0;
   background: transparent;
