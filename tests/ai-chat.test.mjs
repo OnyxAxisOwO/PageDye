@@ -826,16 +826,104 @@ test('popup chat: with no API key the first thing shown is how to add one', asyn
   assert.equal(page.root.querySelector('.ai-chat-setup'), null);
 });
 
-test('the options page mounts the same chat and its own AI settings page', async () => {
+test('the chat page is only the conversation, and its settings live under Settings', async () => {
   const { chrome } = createChromeMock();
   const { document, errors } = await loadExtensionPage('options/options.html', { chrome });
 
   assert.deepEqual(errors, []);
   assert.ok(document.querySelector('#section-ai-chat #ai-chat-root .ai-chat-composer'), 'the chat mounts');
   assert.ok(document.querySelector('.nav-item[data-target="section-ai-chat"]'));
-  // The API key fields moved out of Settings into their own page.
-  assert.ok(document.querySelector('#section-ai #ai-api-key-input'));
-  assert.equal(document.querySelector('#section-settings #ai-api-key-input'), null);
+  assert.equal(document.querySelector('.nav-item[data-target="section-ai"]'), null, 'AI Settings no longer has its own nav item');
+  assert.equal(document.getElementById('section-ai'), null, 'AI Settings no longer has its own section');
+  // Every preference lives on Settings, so the chat page is just the chat.
+  assert.ok(document.querySelector('#section-settings #settings-ai #ai-api-key-input'));
+  assert.equal(document.querySelector('#section-ai-chat #ai-api-key-input'), null);
+  // ...and the chat page still offers a way to get there.
+  assert.ok(document.querySelector('#section-ai-chat [data-nav-target="section-settings"]'));
+});
+
+test('the chat page is all conversation, with its controls behind one menu', async () => {
+  const { chrome, store } = createChromeMock();
+  store[AI_CONFIG_KEY] = { provider: 'anthropic', apiKey: 'sk-test', model: 'claude-opus-5' };
+  const { document, window, errors } = await loadExtensionPage('options/options.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  // No page header: switching to this section hands the area to the chat.
+  assert.equal(document.querySelector('#section-ai-chat .section-header'), null, 'the chat page has no page header');
+  const heading = document.querySelector('#section-ai-chat h2');
+  assert.ok(heading && heading.classList.contains('sr-only'), 'the title survives for screen readers only');
+
+  const bar = document.querySelector('#section-ai-chat .ai-topbar');
+  assert.ok(bar, 'a slim bar replaces it');
+  assert.ok(bar.querySelector('select#ai-chat-tab-select'), 'the page being designed for stays on the left');
+
+  // Everything that is not the conversation lives in the corner menu.
+  const toggle = document.getElementById('ai-menu-toggle');
+  const panel = document.getElementById('ai-menu-panel');
+  assert.ok(toggle && panel);
+  assert.equal(panel.hidden, true, 'the menu starts closed');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  assert.ok(panel.querySelector('#ai-chat-tab-refresh'), 'refreshing the tab list moved into the menu');
+  assert.ok(panel.querySelector('[data-nav-target="section-settings"]'), 'so did the way to AI settings');
+
+  const click = (node) => node.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+  click(toggle);
+  assert.equal(panel.hidden, false, 'the button opens it');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+
+  click(document.body);
+  assert.equal(panel.hidden, true, 'clicking away closes it');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+
+  click(toggle);
+  document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert.equal(panel.hidden, true, 'so does Escape');
+});
+
+test('a proposed PageDye setting is shown as its own card and only applied on request', async () => {
+  const now = 1700000000000;
+  const mock = createChromeMock({
+    initialStorage: {
+      [AI_CONFIG_KEY]: { provider: 'anthropic', apiKey: 'sk-test', model: 'claude-opus-5' },
+      __pagedye_ui_theme__: { accent: 'blue', pageBgImage: 'data:image/png;base64,x' },
+      __pagedye_ai_chats__: [{
+        id: 'c1',
+        hostname: 'example.com',
+        title: 'example.com',
+        createdAt: now,
+        updatedAt: now,
+        messages: [
+          { id: 'm1', role: 'user', content: '把设置页也换成青色', images: [], at: now },
+          {
+            id: 'm2',
+            role: 'assistant',
+            reply: 'Switched the dashboard accent to teal.',
+            themeChanged: false,
+            at: now,
+            preferences: { accent: 'teal', reduceMotion: true }
+          }
+        ]
+      }]
+    }
+  });
+  const { document, window, errors } = await loadExtensionPage('options/options.html', { chrome: mock.chrome });
+  assert.deepEqual(errors, []);
+
+  const card = await waitFor(() => document.querySelector('.ai-chat-prefs'), { timeout: 3000 });
+  assert.ok(card, 'a preference proposal gets its own card');
+  const shown = [...card.querySelectorAll('dt')].map((node) => node.textContent);
+  assert.ok(shown.some((label) => /Interface colour|界面主题色/.test(label)), 'the card names what would change');
+
+  // Nothing may have been written just by rendering it.
+  assert.equal(mock.store.__pagedye_ui_theme__.accent, 'blue', 'rendering a proposal must not apply it');
+
+  const applyBtn = [...card.querySelectorAll('button')].pop();
+  applyBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+  await waitFor(() => mock.store.__pagedye_ui_theme__.accent === 'teal', { timeout: 3000 });
+  assert.equal(mock.store.__pagedye_ui_theme__.disableAnimation, true);
+  assert.equal(mock.store.__pagedye_ui_theme__.pageBgImage, 'data:image/png;base64,x', 'the rest of the theme survived');
 });
 
 test('the vision checkbox is stored, and switching provider re-seeds it', async () => {
@@ -963,4 +1051,72 @@ test('the AI tab marks the popup so the chat can claim the panel', async () => {
   tab('ai');
   tab('wallpaper');
   assert.equal(page.document.body.classList.contains('ai-tab'), false);
+});
+test('the chat paints a streamed reply as it arrives, then settles into the message', async () => {
+  // The port hands over the visible half of the answer in pieces; the turn is
+  // only finished when the terminal `done` lands. Held open here so the
+  // in-flight state can actually be observed rather than raced past.
+  let release;
+  const finished = new Promise((resolve) => { release = resolve; });
+  let emitDelta;
+
+  const mock = createChromeMock({
+    initialStorage: { [AI_CONFIG_KEY]: { provider: 'anthropic', apiKey: 'sk-test', model: 'claude-opus-5' } },
+    onStream: (request, emit) => {
+      assert.ok(Array.isArray(request.turns), 'the turn still carries the transcript');
+      emitDelta = emit;
+      return finished;
+    }
+  });
+
+  const page = await loadExtensionPage('popup/popup.html', { chrome: mock.chrome });
+  assert.deepEqual(page.errors, []);
+  const root = page.document.getElementById('ai-chat-root');
+
+  type(page, root, 'something calm');
+  await waitFor(() => emitDelta, { timeout: 3000 });
+
+  emitDelta('A **calm**');
+  await waitFor(() => root.querySelector('.ai-answer-streaming'), { timeout: 3000 });
+  assert.match(root.querySelector('.ai-answer-streaming').textContent, /A calm/);
+  // Markdown is rendered as it streams, not escaped and fixed up at the end.
+  assert.equal(root.querySelector('.ai-answer-streaming strong').textContent, 'calm');
+  assert.equal(root.querySelector('.ai-chat-spinner'), null, 'the spinner gives way to the words');
+
+  emitDelta('A **calm** pair of blues.');
+  await waitFor(() => /pair of blues/.test(root.querySelector('.ai-answer-streaming').textContent), { timeout: 3000 });
+
+  release(chatReply());
+  await waitFor(() => root.querySelector('.ai-chat-theme-name'), { timeout: 3000 });
+
+  // Settled: the streaming placeholder is gone and the stored message is what
+  // is on screen, with its theme card.
+  assert.equal(root.querySelector('.ai-answer-streaming'), null);
+  assert.equal(root.querySelector('.ai-answer strong').textContent, 'calm');
+  assert.equal(root.querySelector('.ai-chat-theme-name').textContent, 'Quiet Harbor');
+  const stored = mock.store['__pagedye_ai_chats__'][0].messages;
+  assert.equal(stored.length, 2);
+  assert.equal(stored[1].reply, 'A **calm** pair of blues.');
+});
+
+test('a stream that dies before answering leaves a retryable error, not a stuck spinner', async () => {
+  // The service worker can be torn down mid-turn. The port disconnects with
+  // nothing delivered, which must fail the turn rather than hang it.
+  const mock = createChromeMock({
+    initialStorage: { [AI_CONFIG_KEY]: { provider: 'anthropic', apiKey: 'sk-test', model: 'claude-opus-5' } },
+    onStream: () => new Promise(() => {})
+  });
+  const page = await loadExtensionPage('popup/popup.html', { chrome: mock.chrome });
+  assert.deepEqual(page.errors, []);
+  const root = page.document.getElementById('ai-chat-root');
+
+  type(page, root, 'something calm');
+  await waitFor(() => root.querySelector('.ai-chat-pending'), { timeout: 3000 });
+
+  // Whatever the page is holding, dropping the port has to end the turn.
+  page.window.document.querySelector('.ai-chat-input');
+  mock.chrome.runtime.connect.lastPort.disconnect();
+
+  await waitFor(() => root.querySelector('.ai-chat-error'), { timeout: 3000 });
+  assert.equal(root.querySelector('.ai-chat-pending'), null, 'the spinner must not outlive the turn');
 });

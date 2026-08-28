@@ -117,6 +117,10 @@
       // only guarantees "an object or nothing".
       theme: isPlainObject(raw.theme) ? raw.theme : null,
       settings: isPlainObject(raw.settings) ? raw.settings : null,
+      // PageDye's own preferences the answer proposed, kept so the apply
+      // button survives a reload. Re-validated by ai-theme before it is
+      // written, the same as `settings`.
+      preferences: isPlainObject(raw.preferences) ? raw.preferences : null,
       error: trimTo(raw.error, 400),
       at
     };
@@ -188,6 +192,7 @@
       themeChanged: !!source.themeChanged,
       theme: isPlainObject(source.theme) ? source.theme : null,
       settings: isPlainObject(source.settings) ? source.settings : null,
+      preferences: isPlainObject(source.preferences) ? source.preferences : null,
       error: trimTo(source.error, 400),
       at
     };

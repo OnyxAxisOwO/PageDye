@@ -72,6 +72,11 @@
     })
   });
 
+  // Mirrors UI_THEME_ACCENTS in scripts/shared/color-utils.js: the swatches the
+  // Appearance grid offers. Duplicated rather than imported because this file
+  // is also loaded by the service worker, which does not load color-utils.
+  const ACCENT_NAMES = ['neutral', 'red', 'pink', 'purple', 'indigo', 'blue', 'cyan', 'teal', 'green', 'orange'];
+
   const DEFAULT_PROVIDER = 'anthropic';
   const HEX_PATTERN = '^#[0-9a-fA-F]{6}$';
   const HEX_RE = /^#[0-9a-fA-F]{6}$/;
@@ -184,6 +189,33 @@
     additionalProperties: false
   };
 
+  // The built-in animated overlays. These ids are scripts/effects.js's own
+  // keys; a name outside this list is dropped rather than guessed at, because
+  // the renderer would draw nothing for it.
+  const EFFECT_KINDS = ['matrix', 'particles', 'waves', 'starfield', 'ripple', 'aurora', 'snow',
+    'bubbles', 'constellation', 'fireflies', 'gridpulse', 'rain', 'confetti', 'plasma', 'vortex', 'typewriter'];
+
+  // An animated layer drawn on top of whatever the wallpaper is, not instead
+  // of it: `enabled: false` is the everyday answer, and the rest of the object
+  // is still required by strict schemas and simply ignored.
+  const EFFECT_SCHEMA = {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      kind: { type: 'string', enum: EFFECT_KINDS },
+      // `auto` tracks the OS scheme live; `custom` uses the two colors below.
+      colorScheme: { type: 'string', enum: ['auto', 'light', 'dark', 'custom'] },
+      color: { type: 'string' },
+      bgColor: { type: 'string' },
+      density: { type: 'integer', minimum: 0, maximum: 100 },
+      speed: { type: 'integer', minimum: 0, maximum: 100 },
+      // Only the typewriter effect reads this.
+      text: { type: 'string' }
+    },
+    required: ['enabled', 'kind', 'colorScheme', 'color', 'bgColor', 'density', 'speed', 'text'],
+    additionalProperties: false
+  };
+
   const THEME_SCHEMA = {
     type: 'object',
     properties: {
@@ -223,10 +255,24 @@
           required: ['selector', 'opacity', 'blur', 'color'],
           additionalProperties: false
         }
-      }
+      },
+      // How hard the renderer fights the page for the background. `normal`
+      // layers behind it; `enhanced` and `strong` progressively strip the
+      // page's own opaque backgrounds, which is the fix for "I set a wallpaper
+      // and the site is still white" and costs performance, so it is the
+      // model's to reach for only when asked about that symptom.
+      runMode: { type: 'string', enum: ['normal', 'enhanced', 'strong'] },
+      // Selectors that keep their own background even under enhanced/strong,
+      // for the dialogs and menus those modes would otherwise punch through.
+      runModeExclude: { type: 'string' },
+      // Paints one element instead of the whole page. Only a selector the page
+      // profile actually reported is accepted (see toSiteSettings).
+      targetSelector: { type: 'string' },
+      effect: EFFECT_SCHEMA
     },
     required: ['themeName', 'rationale', 'disableBackground', 'wallpaperImage', 'light', 'dark',
-      'scheduleMode', 'timeRange', 'slideshow', 'slideshowInterval', 'slideshowOrder', 'frostedGlass'],
+      'scheduleMode', 'timeRange', 'slideshow', 'slideshowInterval', 'slideshowOrder', 'frostedGlass',
+      'runMode', 'runModeExclude', 'targetSelector', 'effect'],
     additionalProperties: false
   };
 
@@ -660,14 +706,53 @@
   // wants every property listed in `required`, and a union type is the first
   // thing compatible servers drop. Asking for the previous theme back verbatim
   // with themeChanged:false costs a few hundred tokens and works everywhere.
+  // PageDye's own preferences, which belong to the extension rather than to
+  // any one site. Separate from THEME_SCHEMA because they are written to
+  // different storage keys, take effect everywhere at once, and are applied
+  // only when the user presses the button on the card — never automatically.
+  const PREFERENCES_SCHEMA = {
+    type: 'object',
+    properties: {
+      // A named swatch from the Appearance grid, or `custom` to use accentColor.
+      accent: { type: 'string', enum: [...ACCENT_NAMES, 'custom'] },
+      accentColor: { type: 'string' },
+      reduceMotion: { type: 'boolean' },
+      // The in-page diagnostics overlay. Worth offering because "the wallpaper
+      // is not showing up" is answered by it, but it appears on every tab, so
+      // it is never turned on without the user pressing apply.
+      diagnostics: { type: 'boolean' },
+      // Modifiers plus one key, e.g. Alt+Shift+P. At least one modifier is
+      // required; see sanitizePreferences.
+      pauseShortcut: {
+        type: 'object',
+        properties: {
+          code: { type: 'string' },
+          ctrlKey: { type: 'boolean' },
+          altKey: { type: 'boolean' },
+          shiftKey: { type: 'boolean' },
+          metaKey: { type: 'boolean' }
+        },
+        required: ['code', 'ctrlKey', 'altKey', 'shiftKey', 'metaKey'],
+        additionalProperties: false
+      }
+    },
+    required: ['accent', 'accentColor', 'reduceMotion', 'diagnostics', 'pauseShortcut'],
+    additionalProperties: false
+  };
+
   const CHAT_SCHEMA = {
     type: 'object',
     properties: {
       reply: { type: 'string' },
       themeChanged: { type: 'boolean' },
-      theme: THEME_SCHEMA
+      theme: THEME_SCHEMA,
+      // Same two-field shape as the theme: a complete object every time, with
+      // a flag saying whether it is a proposal or just the current state
+      // echoed back.
+      preferencesChanged: { type: 'boolean' },
+      preferences: PREFERENCES_SCHEMA
     },
-    required: ['reply', 'themeChanged', 'theme'],
+    required: ['reply', 'themeChanged', 'theme', 'preferencesChanged', 'preferences'],
     additionalProperties: false
   };
 
@@ -686,11 +771,33 @@
     '  when the user only asked a question, or when you could not honour a request.',
     '- `theme` — always a complete theme, even when nothing changed: repeat your',
     '  previous answer exactly and set `themeChanged` to false.',
+    '- `preferencesChanged` — false in almost every answer. True only when the',
+    '  user asked you to change PageDye itself rather than this page.',
+    '- `preferences` — PageDye\'s own settings: the dashboard accent, reduced',
+    '  motion, the pause shortcut, the in-page diagnostics overlay. They apply',
+    '  everywhere, not to this page, so only fill them in when asked to.',
+    '',
+    'The theme covers more than the wallpaper:',
+    '',
+    '- `runMode` — leave it `normal`. Reach for `enhanced` only when the user says',
+    '  the background is hidden, covered or "not working" on this page, and',
+    '  `strong` only if they say enhanced did not help; both cost performance.',
+    '  Name the dialogs or menus that should keep their own background in',
+    '  `runModeExclude`, as a CSS selector list.',
+    '- `targetSelector` — empty for a normal full-page background. Set it to one',
+    '  of the container selectors listed in the page profile, and only when the',
+    '  user asks for one panel to be painted instead of the whole page.',
+    '- `effect` — an animated overlay drawn on top of the wallpaper. Off unless',
+    '  asked for; pick the `kind` that matches what they described, and keep',
+    '  `density` and `speed` low on a page meant for reading.',
     '',
     'Your earlier answers are replayed to you as you sent them. Treat the most',
     'recent one as the current design and make each change relative to it, unless',
     'the user asks you to start over.'
   ].join('\n');
+
+  // Thrown when an endpoint cannot stream, so the caller retries one-shot.
+  const STREAM_UNSUPPORTED = 'pagedye:stream-unsupported';
 
   const MAX_REPLY_CHARS = 4000;
   // Enough for a long refining session while keeping a runaway transcript from
@@ -831,10 +938,15 @@
     const claimedChange = source.themeChanged !== false;
     if (!theme && failure && claimedChange) throw new Error(failure);
 
+    // Only a proposal the model flagged counts. An answer that echoes the
+    // current preferences back with preferencesChanged:false must not put an
+    // apply button in front of the user for a change nobody asked for.
+    const preferences = source.preferencesChanged === true ? sanitizePreferences(source.preferences) : null;
+
     const reply = String(source.reply || (theme && theme.rationale) || '').slice(0, MAX_REPLY_CHARS);
     if (!reply && !theme) throw new Error('Model reply was empty.');
 
-    return { reply, themeChanged: !!theme && claimedChange, theme };
+    return { reply, themeChanged: !!theme && claimedChange, theme, preferences };
   }
 
   // Servers that ignore the schema request tend to wrap the object in a
@@ -1024,6 +1136,71 @@
     };
   }
 
+  // Mirrors UNSAFE_SELECTOR_RE in scripts/storage-schema.js. A selector the
+  // model invented is matched with el.closest() rather than spliced into CSS,
+  // but the same characters are rejected here so a hostile-looking answer
+  // never reaches storage in the first place.
+  const UNSAFE_SELECTOR_RE = /[{}]|\/\*|[\r\n]/;
+
+  function safeSelectorList(value, limit) {
+    const text = trimTo(value, limit);
+    return text && !UNSAFE_SELECTOR_RE.test(text) ? text : '';
+  }
+
+  function sanitizeEffect(raw) {
+    const source = raw && typeof raw === 'object' ? raw : {};
+    const scheme = ['light', 'dark', 'custom'].includes(source.colorScheme) ? source.colorScheme : 'auto';
+    return {
+      // An unknown effect name draws nothing, so it turns the overlay off
+      // rather than being stored for the renderer to fail on.
+      enabled: source.enabled === true && EFFECT_KINDS.includes(source.kind),
+      kind: EFFECT_KINDS.includes(source.kind) ? source.kind : 'waves',
+      colorScheme: scheme,
+      color: normalizeHex(source.color) || '#FFFFFF',
+      bgColor: normalizeHex(source.bgColor) || '#000000',
+      density: clampInt(source.density, 0, 100, 50),
+      speed: clampInt(source.speed, 0, 100, 50),
+      text: trimTo(source.text, 60)
+    };
+  }
+
+  // PageDye's own preferences. Returns null when the answer proposes nothing
+  // actionable, so the chat can tell "no preference change" from "a change
+  // that sanitized down to nothing".
+  function sanitizePreferences(raw) {
+    const source = raw && typeof raw === 'object' ? raw : null;
+    if (!source) return null;
+
+    const named = ACCENT_NAMES.includes(source.accent) ? source.accent : '';
+    const custom = normalizeHex(source.accentColor);
+    const clean = {};
+    if (named) clean.accent = named;
+    else if (source.accent === 'custom' && custom) {
+      clean.accent = 'custom';
+      clean.accentColor = custom;
+    }
+    if (typeof source.reduceMotion === 'boolean') clean.reduceMotion = source.reduceMotion;
+    if (typeof source.diagnostics === 'boolean') clean.diagnostics = source.diagnostics;
+
+    const shortcut = source.pauseShortcut && typeof source.pauseShortcut === 'object' ? source.pauseShortcut : null;
+    if (shortcut) {
+      const code = trimTo(shortcut.code, 40);
+      const modifiers = {
+        ctrlKey: shortcut.ctrlKey === true,
+        altKey: shortcut.altKey === true,
+        shiftKey: shortcut.shiftKey === true,
+        metaKey: shortcut.metaKey === true
+      };
+      // The same rule the settings field enforces: a bare key would swallow
+      // ordinary typing on every page.
+      if (/^[A-Za-z0-9]+$/.test(code) && Object.values(modifiers).some(Boolean)) {
+        clean.pauseShortcut = { code, ...modifiers };
+      }
+    }
+
+    return Object.keys(clean).length ? clean : null;
+  }
+
   function sanitizeTheme(raw) {
     const source = raw && typeof raw === 'object' ? raw : {};
     const disableBackground = source.disableBackground === true;
@@ -1058,7 +1235,13 @@
       frostedGlass: (Array.isArray(source.frostedGlass) ? source.frostedGlass : []).slice(0, 6)
         .map((entry) => (entry && typeof entry === 'object'
           ? { ...entry, color: normalizeHex(entry.color) || '' }
-          : entry))
+          : entry)),
+      runMode: ['enhanced', 'strong'].includes(source.runMode) ? source.runMode : 'normal',
+      runModeExclude: safeSelectorList(source.runModeExclude, 400),
+      // Checked against the profile in toSiteSettings, the same two-step the
+      // frosted-glass selectors go through.
+      targetSelector: safeSelectorList(source.targetSelector, 200),
+      effect: sanitizeEffect(source.effect)
     };
   }
 
@@ -1093,6 +1276,149 @@
   function rejectedTheSchema(payload) {
     const message = payload && payload.error && (payload.error.message || payload.error);
     return typeof message === 'string' && /response_format|json_schema|schema/i.test(message);
+  }
+
+  // --- streaming -------------------------------------------------------------
+  // The answer is one JSON object, not prose, so "streaming" means watching the
+  // `reply` field fill in while the rest of the object is still being written.
+  // CHAT_SCHEMA lists `reply` first and the system prompt describes it first,
+  // so in practice it arrives before the theme — the long part nobody reads as
+  // it appears. If a model emits the fields in some other order the text simply
+  // shows up later; nothing breaks, because the finished buffer goes through
+  // exactly the same parser and sanitizer as a one-shot answer.
+
+  // Reads the value of the first `"reply"` string out of a JSON document that
+  // may stop anywhere, including mid-escape. Returns '' until the key is seen.
+  function partialReply(buffer) {
+    const key = buffer.indexOf('"reply"');
+    if (key === -1) return '';
+    const colon = buffer.indexOf(':', key + 7);
+    if (colon === -1) return '';
+    let index = colon + 1;
+    while (index < buffer.length && /\s/.test(buffer[index])) index += 1;
+    if (buffer[index] !== '"') return '';
+
+    const SIMPLE = { n: '\n', t: '\t', r: '\r', b: '\b', f: '\f', '"': '"', '\\': '\\', '/': '/' };
+    let out = '';
+    index += 1;
+    while (index < buffer.length) {
+      const char = buffer[index];
+      if (char === '\\') {
+        // A trailing backslash is a half-received escape: stop here rather than
+        // rendering it, and pick it up when the next chunk completes it.
+        if (index + 1 >= buffer.length) break;
+        const escaped = buffer[index + 1];
+        if (escaped === 'u') {
+          if (index + 6 > buffer.length) break;
+          out += String.fromCharCode(parseInt(buffer.slice(index + 2, index + 6), 16) || 0);
+          index += 6;
+          continue;
+        }
+        out += Object.prototype.hasOwnProperty.call(SIMPLE, escaped) ? SIMPLE[escaped] : escaped;
+        index += 2;
+        continue;
+      }
+      if (char === '"') break;
+      out += char;
+      index += 1;
+    }
+    return out;
+  }
+
+  // One text delta out of one SSE `data:` payload, for either provider. Returns
+  // '' for the many event types that carry no text (ping, message_start, usage).
+  function streamDelta(provider, event) {
+    if (provider === 'anthropic') {
+      const delta = event && event.delta;
+      return delta && typeof delta.text === 'string' ? delta.text : '';
+    }
+    const choice = event && Array.isArray(event.choices) ? event.choices[0] : null;
+    const delta = choice && choice.delta;
+    return delta && typeof delta.content === 'string' ? delta.content : '';
+  }
+
+  // Server-sent events, framed by blank lines. Hand-rolled because the two
+  // providers only ever use the `data:` field of the format.
+  async function readEventStream(response, provider, onText) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let pending = '';
+    let raw = '';
+
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      pending += decoder.decode(value, { stream: true });
+
+      // \r\n\r\n as well as \n\n: some proxies rewrite the line endings.
+      let match = /\r?\n\r?\n/.exec(pending);
+      while (match) {
+        const chunk = pending.slice(0, match.index);
+        pending = pending.slice(match.index + match[0].length);
+        match = /\r?\n\r?\n/.exec(pending);
+
+        for (const line of chunk.split(/\r?\n/)) {
+          if (!line.startsWith('data:')) continue;
+          const data = line.slice(5).trim();
+          if (!data || data === '[DONE]') continue;
+          let event;
+          try {
+            event = JSON.parse(data);
+          } catch (_) {
+            // A frame this parser cannot read is not worth failing a turn that
+            // is otherwise arriving fine; the finished buffer is what counts.
+            continue;
+          }
+          if (event && event.type === 'error') {
+            throw new Error((event.error && event.error.message) || 'The API reported an error mid-stream.');
+          }
+          const text = streamDelta(provider, event);
+          if (!text) continue;
+          raw += text;
+          onText(raw);
+        }
+      }
+    }
+    return raw;
+  }
+
+  async function sendStreamingRequest(config, request, signal, onReply) {
+    const body = { ...request.body, stream: true };
+    let response;
+    try {
+      response = await fetch(request.url, {
+        method: 'POST',
+        signal,
+        headers: request.headers,
+        body: JSON.stringify(body)
+      });
+    } catch (error) {
+      // An aborted turn is the user's own doing, not a broken endpoint: it must
+      // not fall through to a one-shot retry that ignores the cancellation.
+      if (signal && signal.aborted) throw error;
+      throw new Error(`Network request failed: ${(error && error.message) || error}`);
+    }
+
+    // Anything that is not a readable event stream is not a streaming endpoint,
+    // whatever it claimed. Handing the caller STREAM_UNSUPPORTED lets it fall
+    // back to the one-shot path with its full error handling — including the
+    // schema-rejection retry and the auth/image diagnostics — rather than
+    // reimplementing all of that here.
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    if (!response.ok || !response.body || !contentType.includes('text/event-stream')) {
+      throw new Error(STREAM_UNSUPPORTED);
+    }
+
+    let last = '';
+    const raw = await readEventStream(response, config.provider, (buffer) => {
+      const text = partialReply(buffer);
+      if (text === last) return;
+      last = text;
+      onReply(text);
+    });
+
+    if (!raw.trim()) throw new Error(STREAM_UNSUPPORTED);
+    return parseJsonLoosely(raw);
   }
 
   async function sendRequest(config, request, signal) {
@@ -1249,6 +1575,44 @@
   // layer in its own right, so it has to be a valid empty one.
   const INERT_LAYER = { type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } };
 
+  // The effect is an overlay on whatever the wallpaper is, and content.js reads
+  // it off the layer it ends up drawing (light, dark, a period or a slide), not
+  // off the settings root — so it is stamped onto every layer a theme produces.
+  function withEffect(layer, effect) {
+    if (!effect || !effect.enabled) return { ...layer, effectEnabled: false };
+    return {
+      ...layer,
+      effectEnabled: true,
+      effect: effect.kind,
+      effectColorScheme: effect.colorScheme,
+      effectColor: effect.color,
+      effectBgColor: effect.bgColor,
+      effectDensity: effect.density,
+      effectSpeed: effect.speed,
+      effectText: effect.text
+    };
+  }
+
+  // Page-level behaviour, which content.js merges into whichever layer is
+  // active rather than reading per scheme. `deepCompat`/`deepCompatAggressive`
+  // are the two booleans the stored format has always used for the three-way
+  // Run Mode the UI shows.
+  function pageBehaviour(theme, knownSelectors) {
+    return {
+      // Tested for the two modes that mean "on" rather than against 'normal':
+      // toSiteSettings is reachable with a theme that never went through
+      // sanitizeTheme, and `!== 'normal'` would read a missing field as a
+      // request to turn Enhanced on for every such page.
+      deepCompat: theme.runMode === 'enhanced' || theme.runMode === 'strong',
+      deepCompatAggressive: theme.runMode === 'strong',
+      deepCompatExclude: theme.runModeExclude || '',
+      // Only an element the profile actually reported: a selector the model
+      // invented would silently paint nothing, which reads as PageDye being
+      // broken rather than as a bad guess.
+      targetSelector: knownSelectors.has(theme.targetSelector) ? theme.targetSelector : ''
+    };
+  }
+
   function toSiteSettings(theme, profile, images) {
     // An explicit "turn it off" wins over everything else the answer carries —
     // there is no reading of a schedule or a picture choice that also means
@@ -1260,6 +1624,8 @@
         .map((container) => container && container.selector)
         .filter(Boolean)
     );
+    const behaviour = pageBehaviour(theme, knownSelectors);
+    const effect = theme.effect;
 
     const frostedGlass = (Array.isArray(theme.frostedGlass) ? theme.frostedGlass : [])
       .filter((entry) => entry && knownSelectors.has(entry.selector))
@@ -1278,17 +1644,18 @@
       });
 
     if (theme.scheduleMode === 'timeRange' && theme.timeRange) {
-      const items = theme.timeRange.items.map((period) => Object.assign(
+      const items = theme.timeRange.items.map((period) => withEffect(Object.assign(
         { id: period.id, name: period.name, start: period.start, end: period.end },
         buildLayer(period.colorFields)
-      ));
-      return { ...INERT_LAYER, mode: 'timeRange', timeRange: { items }, frostedGlass };
+      ), effect));
+      return { ...INERT_LAYER, ...behaviour, mode: 'timeRange', timeRange: { items }, frostedGlass };
     }
 
     if (theme.scheduleMode === 'slideshow' && theme.slideshow) {
-      const items = theme.slideshow.items.map((slide) => buildSlideLayer(slide, images));
+      const items = theme.slideshow.items.map((slide) => withEffect(buildSlideLayer(slide, images), effect));
       return {
         ...INERT_LAYER,
+        ...behaviour,
         mode: 'slideshow',
         slideshow: { interval: theme.slideshowInterval, order: theme.slideshowOrder, currentIndex: 0, items },
         frostedGlass
@@ -1298,17 +1665,17 @@
     const wallpaperImage = pickWallpaperImage(theme, images);
     if (wallpaperImage) {
       const wallpaper = theme.wallpaperImage;
-      const light = buildImageLayer(wallpaperImage, wallpaper, wallpaper.lightOpacity, wallpaper.lightBlur);
-      const dark = buildImageLayer(wallpaperImage, wallpaper, wallpaper.darkOpacity, wallpaper.darkBlur);
+      const light = withEffect(buildImageLayer(wallpaperImage, wallpaper, wallpaper.lightOpacity, wallpaper.lightBlur), effect);
+      const dark = withEffect(buildImageLayer(wallpaperImage, wallpaper, wallpaper.darkOpacity, wallpaper.darkBlur), effect);
       // Same as the plain-color branch below: `mode: 'auto'` reads from
       // light/dark, and the top level carries the light layer so the settings
       // still validate as a layer in their own right.
-      return { ...light, mode: 'auto', light, dark, frostedGlass };
+      return { ...light, ...behaviour, mode: 'auto', light, dark, frostedGlass };
     }
 
-    const light = buildLayer(theme.light);
-    const dark = buildLayer(theme.dark);
-    return { ...light, mode: 'auto', light, dark, frostedGlass };
+    const light = withEffect(buildLayer(theme.light), effect);
+    const dark = withEffect(buildLayer(theme.dark), effect);
+    return { ...light, ...behaviour, mode: 'auto', light, dark, frostedGlass };
   }
 
   function readyConfig(config, profile) {
@@ -1332,6 +1699,44 @@
   // never touches storage directly. It rides through exactly like an
   // attachment (see collectAllImages), just pinned at the lowest number and
   // labeled as the page's current background.
+  // Same contract as chat() below, plus an onReply callback that fires as the
+  // visible half of the answer arrives. Falls back to the one-shot path — and
+  // therefore to its error handling — for any endpoint that cannot stream,
+  // which is most OpenAI-compatible servers people self-host.
+  async function chatStream({ config, profile, turns, currentImage, signal, onReply }) {
+    const clean = readyConfig(config, profile);
+    const list = capTurns(turns);
+    const images = clean.vision === false ? [] : collectAllImages(list, currentImage);
+    const request = buildChatRequest(clean, profile, list, currentImage);
+    const emit = typeof onReply === 'function' ? onReply : () => {};
+
+    let parsed;
+    try {
+      parsed = await sendStreamingRequest(clean, request, signal, emit);
+    } catch (error) {
+      if (String((error && error.message) || error) !== STREAM_UNSUPPORTED) throw error;
+      // Nothing was shown yet, so there is nothing to unwind: the one-shot
+      // answer simply arrives all at once, the way it always did.
+      parsed = await sendRequest(clean, request, signal);
+    }
+
+    return finishChatAnswer(sanitizeChatReply(parsed), profile, images);
+  }
+
+  function finishChatAnswer(answer, profile, images) {
+    return {
+      reply: answer.reply,
+      themeChanged: answer.themeChanged,
+      // Handed back so the next turn can replay it: that is what makes "make
+      // it darker" mean darker than THIS rather than darker than average.
+      theme: answer.theme,
+      settings: answer.theme ? toSiteSettings(answer.theme, profile, images) : null,
+      // PageDye's own preferences, if the answer proposed any. Null the rest
+      // of the time, which is almost always.
+      preferences: answer.preferences
+    };
+  }
+
   async function chat({ config, profile, turns, currentImage, signal }) {
     const clean = readyConfig(config, profile);
     // Capped once here so the attachments the answer can point at are exactly
@@ -1345,14 +1750,7 @@
     const request = buildChatRequest(clean, profile, list, currentImage);
     const answer = sanitizeChatReply(await sendRequest(clean, request, signal));
 
-    return {
-      reply: answer.reply,
-      themeChanged: answer.themeChanged,
-      // Handed back so the next turn can replay it: that is what makes "make
-      // it darker" mean darker than THIS rather than darker than average.
-      theme: answer.theme,
-      settings: answer.theme ? toSiteSettings(answer.theme, profile, images) : null
-    };
+    return finishChatAnswer(answer, profile, images);
   }
 
   return Object.freeze({
@@ -1360,6 +1758,12 @@
     DEFAULT_PROVIDER,
     THEME_SCHEMA,
     CHAT_SCHEMA,
+    PREFERENCES_SCHEMA,
+    EFFECT_KINDS,
+    ACCENT_NAMES,
+    sanitizePreferences,
+    partialReply,
+    STREAM_UNSUPPORTED,
     SYSTEM_PROMPT,
     CHAT_SYSTEM_PROMPT,
     MAX_CHAT_TURNS,
@@ -1373,6 +1777,7 @@
     buildUserPrompt,
     buildChatRequest,
     capTurns,
+    chatStream,
     collectImages,
     collectAllImages,
     parseJsonLoosely,

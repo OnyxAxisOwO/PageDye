@@ -58,7 +58,7 @@
             </div>
           </div>
           <p class="hint run-mode-hint" data-i18n="runModeHint">If the background is covered, try Enhanced first. Use Strong only if the problem continues.</p>
-          <div class="control-group" style="margin-bottom: 0;" data-advanced-only>
+          <div class="control-group" style="margin-bottom: 0;">
             <label data-i18n="excludeControls" style="display: block; font-size: 12px; margin-bottom: 6px; color: var(--text-secondary);">Exclude elements:</label>
             <div id="deep-compat-exclude-list"></div>
             <div class="control-group row" style="margin-top: 8px;">
@@ -93,7 +93,7 @@
               </svg>
               <span data-preset-i18n="saveCurrent">Save</span>
             </button>
-            <button type="button" id="quick-preset-manage" class="quick-preset-manage" title="Manage presets" aria-label="Manage presets" data-preset-i18n-title="manage" data-advanced-only>
+            <button type="button" id="quick-preset-manage" class="quick-preset-manage" title="Manage presets" aria-label="Manage presets" data-preset-i18n-title="manage">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="4" y1="6" x2="20" y2="6"></line><circle cx="9" cy="6" r="2"></circle>
                 <line x1="4" y1="12" x2="20" y2="12"></line><circle cx="15" cy="12" r="2"></circle>
@@ -547,7 +547,7 @@
                 <option value="vortex" data-i18n="effectVortex">Vortex</option>
                 <option value="typewriter" data-i18n="effectTypewriter">Typewriter</option>
               </select>
-              <button type="button" id="manage-custom-effects-link" class="ghost-link-btn" data-i18n="manageCustomEffects" data-advanced-only>Manage custom effects…</button>
+              <button type="button" id="manage-custom-effects-link" class="ghost-link-btn" data-i18n="manageCustomEffects">Manage custom effects…</button>
             </div>
 
             <div class="control-group hidden" id="effect-text-control">
@@ -691,7 +691,7 @@
 
 
       <!-- Advanced Settings Accordion -->
-      <details class="accordion" id="accordion-advanced" data-advanced-only>
+      <details class="accordion" id="accordion-advanced">
         <summary class="accordion-summary">
           <span data-i18n="advanced">Developer Controls</span>
           <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -776,6 +776,23 @@
           <div class="control-group">
             <label data-i18n="cursorPreset">Shape</label>
             <div class="cursor-presets-grid" id="cursor-presets-grid"></div>
+          </div>
+
+          <!-- Only shown while the "Custom Image" shape is selected. -->
+          <div class="control-group hidden" id="cursor-custom-control">
+            <div class="file-drop-area" id="cursor-drop-area">
+              <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px; margin-bottom: 8px; color: var(--text-secondary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <p style="margin: 0; font-size: 13px;"><span data-i18n="cursorCustomDrag">Drag a cursor image here, or</span> <span class="upload-link" data-i18n="chooseFile" style="color: var(--primary-color); text-decoration: underline; font-weight: 500;">choose file</span></p>
+              <input type="file" id="cursor-image-file" accept="image/*" hidden>
+            </div>
+            <div id="cursor-file-info" class="file-info-badge hidden" style="margin-top: 8px;">
+              <div class="file-info-content">
+                <img id="cursor-image-thumb" alt="" style="width: 16px; height: 16px; object-fit: contain;">
+                <span id="cursor-filename" class="filename" style="font-size: 12px; font-weight: 500;"></span>
+              </div>
+              <button id="cursor-remove-file" class="remove-file-btn" type="button" title="Clear Image">×</button>
+            </div>
+            <p class="hint" data-i18n="cursorCustomHint" style="margin-top: 6px; margin-bottom: 0;">A PNG or SVG with a transparent background works best. Size scales it; Color only tints the trail.</p>
           </div>
 
           <div class="control-group">
@@ -892,7 +909,7 @@
         <div class="footer-actions">
           <button type="button" id="reset-btn" class="ghost-link-btn" data-i18n="reset">Reset</button>
           <span class="divider">|</span>
-          <span id="version" class="version-text">v0.11.3</span>
+          <span id="version" class="version-text">v0.12.0</span>
           <span class="divider">|</span>
           <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 13px; height: 13px; display: block;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
@@ -972,6 +989,7 @@
   <script src="../scripts/shared/rules-client.js"></script>
   <script src="../scripts/ai-theme.js"></script>
   <script src="../scripts/shared/markdown.js"></script>
+  <script src="../scripts/shared/ai-preferences.js"></script>
   <script src="../scripts/shared/ai-chat-store.js"></script>
   <script src="../scripts/shared/ai-chat.js"></script>
   <script src="../lib/prism.js"></script>

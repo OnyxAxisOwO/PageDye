@@ -145,6 +145,64 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
+// --- Streaming chat turns ---------------------------------------------------
+// sendResponse answers once, so a streamed turn needs a port instead. The page
+// opens one per turn, gets `delta` messages while the reply is being written,
+// and one terminal `done` or `error`. Closing the port aborts the request,
+// which is what makes the chat's stop button (and simply closing the popup)
+// stop paying for tokens nobody will read.
+const CHAT_STREAM_PORT = 'pagedye-ai-chat-stream';
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== CHAT_STREAM_PORT) return;
+
+  const controller = new AbortController();
+  let closed = false;
+  port.onDisconnect.addListener(() => {
+    closed = true;
+    controller.abort();
+  });
+
+  // A port can only carry one turn: the page opens a fresh one each time, so a
+  // second request on the same port is a bug rather than something to queue.
+  let started = false;
+  port.onMessage.addListener((message) => {
+    if (started || !message || message.action !== 'start') return;
+    started = true;
+
+    (async () => {
+      try {
+        const profile = await resolveChatProfile(message, port.sender);
+        const data = await chrome.storage.local.get(AI_CONFIG_KEY);
+        const currentImage = await resolveCurrentImage(profile).catch(() => null);
+        const result = await self.PageDyeAiTheme.chatStream({
+          config: (data && data[AI_CONFIG_KEY]) || {},
+          profile,
+          turns: message.turns,
+          currentImage,
+          signal: controller.signal,
+          onReply: (text) => {
+            if (closed) return;
+            port.postMessage({ type: 'delta', reply: text });
+          }
+        });
+        if (closed) return;
+        port.postMessage({ type: 'done', ok: true, ...result, profile });
+      } catch (error) {
+        if (closed) return;
+        port.postMessage({ type: 'done', ok: false, error: String((error && error.message) || error) });
+      }
+      // The page disconnects on its side once it has the terminal message; this
+      // just makes sure the port does not outlive the turn if it does not.
+      try {
+        port.disconnect();
+      } catch (_) {
+        // Already gone, which is the outcome we wanted anyway.
+      }
+    })();
+  });
+});
+
 // --- Serialized URL_RULES_KEY write arbiter --------------------------------
 // popup.js, options.js, content.js, and the injected element-picker each used
 // to run their own unguarded get(URL_RULES_KEY) -> mutate -> set(URL_RULES_KEY)

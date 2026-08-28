@@ -36,7 +36,8 @@ function createChromeMock(initialRules, { delayMs = 5 } = {}) {
       }
     },
     runtime: {
-      onMessage: { addListener: (fn) => listeners.push(fn) }
+      onMessage: { addListener: (fn) => listeners.push(fn) },
+      onConnect: { addListener() {} }
     }
   };
   return { chrome, listeners, getStore: () => store };

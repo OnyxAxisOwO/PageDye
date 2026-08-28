@@ -678,3 +678,273 @@ test('page profile is injected on demand rather than on every page load', () => 
   assert.ok(!contentScripts.includes('scripts/page-profile.js'));
   assert.match(readFileSync(resolve(root, 'scripts/background.js'), 'utf8'), /scripts\/page-profile\.js/);
 });
+
+test('a theme that says nothing about run mode leaves the page alone', () => {
+  // toSiteSettings is reachable with a theme that never went through
+  // sanitizeTheme, so every field added to it has to default to "unchanged".
+  const settings = aiTheme.toSiteSettings(SAMPLE_THEME, SAMPLE_PROFILE);
+
+  assert.equal(settings.deepCompat, false, 'Enhanced must not switch itself on');
+  assert.equal(settings.deepCompatAggressive, false);
+  assert.equal(settings.targetSelector, '');
+  assert.equal(settings.light.effectEnabled, false);
+});
+
+test('run mode, target selector and effect reach the stored settings', () => {
+  const theme = aiTheme.sanitizeTheme({
+    ...SAMPLE_THEME,
+    runMode: 'strong',
+    runModeExclude: '.modal, [role=dialog]',
+    targetSelector: '#main-panel',
+    effect: { enabled: true, kind: 'aurora', colorScheme: 'custom', color: '#88ccff', bgColor: '#0b1020', density: 30, speed: 20, text: '' }
+  });
+  const settings = aiTheme.toSiteSettings(theme, SAMPLE_PROFILE);
+  const normalized = storageSchema.normalizeSiteSettings(settings);
+  assert.ok(normalized, 'the storage schema rejected the settings');
+
+  assert.equal(normalized.deepCompat, true);
+  assert.equal(normalized.deepCompatAggressive, true, 'strong is the aggressive one');
+  assert.equal(normalized.deepCompatExclude, '.modal, [role=dialog]');
+  assert.equal(normalized.targetSelector, '#main-panel');
+
+  // content.js reads the effect off whichever layer it draws, not off the
+  // root, so both schemes have to carry it.
+  for (const layer of [normalized.light, normalized.dark]) {
+    assert.equal(layer.effectEnabled, true);
+    assert.equal(layer.effect, 'aurora');
+    assert.equal(layer.effectColor, '#88ccff');
+    assert.equal(layer.effectDensity, 30);
+  }
+});
+
+test('a target selector the model invented is dropped like a frosted one', () => {
+  const theme = aiTheme.sanitizeTheme({ ...SAMPLE_THEME, targetSelector: '.invented-panel' });
+  assert.equal(aiTheme.toSiteSettings(theme, SAMPLE_PROFILE).targetSelector, '');
+});
+
+test('an unknown effect name turns the overlay off instead of storing it', () => {
+  // The renderer draws nothing for a name it does not have, which would read
+  // as PageDye being broken rather than as a bad guess.
+  const theme = aiTheme.sanitizeTheme({ ...SAMPLE_THEME, effect: { enabled: true, kind: 'kaleidoscope' } });
+  assert.equal(theme.effect.enabled, false);
+  assert.equal(aiTheme.toSiteSettings(theme, SAMPLE_PROFILE).light.effectEnabled, false);
+});
+
+test('a run-mode exclude carrying a CSS injection never reaches storage', () => {
+  const theme = aiTheme.sanitizeTheme({ ...SAMPLE_THEME, runMode: 'enhanced', runModeExclude: '.a{} body{display:none}' });
+  assert.equal(theme.runModeExclude, '');
+});
+
+test('PageDye preferences are only accepted in the shapes the settings page accepts', () => {
+  const good = aiTheme.sanitizePreferences({
+    accent: 'teal',
+    reduceMotion: true,
+    diagnostics: false,
+    pauseShortcut: { code: 'KeyK', ctrlKey: false, altKey: true, shiftKey: true, metaKey: false }
+  });
+  assert.equal(good.accent, 'teal');
+  assert.equal(good.reduceMotion, true);
+  assert.equal(good.diagnostics, false);
+  assert.equal(good.pauseShortcut.code, 'KeyK');
+
+  // A swatch that is not on the grid, and a shortcut with no modifier — which
+  // would swallow ordinary typing on every page.
+  assert.equal(aiTheme.sanitizePreferences({ accent: 'chartreuse' }), null);
+  assert.equal(aiTheme.sanitizePreferences({ pauseShortcut: { code: 'KeyK' } }), null);
+  assert.equal(aiTheme.sanitizePreferences(null), null);
+
+  // A custom accent needs a real hex to mean anything.
+  assert.equal(aiTheme.sanitizePreferences({ accent: 'custom', accentColor: 'blue-ish' }), null);
+  assert.equal(aiTheme.sanitizePreferences({ accent: 'custom', accentColor: '#112233' }).accentColor, '#112233');
+});
+
+test('a preference proposal is only read when the answer flagged one', () => {
+  const withFlag = aiTheme.sanitizeChatReply({
+    reply: 'Switched the dashboard to teal.',
+    themeChanged: false,
+    preferencesChanged: true,
+    preferences: { accent: 'teal' }
+  });
+  assert.deepEqual(withFlag.preferences, { accent: 'teal' });
+
+  // Echoing the current state back must not put an apply button in front of
+  // the user for a change nobody asked for.
+  const echoed = aiTheme.sanitizeChatReply({
+    reply: 'Nothing to change.',
+    themeChanged: false,
+    preferencesChanged: false,
+    preferences: { accent: 'teal' }
+  });
+  assert.equal(echoed.preferences, null);
+});
+
+test('applying preferences merges into the stored theme instead of replacing it', async () => {
+  const prefsApi = require(resolve(root, 'scripts/shared/ai-preferences.js'));
+  const store = {
+    // A dashboard the user has already customised. A proposal about the accent
+    // must not throw the rest of it away.
+    __pagedye_ui_theme__: { accent: 'blue', pageBgImage: 'data:image/png;base64,x', disableAnimation: false }
+  };
+  const local = {
+    async get(key) { return key in store ? { [key]: store[key] } : {}; },
+    async set(patch) { Object.assign(store, patch); }
+  };
+
+  await prefsApi.apply(local, { accent: 'teal', reduceMotion: true, diagnostics: true }, aiTheme);
+
+  assert.equal(store.__pagedye_ui_theme__.accent, 'teal');
+  assert.equal(store.__pagedye_ui_theme__.disableAnimation, true);
+  assert.equal(store.__pagedye_ui_theme__.pageBgImage, 'data:image/png;base64,x', 'the background image survived');
+  assert.equal(store.__pagedye_debug_mode__, true);
+  assert.equal('__pagedye_pause_shortcut__' in store, false, 'a key the proposal said nothing about is left alone');
+});
+
+test('applying refuses a proposal that sanitizes down to nothing', async () => {
+  const prefsApi = require(resolve(root, 'scripts/shared/ai-preferences.js'));
+  const store = {};
+  const local = {
+    async get() { return {}; },
+    async set(patch) { Object.assign(store, patch); }
+  };
+
+  await assert.rejects(() => prefsApi.apply(local, { accent: 'chartreuse' }, aiTheme));
+  assert.deepEqual(store, {}, 'nothing may be written for a rejected proposal');
+});
+
+test('a custom accent is stored the way the Appearance picker stores one', () => {
+  const clean = aiTheme.sanitizePreferences({ accent: 'custom', accentColor: '#3366AA' });
+  assert.equal(clean.accent, 'custom');
+  assert.equal(clean.accentColor, '#3366aa');
+});
+
+// --- streaming ---------------------------------------------------------------
+
+// The reply arrives inside a JSON object that is still being written, so the
+// visible half has to be readable from a document that stops anywhere.
+test('the visible reply is readable out of a half-written JSON answer', () => {
+  const { partialReply } = aiTheme;
+
+  assert.equal(partialReply('{"rep'), '', 'nothing until the key is complete');
+  assert.equal(partialReply('{"reply"'), '', 'nothing until the value starts');
+  assert.equal(partialReply('{"reply": "给你配'), '给你配');
+  assert.equal(partialReply('{"reply":"done","themeChanged":false}'), 'done');
+
+  // Escapes: a complete one is decoded, a half-received one waits rather than
+  // rendering a stray backslash the next chunk would have completed.
+  assert.equal(partialReply('{"reply":"line one\\nline two'), 'line one\nline two');
+  assert.equal(partialReply('{"reply":"a quote \\" inside'), 'a quote " inside');
+  assert.equal(partialReply('{"reply":"trailing\\'), 'trailing');
+  assert.equal(partialReply('{"reply":"unicode \\u4f60\\u597d'), 'unicode 你好');
+
+  // The value stops at its own closing quote, not at something later in the doc.
+  assert.equal(partialReply('{"reply":"first","rationale":"second"}'), 'first');
+});
+
+// Emits one SSE frame per chunk, so a test can watch text arrive in pieces.
+async function withEventStream(frames, run, { contentType = 'text/event-stream' } = {}) {
+  const server = createServer((req, res) => {
+    req.on('data', () => {});
+    req.on('end', () => {
+      res.writeHead(200, { 'content-type': contentType });
+      for (const frame of frames) res.write(`data: ${JSON.stringify(frame)}\n\n`);
+      res.end();
+    });
+  });
+  await new Promise((done) => server.listen(0, '127.0.0.1', done));
+  try {
+    return await run(`http://127.0.0.1:${server.address().port}`);
+  } finally {
+    await new Promise((done) => server.close(done));
+  }
+}
+
+function anthropicFrames(text) {
+  return [...text].map((char) => ({ type: 'content_block_delta', delta: { type: 'text_delta', text: char } }));
+}
+
+function openAiFrames(text) {
+  return [...text].map((char) => ({ choices: [{ delta: { content: char } }] }));
+}
+
+const STREAMED_ANSWER = JSON.stringify({
+  reply: 'Muted blues, and nothing else changed.',
+  themeChanged: true,
+  theme: {
+    themeName: 'Quiet Harbor',
+    rationale: 'Muted blues.',
+    light: { angle: 135, stops: [{ color: '#dbeafe', position: 0 }, { color: '#eff6ff', position: 100 }], opacity: 85, blur: 0 },
+    dark: { angle: 135, stops: [{ color: '#0f172a', position: 0 }, { color: '#1e293b', position: 100 }], opacity: 90, blur: 0 },
+    frostedGlass: []
+  }
+});
+
+for (const [provider, frames] of [['anthropic', anthropicFrames], ['openai', openAiFrames]]) {
+  test(`a ${provider} stream delivers the reply in pieces and the same answer at the end`, async () => {
+    const seen = [];
+    const result = await withEventStream(frames(STREAMED_ANSWER), (baseUrl) => aiTheme.chatStream({
+      config: { provider, apiKey: 'sk-test', model: 'm', baseUrl },
+      profile: SAMPLE_PROFILE,
+      turns: [{ role: 'user', content: 'quiet blues please' }],
+      onReply: (text) => seen.push(text)
+    }));
+
+    assert.ok(seen.length > 1, 'the reply should arrive in more than one piece');
+    // Monotonic: every delta is the previous one plus what just arrived.
+    for (let i = 1; i < seen.length; i += 1) {
+      assert.ok(seen[i].startsWith(seen[i - 1]), 'each delta must extend the last');
+    }
+    assert.equal(seen[seen.length - 1], 'Muted blues, and nothing else changed.');
+
+    // And the finished turn is exactly what the one-shot path would have given.
+    assert.equal(result.reply, 'Muted blues, and nothing else changed.');
+    assert.equal(result.themeChanged, true);
+    assert.ok(storageSchema.normalizeSiteSettings(result.settings), 'the settings must still validate');
+  });
+}
+
+test('an endpoint that cannot stream falls back to a one-shot turn', async () => {
+  // Most self-hosted OpenAI-compatible servers answer a stream request with an
+  // ordinary JSON body. That must cost the streaming, not the answer.
+  let calls = 0;
+  const server = createServer((req, res) => {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      calls += 1;
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ choices: [{ message: { content: STREAMED_ANSWER } }] }));
+    });
+  });
+  await new Promise((done) => server.listen(0, '127.0.0.1', done));
+
+  try {
+    const seen = [];
+    const result = await aiTheme.chatStream({
+      config: { provider: 'openai', apiKey: 'sk-test', model: 'm', baseUrl: `http://127.0.0.1:${server.address().port}` },
+      profile: SAMPLE_PROFILE,
+      turns: [{ role: 'user', content: 'quiet blues please' }],
+      onReply: (text) => seen.push(text)
+    });
+
+    assert.deepEqual(seen, [], 'nothing may be shown as streamed when it was not');
+    assert.equal(result.reply, 'Muted blues, and nothing else changed.');
+    assert.equal(calls, 2, 'one attempt at streaming, then the one-shot retry');
+  } finally {
+    await new Promise((done) => server.close(done));
+  }
+});
+
+test('a mid-stream error from the API fails the turn instead of half-answering', async () => {
+  const frames = [
+    ...anthropicFrames('{"reply":"half a th'),
+    { type: 'error', error: { message: 'Overloaded' } }
+  ];
+  await assert.rejects(
+    () => withEventStream(frames, (baseUrl) => aiTheme.chatStream({
+      config: { provider: 'anthropic', apiKey: 'sk-test', model: 'm', baseUrl },
+      profile: SAMPLE_PROFILE,
+      turns: [{ role: 'user', content: 'hi' }]
+    })),
+    /Overloaded/
+  );
+});

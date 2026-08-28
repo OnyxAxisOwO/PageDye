@@ -8,8 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const zh = presetApi.language() === 'zh';
   const messages = {
     en: {
-      nav: 'Batch Tools', title: 'Batch Tools',
-      subtitle: 'Save a complete background setup and apply it to several websites at once.',
       exportSelected: 'Export selected', importSelected: 'Import selected',
       presetsTitle: 'Saved setups',
       presetsHint: 'A saved setup keeps the complete look of a website so you can reuse it elsewhere.',
@@ -33,8 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
       exportConfirm: 'This backup is about {size} and contains {count} images. Download it now?'
     },
     zh: {
-      nav: '预设', title: '预设',
-      subtitle: '保存整套背景效果，并一次应用到多个网站。',
       exportSelected: '导出选中站点', importSelected: '导入选中站点',
       presetsTitle: '已保存的整套效果', presetsHint: '保存一个网站的完整效果，之后可以直接用在其他网站上。',
       presetName: '预设名称', presetNamePlaceholder: '我的预设', presetSource: '复制自站点',
@@ -484,9 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Deep links are options.js's job — this file used to run its own copy of
+  // the hash handling, which raced with that one for the same elements.
   load().catch((error) => toast(error.message || String(error), true));
-  if (location.hash === '#section-configs') {
-    document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.target === 'section-configs'));
-    document.querySelectorAll('.content-section').forEach((section) => section.classList.toggle('active', section.id === 'section-configs'));
-  }
 });

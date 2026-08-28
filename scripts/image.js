@@ -20,6 +20,19 @@
   // this rather than assumed.
   const CHAT_MEDIA_TYPES = ['image/webp', 'image/jpeg', 'image/png'];
 
+  // A cursor image is a third job again. It is drawn at 12-48 CSS px, it rides
+  // along in the settings object of every site it is set on, and its
+  // transparency is the whole point — a pointer sitting on an opaque tile is
+  // unusable. So it is bounded to a small square and re-encoded as WebP *with*
+  // alpha, instead of being kept at its original size the way a wallpaper can.
+  const CURSOR_MAX_DIMENSION = 128;
+  const CURSOR_MAX_BYTES = 192 * 1024;
+  const CURSOR_QUALITIES = [0.9, 0.75, 0.6];
+  // Rasterizing either of these would throw away the reason for picking it —
+  // an SVG's resolution independence, a GIF's animation — so they are stored
+  // untouched, but only while they already fit the budget above.
+  const CURSOR_PASSTHROUGH_TYPES = new Set(['image/svg+xml', 'image/gif']);
+
   function readAsDataUrl(blob) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -180,6 +193,60 @@
     };
   }
 
+  // Prepares one image to be used as the page's mouse cursor. Like
+  // prepareChatImage there is no "keep the original" fallback: an image the
+  // canvas cannot decode is one whose size cannot be bounded, and this one is
+  // stored per site.
+  async function prepareCursorImage(file) {
+    if (!file || !file.type || !file.type.startsWith('image/')) {
+      throw new Error('Please choose an image file');
+    }
+    if (!Number.isFinite(file.size) || file.size <= 0 || file.size > MAX_INPUT_IMAGE_BYTES) {
+      throw tooLargeError();
+    }
+
+    if (CURSOR_PASSTHROUGH_TYPES.has(file.type)) {
+      if (file.size > CURSOR_MAX_BYTES) throw tooLargeError();
+      return {
+        dataUrl: await readAsDataUrl(file),
+        name: (file.name || 'cursor').slice(0, 80),
+        mediaType: file.type,
+        bytes: file.size
+      };
+    }
+
+    const image = await loadImage(file);
+    const naturalWidth = image.naturalWidth || image.width;
+    const naturalHeight = image.naturalHeight || image.height;
+    if (!naturalWidth || !naturalHeight) throw new Error('Unable to decode image dimensions');
+    const scale = Math.min(1, CURSOR_MAX_DIMENSION / Math.max(naturalWidth, naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(naturalHeight * scale));
+    const context = canvas.getContext('2d', { alpha: true });
+    if (!context) throw new Error('Unable to create image canvas');
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    let best = null;
+    for (const quality of CURSOR_QUALITIES) {
+      const candidate = await canvasToBlob(canvas, quality);
+      if (candidate && (!best || candidate.size < best.size)) best = candidate;
+      if (best && best.size <= CURSOR_MAX_BYTES) break;
+    }
+    if (!best) throw new Error('Unable to encode image');
+    if (best.size > CURSOR_MAX_BYTES) throw tooLargeError();
+
+    const baseName = (file.name || '').replace(/\.[^.]+$/, '') || 'cursor';
+    return {
+      dataUrl: await readAsDataUrl(best),
+      name: `${baseName.slice(0, 72)}.webp`,
+      mediaType: best.type,
+      bytes: best.size,
+      width: canvas.width,
+      height: canvas.height
+    };
+  }
+
   async function recompressDataUrl(dataUrl, options = {}) {
     const source = dataUrlToBlob(dataUrl);
     if (!RECOMPRESSIBLE_TYPES.has(source.type)) {
@@ -234,12 +301,15 @@
   window.PageDyeImage = {
     prepareImage,
     prepareChatImage,
+    prepareCursorImage,
     recompressDataUrl,
     MAX_DIMENSION,
     MAX_INPUT_IMAGE_BYTES,
     MAX_STORED_IMAGE_BYTES,
     CHAT_MAX_DIMENSION,
     CHAT_MAX_BYTES,
-    CHAT_MEDIA_TYPES
+    CHAT_MEDIA_TYPES,
+    CURSOR_MAX_DIMENSION,
+    CURSOR_MAX_BYTES
   };
 })();

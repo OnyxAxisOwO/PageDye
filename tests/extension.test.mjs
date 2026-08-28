@@ -70,9 +70,9 @@ test('dashboard appearance supports images while surface colors follow the inter
   assert.match(options, /applyThemeBgImage\(document\.querySelector\('\.dashboard-container'\), theme\.containerBgImage\)/);
   assert.doesNotMatch(html, /id="theme-page-bg(?:-text)?"/);
   assert.doesNotMatch(html, /id="theme-container-bg(?:-text)?"/);
-  assert.match(css, /body\s*\{\s*background:\s*var\(--md-sys-color-surface-container\);/);
-  assert.match(css, /\.dashboard-container\s*\{\s*background:\s*var\(--md-sys-color-surface\);/);
-  assert.match(css, /\.sidebar\s*\{\s*background:\s*var\(--md-sys-color-surface-container-low\);/);
+  assert.match(css, /body\s*\{[^}]*background:\s*var\(--md-sys-color-surface-container\);/);
+  assert.match(css, /\.dashboard-container\s*\{[^}]*background:\s*var\(--md-sys-color-surface\);/);
+  assert.match(css, /\.sidebar\s*\{[^}]*background:\s*var\(--md-sys-color-surface-container-low\);/);
 });
 
 test('the background-type facade has a sliding indicator rule matching its actual item count', () => {
@@ -123,10 +123,11 @@ test('configured-site editor uses centered popup-style tabs, modes, and selects'
   assert.match(html, /class="edit-view-tabs" id="edit-main-tabs"/);
   assert.match(html, /class="mode-pill-group edit-wallpaper-mode" id="edit-wallpaper-mode"/);
   assert.equal((html.match(/class="editor-select-wrap(?: compact)?"/g) || []).length, 7);
-  assert.match(css, /#section-edit-site \.edit-view-tabs label\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s);
-  assert.match(css, /#section-edit-site \.edit-wallpaper-mode label\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s);
-  assert.match(css, /#section-edit-site \.editor-select-wrap select\s*\{[^}]*border-radius:\s*12px;[^}]*appearance:\s*none;[^}]*font-weight:\s*600;/s);
-  assert.match(css, /\.segmented-control label\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s);
+  assert.match(css, /\.edit-view-tabs label\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s);
+  assert.match(css, /\.mode-pill-group label\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s);
+  assert.match(css, /--pd-radius-field:\s*12px/);
+  assert.match(css, /\.editor-select-wrap select\s*\{[^}]*appearance:\s*none;[^}]*font-weight:\s*600;/s);
+  assert.match(css, /\.segmented-control label[^{]*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s);
 });
 
 test('popup keeps its scroll area and bottom navigation as direct layout siblings', () => {
@@ -224,7 +225,7 @@ test('the abandoned URL-rule migration restores domain settings once', async () 
       get: async () => data,
       set: async (value) => { written = JSON.parse(JSON.stringify(value)); resolveWrite(); }
     } },
-    runtime: { onMessage: { addListener() {} } }
+    runtime: { onMessage: { addListener() {} }, onConnect: { addListener() {} } }
   };
 
   runBackgroundScript({ chrome, console });
@@ -515,34 +516,108 @@ test('storage management interface exposes all requested workflows', () => {
   assert.match(images, /RECOMPRESSIBLE_TYPES/);
   assert.match(options, /This backup is about/);
   assert.match(configs, /exportConfirm/);
-  assert.match(css, /\.storage-section-header\s*>\s*div:first-child\s*\{[^}]*flex:\s*1 1 auto/s);
-  assert.match(css, /\.storage-section-header\s+\.storage-refresh-btn\s*\{[^}]*width:\s*auto[^}]*max-width:\s*max-content[^}]*flex:\s*0 0 auto/s);
+  assert.match(css, /\.pane-intro\s*>\s*div:first-child\s*\{[^}]*min-width:\s*0/s);
+  assert.match(css, /\.pane-intro\s*>\s*\.btn\s*\{[^}]*flex:\s*0 0 auto/s);
+  assert.match(css, /\.btn\s*\{[^}]*width:\s*auto;/s);
 });
 
-test('options default to a simplified interface and gate expert tools behind advanced mode', () => {
+test('reduced motion silences the tab animation, including its directional forms', () => {
+  // .tab-pane.active.enter-forward out-ranks .tab-pane.active, so naming only
+  // the plain selector in the reduced-motion block would leave the slide
+  // running for exactly the people who asked for no motion.
+  const css = read('options/options.css');
+  const start = css.indexOf('@media (prefers-reduced-motion: reduce)');
+  assert.ok(start > -1, 'the reduced-motion block should exist');
+  const block = css.slice(start, css.indexOf('}', css.indexOf('animation: none', start)));
+
+  for (const selector of ['.content-section', '.tab-pane.active.enter-forward', '.tab-pane.active.enter-back']) {
+    assert.ok(block.includes(selector), `${selector} must be silenced under reduced motion`);
+  }
+
+  // The extension's own "reduce interface motion" preference covers it too,
+  // via the blanket rule set on <html>.
+  assert.match(css, /\.pagedye-no-animation \*[\s\S]*?animation: none !important/);
+});
+
+test('both pages that host the chat define every token it consumes', () => {
+  // ai-chat.css is written against the popup's token names. options.css never
+  // declared five of them, so on the settings page every chat rule that used
+  // one was dropped: the history rail, the list rows and the composer all lost
+  // their surface, and no control had a hover state.
+  const chat = read('scripts/shared/ai-chat.css');
+  const used = new Set([...chat.matchAll(/var\((--[a-z0-9-]+)/g)].map((match) => match[1]));
+  assert.ok(used.size > 5, 'the chat should consume some tokens');
+
+  for (const page of ['popup/popup.css', 'options/options.css']) {
+    const css = read(page);
+    const missing = [...used].filter((token) => !css.includes(`${token}:`));
+    assert.deepEqual(missing, [], `${page} must declare every token ai-chat.css reads`);
+  }
+});
+
+test('the dashboard skin for the chat cannot leak into the popup', () => {
+  const chat = read('scripts/shared/ai-chat.css');
+  const start = chat.indexOf('/* --- options skin');
+  assert.ok(start > -1, 'the options skin block should exist');
+  const block = chat
+    .slice(start, chat.indexOf('@media (prefers-reduced-motion', start))
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  const unscoped = [];
+  for (const match of block.matchAll(/([^{}]+)\{/g)) {
+    const selectors = match[1].trim();
+    if (!selectors || selectors.startsWith('@')) continue;
+    for (const selector of selectors.split(',')) {
+      const trimmed = selector.trim();
+      if (trimmed && !trimmed.includes('.ai-chat-options')) unscoped.push(trimmed);
+    }
+  }
+  assert.deepEqual(unscoped, [], 'every rule in the dashboard skin must be scoped to .ai-chat-options');
+});
+
+test('the dashboard stays usable at phone width', () => {
+  const css = read('options/options.css');
+  const start = css.indexOf('@media (max-width: 767px)');
+  assert.ok(start > -1, 'the phone breakpoint block should exist');
+  const next = css.indexOf('@media', start + 1);
+  const phone = css.slice(start, next === -1 ? css.length : next);
+
+  // The chat's only chrome is one bar; on a phone the dropdown takes whatever
+  // the menu button leaves it, and the menu cannot be wider than the screen.
+  assert.match(phone, /\.ai-target-select\s*\{[^}]*max-width:\s*none;/s);
+  assert.match(phone, /\.ai-menu-panel\s*\{[^}]*width:\s*min\(/s);
+
+  // The top bar is sticky, so anything scrolled to needs to clear it.
+  assert.match(phone, /\.content-section,\s*\.settings-card\s*\{[^}]*scroll-margin-top:/s);
+
+  // A stretched outlined button in a stacked header would overstate itself.
+  assert.match(css, /\.pane-intro\s*>\s*\.btn\s*\{[^}]*align-self:\s*flex-start/s);
+});
+
+test('options page has no advanced-mode gating left behind, and debug mode stands alone', () => {
   const html = read('options/options.html');
   const options = read('options/options.js');
-  const storageUi = read('options/storage-manager-ui.js');
+  const popupHtml = read('popup/popup.html');
+  const popupJs = read('popup/popup.js');
   const css = read('options/options.css');
+  const popupCss = read('popup/popup.css');
 
-  assert.equal(storageSchema.KEYS.advancedMode, '__pagedye_advanced_mode__');
-  assert.equal(storageSchema.isSiteSettingsKey(storageSchema.KEYS.advancedMode, true), false);
-  assert.match(html, /id="advanced-mode-toggle"/);
-  for (const section of ['custom-effects']) {
-    assert.match(html, new RegExp(`data-target="section-${section}" data-advanced-only`));
-  }
-  assert.match(html, /class="advanced-feature-block" data-advanced-only/);
-  assert.match(html, /class="storage-tools"[^>]*data-advanced-only/);
-  assert.match(html, /id="storage-delete-unused-btn"/);
-  // Debug mode is a developer sub-option nested inside the Settings page
-  // (revealed by Advanced mode) rather than its own advanced-gated nav
-  // page, so the relationship between the two toggles is explicit.
+  assert.equal(storageSchema.KEYS.advancedMode, undefined);
+  assert.doesNotMatch(html, /data-advanced-only/);
+  assert.doesNotMatch(popupHtml, /data-advanced-only/);
+  assert.doesNotMatch(html, /id="advanced-mode-toggle"/);
+  assert.doesNotMatch(css, /\.advanced-mode\b/);
+  assert.doesNotMatch(popupCss, /\.advanced-mode\b/);
+  assert.doesNotMatch(options, /ADVANCED_MODE_KEY|applyAdvancedMode|initAdvancedMode/);
+  assert.doesNotMatch(popupJs, /ADVANCED_MODE_KEY/);
+  // Debug mode now stands on its own, not coupled to a removed advanced-mode toggle.
   assert.match(html, /id="section-settings"/);
-  assert.doesNotMatch(html, /data-target="section-debug"/);
-  assert.match(html, /<section id="section-settings"[\s\S]*?data-advanced-only>[\s\S]*?id="debug-mode-toggle"[\s\S]*?<\/section>/);
-  assert.match(css, /body:not\(\.advanced-mode\) \[data-advanced-only\]\s*\{[^}]*display:\s*none\s*!important/s);
-  assert.match(options, /document\.body\.classList\.toggle\('advanced-mode', enabled\)/);
-  assert.match(options, /\[ADVANCED_MODE_KEY\]: false, \[DEBUG_MODE_KEY\]: false/);
+  assert.match(html, /id="debug-mode-toggle"/);
+  assert.match(options, /DEBUG_MODE_KEY/);
+});
+
+test('storage manager UI has no leftover Base64/unreferenced-image copy', () => {
+  const storageUi = read('options/storage-manager-ui.js');
   assert.doesNotMatch(storageUi, /Base64 data|本地图片引用|未引用图片字段/);
 });
 
@@ -573,7 +648,7 @@ test('options interface surfaces follow the system color scheme', () => {
   assert.match(options, /SYSTEM_DARK_QUERY = window\.matchMedia\('\(prefers-color-scheme: dark\)'\)/);
   assert.match(options, /const isDark = SYSTEM_DARK_QUERY\.matches/);
   assert.match(options, /SYSTEM_DARK_QUERY\.addEventListener\('change', \(\) => \{\s*applyUiTheme\(currentUiTheme\);/s);
-  assert.match(css, /body\s*\{\s*background:\s*var\(--md-sys-color-surface-container\);/);
+  assert.match(css, /body\s*\{[^}]*background:\s*var\(--md-sys-color-surface-container\);/);
 });
 
 test('configuration presets use the current effect model and migrate legacy layers before apply', () => {

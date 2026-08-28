@@ -3,33 +3,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     en: {
       title: "PageDye Settings",
       appName: "PageDye",
-      navSites: "Website Backgrounds",
+      navSites: "Websites",
+      navLibrary: "Library",
+      navData: "Data",
       navCustomEffects: "Custom Effects",
       navAppearance: "Interface",
       navBackup: "Backup",
       navSettings: "Settings",
       navAbout: "About",
       settingsTitle: "Settings",
-      settingsHint: "Keep PageDye simple, or reveal tools for complex setups and troubleshooting.",
-      advancedModeTitle: "Advanced mode",
-      advancedModeHint: "Reveals extra tools for complex setups — see what's included below.",
-      advancedModeOn: "Advanced tools are visible",
-      advancedModeOff: "Using the simplified interface",
-      advancedUnlocksTitle: "Also unlocks:",
-      unlockPageRules: "Page rules for individual URLs",
-      unlockBatchTools: "Batch tools and site groups",
-      unlockCustomEffects: "Custom animated effects",
-      unlockSiteAdvanced: "Custom CSS and background selectors per site",
-      unlockAppearanceExtras: "Dashboard background images and reduced motion",
-      unlockStorageTools: "Detailed storage and image tools",
-      unlockDeveloperOptions: "Developer options, right below",
+      settingsHint: "How PageDye itself looks and behaves. None of this changes your websites' backgrounds.",
+      tabSavedSites: "Saved sites",
+      tabPresets: "Presets",
+      tabPageRules: "Page rules",
+      tabGroupsBatch: "Groups & batch",
+      libraryTitle: "Library",
+      libraryHint: "Looks you can reuse anywhere: complete saved setups, and animated wallpapers you write yourself.",
+      dataTitle: "Data",
+      dataHint: "Keep a copy of everything PageDye has saved, or clear out what it no longer needs.",
+      shortcutGroupTitle: "Keyboard shortcut",
+      shortcutGroupHint: "One key combination, for when a background gets in your way on a page you are reading.",
       navAiChat: "AI Chat",
-      navAiSettings: "AI Settings",
       aiChatTitle: "AI Chat",
       aiChatHint: "Describe the background you want and refine it by asking for changes. Each conversation is about one page.",
       aiChatTarget: "Page to design for",
       aiChatTargetHint: "Pick one of your open tabs. PageDye reads its colours and layout — never its text — each time you send a message.",
-      aiChatRefreshTabs: "Refresh",
+      aiChatRefreshTabs: "Refresh tab list",
+      aiMenu: "More",
       aiChatNoTabs: "No open tab PageDye can read.",
       aiSettingsTitle: "AI Settings",
       aiSettingsHint: "The provider, key and standing preferences the AI chat runs on. Nothing leaves this browser until you fill in a key.",
@@ -37,6 +37,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       aiProviderHint: "Pick \"OpenAI Compatible\" for any service that exposes a /chat/completions endpoint — DeepSeek, OpenRouter, a local Ollama, and so on.",
       aiApiKey: "API key",
       aiApiKeyHint: "The key is stored only in this browser's local extension storage and is never included in exported backups. Generating a theme sends a description of the page's colours and layout — never the page text — to the API endpoint you chose.",
+      aiApiKeyReveal: "Show key",
+      aiApiKeyHide: "Hide key",
+      aiStatusReady: "Ready",
+      aiStatusMissing: "No key yet",
       aiBaseUrl: "API base URL",
       aiBaseUrlHint: "Leave this empty to use the selected provider's default endpoint. You can paste either the base (https://api.groq.com/openai/v1) or the full endpoint your provider documents (…/chat/completions) — both work. Your API key is sent to whatever host you enter here, so only fill in an endpoint you trust.",
       aiModel: "Model",
@@ -85,8 +89,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       savedImage: "Saved image",
       savedVideo: "Saved video",
       videoSizeHint: "MP4 or WebM, up to 40 MB. Trim or compress long clips first.",
-      sitesTitle: "Website Backgrounds",
-      sitesHint: "View and update the backgrounds you have saved.",
+      sitesTitle: "Websites",
+      sitesHint: "Every site you have given a background, the page rules that refine them, and the tools to change many at once.",
       urlRulesTitle: "Page Rules",
       urlRulesHint: "Use different backgrounds on specific pages, or leave a page unchanged.",
       newRule: "New Rule",
@@ -321,33 +325,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     zh: {
       title: "PageDye 设置",
       appName: "PageDye",
-      navSites: "网站背景",
+      navSites: "网站",
+      navLibrary: "预设与动效",
+      navData: "数据",
       navCustomEffects: "自定义动效",
       navAppearance: "界面外观",
       navBackup: "备份",
       navSettings: "设置",
       navAbout: "关于",
       settingsTitle: "设置",
-      settingsHint: "保持界面简单，或按需显示复杂配置和排查工具。",
-      advancedModeTitle: "高级模式",
-      advancedModeHint: "解锁复杂场景所需的更多工具——具体内容见下方列表。",
-      advancedModeOn: "高级工具已显示",
-      advancedModeOff: "当前使用精简界面",
-      advancedUnlocksTitle: "同时还会解锁：",
-      unlockPageRules: "按网址设置的页面规则",
-      unlockBatchTools: "批量工具和网站分组",
-      unlockCustomEffects: "自定义动态特效",
-      unlockSiteAdvanced: "每个网站的自定义 CSS 与背景选择器",
-      unlockAppearanceExtras: "设置页背景图片与减少动画",
-      unlockStorageTools: "详细的存储与图片工具",
-      unlockDeveloperOptions: "开发者选项（就在下方）",
+      settingsHint: "PageDye 自己的外观和行为。这里的选项不会改变网站背景。",
+      tabSavedSites: "已保存网站",
+      tabPresets: "预设",
+      tabPageRules: "页面规则",
+      tabGroupsBatch: "分组与批量",
+      libraryTitle: "预设与动效",
+      libraryHint: "可以反复使用的素材：整套保存好的效果，以及你自己写的动态壁纸。",
+      dataTitle: "数据",
+      dataHint: "把 PageDye 保存的内容备份下来，或者清理掉不再需要的部分。",
+      shortcutGroupTitle: "键盘快捷键",
+      shortcutGroupHint: "一组快捷键，用于在你正在阅读的页面上临时让背景让路。",
       navAiChat: "AI 对话",
-      navAiSettings: "AI 设置",
       aiChatTitle: "AI 对话",
       aiChatHint: "用一句话说出你想要的背景，再不断提要求慢慢改。每个对话只针对一个页面。",
       aiChatTarget: "要配背景的页面",
       aiChatTargetHint: "从你已打开的标签页里选一个。每次发送消息时，PageDye 都会重新读取它的配色和布局，不会读取正文内容。",
-      aiChatRefreshTabs: "刷新",
+      aiChatRefreshTabs: "刷新标签页列表",
+      aiMenu: "更多",
       aiChatNoTabs: "没有可读取的已打开标签页。",
       aiSettingsTitle: "AI 设置",
       aiSettingsHint: "AI 对话使用的服务商、密钥和固定偏好。在你填写密钥之前，不会有任何数据离开这个浏览器。",
@@ -355,6 +359,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       aiProviderHint: "只要服务提供 /chat/completions 接口，选择“OpenAI Compatible”即可接入，例如 DeepSeek、OpenRouter 或本地运行的 Ollama。",
       aiApiKey: "API 密钥",
       aiApiKeyHint: "密钥仅保存在本浏览器的扩展本地存储中，导出备份时绝不会包含它。生成主题时只会把网页的配色和布局描述发送给你所选的 API 接口，绝不会发送网页正文内容。",
+      aiApiKeyReveal: "显示密钥",
+      aiApiKeyHide: "隐藏密钥",
+      aiStatusReady: "已就绪",
+      aiStatusMissing: "还没填密钥",
       aiBaseUrl: "API 地址",
       aiBaseUrlHint: "留空则使用所选服务商的默认接口地址。填基础地址（https://api.groq.com/openai/v1）或服务商文档里的完整端点（…/chat/completions）都可以。你的 API 密钥会被发送到这里填写的任意主机，请只填写你信任的接口地址。",
       aiModel: "模型",
@@ -401,8 +409,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       savedImage: "已保存的图片",
       savedVideo: "已保存的视频",
       videoSizeHint: "支持 MP4 或 WebM，不超过 40 MB。较长的片段请先自行裁剪或压缩。",
-      sitesTitle: "网站背景",
-      sitesHint: "查看和修改已经保存的网站背景。",
+      sitesTitle: "网站",
+      sitesHint: "所有设置过背景的网站、细化它们的页面规则，以及一次修改多个网站的工具。",
       urlRulesTitle: "页面规则",
       urlRulesHint: "让同一网站的特定页面使用不同背景，或保持原样。",
       hostnameFallbacks: "已保存的网站",
@@ -618,8 +626,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let lang = 'en';
 
+  // Sections that used to be their own sidebar destination and are now a tab
+  // inside another one. Old deep links (#section-custom-effects from the popup,
+  // #section-configs from the preset quick-pick) still land where they mean to.
+  const SECTION_ALIASES = {
+    'section-custom-effects': { section: 'section-configs', pane: 'pane-library-effects' },
+    'section-backup': { section: 'section-storage', pane: 'pane-data-backup' },
+    'section-appearance': { section: 'section-settings' },
+    'section-ai': { section: 'section-settings' },
+    'section-rules': { section: 'section-sites', pane: 'pane-sites-rules' }
+  };
+
   const UI_THEME_KEY = '__pagedye_ui_theme__';
-  const ADVANCED_MODE_KEY = '__pagedye_advanced_mode__';
   const PAUSE_SHORTCUT_KEY = '__pagedye_pause_shortcut__';
   const DEFAULT_PAUSE_SHORTCUT = { code: 'KeyP', altKey: true, shiftKey: true, ctrlKey: false, metaKey: false };
   const CUSTOM_EFFECTS_KEY = '__pagedye_custom_effects__';
@@ -842,8 +860,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     aiChatRoot: document.getElementById('ai-chat-root'),
     aiChatTabSelect: document.getElementById('ai-chat-tab-select'),
     aiChatTabRefresh: document.getElementById('ai-chat-tab-refresh'),
-    advancedModeToggle: document.getElementById('advanced-mode-toggle'),
-    advancedModeStatus: document.getElementById('advanced-mode-status'),
+    aiMenuToggle: document.getElementById('ai-menu-toggle'),
+    aiMenuPanel: document.getElementById('ai-menu-panel'),
+    aiApiKeyReveal: document.getElementById('ai-api-key-reveal'),
+    aiConfigStatus: document.getElementById('ai-config-status'),
     debugModeToggle: document.getElementById('debug-mode-toggle'),
 
     // Edit site controls
@@ -906,7 +926,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (els.aboutVersion) els.aboutVersion.textContent = extensionVersion;
   const editVersionEl = document.getElementById('edit-version');
   if (editVersionEl) editVersionEl.textContent = extensionVersion;
-  await initAdvancedMode();
 
   // Load configured sites
   await loadRulesList();
@@ -927,15 +946,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
-    if (Object.prototype.hasOwnProperty.call(changes, ADVANCED_MODE_KEY)) {
-      applyAdvancedMode(!!changes[ADVANCED_MODE_KEY].newValue);
-    }
     if (Object.prototype.hasOwnProperty.call(changes, URL_RULES_KEY) && document.getElementById('section-sites').classList.contains('active')) {
       loadRulesList();
     }
+    // The dashboard's own appearance can now be changed from outside this page
+    // — by the AI chat's settings card, or by the popup — so it repaints from
+    // the key rather than only from its own picker.
+    if (Object.prototype.hasOwnProperty.call(changes, UI_THEME_KEY)) {
+      currentUiTheme = normalizeUiTheme(changes[UI_THEME_KEY].newValue);
+      applyUiTheme(currentUiTheme);
+      syncUiThemeInputs(currentUiTheme);
+    }
+    if (Object.prototype.hasOwnProperty.call(changes, DEBUG_MODE_KEY) && els.debugModeToggle) {
+      els.debugModeToggle.checked = !!changes[DEBUG_MODE_KEY].newValue;
+    }
+    if (Object.prototype.hasOwnProperty.call(changes, PAUSE_SHORTCUT_KEY) && els.pauseShortcutInput) {
+      els.pauseShortcutInput.value = formatPauseShortcut(normalizePauseShortcut(changes[PAUSE_SHORTCUT_KEY].newValue));
+    }
     if (Object.prototype.hasOwnProperty.call(changes, CUSTOM_EFFECTS_KEY)) {
       populateCustomEffectOptions(document.getElementById('edit-effect-kind'));
-      if (document.getElementById('section-custom-effects').classList.contains('active')) {
+      if (isPaneVisible('pane-library-effects')) {
         loadCustomEffectsList();
       }
     }
@@ -955,6 +985,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
+  initPageTabs();
+  initAiMenu();
+
+  // Anything anywhere on the page can send the reader to a section (and, if it
+  // names one, focus a field once there) without knowing how navigation works.
+  document.querySelectorAll('[data-nav-target]').forEach((trigger) => {
+    trigger.addEventListener('click', () => {
+      closeAiMenu();
+      navigateToSection(trigger.dataset.navTarget);
+      const focusTarget = trigger.dataset.navFocus && document.getElementById(trigger.dataset.navFocus);
+      if (focusTarget) focusTarget.focus();
+    });
+  });
+
   // Mobile sidebar drawer (the sidebar becomes an off-canvas panel below the
   // 767px breakpoint; on wider viewports these controls are hidden by CSS
   // and openMobileSidebar/closeMobileSidebar are simply never triggered).
@@ -971,13 +1015,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (event.key === 'Escape') closeMobileSidebar();
   });
 
+  // Deep links. config-manager.js and storage-manager-ui.js used to run their
+  // own copies of this against their own section ids, which raced with this
+  // one; navigation lives here alone now.
   const requestedSection = location.hash.slice(1);
-  if (requestedSection && document.getElementById(requestedSection)) {
-    const requestedNav = document.querySelector(`.nav-item[data-target="${requestedSection}"]`);
-    navigateToSection(requestedNav && requestedNav.hasAttribute('data-advanced-only') && !document.body.classList.contains('advanced-mode')
-      ? 'section-settings'
-      : requestedSection);
-  }
+  if (requestedSection) navigateToSection(requestedSection);
 
   // Search input filter
   els.searchInput.addEventListener('input', () => {
@@ -1018,55 +1060,120 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function navigateToSection(targetId) {
-    const target = document.getElementById(targetId);
-    if (!target) return;
+    const alias = SECTION_ALIASES[targetId];
+    const sectionId = alias ? alias.section : targetId;
+    if (!document.getElementById(sectionId)) return;
     window.PageDyeEffects.stopEffect();
-    els.navItems.forEach((item) => item.classList.toggle('active', item.dataset.target === targetId));
-    els.sections.forEach((section) => section.classList.toggle('active', section.id === targetId));
+    els.navItems.forEach((item) => item.classList.toggle('active', item.dataset.target === sectionId));
+    els.sections.forEach((section) => section.classList.toggle('active', section.id === sectionId));
+    if (alias && alias.pane) showPane(alias.pane);
+    if (sectionId !== 'section-ai-chat') closeAiMenu();
+    // Otherwise a new page opens at whatever scroll offset the last one was
+    // left at, which reads as arriving halfway down a page you never scrolled.
+    // Both scrollers are reset because which one moves depends on the width:
+    // .main-content scrolls on desktop, the document itself below 768px, where
+    // leaving the offset alone can land a short section entirely off-screen.
+    const scroller = document.querySelector('.main-content');
+    if (scroller) scroller.scrollTop = 0;
+    window.scrollTo(0, 0);
   }
 
-  function applyAdvancedMode(enabled) {
-    document.body.classList.toggle('advanced-mode', enabled);
-    if (els.advancedModeToggle) els.advancedModeToggle.checked = enabled;
-    if (els.advancedModeStatus) {
-      els.advancedModeStatus.textContent = t(enabled ? 'advancedModeOn' : 'advancedModeOff');
-    }
-
-    if (!enabled) {
-      const activeAdvancedNav = document.querySelector('.nav-item.active[data-advanced-only]');
-      if (activeAdvancedNav) navigateToSection('section-settings');
-      document.querySelectorAll('[data-advanced-only].accordion[open]').forEach((details) => {
-        details.open = false;
+  // In-page tabs. Three views of one list would have been three sidebar
+  // entries; they are tabs so the sidebar stays short and each view gets the
+  // full width. Panels stay in the DOM while hidden, so the code that fills
+  // them never has to know which tab is showing.
+  function initPageTabs() {
+    document.querySelectorAll('.page-tabs').forEach((group) => {
+      group.addEventListener('click', (event) => {
+        const tab = event.target.closest('.page-tab');
+        if (tab && group.contains(tab)) showPane(tab.dataset.pane);
       });
+    });
+  }
+
+  function showPane(paneId) {
+    const pane = document.getElementById(paneId);
+    const tab = document.querySelector(`.page-tab[data-pane="${paneId}"]`);
+    if (!pane || !tab) return;
+    const group = tab.closest('.page-tabs');
+    const tabs = Array.from(group.querySelectorAll('.page-tab'));
+
+    // Which way the tab bar moved, read before the classes are rewritten. -1
+    // when nothing was selected yet, which is the first paint of a section:
+    // there is no direction to come from, so the panel just rises like a page.
+    const from = tabs.findIndex((item) => item.classList.contains('active'));
+    const to = tabs.indexOf(tab);
+
+    tabs.forEach((item) => {
+      const selected = item === tab;
+      item.classList.toggle('active', selected);
+      item.setAttribute('aria-selected', String(selected));
+    });
+    group.parentElement.querySelectorAll(':scope > .tab-pane').forEach((panel) => {
+      panel.classList.remove('enter-forward', 'enter-back');
+      panel.classList.toggle('active', panel === pane);
+    });
+    if (from !== -1 && from !== to) {
+      pane.classList.add(to > from ? 'enter-forward' : 'enter-back');
     }
+  }
+
+  function isPaneVisible(paneId) {
+    const pane = document.getElementById(paneId);
+    if (!pane || !pane.classList.contains('active')) return false;
+    const section = pane.closest('.content-section');
+    return !!section && section.classList.contains('active');
+  }
+
+  // The chat page has no header and no toolbar — everything that is not the
+  // conversation lives behind one button in its top-right corner.
+  function initAiMenu() {
+    if (!els.aiMenuToggle || !els.aiMenuPanel) return;
+
+    els.aiMenuToggle.addEventListener('click', (event) => {
+      event.stopPropagation();
+      setAiMenuOpen(els.aiMenuPanel.hidden);
+    });
+
+    // Every item either acts and leaves, or navigates away; either way the menu
+    // has served its purpose.
+    els.aiMenuPanel.addEventListener('click', (event) => {
+      if (event.target.closest('.ai-menu-item')) closeAiMenu();
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!els.aiMenuPanel.hidden && !event.target.closest('.ai-menu')) closeAiMenu();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || els.aiMenuPanel.hidden) return;
+      closeAiMenu();
+      els.aiMenuToggle.focus();
+    });
+  }
+
+  function setAiMenuOpen(open) {
+    if (!els.aiMenuToggle || !els.aiMenuPanel) return;
+    els.aiMenuPanel.hidden = !open;
+    els.aiMenuToggle.setAttribute('aria-expanded', String(open));
+  }
+
+  function closeAiMenu() {
+    setAiMenuOpen(false);
+  }
+
+  // Counts on the tab itself, so "how many rules do I have" is answered
+  // without opening the tab that holds them.
+  function setTabCount(id, count) {
+    const badge = document.getElementById(id);
+    if (!badge) return;
+    badge.textContent = String(count);
+    badge.hidden = count === 0;
   }
 
   async function refreshDebugRuntime() {
     const tabs = await chrome.tabs.query({});
     await Promise.allSettled(tabs.filter((tab) => tab.id).map((tab) => window.PageDyeInjection.ensure(tab.id)));
-  }
-
-  async function initAdvancedMode() {
-    if (!els.advancedModeToggle) return;
-    const data = await chrome.storage.local.get([ADVANCED_MODE_KEY, DEBUG_MODE_KEY]);
-    const enabled = !!data[ADVANCED_MODE_KEY] || !!data[DEBUG_MODE_KEY];
-    applyAdvancedMode(enabled);
-
-    if (enabled && !data[ADVANCED_MODE_KEY]) {
-      await chrome.storage.local.set({ [ADVANCED_MODE_KEY]: true });
-    }
-
-    els.advancedModeToggle.addEventListener('change', async () => {
-      const next = els.advancedModeToggle.checked;
-      if (!next && els.debugModeToggle?.checked) {
-        els.debugModeToggle.checked = false;
-        await chrome.storage.local.set({ [ADVANCED_MODE_KEY]: false, [DEBUG_MODE_KEY]: false });
-        await refreshDebugRuntime();
-      } else {
-        await chrome.storage.local.set({ [ADVANCED_MODE_KEY]: next });
-      }
-      applyAdvancedMode(next);
-    });
   }
 
   function initI18n() {
@@ -1090,6 +1197,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
       const key = el.getAttribute('data-i18n-placeholder');
       el.placeholder = t(key);
+    });
+
+    // Icon-only buttons carry their label in a tooltip as well as in the
+    // visually hidden span, so both have to be translated.
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+      el.title = t(el.getAttribute('data-i18n-title'));
     });
   }
 
@@ -1320,6 +1433,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const data = await chrome.storage.local.get(URL_RULES_KEY);
     const rules = window.PageDyeStorage.normalizeUrlRules(data[URL_RULES_KEY]);
     els.noRulesMsg.classList.toggle('hidden', rules.length > 0);
+    setTabCount('count-rules', rules.length);
 
     rules.forEach((rule, index) => {
       const tr = document.createElement('tr');
@@ -1455,6 +1569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Filter out potential non-domain configuration keys
     const domains = Object.keys(data).filter((key) => window.PageDyeStorage.isSiteSettingsKey(key, data[key]));
+    setTabCount('count-sites', domains.length);
 
     if (domains.length === 0) {
       els.noSitesMsg.classList.remove('hidden');
@@ -1716,6 +1831,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.customEffectsListBody.innerHTML = '';
     const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
     const list = (data[CUSTOM_EFFECTS_KEY] || []).slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    setTabCount('count-effects', list.length);
 
     if (list.length === 0) {
       els.noCustomEffectsMsg.classList.remove('hidden');
@@ -1934,8 +2050,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.PageDyeCustomSandbox.release(iframe);
       iframe.src = 'about:blank';
     }
-    els.sections.forEach((s) => s.classList.remove('active'));
-    document.getElementById('section-custom-effects').classList.add('active');
+    navigateToSection('section-custom-effects');
     loadCustomEffectsList();
   }
 
@@ -2345,8 +2460,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       els.aiApiKeyInput.value = config.apiKey;
       els.aiApiKeyInput.addEventListener('input', () => {
         queueAiConfigSave('apiKey', () => els.aiApiKeyInput.value.trim());
+        updateAiConfigStatus();
       });
     }
+
+    // A key is a long opaque string that is easy to paste one character short
+    // of complete, and a masked field gives no way to notice.
+    if (els.aiApiKeyReveal && els.aiApiKeyInput) {
+      els.aiApiKeyReveal.addEventListener('click', () => {
+        const reveal = els.aiApiKeyInput.type === 'password';
+        els.aiApiKeyInput.type = reveal ? 'text' : 'password';
+        els.aiApiKeyReveal.setAttribute('aria-pressed', String(reveal));
+        els.aiApiKeyReveal.title = t(reveal ? 'aiApiKeyHide' : 'aiApiKeyReveal');
+      });
+    }
+
+    updateAiConfigStatus();
 
     if (els.aiBaseUrlInput) {
       els.aiBaseUrlInput.value = config.baseUrl;
@@ -2380,6 +2509,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         queueAiConfigSave('stylePrompt', () => els.aiStylePromptInput.value.trim().slice(0, AI_STYLE_PROMPT_MAX_CHARS));
       });
     }
+  }
+
+  // Says whether the AI chat can actually run, at the top of the group that
+  // decides it, so the answer is not "open the chat and find out".
+  function updateAiConfigStatus() {
+    if (!els.aiConfigStatus) return;
+    const ready = !!(els.aiApiKeyInput && els.aiApiKeyInput.value.trim());
+    els.aiConfigStatus.textContent = t(ready ? 'aiStatusReady' : 'aiStatusMissing');
+    els.aiConfigStatus.dataset.state = ready ? 'ready' : 'missing';
   }
 
   // --- AI chat --------------------------------------------------------------
@@ -2459,7 +2597,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         await chrome.storage.local.set({ [hostname]: normalized });
         await loadSitesList();
       },
-      openAiSettings: () => navigateToSection('section-ai')
+      // PageDye's own preferences, applied only when the card's button is
+      // pressed. The shared applier re-validates and merges rather than
+      // replacing, so a proposal about the accent leaves the shortcut alone.
+      onApplyPreferences: async (preferences) => {
+        await window.PageDyeAiPreferences.apply(chrome.storage.local, preferences);
+      },
+      openAiSettings: () => {
+        navigateToSection('section-settings');
+        document.getElementById('settings-ai')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        els.aiApiKeyInput?.focus();
+      }
     });
 
     refreshTabs();
@@ -2793,6 +2941,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     updateEditPreview();
+    // Repaint the thumbnails against the form as it now stands. Every path
+    // that swaps which slot is being edited -- the Light/Dark cards, the
+    // slideshow grid, a mode change -- ends here, and each one has just
+    // written the outgoing slot's values into currentEditSettings, which is
+    // exactly what the card beside it is supposed to be showing.
+    updateEditInteractivePreviews();
   }
 
   function collectEditFormTo(dest) {
@@ -3164,25 +3318,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     element.style.opacity = (subSettings.opacity !== undefined ? subSettings.opacity : 100) / 100;
   }
 
+  // The thumbnails render from currentEditSettings, but the one slot the user
+  // is actually editing only receives the form's values in collectEditFormTo()
+  // at save time. Every caller below repaints mid-edit -- picking a color, a
+  // file, an opacity -- so reading the stored slot directly would draw the
+  // state from *before* the current edit, and the card would only catch up
+  // once something else (switching scheme, reopening the editor) forced a
+  // repaint. Overlaying the live form onto a throwaway copy keeps the active
+  // card current without writing to currentEditSettings ahead of the save.
+  function liveEditSubSettings(base) {
+    const draft = Object.assign({}, base || {});
+    collectEditFormTo(draft);
+    return draft;
+  }
+
   function updateEditInteractivePreviews() {
     if (!currentEditSettings) return;
-    
+
     const mode = currentEditSettings.mode || 'single';
     if (mode === 'auto') {
-      updateCardPreview(els.editPreviewCardLight, currentEditSettings.light);
-      updateCardPreview(els.editPreviewCardDark, currentEditSettings.dark);
+      updateCardPreview(els.editPreviewCardLight, editActiveScheme === 'light' ? liveEditSubSettings(currentEditSettings.light) : currentEditSettings.light);
+      updateCardPreview(els.editPreviewCardDark, editActiveScheme === 'dark' ? liveEditSubSettings(currentEditSettings.dark) : currentEditSettings.dark);
     } else if (mode === 'timeRange') {
       const activeCard = els.editTimePeriodsList ? els.editTimePeriodsList.querySelector(`.scheme-card.active .scheme-card-preview`) : null;
       if (activeCard) {
         const item = currentEditSettings.timeRange.items[editActiveTimePeriodIndex];
         if (item) {
-          updateCardPreview(activeCard, item);
+          updateCardPreview(activeCard, liveEditSubSettings(item));
         }
       }
     } else if (mode === 'slideshow') {
       const activeCard = els.editWallpapersGrid.querySelector(`.wallpaper-grid-card.active`);
       if (activeCard) {
-        const item = currentEditSettings.slideshow.items[editActiveSlideshowIndex];
+        const stored = currentEditSettings.slideshow.items[editActiveSlideshowIndex];
+        const item = stored ? liveEditSubSettings(stored) : stored;
         if (item) {
           activeCard.textContent = '';
           activeCard.style.backgroundColor = '';
@@ -3484,8 +3653,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!rule || !(await showConfirm(t('confirmDeleteRule').replace('{pattern}', rule.pattern)))) return;
       await window.PageDyeRulesClient.deleteRule(currentEditingRuleId);
       currentEditingRuleId = null;
-      els.sections.forEach((section) => section.classList.remove('active'));
-      document.getElementById('section-sites').classList.add('active');
+      navigateToSection('section-rules');
       await loadRulesList();
       return;
     }
@@ -4021,8 +4189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.getElementById('edit-back-btn').addEventListener('click', () => {
-    els.sections.forEach(s => s.classList.remove('active'));
-    document.getElementById('section-sites').classList.add('active');
+    navigateToSection(currentEditingRuleId ? 'section-rules' : 'section-sites');
     currentEditingRuleId = null;
     editSiteDomain = '';
     loadRulesList();

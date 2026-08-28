@@ -32,7 +32,7 @@ export function runBackgroundScript(sandbox) {
 
 // Creates an isolated in-memory chrome.storage.local + chrome.tabs/scripting/runtime
 // mock. Each call returns a fresh store so tests don't leak state into each other.
-export function createChromeMock({ initialStorage = {}, tab = { id: 1, url: 'https://example.com/', active: true }, onMessage } = {}) {
+export function createChromeMock({ initialStorage = {}, tab = { id: 1, url: 'https://example.com/', active: true }, onMessage, onStream } = {}) {
   const store = { ...initialStorage };
   const changeListeners = [];
   const calls = { tabsSendMessage: [], scriptingExecuteScript: [], runtimeSendMessage: [] };
@@ -104,6 +104,7 @@ export function createChromeMock({ initialStorage = {}, tab = { id: 1, url: 'htt
       id: 'pagedye-test',
       getManifest: () => ({ version: '0.0.0-test' }),
       onMessage: { addListener() {}, removeListener() {} },
+      onConnect: { addListener() {} },
       async sendMessage(message) {
         calls.runtimeSendMessage.push(message);
         if (onMessage) return onMessage(message);
@@ -124,6 +125,38 @@ export function createChromeMock({ initialStorage = {}, tab = { id: 1, url: 'htt
       }
     }
   };
+
+  // runtime.connect exists only when a test supplies onStream, so every other
+  // test keeps taking the one-shot sendMessage path the chat falls back to.
+  // onStream({ turns, ... }, emit) resolves with the terminal `done` payload.
+  if (onStream) {
+    chrome.runtime.connect = () => {
+      const messageListeners = [];
+      const disconnectListeners = [];
+      let live = true;
+      const port = {
+        onMessage: { addListener: (fn) => messageListeners.push(fn) },
+        onDisconnect: { addListener: (fn) => disconnectListeners.push(fn) },
+        disconnect() {
+          if (!live) return;
+          live = false;
+          for (const fn of disconnectListeners) fn();
+        },
+        postMessage(request) {
+          if (!request || request.action !== 'start') return;
+          const emit = (reply) => {
+            if (live) for (const fn of messageListeners) fn({ type: 'delta', reply });
+          };
+          Promise.resolve(onStream(request, emit)).then((done) => {
+            if (!live) return;
+            for (const fn of messageListeners) fn({ type: 'done', ...done });
+          });
+        }
+      };
+      chrome.runtime.connect.lastPort = port;
+      return port;
+    };
+  }
 
   return { chrome, store, calls, fireChanged };
 }
@@ -173,12 +206,13 @@ function installPolyfills(window, { prefersDark = false } = {}) {
 // Loads an extension page (e.g. 'popup/popup.html') with its real scripts executing
 // against the given chrome mock. Resolves once the window 'load' event fires and a
 // short settle delay has passed (covers the page's own async DOMContentLoaded init).
-export async function loadExtensionPage(relHtmlPath, { chrome, patches = [], settleMs = 250, prefersDark = false } = {}) {
+export async function loadExtensionPage(relHtmlPath, { chrome, patches = [], settleMs = 250, prefersDark = false, hash = '' } = {}) {
   const htmlPath = resolve(root, relHtmlPath);
   const html = readFileSync(htmlPath, 'utf8');
   const errors = [];
   const dom = new JSDOM(html, {
-    url: pathToFileURL(htmlPath).href,
+    // `hash` lets a test exercise the page's own deep-link handling.
+    url: pathToFileURL(htmlPath).href + hash,
     runScripts: 'dangerously',
     resources: new PatchingLoader(patches),
     pretendToBeVisual: true,

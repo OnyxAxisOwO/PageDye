@@ -19,7 +19,7 @@
           <line x1="3" y1="18" x2="21" y2="18"></line>
         </svg>
       </button>
-      <div class="logo-icon"><img src="../icons/icon128.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: block;"></div>
+      <div class="logo-icon"><img src="../icons/icon128.png" alt="Logo"></div>
       <h1 data-i18n="appName">PageDye</h1>
     </div>
 
@@ -29,7 +29,7 @@
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <div class="logo-icon"><img src="../icons/icon128.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: block;"></div>
+        <div class="logo-icon"><img src="../icons/icon128.png" alt="Logo"></div>
         <h1 data-i18n="appName">PageDye</h1>
         <button type="button" id="sidebar-close-btn" class="sidebar-close-btn" aria-label="Close menu">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -39,56 +39,26 @@
         </button>
       </div>
 
+      <!-- Six destinations, each one a task rather than a data type. Anything
+           that configures PageDye itself lives on Settings; anything that
+           configures a website lives on Websites. -->
       <nav class="sidebar-nav">
         <button type="button" class="nav-item active" data-target="section-sites">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="7" height="9"></rect>
-            <rect x="14" y="3" width="7" height="5"></rect>
-            <rect x="14" y="12" width="7" height="9"></rect>
-            <rect x="3" y="16" width="7" height="5"></rect>
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M3 12h18"></path>
+            <path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"></path>
           </svg>
-          <span data-i18n="navSites">Configured Sites</span>
+          <span data-i18n="navSites">Websites</span>
         </button>
         <button type="button" class="nav-item" data-target="section-configs">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="7" height="7" rx="1"></rect>
-            <rect x="14" y="4" width="7" height="7" rx="1"></rect>
-            <rect x="3" y="15" width="7" height="5" rx="1"></rect>
-            <path d="M14 17.5h7M17.5 14v7"></path>
+            <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3z"></path>
+            <path d="m12 12 8-4.5"></path>
+            <path d="M12 12v9"></path>
+            <path d="m12 12-8-4.5"></path>
           </svg>
-          <span data-config-i18n="nav">Presets & Groups</span>
-        </button>
-        <button type="button" class="nav-item" data-target="section-custom-effects" data-advanced-only>
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-          </svg>
-          <span data-i18n="navCustomEffects">Custom Effects</span>
-        </button>
-        <button type="button" class="nav-item" data-target="section-appearance">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="13.5" cy="6.5" r=".5"></circle>
-            <circle cx="17.5" cy="10.5" r=".5"></circle>
-            <circle cx="8.5" cy="7.5" r=".5"></circle>
-            <circle cx="6.5" cy="12.5" r=".5"></circle>
-            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
-          </svg>
-          <span data-i18n="navAppearance">Interface</span>
-        </button>
-        <button type="button" class="nav-item" data-target="section-storage">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <ellipse cx="12" cy="5" rx="8" ry="3"></ellipse>
-            <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path>
-            <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path>
-          </svg>
-          <span data-storage-i18n="nav">Storage</span>
-        </button>
-        <button type="button" class="nav-item" data-target="section-backup">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
-          </svg>
-          <span data-i18n="navBackup">Backup</span>
+          <span data-i18n="navLibrary">Library</span>
         </button>
         <button type="button" class="nav-item" data-target="section-ai-chat">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -97,13 +67,13 @@
           </svg>
           <span data-i18n="navAiChat">AI Chat</span>
         </button>
-        <button type="button" class="nav-item" data-target="section-ai">
+        <button type="button" class="nav-item" data-target="section-storage">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3v4"></path><path d="M12 17v4"></path><path d="M3 12h4"></path><path d="M17 12h4"></path>
-            <path d="M18.4 5.6 15.5 8.5"></path><path d="M8.5 15.5 5.6 18.4"></path>
-            <path d="M18.4 18.4 15.5 15.5"></path><path d="M8.5 8.5 5.6 5.6"></path>
+            <ellipse cx="12" cy="5" rx="8" ry="3"></ellipse>
+            <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path>
+            <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path>
           </svg>
-          <span data-i18n="navAiSettings">AI Settings</span>
+          <span data-i18n="navData">Data</span>
         </button>
         <button type="button" class="nav-item" data-target="section-settings">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -128,23 +98,76 @@
           <span data-i18n="navAbout">About</span>
         </button>
       </nav>
-      
+
       <div class="sidebar-footer">
-        <span id="version" class="version-label">v0.11.3</span>
+        <span id="version" class="version-label">v0.12.0</span>
       </div>
     </aside>
-    
+
     <!-- Main Content Area -->
     <main class="main-content">
-      <!-- Section 1: Configured Sites -->
+      <!-- ==================================================================
+           Websites — everything that targets someone else's page: the saved
+           per-site backgrounds, the per-URL rules that refine them, and the
+           batch tools that act on several sites at once. Three views of one
+           list, so they are tabs rather than three separate destinations.
+           ================================================================== -->
       <section id="section-sites" class="content-section active">
         <div class="section-header">
-          <h2 data-i18n="sitesTitle">Website Backgrounds</h2>
-          <p class="section-subtitle" data-i18n="sitesHint">View and update the backgrounds you have saved.</p>
+          <h2 data-i18n="sitesTitle">Websites</h2>
+          <p class="section-subtitle" data-i18n="sitesHint">Every site you have given a background, the page rules that refine them, and the tools to change many at once.</p>
         </div>
 
-        <div class="advanced-feature-block" data-advanced-only>
-          <div class="subsection-heading advanced-feature-heading">
+        <div class="page-tabs" role="tablist" data-tabs="sites">
+          <button type="button" class="page-tab active" role="tab" data-pane="pane-sites-saved">
+            <span data-i18n="tabSavedSites">Saved sites</span>
+            <span class="page-tab-count" id="count-sites" hidden>0</span>
+          </button>
+          <button type="button" class="page-tab" role="tab" data-pane="pane-sites-rules">
+            <span data-i18n="tabPageRules">Page rules</span>
+            <span class="page-tab-count" id="count-rules" hidden>0</span>
+          </button>
+          <button type="button" class="page-tab" role="tab" data-pane="pane-sites-groups">
+            <span data-i18n="tabGroupsBatch">Groups &amp; batch</span>
+          </button>
+        </div>
+
+        <div class="tab-pane active" id="pane-sites-saved" role="tabpanel">
+          <div class="card search-card">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="search-input" placeholder="Search domains..." data-i18n-placeholder="searchPlaceholder">
+          </div>
+
+          <div class="card table-card">
+            <div class="table-responsive">
+              <table class="sites-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="thDomain">Domain</th>
+                    <th data-i18n="thBgType">Background Type</th>
+                    <th data-i18n="thPreview">Preview</th>
+                    <th data-i18n="thActions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="sites-list-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+            <div id="no-sites-msg" class="no-data hidden">
+              <svg class="no-data-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
+              <p data-i18n="noSites">No websites configured yet.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-pane" id="pane-sites-rules" role="tabpanel">
+          <div class="pane-intro">
             <div>
               <h3 data-i18n="urlRulesTitle">Page Rules</h3>
               <p data-i18n="urlRulesHint">Use different backgrounds on specific pages, or leave a page unchanged.</p>
@@ -183,7 +206,7 @@
             </div>
           </form>
 
-          <div class="card table-card rules-table-card">
+          <div class="card table-card">
             <div class="table-responsive">
               <table class="sites-table rules-table">
                 <thead>
@@ -204,549 +227,687 @@
           </div>
         </div>
 
-        <div class="subsection-heading">
-          <h3 data-i18n="hostnameFallbacks">Saved Websites</h3>
-          <p data-i18n="hostnameFallbacksHint">Select a website to change its background.</p>
-        </div>
-        
-        <div class="card search-card">
-          <input type="text" id="search-input" placeholder="Search domains..." data-i18n-placeholder="searchPlaceholder">
-        </div>
-        
-        <div class="card table-card">
-          <div class="table-responsive">
-            <table class="sites-table">
-              <thead>
-                <tr>
-                  <th data-i18n="thDomain">Domain</th>
-                  <th data-i18n="thBgType">Background Type</th>
-                  <th data-i18n="thPreview">Preview</th>
-                  <th data-i18n="thActions">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="sites-list-body">
-                <!-- Dynamically populated -->
-              </tbody>
-            </table>
-          </div>
-          <div id="no-sites-msg" class="no-data hidden">
-            <svg class="no-data-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="8" y1="12" x2="16" y2="12"></line>
-            </svg>
-            <p data-i18n="noSites">No websites configured yet.</p>
-          </div>
-        </div>
-      </section>
-
-      <section id="section-configs" class="content-section">
-        <div class="section-header config-section-header">
-          <div>
-            <h2 data-config-i18n="title">Presets & Groups</h2>
-            <p class="section-subtitle" data-config-i18n="subtitle">Reuse complete configurations and manage several sites together.</p>
-          </div>
-          <button type="button" id="config-export-selected" class="btn secondary-btn" disabled data-config-i18n="exportSelected">Export selected</button>
-          <button type="button" id="config-import-open" class="btn secondary-btn" data-config-i18n="importSelected">Import selected</button>
-          <input type="file" id="config-import-file" accept=".json,application/json" hidden>
-        </div>
-
-        <div class="config-subsection-heading">
-          <div>
-            <h3 data-config-i18n="presetsTitle">Saved setups</h3>
-            <p data-config-i18n="presetsHint">A saved setup keeps the complete look of a website so you can reuse it elsewhere.</p>
-          </div>
-        </div>
-
-        <form id="config-save-preset-form" class="card config-inline-form">
-          <label>
-            <span data-config-i18n="presetName">Preset name</span>
-            <input type="text" id="config-preset-name" maxlength="80" required placeholder="My preset" data-config-i18n-placeholder="presetNamePlaceholder">
-          </label>
-          <label>
-            <span data-config-i18n="presetSource">Copy from site</span>
-            <select id="config-preset-source"></select>
-          </label>
-          <button type="submit" class="btn primary-btn" data-config-i18n="savePreset">Save preset</button>
-        </form>
-
-        <div id="config-presets-grid" class="config-presets-grid" aria-live="polite"></div>
-
-        <div class="config-subsection-heading config-sites-heading" data-advanced-only>
-          <div>
-            <h3 data-config-i18n="sitesTitle">Site groups and batch actions</h3>
-            <p id="config-selection-summary" data-config-i18n="selectSitesHint">Select sites, then choose one action.</p>
-          </div>
-          <label class="config-group-filter">
-            <span data-config-i18n="showGroup">Show group</span>
-            <select id="config-group-filter"></select>
-          </label>
-        </div>
-
-        <div class="card config-batch-toolbar" data-advanced-only>
-          <div class="config-action-block">
-            <label for="config-apply-preset" data-config-i18n="applyPreset">Apply preset</label>
-            <div class="config-action-row">
-              <select id="config-apply-preset"></select>
-              <button type="button" id="config-apply-btn" class="btn primary-btn" disabled data-config-i18n="apply">Apply</button>
-            </div>
-          </div>
-          <div class="config-action-block">
-            <label for="config-copy-source" data-config-i18n="copyConfig">Copy site configuration</label>
-            <div class="config-action-row">
-              <select id="config-copy-source"></select>
-              <button type="button" id="config-copy-btn" class="btn secondary-btn" disabled data-config-i18n="copyToSelected">Copy to selected</button>
-            </div>
-          </div>
-          <div class="config-action-block">
-            <label for="config-group-select" data-config-i18n="siteGroup">Site group</label>
-            <div class="config-action-row">
-              <select id="config-group-select"></select>
-              <button type="button" id="config-add-group-btn" class="btn secondary-btn" disabled data-config-i18n="addToGroup">Add</button>
-              <button type="button" id="config-remove-group-btn" class="btn secondary-btn" disabled data-config-i18n="removeFromGroup">Remove</button>
-              <button type="button" id="config-delete-group-btn" class="btn secondary-btn" disabled data-config-i18n="deleteGroup">Delete group</button>
-            </div>
-          </div>
-          <form id="config-create-group-form" class="config-action-block">
-            <label for="config-new-group-name" data-config-i18n="newGroup">New group from selected</label>
-            <div class="config-action-row">
-              <input type="text" id="config-new-group-name" maxlength="80" required data-config-i18n-placeholder="groupNamePlaceholder" placeholder="Work">
-              <button type="submit" class="btn secondary-btn" disabled data-config-i18n="createGroup">Create</button>
-            </div>
-          </form>
-        </div>
-
-        <div class="card table-card config-sites-card" data-advanced-only>
-          <div class="table-responsive">
-            <table class="sites-table config-sites-table">
-              <thead>
-                <tr>
-                  <th class="config-check-cell"><input type="checkbox" id="config-select-all" aria-label="Select all sites"></th>
-                  <th data-config-i18n="domain">Domain</th>
-                  <th data-config-i18n="groups">Groups</th>
-                  <th data-config-i18n="configuration">Configuration</th>
-                </tr>
-              </thead>
-              <tbody id="config-sites-body"></tbody>
-            </table>
-          </div>
-          <div id="config-sites-empty" class="no-data hidden"><p data-config-i18n="noSites">No configured sites.</p></div>
-        </div>
-
-        <div id="config-import-panel" class="card config-import-panel hidden">
-          <div class="config-import-header">
+        <div class="tab-pane" id="pane-sites-groups" role="tabpanel">
+          <div class="pane-intro">
             <div>
-              <h3 data-config-i18n="chooseImportSites">Choose sites to import</h3>
-              <p id="config-import-file-name"></p>
+              <h3 data-config-i18n="sitesTitle">Manage several websites</h3>
+              <p id="config-selection-summary" data-config-i18n="selectSitesHint">Select sites, then choose one action.</p>
             </div>
-            <button type="button" id="config-import-cancel" class="btn secondary-btn" data-config-i18n="cancel">Cancel</button>
+            <div class="pane-intro-actions">
+              <button type="button" id="config-export-selected" class="btn secondary-btn" disabled data-config-i18n="exportSelected">Export selected</button>
+              <button type="button" id="config-import-open" class="btn secondary-btn" data-config-i18n="importSelected">Import selected</button>
+              <input type="file" id="config-import-file" accept=".json,application/json" hidden>
+            </div>
           </div>
-          <div id="config-import-list" class="config-import-list"></div>
-          <button type="button" id="config-import-confirm" class="btn primary-btn" disabled data-config-i18n="importChosen">Import chosen sites</button>
+
+          <div class="card config-batch-toolbar">
+            <div class="config-action-block">
+              <label for="config-group-filter" data-config-i18n="showGroup">Show group</label>
+              <div class="config-action-row">
+                <select id="config-group-filter"></select>
+              </div>
+            </div>
+            <div class="config-action-block">
+              <label for="config-apply-preset" data-config-i18n="applyPreset">Apply preset</label>
+              <div class="config-action-row">
+                <select id="config-apply-preset"></select>
+                <button type="button" id="config-apply-btn" class="btn primary-btn" disabled data-config-i18n="apply">Apply</button>
+              </div>
+            </div>
+            <div class="config-action-block">
+              <label for="config-copy-source" data-config-i18n="copyConfig">Copy site configuration</label>
+              <div class="config-action-row">
+                <select id="config-copy-source"></select>
+                <button type="button" id="config-copy-btn" class="btn secondary-btn" disabled data-config-i18n="copyToSelected">Copy to selected</button>
+              </div>
+            </div>
+            <div class="config-action-block">
+              <label for="config-group-select" data-config-i18n="siteGroup">Site group</label>
+              <div class="config-action-row">
+                <select id="config-group-select"></select>
+                <button type="button" id="config-add-group-btn" class="btn secondary-btn" disabled data-config-i18n="addToGroup">Add</button>
+                <button type="button" id="config-remove-group-btn" class="btn secondary-btn" disabled data-config-i18n="removeFromGroup">Remove</button>
+                <button type="button" id="config-delete-group-btn" class="btn secondary-btn" disabled data-config-i18n="deleteGroup">Delete group</button>
+              </div>
+            </div>
+            <form id="config-create-group-form" class="config-action-block">
+              <label for="config-new-group-name" data-config-i18n="newGroup">New group from selected</label>
+              <div class="config-action-row">
+                <input type="text" id="config-new-group-name" maxlength="80" required data-config-i18n-placeholder="groupNamePlaceholder" placeholder="Work">
+                <button type="submit" class="btn secondary-btn" disabled data-config-i18n="createGroup">Create</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card table-card">
+            <div class="table-responsive">
+              <table class="sites-table config-sites-table">
+                <thead>
+                  <tr>
+                    <th class="config-check-cell"><input type="checkbox" id="config-select-all" aria-label="Select all sites"></th>
+                    <th data-config-i18n="domain">Domain</th>
+                    <th data-config-i18n="groups">Groups</th>
+                    <th data-config-i18n="configuration">Configuration</th>
+                  </tr>
+                </thead>
+                <tbody id="config-sites-body"></tbody>
+              </table>
+            </div>
+            <div id="config-sites-empty" class="no-data hidden"><p data-config-i18n="noSites">No configured sites.</p></div>
+          </div>
+
+          <div id="config-import-panel" class="card config-import-panel hidden">
+            <div class="config-import-header">
+              <div>
+                <h3 data-config-i18n="chooseImportSites">Choose sites to import</h3>
+                <p id="config-import-file-name"></p>
+              </div>
+              <button type="button" id="config-import-cancel" class="btn secondary-btn" data-config-i18n="cancel">Cancel</button>
+            </div>
+            <div id="config-import-list" class="config-import-list"></div>
+            <button type="button" id="config-import-confirm" class="btn primary-btn" disabled data-config-i18n="importChosen">Import chosen sites</button>
+          </div>
         </div>
       </section>
 
-      <!-- Section 1.2: Custom Effects -->
-      <section id="section-custom-effects" class="content-section">
+      <!-- ==================================================================
+           Library — the reusable material. A preset is a whole saved look; a
+           custom effect is a wallpaper you wrote yourself. Neither belongs to
+           one site, which is exactly what separates them from Websites.
+           ================================================================== -->
+      <section id="section-configs" class="content-section">
         <div class="section-header">
-          <h2 data-i18n="customEffectsTitle">Custom Effects</h2>
-          <p class="section-subtitle" data-i18n="customEffectsHint">Write your own animated Canvas wallpaper and use it on any site, just like the built-in effects. Extension only — not available in PageDye Lite or the site widget.</p>
+          <h2 data-i18n="libraryTitle">Library</h2>
+          <p class="section-subtitle" data-i18n="libraryHint">Looks you can reuse anywhere: complete saved setups, and animated wallpapers you write yourself.</p>
         </div>
 
-        <div class="card custom-effects-toolbar">
-          <button type="button" id="new-custom-effect-btn" class="btn primary-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            <span data-i18n="newCustomEffect">New Custom Effect</span>
+        <div class="page-tabs" role="tablist" data-tabs="library">
+          <button type="button" class="page-tab active" role="tab" data-pane="pane-library-presets">
+            <span data-i18n="tabPresets">Presets</span>
           </button>
-          <button type="button" id="import-custom-effect-btn" class="btn secondary-btn" data-i18n="importEffectBtn">Import</button>
-          <input type="file" id="import-effect-file" accept="application/json" hidden>
+          <button type="button" class="page-tab" role="tab" data-pane="pane-library-effects">
+            <span data-i18n="customEffectsTitle">Custom Effects</span>
+            <span class="page-tab-count" id="count-effects" hidden>0</span>
+          </button>
         </div>
 
-        <div class="card table-card">
-          <div class="table-responsive">
-            <table class="effects-table">
-              <thead>
-                <tr>
-                  <th data-i18n="thEffectName">Name</th>
-                  <th data-i18n="thEffectUpdated">Updated</th>
-                  <th data-i18n="thActions">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="custom-effects-list-body">
-                <!-- Dynamically populated -->
-              </tbody>
-            </table>
-          </div>
-          <div id="no-custom-effects-msg" class="no-data hidden">
-            <svg class="no-data-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-            </svg>
-            <p data-i18n="noCustomEffects">No custom effects yet.</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- Section 1.5: Appearance -->
-      <section id="section-appearance" class="content-section">
-        <div class="section-header">
-          <h2 data-i18n="appearanceTitle">Appearance</h2>
-          <p class="section-subtitle" data-i18n="appearanceHint">Customize the colors and background images of this dashboard itself (not your websites' backgrounds).</p>
-        </div>
-
-        <div class="card">
-          <div class="control-group">
-            <label data-i18n="uiThemeColor">Interface Theme Color</label>
-            <p class="hint" data-i18n="uiThemeColorHint">Changes PageDye popup and settings colors only. Websites stay unchanged.</p>
-            <div class="theme-color-grid" id="ui-theme-color-grid">
-              <button type="button" class="theme-color-dot" data-theme-accent="neutral" style="background-color: #18181b;" title="Black & White"></button>
-              <button type="button" class="theme-color-dot" data-theme-accent="red" style="background-color: #BA1A1A;" title="Red"></button>
-              <button type="button" class="theme-color-dot" data-theme-accent="pink" style="background-color: #B3266E;" title="Pink"></button>
-              <button type="button" class="theme-color-dot" data-theme-accent="purple" style="background-color: #6750A4;" title="Purple"></button>
-              <button type="button" class="theme-color-dot" data-theme-accent="indigo" style="background-color: #445E91;" title="Indigo"></button>
-              <button type="button" class="theme-color-dot" data-theme-accent="blue" style="background-color: #0061A4;" title="Blue"></button>
-              <button type="button" class="theme-color-dot" data-theme-accent="cyan" style="background-color: #006874;" title="Cyan"></button>
-              <button type="button" class="theme-color-dot" data-theme-accent="teal" style="background-color: #006A6A;" title="Teal"></button>
-              <button type="button" class="theme-color-dot" data-theme-accent="green" style="background-color: #386A20;" title="Green"></button>
-              <button type="button" class="theme-color-dot" data-theme-accent="orange" style="background-color: #8B5000;" title="Orange"></button>
-            </div>
-            <div class="color-input-wrapper theme-custom-color-row">
-              <input type="color" id="ui-theme-custom-color" value="#18181b">
-              <input type="text" id="ui-theme-custom-color-text" value="#18181b" aria-label="Custom interface theme color">
+        <div class="tab-pane active" id="pane-library-presets" role="tabpanel">
+          <div class="pane-intro">
+            <div>
+              <h3 data-config-i18n="presetsTitle">Saved setups</h3>
+              <p data-config-i18n="presetsHint">A saved setup keeps the complete look of a website so you can reuse it elsewhere.</p>
             </div>
           </div>
 
-          <div class="control-group" data-advanced-only>
-            <label data-i18n="pageBackground">Page Background</label>
-            <p class="hint" data-i18n="pageBackgroundHint">The outer area surrounding the dashboard panel.</p>
-            <div class="file-drop-area" id="theme-page-bg-drop">
-              <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px; margin-bottom: 8px; color: var(--text-secondary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <p style="margin: 0; font-size: 13px;"><span data-i18n="dragOrClick">Drag image here, or</span> <span class="upload-link" data-i18n="chooseFile" style="color: var(--primary-color); text-decoration: underline; font-weight: 500;">choose file</span></p>
-              <input type="file" id="theme-page-bg-file" accept="image/*" hidden>
-            </div>
-            <div id="theme-page-bg-file-info" class="file-info-badge hidden" style="margin-top: 8px;">
-              <div class="file-info-content">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; color: var(--text-secondary);"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                <span class="filename" id="theme-page-bg-filename" style="font-size: 12px; font-weight: 500;"></span>
-              </div>
-              <button type="button" id="theme-page-bg-remove" class="remove-file-btn" title="Clear Image">×</button>
-            </div>
-          </div>
-
-          <div class="control-group" style="margin-bottom: 0;" data-advanced-only>
-            <label data-i18n="containerBackground">Container Background</label>
-            <p class="hint" data-i18n="containerBackgroundHint">The sidebar and main panel background.</p>
-            <div class="file-drop-area" id="theme-container-bg-drop">
-              <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px; margin-bottom: 8px; color: var(--text-secondary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <p style="margin: 0; font-size: 13px;"><span data-i18n="dragOrClick">Drag image here, or</span> <span class="upload-link" data-i18n="chooseFile" style="color: var(--primary-color); text-decoration: underline; font-weight: 500;">choose file</span></p>
-              <input type="file" id="theme-container-bg-file" accept="image/*" hidden>
-            </div>
-            <div id="theme-container-bg-file-info" class="file-info-badge hidden" style="margin-top: 8px;">
-              <div class="file-info-content">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; color: var(--text-secondary);"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                <span class="filename" id="theme-container-bg-filename" style="font-size: 12px; font-weight: 500;"></span>
-              </div>
-              <button type="button" id="theme-container-bg-remove" class="remove-file-btn" title="Clear Image">×</button>
-            </div>
-          </div>
-        </div>
-        <div class="card" data-advanced-only>
-          <div class="control-group" style="margin-bottom: 0;">
-            <label class="checkbox-label">
-              <input type="checkbox" id="theme-disable-animation">
-              <span data-i18n="disableThemeAnimation">Disable dashboard animations</span>
+          <form id="config-save-preset-form" class="card config-inline-form">
+            <label>
+              <span data-config-i18n="presetName">Preset name</span>
+              <input type="text" id="config-preset-name" maxlength="80" required placeholder="My preset" data-config-i18n-placeholder="presetNamePlaceholder">
             </label>
-            <p class="hint" data-i18n="disableThemeAnimationHint">Turns off transitions, fade-ins, and animations in the extension panel/popup interface.</p>
-          </div>
+            <label>
+              <span data-config-i18n="presetSource">Copy from site</span>
+              <select id="config-preset-source"></select>
+            </label>
+            <button type="submit" class="btn primary-btn" data-config-i18n="savePreset">Save preset</button>
+          </form>
+
+          <div id="config-presets-grid" class="config-presets-grid" aria-live="polite"></div>
         </div>
 
-        <div class="card">
-          <div class="control-group" style="margin-bottom: 0;">
-            <label for="pause-shortcut-input" data-i18n="pauseShortcut">Temporary Pause Shortcut</label>
-            <p class="hint" data-i18n="pauseShortcutHint">Click the field, then press a key combination. It pauses or restores PageDye only in the current tab.</p>
-            <div class="shortcut-row">
-              <input id="pause-shortcut-input" type="text" readonly aria-describedby="pause-shortcut-hint">
-              <button type="button" id="pause-shortcut-reset" class="btn secondary-btn" data-i18n="pauseShortcutReset">Reset</button>
+        <div class="tab-pane" id="pane-library-effects" role="tabpanel">
+          <div class="pane-intro">
+            <div>
+              <h3 data-i18n="customEffectsTitle">Custom Effects</h3>
+              <p data-i18n="customEffectsHint">Write your own animated Canvas wallpaper and use it on any site, just like the built-in effects. Extension only — not available in PageDye Lite or the site widget.</p>
             </div>
-            <p class="hint" id="pause-shortcut-hint" style="margin-bottom: 0;" data-i18n="pauseShortcutRequirement">Use at least one modifier key (Ctrl, Alt, Shift, or ⌘).</p>
+            <div class="pane-intro-actions">
+              <button type="button" id="new-custom-effect-btn" class="btn primary-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span data-i18n="newCustomEffect">New Custom Effect</span>
+              </button>
+              <button type="button" id="import-custom-effect-btn" class="btn secondary-btn" data-i18n="importEffectBtn">Import</button>
+              <input type="file" id="import-effect-file" accept="application/json" hidden>
+            </div>
+          </div>
+
+          <div class="card table-card">
+            <div class="table-responsive">
+              <table class="effects-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="thEffectName">Name</th>
+                    <th data-i18n="thEffectUpdated">Updated</th>
+                    <th data-i18n="thActions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="custom-effects-list-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+            <div id="no-custom-effects-msg" class="no-data hidden">
+              <svg class="no-data-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+              <p data-i18n="noCustomEffects">No custom effects yet.</p>
+            </div>
           </div>
         </div>
-
-        <button type="button" id="theme-reset-btn" class="btn secondary-btn" style="width: auto;" data-i18n="appearanceReset">Reset to Default</button>
       </section>
 
+      <!-- ==================================================================
+           AI chat. The transcript is the feature, so the page gives it the
+           whole width: which tab to design for is one bar above it, and the
+           provider/key form lives on Settings with every other preference.
+           ================================================================== -->
+      <!-- The one destination that is not a settings page: switching to it
+           hands the whole area to the conversation. What would have been a
+           page header and a row of controls is a slim bar — the page being
+           designed for on the left, everything else behind the menu. -->
+      <section id="section-ai-chat" class="content-section">
+        <h2 class="sr-only" data-i18n="aiChatTitle">AI Chat</h2>
+
+        <div class="ai-workspace">
+          <div class="ai-topbar">
+            <!-- Unlike the popup, this page has no page of its own to read, so
+                 the tab to design for is picked explicitly. -->
+            <label class="sr-only" for="ai-chat-tab-select" data-i18n="aiChatTarget">Page to design for</label>
+            <select id="ai-chat-tab-select" class="ai-target-select"></select>
+
+            <div class="ai-menu">
+              <button type="button" id="ai-menu-toggle" class="icon-btn ai-menu-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="ai-menu-panel" data-i18n-title="aiMenu" title="More">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="5" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="12" cy="19" r="1.4"></circle>
+                </svg>
+                <span class="sr-only" data-i18n="aiMenu">More</span>
+              </button>
+              <div class="ai-menu-panel" id="ai-menu-panel" role="menu" hidden>
+                <button type="button" id="ai-chat-tab-refresh" class="ai-menu-item" role="menuitem">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 11a8 8 0 1 0-2.3 5.7"></path>
+                    <path d="M20 4v7h-7"></path>
+                  </svg>
+                  <span data-i18n="aiChatRefreshTabs">Refresh</span>
+                </button>
+                <button type="button" class="ai-menu-item" role="menuitem" data-nav-target="section-settings" data-nav-focus="ai-api-key-input">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4 21v-7"></path><path d="M4 10V3"></path><path d="M12 21v-9"></path><path d="M12 8V3"></path>
+                    <path d="M20 21v-5"></path><path d="M20 12V3"></path><path d="M1 14h6"></path><path d="M9 8h6"></path><path d="M17 16h6"></path>
+                  </svg>
+                  <span data-i18n="aiSettingsTitle">AI settings</span>
+                </button>
+                <!-- The reassurance the removed paragraph used to carry: still
+                     one click away rather than permanently taking two lines. -->
+                <p class="ai-menu-note" data-i18n="aiChatTargetHint">Pick one of your open tabs. PageDye reads its colours and layout — never its text — each time you send a message.</p>
+              </div>
+            </div>
+          </div>
+
+          <div id="ai-chat-root"></div>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           Data — one destination for everything about the bytes PageDye keeps
+           in this browser: making a copy of them, and reclaiming the space
+           they take. Backup came first because it is the one people came for.
+           ================================================================== -->
       <section id="section-storage" class="content-section">
-        <div class="section-header storage-section-header">
-          <div>
-            <h2 data-storage-i18n="title">Storage Space</h2>
-            <p class="section-subtitle" data-storage-i18n="subtitle">See how much space PageDye uses and safely remove images you no longer need.</p>
-          </div>
-          <button type="button" id="storage-refresh-btn" class="btn secondary-btn storage-refresh-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M20 11a8 8 0 1 0-2.3 5.7"></path>
-              <path d="M20 4v7h-7"></path>
-            </svg>
-            <span data-storage-i18n="refresh">Refresh</span>
+        <div class="section-header">
+          <h2 data-i18n="dataTitle">Data</h2>
+          <p class="section-subtitle" data-i18n="dataHint">Keep a copy of everything PageDye has saved, or clear out what it no longer needs.</p>
+        </div>
+
+        <div class="page-tabs" role="tablist" data-tabs="data">
+          <button type="button" class="page-tab active" role="tab" data-pane="pane-data-backup">
+            <span data-i18n="navBackup">Backup</span>
+          </button>
+          <button type="button" class="page-tab" role="tab" data-pane="pane-data-storage">
+            <span data-storage-i18n="title">Storage space</span>
           </button>
         </div>
 
-        <div class="storage-overview" aria-live="polite">
-          <article class="storage-metric-card">
-            <span data-storage-i18n="currentUsage">Current usage</span>
-            <strong id="storage-total-value">0 B</strong>
-            <small id="storage-quota-text" data-storage-i18n="calculating">Calculating...</small>
-          </article>
-          <article class="storage-metric-card">
-            <span data-storage-i18n="localImages">Local images</span>
-            <strong id="storage-images-value">0 B</strong>
-            <small id="storage-images-detail">0</small>
-          </article>
-          <article class="storage-metric-card">
-            <span data-storage-i18n="reclaimable">Immediately reclaimable</span>
-            <strong id="storage-reclaimable-value">0 B</strong>
-            <small id="storage-reclaimable-detail">0</small>
-          </article>
-          <article class="storage-metric-card" data-advanced-only>
-            <span data-storage-i18n="uniqueImages">Unique images</span>
-            <strong id="storage-unique-value">0</strong>
-            <small id="storage-duplicates-detail">0</small>
-          </article>
-        </div>
+        <div class="tab-pane active" id="pane-data-backup" role="tabpanel">
+          <div class="grid-cards">
+            <div class="action-card">
+              <div class="action-card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+              </div>
+              <h3 data-i18n="exportCardTitle">Download a backup</h3>
+              <p data-i18n="exportCardText">Keep a copy of your saved website backgrounds and local images.</p>
+              <div id="backup-size-estimate" class="backup-size-estimate" data-storage-i18n="backupCalculating">Calculating backup size...</div>
+              <button type="button" id="export-btn" class="btn primary-btn" data-i18n="exportBtn">Download Backup</button>
+            </div>
 
-        <div class="storage-quota" id="storage-quota" hidden data-advanced-only>
-          <div class="storage-quota-track"><span id="storage-quota-bar"></span></div>
-        </div>
-
-        <div class="storage-cleanup-panel">
-          <div>
-            <h3 data-storage-i18n="cleanupTitle">Free up space</h3>
-            <p data-storage-i18n="cleanupHint">Remove images that are no longer used by any saved background. Images in use stay untouched.</p>
+            <div class="action-card">
+              <div class="action-card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </div>
+              <h3 data-i18n="importCardTitle">Restore a backup</h3>
+              <p data-i18n="importCardText">Choose a PageDye backup file you saved earlier.</p>
+              <button type="button" id="import-btn" class="btn secondary-btn" data-i18n="importBtn">Choose Backup File</button>
+              <input type="file" id="import-file" accept=".json" hidden>
+            </div>
           </div>
-          <button type="button" id="storage-delete-unused-btn" class="btn primary-btn" data-storage-i18n="deleteUnused">Clean up unused images</button>
-        </div>
-        <div id="storage-operation-status" class="storage-operation-status hidden" role="status"></div>
 
-        <div class="subsection-heading storage-details-heading" data-advanced-only>
-          <h3 data-storage-i18n="detailsTitle">Detailed image tools</h3>
-          <p data-storage-i18n="detailsHint">Review individual images, find extra copies, or reduce image file sizes.</p>
-        </div>
-        <div class="storage-tools" aria-label="Storage tools" data-advanced-only>
-          <div class="storage-tool-selects">
-            <label>
-              <span data-storage-i18n="sortBy">Sort images</span>
-              <select id="storage-sort-select">
-                <option value="size-desc" data-storage-i18n="sortLargest">Largest first</option>
-                <option value="size-asc" data-storage-i18n="sortSmallest">Smallest first</option>
-                <option value="source" data-storage-i18n="sortSource">Source</option>
-              </select>
-            </label>
-            <label>
-              <span data-storage-i18n="show">Show</span>
-              <select id="storage-filter-select">
-                <option value="all" data-storage-i18n="filterAll">All images</option>
-                <option value="duplicates" data-storage-i18n="filterDuplicates">Duplicates</option>
-                <option value="unused" data-storage-i18n="filterUnused">Unused</option>
-              </select>
-            </label>
-            <label>
-              <span data-storage-i18n="compressionQuality">Compression</span>
-              <select id="storage-quality-select">
-                <option value="0.84" data-storage-i18n="qualityHigh">High quality</option>
-                <option value="0.72" selected data-storage-i18n="qualityBalanced">Balanced</option>
-                <option value="0.60" data-storage-i18n="qualitySmall">Smaller files</option>
-              </select>
-            </label>
-          </div>
-          <div class="storage-tool-actions">
-            <button type="button" id="storage-find-duplicates-btn" class="btn secondary-btn" data-storage-i18n="findDuplicates">Find duplicates</button>
-            <button type="button" id="storage-recompress-btn" class="btn primary-btn" data-storage-i18n="recompress">Recompress images</button>
+          <div class="card danger-card">
+            <div class="danger-header">
+              <h3 data-i18n="dangerZoneTitle">Clear all local data</h3>
+              <p data-i18n="dangerZoneText">This permanently removes every PageDye setting, saved image, and local preference from this browser.</p>
+            </div>
+            <div class="danger-body">
+              <button type="button" id="clear-all-btn" class="btn danger-btn" data-i18n="clearAllBtn">Clear All Local Data</button>
+            </div>
           </div>
         </div>
 
-        <div class="card table-card storage-images-card" data-advanced-only>
-          <div class="table-responsive">
-            <table class="storage-table">
-              <thead>
-                <tr>
-                  <th data-storage-i18n="preview">Preview</th>
-                  <th data-storage-i18n="source">Site / source</th>
-                  <th data-storage-i18n="status">Status</th>
-                  <th data-storage-i18n="imageSize">Image size</th>
-                </tr>
-              </thead>
-              <tbody id="storage-images-body"></tbody>
-            </table>
+        <div class="tab-pane" id="pane-data-storage" role="tabpanel">
+          <div class="pane-intro">
+            <div>
+              <h3 data-storage-i18n="title">Storage space</h3>
+              <p data-storage-i18n="subtitle">See how much space PageDye uses and safely remove images you no longer need.</p>
+            </div>
+            <button type="button" id="storage-refresh-btn" class="btn secondary-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M20 11a8 8 0 1 0-2.3 5.7"></path>
+                <path d="M20 4v7h-7"></path>
+              </svg>
+              <span data-storage-i18n="refresh">Refresh</span>
+            </button>
           </div>
-          <div id="storage-images-empty" class="no-data hidden"><p data-storage-i18n="noImages">No matching local images.</p></div>
-          <p id="storage-list-summary" class="storage-list-summary"></p>
-        </div>
 
-        <div class="subsection-heading storage-source-heading" data-advanced-only>
-          <h3 data-storage-i18n="sourceUsage">Usage by site and source</h3>
-          <p data-storage-i18n="sourceUsageHint">Includes configuration data and embedded image strings. Rule and preset rows are shown separately.</p>
-        </div>
-        <div class="card table-card" data-advanced-only>
-          <div class="table-responsive">
-            <table class="storage-table">
-              <thead>
-                <tr>
-                  <th data-storage-i18n="source">Site / source</th>
-                  <th data-storage-i18n="sourceType">Type</th>
-                  <th data-storage-i18n="images">Images</th>
-                  <th data-storage-i18n="totalSize">Total size</th>
-                </tr>
-              </thead>
-              <tbody id="storage-sources-body"></tbody>
-            </table>
+          <div class="storage-overview" aria-live="polite">
+            <article class="storage-metric-card">
+              <span data-storage-i18n="currentUsage">Current usage</span>
+              <strong id="storage-total-value">0 B</strong>
+              <small id="storage-quota-text" data-storage-i18n="calculating">Calculating...</small>
+            </article>
+            <article class="storage-metric-card">
+              <span data-storage-i18n="localImages">Local images</span>
+              <strong id="storage-images-value">0 B</strong>
+              <small id="storage-images-detail">0</small>
+            </article>
+            <article class="storage-metric-card">
+              <span data-storage-i18n="reclaimable">Immediately reclaimable</span>
+              <strong id="storage-reclaimable-value">0 B</strong>
+              <small id="storage-reclaimable-detail">0</small>
+            </article>
+            <article class="storage-metric-card">
+              <span data-storage-i18n="uniqueImages">Unique images</span>
+              <strong id="storage-unique-value">0</strong>
+              <small id="storage-duplicates-detail">0</small>
+            </article>
+          </div>
+
+          <div class="storage-quota" id="storage-quota" hidden>
+            <div class="storage-quota-track"><span id="storage-quota-bar"></span></div>
+          </div>
+
+          <div class="card storage-cleanup-panel">
+            <div>
+              <h3 data-storage-i18n="cleanupTitle">Free up space</h3>
+              <p data-storage-i18n="cleanupHint">Remove images that are no longer used by any saved background. Images in use stay untouched.</p>
+            </div>
+            <button type="button" id="storage-delete-unused-btn" class="btn primary-btn" data-storage-i18n="deleteUnused">Clean up unused images</button>
+          </div>
+          <div id="storage-operation-status" class="storage-operation-status hidden" role="status"></div>
+
+          <div class="pane-intro">
+            <div>
+              <h3 data-storage-i18n="detailsTitle">Detailed image tools</h3>
+              <p data-storage-i18n="detailsHint">Review individual images, find extra copies, or reduce image file sizes.</p>
+            </div>
+          </div>
+
+          <div class="card storage-tools" aria-label="Storage tools">
+            <div class="storage-tool-selects">
+              <label>
+                <span data-storage-i18n="sortBy">Sort images</span>
+                <select id="storage-sort-select">
+                  <option value="size-desc" data-storage-i18n="sortLargest">Largest first</option>
+                  <option value="size-asc" data-storage-i18n="sortSmallest">Smallest first</option>
+                  <option value="source" data-storage-i18n="sortSource">Source</option>
+                </select>
+              </label>
+              <label>
+                <span data-storage-i18n="show">Show</span>
+                <select id="storage-filter-select">
+                  <option value="all" data-storage-i18n="filterAll">All images</option>
+                  <option value="duplicates" data-storage-i18n="filterDuplicates">Duplicates</option>
+                  <option value="unused" data-storage-i18n="filterUnused">Unused</option>
+                </select>
+              </label>
+              <label>
+                <span data-storage-i18n="compressionQuality">Compression</span>
+                <select id="storage-quality-select">
+                  <option value="0.84" data-storage-i18n="qualityHigh">High quality</option>
+                  <option value="0.72" selected data-storage-i18n="qualityBalanced">Balanced</option>
+                  <option value="0.60" data-storage-i18n="qualitySmall">Smaller files</option>
+                </select>
+              </label>
+            </div>
+            <div class="storage-tool-actions">
+              <button type="button" id="storage-find-duplicates-btn" class="btn secondary-btn" data-storage-i18n="findDuplicates">Find duplicates</button>
+              <button type="button" id="storage-recompress-btn" class="btn primary-btn" data-storage-i18n="recompress">Recompress images</button>
+            </div>
+          </div>
+
+          <div class="card table-card storage-images-card">
+            <div class="table-responsive">
+              <table class="storage-table">
+                <thead>
+                  <tr>
+                    <th data-storage-i18n="preview">Preview</th>
+                    <th data-storage-i18n="source">Site / source</th>
+                    <th data-storage-i18n="status">Status</th>
+                    <th data-storage-i18n="imageSize">Image size</th>
+                  </tr>
+                </thead>
+                <tbody id="storage-images-body"></tbody>
+              </table>
+            </div>
+            <div id="storage-images-empty" class="no-data hidden"><p data-storage-i18n="noImages">No matching local images.</p></div>
+            <p id="storage-list-summary" class="storage-list-summary"></p>
+          </div>
+
+          <div class="pane-intro">
+            <div>
+              <h3 data-storage-i18n="sourceUsage">Usage by site and source</h3>
+              <p data-storage-i18n="sourceUsageHint">Includes configuration data and embedded image strings. Rule and preset rows are shown separately.</p>
+            </div>
+          </div>
+          <div class="card table-card">
+            <div class="table-responsive">
+              <table class="storage-table">
+                <thead>
+                  <tr>
+                    <th data-storage-i18n="source">Site / source</th>
+                    <th data-storage-i18n="sourceType">Type</th>
+                    <th data-storage-i18n="images">Images</th>
+                    <th data-storage-i18n="totalSize">Total size</th>
+                  </tr>
+                </thead>
+                <tbody id="storage-sources-body"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- Section 2: Backup & Restore -->
-      <section id="section-backup" class="content-section">
-        <div class="section-header">
-          <h2 data-i18n="backupTitle">Backup</h2>
-          <p class="section-subtitle" data-i18n="backupHint">Download a copy of your backgrounds and restore it later when needed.</p>
-        </div>
-        
-        <div class="card grid-cards">
-          <div class="action-card">
-            <div class="action-card-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-            </div>
-            <h3 data-i18n="exportCardTitle">Download a backup</h3>
-            <p data-i18n="exportCardText">Keep a copy of your saved website backgrounds and local images.</p>
-            <div id="backup-size-estimate" class="backup-size-estimate" data-storage-i18n="backupCalculating">Calculating backup size...</div>
-            <button type="button" id="export-btn" class="btn primary-btn" data-i18n="exportBtn">Download Backup</button>
-          </div>
-          
-          <div class="action-card">
-            <div class="action-card-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
-            </div>
-            <h3 data-i18n="importCardTitle">Restore a backup</h3>
-            <p data-i18n="importCardText">Choose a PageDye backup file you saved earlier.</p>
-            <button type="button" id="import-btn" class="btn secondary-btn" data-i18n="importBtn">Choose Backup File</button>
-            <input type="file" id="import-file" accept=".json" hidden>
-          </div>
-        </div>
-        
-        <div class="card danger-card">
-          <div class="danger-header">
-            <h3 data-i18n="dangerZoneTitle">Clear all local data</h3>
-            <p data-i18n="dangerZoneText">This permanently removes every PageDye setting, saved image, and local preference from this browser.</p>
-          </div>
-          <div class="danger-body">
-            <button type="button" id="clear-all-btn" class="btn danger-btn" data-i18n="clearAllBtn">Clear All Local Data</button>
-          </div>
-        </div>
-      </section>
-
+      <!-- ==================================================================
+           Settings — every preference that configures PageDye itself, in one
+           place and in one shape. Each group is a card; each preference is a
+           row: what it is on the left, the control that changes it on the
+           right. Nothing here is hidden behind a mode switch.
+           ================================================================== -->
       <section id="section-settings" class="content-section">
         <div class="section-header">
           <h2 data-i18n="settingsTitle">Settings</h2>
-          <p class="section-subtitle" data-i18n="settingsHint">Keep PageDye simple, or reveal tools for complex setups and troubleshooting.</p>
+          <p class="section-subtitle" data-i18n="settingsHint">How PageDye itself looks and behaves. None of this changes your websites' backgrounds.</p>
         </div>
 
-        <div class="settings-group">
-          <div class="settings-panel">
-            <div class="settings-panel-icon" aria-hidden="true">
+        <div class="settings-card" id="settings-appearance">
+          <div class="settings-card-head">
+            <span class="settings-card-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 3v18"></path>
-                <path d="M3 12h18"></path>
-                <circle cx="12" cy="12" r="8"></circle>
+                <circle cx="13.5" cy="6.5" r=".5"></circle><circle cx="17.5" cy="10.5" r=".5"></circle>
+                <circle cx="8.5" cy="7.5" r=".5"></circle><circle cx="6.5" cy="12.5" r=".5"></circle>
+                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
               </svg>
+            </span>
+            <div>
+              <h3 data-i18n="appearanceTitle">Appearance</h3>
+              <p data-i18n="appearanceHint">Choose how PageDye's popup and settings look. Website backgrounds are not affected.</p>
             </div>
-            <div class="settings-panel-copy">
-              <h3 data-i18n="advancedModeTitle">Advanced mode</h3>
-              <p data-i18n="advancedModeHint">Reveals extra tools for complex setups — see what's included below.</p>
-              <strong id="advanced-mode-status" class="advanced-mode-status" aria-live="polite"></strong>
+          </div>
+
+          <div class="settings-row settings-row-stack">
+            <div class="settings-row-main">
+              <span class="settings-row-title" data-i18n="uiThemeColor">Interface theme color</span>
+              <p class="settings-row-desc" data-i18n="uiThemeColorHint">Changes PageDye popup and settings colors only. Websites stay unchanged.</p>
             </div>
-            <label class="mode-toggle" for="advanced-mode-toggle">
-              <input type="checkbox" id="advanced-mode-toggle">
+            <div class="settings-row-control">
+              <div class="theme-color-grid" id="ui-theme-color-grid">
+                <button type="button" class="theme-color-dot" data-theme-accent="neutral" style="background-color: #18181b;" title="Black &amp; White"></button>
+                <button type="button" class="theme-color-dot" data-theme-accent="red" style="background-color: #BA1A1A;" title="Red"></button>
+                <button type="button" class="theme-color-dot" data-theme-accent="pink" style="background-color: #B3266E;" title="Pink"></button>
+                <button type="button" class="theme-color-dot" data-theme-accent="purple" style="background-color: #6750A4;" title="Purple"></button>
+                <button type="button" class="theme-color-dot" data-theme-accent="indigo" style="background-color: #445E91;" title="Indigo"></button>
+                <button type="button" class="theme-color-dot" data-theme-accent="blue" style="background-color: #0061A4;" title="Blue"></button>
+                <button type="button" class="theme-color-dot" data-theme-accent="cyan" style="background-color: #006874;" title="Cyan"></button>
+                <button type="button" class="theme-color-dot" data-theme-accent="teal" style="background-color: #006A6A;" title="Teal"></button>
+                <button type="button" class="theme-color-dot" data-theme-accent="green" style="background-color: #386A20;" title="Green"></button>
+                <button type="button" class="theme-color-dot" data-theme-accent="orange" style="background-color: #8B5000;" title="Orange"></button>
+              </div>
+              <div class="color-input-wrapper theme-custom-color-row">
+                <input type="color" id="ui-theme-custom-color" value="#18181b">
+                <input type="text" id="ui-theme-custom-color-text" value="#18181b" aria-label="Custom interface theme color">
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-row settings-row-stack">
+            <div class="settings-row-main">
+              <span class="settings-row-title" data-i18n="pageBackground">Page background</span>
+              <p class="settings-row-desc" data-i18n="pageBackgroundHint">The outer area surrounding the dashboard panel.</p>
+            </div>
+            <div class="settings-row-control">
+              <div class="file-drop-area" id="theme-page-bg-drop">
+                <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <p><span data-i18n="dragOrClick">Drag image here, or</span> <span class="upload-link" data-i18n="chooseFile">choose file</span></p>
+                <input type="file" id="theme-page-bg-file" accept="image/*" hidden>
+              </div>
+              <div id="theme-page-bg-file-info" class="file-info-badge hidden">
+                <div class="file-info-content">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <span class="filename" id="theme-page-bg-filename"></span>
+                </div>
+                <button type="button" id="theme-page-bg-remove" class="remove-file-btn" title="Clear Image">×</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-row settings-row-stack">
+            <div class="settings-row-main">
+              <span class="settings-row-title" data-i18n="containerBackground">Container background</span>
+              <p class="settings-row-desc" data-i18n="containerBackgroundHint">The sidebar and main panel background.</p>
+            </div>
+            <div class="settings-row-control">
+              <div class="file-drop-area" id="theme-container-bg-drop">
+                <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <p><span data-i18n="dragOrClick">Drag image here, or</span> <span class="upload-link" data-i18n="chooseFile">choose file</span></p>
+                <input type="file" id="theme-container-bg-file" accept="image/*" hidden>
+              </div>
+              <div id="theme-container-bg-file-info" class="file-info-badge hidden">
+                <div class="file-info-content">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <span class="filename" id="theme-container-bg-filename"></span>
+                </div>
+                <button type="button" id="theme-container-bg-remove" class="remove-file-btn" title="Clear Image">×</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-main">
+              <span class="settings-row-title" data-i18n="disableThemeAnimation">Reduce interface motion</span>
+              <p class="settings-row-desc" data-i18n="disableThemeAnimationHint">Turns off transitions, fade-ins, and animations in the extension panel/popup interface.</p>
+            </div>
+            <label class="mode-toggle" for="theme-disable-animation">
+              <input type="checkbox" id="theme-disable-animation">
               <span class="mode-toggle-track" aria-hidden="true"><span></span></span>
-              <span class="sr-only" data-i18n="advancedModeTitle">Advanced mode</span>
+              <span class="sr-only" data-i18n="disableThemeAnimation">Reduce interface motion</span>
             </label>
           </div>
 
-          <div class="advanced-unlocks">
-            <span class="advanced-unlocks-label" data-i18n="advancedUnlocksTitle">Also unlocks:</span>
-            <ul class="advanced-unlocks-list">
-              <li>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
-                <span data-i18n="unlockPageRules">Page rules for individual URLs</span>
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="7" height="7" rx="1"></rect><rect x="14" y="4" width="7" height="7" rx="1"></rect><rect x="3" y="15" width="7" height="5" rx="1"></rect><path d="M14 17.5h7M17.5 14v7"></path></svg>
-                <span data-i18n="unlockBatchTools">Batch tools and site groups</span>
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                <span data-i18n="unlockCustomEffects">Custom animated effects</span>
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                <span data-i18n="unlockSiteAdvanced">Custom CSS and background selectors per site</span>
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5"></circle><circle cx="17.5" cy="10.5" r=".5"></circle><circle cx="8.5" cy="7.5" r=".5"></circle><circle cx="6.5" cy="12.5" r=".5"></circle><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path></svg>
-                <span data-i18n="unlockAppearanceExtras">Dashboard background images and reduced motion</span>
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path></svg>
-                <span data-i18n="unlockStorageTools">Detailed storage and image tools</span>
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
-                <span data-i18n="unlockDeveloperOptions">Developer options, right below</span>
-              </li>
-            </ul>
+          <div class="settings-card-footer">
+            <button type="button" id="theme-reset-btn" class="btn secondary-btn" data-i18n="appearanceReset">Reset to Default</button>
           </div>
         </div>
 
-        <!-- Developer options: nested here (not a separate nav page) so its
-             relationship to Advanced mode above is explicit — it only shows
-             up once Advanced mode is on, same as everything in the list above. -->
-        <div class="settings-group" data-advanced-only>
-          <div class="subsection-heading">
-            <h3 data-i18n="settingsDevGroupTitle">Developer options</h3>
-            <p data-i18n="settingsDevGroupHint">Extra troubleshooting tools for checking why PageDye may not work as expected on a website.</p>
+        <div class="settings-card" id="settings-shortcut">
+          <div class="settings-card-head">
+            <span class="settings-card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"></path>
+              </svg>
+            </span>
+            <div>
+              <h3 data-i18n="shortcutGroupTitle">Keyboard shortcut</h3>
+              <p data-i18n="shortcutGroupHint">One key combination, for when a background gets in your way on a page you are reading.</p>
+            </div>
           </div>
 
-          <div class="settings-panel">
-            <div class="settings-panel-icon" aria-hidden="true">
+          <div class="settings-row settings-row-stack">
+            <div class="settings-row-main">
+              <span class="settings-row-title" data-i18n="pauseShortcut">Temporary pause shortcut</span>
+              <p class="settings-row-desc" data-i18n="pauseShortcutHint">Click the field, then press a key combination. It pauses or restores PageDye only in the current tab.</p>
+            </div>
+            <div class="settings-row-control">
+              <div class="shortcut-row">
+                <input id="pause-shortcut-input" type="text" readonly aria-describedby="pause-shortcut-hint">
+                <button type="button" id="pause-shortcut-reset" class="btn secondary-btn" data-i18n="pauseShortcutReset">Reset</button>
+              </div>
+              <p class="hint" id="pause-shortcut-hint" data-i18n="pauseShortcutRequirement">Use at least one modifier key (Ctrl, Alt, Shift, or ⌘).</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card" id="settings-ai">
+          <div class="settings-card-head">
+            <span class="settings-card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v4"></path><path d="M12 17v4"></path><path d="M3 12h4"></path><path d="M17 12h4"></path>
+                <path d="M18.4 5.6 15.5 8.5"></path><path d="M8.5 15.5 5.6 18.4"></path>
+                <path d="M18.4 18.4 15.5 15.5"></path><path d="M8.5 8.5 5.6 5.6"></path>
+              </svg>
+            </span>
+            <div>
+              <h3 data-i18n="aiSettingsTitle">AI settings</h3>
+              <p data-i18n="aiSettingsHint">The provider, key and standing preferences the AI chat runs on. Nothing leaves this browser until you fill in a key.</p>
+            </div>
+            <span class="status-pill" id="ai-config-status" data-state="idle" aria-live="polite"></span>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-main">
+              <label class="settings-row-title" for="ai-provider-select" data-i18n="aiProvider">API provider</label>
+              <p class="settings-row-desc" data-i18n="aiProviderHint">Pick "OpenAI Compatible" for any service that exposes a /chat/completions endpoint — DeepSeek, OpenRouter, a local Ollama, and so on.</p>
+            </div>
+            <div class="settings-row-control settings-row-control-field">
+              <select id="ai-provider-select">
+                <option value="anthropic">Anthropic</option>
+                <option value="openai">OpenAI Compatible</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-main">
+              <label class="settings-row-title" for="ai-api-key-input" data-i18n="aiApiKey">API key</label>
+              <p class="settings-row-desc" data-i18n="aiApiKeyHint">The key is stored only in this browser's local extension storage and is never included in exported backups. Generating a theme sends a description of the page's colours and layout — never the page text — to the API endpoint you chose.</p>
+            </div>
+            <div class="settings-row-control settings-row-control-field">
+              <div class="secret-field">
+                <input type="password" id="ai-api-key-input" autocomplete="off" spellcheck="false">
+                <button type="button" id="ai-api-key-reveal" class="icon-btn secret-field-reveal" aria-pressed="false" data-i18n-title="aiApiKeyReveal" title="Show key">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  <span class="sr-only" data-i18n="aiApiKeyReveal">Show key</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-main">
+              <label class="settings-row-title" for="ai-base-url-input" data-i18n="aiBaseUrl">API base URL</label>
+              <p class="settings-row-desc" data-i18n="aiBaseUrlHint">Leave this empty to use the selected provider's default endpoint. Your API key is sent to whatever host you enter here, so only fill in an endpoint you trust.</p>
+            </div>
+            <div class="settings-row-control settings-row-control-field">
+              <input type="url" id="ai-base-url-input" autocomplete="off" spellcheck="false">
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-main">
+              <label class="settings-row-title" for="ai-model-input" data-i18n="aiModel">Model</label>
+              <p class="settings-row-desc" data-i18n="aiModelHint">Type any model id the selected endpoint accepts. With Anthropic, Opus gives the best results and Haiku is the fastest and cheapest.</p>
+            </div>
+            <div class="settings-row-control settings-row-control-field">
+              <!-- Free text rather than a dropdown: with a custom base URL the
+                   set of valid model ids is unknowable, so the datalist below
+                   only offers suggestions, filled in from JS per provider. -->
+              <input type="text" id="ai-model-input" autocomplete="off" spellcheck="false" list="ai-model-suggestions">
+              <datalist id="ai-model-suggestions"></datalist>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-main">
+              <span class="settings-row-title" data-i18n="aiVision">This model can read images</span>
+              <p class="settings-row-desc" data-i18n="aiVisionHint">Turns on the attach button in the AI chat, so you can hand the model a picture to take a palette from — or to use as the wallpaper itself. Leave it off for a text-only model: attaching a picture to one fails the whole message rather than being ignored. Every Anthropic model here can read images; for an OpenAI-compatible endpoint, check your provider's model list. Switching provider resets this to that provider's default.</p>
+            </div>
+            <label class="mode-toggle" for="ai-vision-input">
+              <input type="checkbox" id="ai-vision-input">
+              <span class="mode-toggle-track" aria-hidden="true"><span></span></span>
+              <span class="sr-only" data-i18n="aiVision">This model can read images</span>
+            </label>
+          </div>
+
+          <div class="settings-row settings-row-stack">
+            <div class="settings-row-main">
+              <label class="settings-row-title" for="ai-style-prompt-input" data-i18n="aiStylePrompt">Standing style preference</label>
+              <p class="settings-row-desc" data-i18n="aiStylePromptHint">Optional. Whatever you write here is added to every generation on every site — a palette you like, lower saturation, colour pairings to avoid for colour-vision reasons, or your own house style. It stays in effect until you change it; for a request that applies to one theme only, use the prompt box in the popup when you generate.</p>
+            </div>
+            <div class="settings-row-control">
+              <textarea id="ai-style-prompt-input" rows="3" spellcheck="false" data-i18n-placeholder="aiStylePromptExample"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card" id="settings-developer">
+          <div class="settings-card-head">
+            <span class="settings-card-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
                 <rect x="9" y="9" width="6" height="6"></rect>
-                <line x1="9" y1="1" x2="9" y2="4"></line>
-                <line x1="15" y1="1" x2="15" y2="4"></line>
-                <line x1="9" y1="20" x2="9" y2="23"></line>
-                <line x1="15" y1="20" x2="15" y2="23"></line>
-                <line x1="20" y1="9" x2="23" y2="9"></line>
-                <line x1="20" y1="14" x2="23" y2="14"></line>
-                <line x1="1" y1="9" x2="4" y2="9"></line>
-                <line x1="1" y1="14" x2="4" y2="14"></line>
+                <line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line>
+                <line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line>
+                <line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line>
+                <line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line>
               </svg>
+            </span>
+            <div>
+              <h3 data-i18n="settingsDevGroupTitle">Developer options</h3>
+              <p data-i18n="settingsDevGroupHint">Extra troubleshooting tools for checking why PageDye may not work as expected on a website.</p>
             </div>
-            <div class="settings-panel-copy">
-              <h3 data-i18n="debugEnable">Enable debug mode</h3>
-              <p data-i18n="debugEnableHint">Shows a floating button on every page (bottom-right). Takes effect immediately on already-open tabs, no reload needed.</p>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-main">
+              <span class="settings-row-title" data-i18n="debugEnable">Show diagnostics on websites</span>
+              <p class="settings-row-desc" data-i18n="debugEnableHint">Shows a floating button on every page (bottom-right). Takes effect immediately on already-open tabs, no reload needed.</p>
             </div>
             <label class="mode-toggle" for="debug-mode-toggle">
               <input type="checkbox" id="debug-mode-toggle">
               <span class="mode-toggle-track" aria-hidden="true"><span></span></span>
-              <span class="sr-only" data-i18n="debugEnable">Enable debug mode</span>
+              <span class="sr-only" data-i18n="debugEnable">Show diagnostics on websites</span>
             </label>
           </div>
 
-          <div class="debug-info-card">
-            <h3 data-i18n="debugFeaturesTitle">What's included</h3>
+          <div class="settings-note">
+            <h4 data-i18n="debugFeaturesTitle">What's included</h4>
             <ul class="debug-feature-list">
               <li><strong data-i18n="debugFeatureStateTitle">State</strong> — <span data-i18n="debugFeatureState">Live view of the current site's saved settings (mode, background type, Deep Compatibility Mode, Frosted Glass entries) and the raw JSON.</span></li>
               <li><strong data-i18n="debugFeaturePerfTitle">Performance</strong> — <span data-i18n="debugFeaturePerf">Live FPS, frame time, and JS heap memory (where supported).</span></li>
@@ -757,97 +918,21 @@
         </div>
       </section>
 
-      <!-- AI chat. Its own page rather than a corner of Settings: a
-           conversation needs the room, and the transcript is the feature. -->
-      <section id="section-ai-chat" class="content-section">
-        <div class="section-header">
-          <h2 data-i18n="aiChatTitle">AI Chat</h2>
-          <p class="section-subtitle" data-i18n="aiChatHint">Describe the background you want and refine it by asking for changes. Each conversation is about one page.</p>
-        </div>
-
-        <div class="card">
-          <!-- Unlike the popup, this page has no page of its own to read, so
-               the tab to design for is picked explicitly. -->
-          <div class="control-group ai-chat-target">
-            <label for="ai-chat-tab-select" data-i18n="aiChatTarget">Page to design for</label>
-            <p class="hint" data-i18n="aiChatTargetHint">Pick one of your open tabs. PageDye reads its colours and layout — never its text — each time you send a message.</p>
-            <div class="ai-chat-target-row">
-              <select id="ai-chat-tab-select"></select>
-              <button type="button" id="ai-chat-tab-refresh" class="btn secondary-btn" data-i18n="aiChatRefreshTabs">Refresh</button>
-            </div>
-          </div>
-          <div id="ai-chat-root"></div>
-        </div>
-      </section>
-
-      <section id="section-ai" class="content-section">
-        <div class="section-header">
-          <h2 data-i18n="aiSettingsTitle">AI Settings</h2>
-          <p class="section-subtitle" data-i18n="aiSettingsHint">The provider, key and standing preferences the AI chat runs on. Nothing leaves this browser until you fill in a key.</p>
-        </div>
-
-        <div class="settings-group">
-          <div class="card">
-            <div class="control-group">
-              <label for="ai-provider-select" data-i18n="aiProvider">API provider</label>
-              <p class="hint" data-i18n="aiProviderHint">Pick "OpenAI Compatible" for any service that exposes a /chat/completions endpoint — DeepSeek, OpenRouter, a local Ollama, and so on.</p>
-              <select id="ai-provider-select">
-                <option value="anthropic">Anthropic</option>
-                <option value="openai">OpenAI Compatible</option>
-              </select>
-            </div>
-            <div class="control-group">
-              <label for="ai-api-key-input" data-i18n="aiApiKey">API key</label>
-              <p class="hint" data-i18n="aiApiKeyHint">The key is stored only in this browser's local extension storage and is never included in exported backups. Generating a theme sends a description of the page's colours and layout — never the page text — to the API endpoint you chose.</p>
-              <input type="password" id="ai-api-key-input" autocomplete="off" spellcheck="false">
-            </div>
-            <div class="control-group">
-              <label for="ai-base-url-input" data-i18n="aiBaseUrl">API base URL</label>
-              <p class="hint" data-i18n="aiBaseUrlHint">Leave this empty to use the selected provider's default endpoint. Your API key is sent to whatever host you enter here, so only fill in an endpoint you trust.</p>
-              <input type="url" id="ai-base-url-input" autocomplete="off" spellcheck="false">
-            </div>
-            <div class="control-group">
-              <label for="ai-model-input" data-i18n="aiModel">Model</label>
-              <p class="hint" data-i18n="aiModelHint">Type any model id the selected endpoint accepts. With Anthropic, Opus gives the best results and Haiku is the fastest and cheapest.</p>
-              <!-- Free text rather than a dropdown: with a custom base URL the
-                   set of valid model ids is unknowable, so the datalist below
-                   only offers suggestions, filled in from JS per provider. -->
-              <input type="text" id="ai-model-input" autocomplete="off" spellcheck="false" list="ai-model-suggestions">
-              <datalist id="ai-model-suggestions"></datalist>
-            </div>
-            <div class="control-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="ai-vision-input">
-                <span data-i18n="aiVision">This model can read images</span>
-              </label>
-              <p class="hint" data-i18n="aiVisionHint">Turns on the attach button in the AI chat, so you can hand the model a picture to take a palette from — or to use as the wallpaper itself. Leave it off for a text-only model: attaching a picture to one fails the whole message rather than being ignored. Every Anthropic model here can read images; for an OpenAI-compatible endpoint, check your provider's model list. Switching provider resets this to that provider's default.</p>
-            </div>
-            <div class="control-group" style="margin-bottom: 0;">
-              <label for="ai-style-prompt-input" data-i18n="aiStylePrompt">Standing style preference</label>
-              <p class="hint" data-i18n="aiStylePromptHint">Optional. Whatever you write here is added to every generation on every site — a palette you like, lower saturation, colour pairings to avoid for colour-vision reasons, or your own house style. It stays in effect until you change it; for a request that applies to one theme only, use the prompt box in the popup when you generate.</p>
-              <textarea id="ai-style-prompt-input" rows="3" spellcheck="false" data-i18n-placeholder="aiStylePromptExample"></textarea>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Section 3: About -->
+      <!-- About -->
       <section id="section-about" class="content-section">
         <div class="section-header">
           <h2 data-i18n="aboutTitle">About PageDye</h2>
         </div>
-        
+
         <div class="card about-card">
           <div class="about-logo">
-            <div class="logo-circle"><img src="../icons/icon128.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: block;"></div>
+            <div class="logo-circle"><img src="../icons/icon128.png" alt="Logo"></div>
             <h3>PageDye</h3>
-            <span class="badge" id="about-version">v0.11.3</span>
+            <span class="badge" id="about-version">v0.12.0</span>
           </div>
-          
+
           <p class="about-desc" data-i18n="aboutText">PageDye lets you give each website its own color, image, gradient, or animated background. Your choices are saved in this browser and return automatically.</p>
-          
-          <hr class="divider">
-          
+
           <div class="meta-info">
             <div class="meta-row">
               <span class="meta-label" data-i18n="aboutAuthor">Developer</span>
@@ -860,8 +945,8 @@
           </div>
         </div>
       </section>
-      
-      <!-- Section 4: Edit Site Config -->
+
+      <!-- Edit Site Config: reached by picking a site, not from the sidebar -->
       <section id="section-edit-site" class="content-section">
         <div class="section-header edit-site-header">
           <button type="button" id="edit-back-btn" class="btn secondary-btn back-btn">
@@ -940,7 +1025,7 @@
                   <label for="edit-run-mode-strong" data-i18n="runModeStrong">Strong</label>
                 </div>
               </div>
-              <div class="control-group" style="margin-bottom: 0;" data-advanced-only>
+              <div class="control-group" style="margin-bottom: 0;">
                 <input type="text" id="edit-deep-compat-exclude" placeholder=".modal, [role=dialog]" data-i18n-placeholder="deepCompatExcludePlaceholder">
               </div>
             </div>
@@ -984,7 +1069,7 @@
 
               <!-- Scheme Cards (Auto Mode) -->
               <div id="edit-scheme-cards-container" class="control-group hidden" style="margin-top: 12px; margin-bottom: 0;">
-                <label data-i18n="selectSchemeToEdit" style="margin-bottom: 8px; display: block; font-size: 13px; font-weight: 500; color: var(--text-color);">Select background to edit</label>
+                <label class="control-label" data-i18n="selectSchemeToEdit">Select background to edit</label>
                 <div class="scheme-cards-grid">
                   <div class="scheme-card active" id="edit-card-scheme-light" data-scheme="light">
                     <div class="scheme-card-preview" id="edit-preview-card-light"></div>
@@ -993,7 +1078,7 @@
                       <span data-i18n="schemeLight">Light Version</span>
                     </div>
                   </div>
-                  
+
                   <div class="scheme-card" id="edit-card-scheme-dark" data-scheme="dark">
                     <div class="scheme-card-preview" id="edit-preview-card-dark"></div>
                     <div class="scheme-card-info">
@@ -1005,9 +1090,8 @@
               </div>
 
               <!-- Time Range Mode Cards -->
-              <!-- Time Range Mode Cards -->
               <div id="edit-time-cards-container" class="control-group hidden" style="margin-top: 12px; margin-bottom: 0;">
-                <label data-i18n="selectTimeToEdit" style="margin-bottom: 8px; display: block; font-size: 13px; font-weight: 500; color: var(--text-color);">Select background to edit</label>
+                <label class="control-label" data-i18n="selectTimeToEdit">Select background to edit</label>
                 <div class="scheme-cards-grid" id="edit-time-periods-list">
                   <!-- Dynamically populated -->
                 </div>
@@ -1055,18 +1139,18 @@
             </summary>
             <div class="accordion-content">
               <!-- Period Editing Fields (Time Mode only) -->
-              <div id="edit-time-range-period-edit-fields" class="hidden" style="margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 16px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                  <span data-i18n="labelPeriodName" style="font-size: 13px; font-weight: 500;">Period Name:</span>
-                  <input type="text" id="edit-time-period-name" style="padding: 6px 12px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--surface-bg); color: var(--text-color); width: 160px;" />
+              <div id="edit-time-range-period-edit-fields" class="period-edit-fields hidden">
+                <div class="period-edit-row">
+                  <span data-i18n="labelPeriodName">Period Name:</span>
+                  <input type="text" id="edit-time-period-name" class="period-name-input">
                 </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                  <span data-i18n="labelPeriodRange" style="font-size: 13px; font-weight: 500;">Time Range:</span>
+                <div class="period-edit-row">
+                  <span data-i18n="labelPeriodRange">Time Range:</span>
                   <div class="edit-time-selects">
                     <div class="editor-select-wrap compact">
                       <select id="edit-time-period-start"></select>
                     </div>
-                    <span style="color: var(--text-secondary); font-size: 13px;">-</span>
+                    <span class="period-edit-dash">-</span>
                     <div class="editor-select-wrap compact">
                       <select id="edit-time-period-end"></select>
                     </div>
@@ -1116,10 +1200,10 @@
                 <div class="segmented-control">
                   <input type="radio" name="edit-bgType" value="none" id="edit-type-none" checked>
                   <label for="edit-type-none" data-i18n="typeNone">None</label>
-                  
+
                   <input type="radio" name="edit-bgType" value="color" id="edit-type-color">
                   <label for="edit-type-color" data-i18n="typeColor">Color</label>
-                  
+
                   <input type="radio" name="edit-bgType" value="image" id="edit-type-image">
                   <label for="edit-type-image" data-i18n="typeImage">Image</label>
 
@@ -1154,7 +1238,7 @@
                 <!-- Gradient Panel -->
                 <div id="edit-gradient-panel" class="section hidden">
                   <div class="control-group preview-group" style="margin-bottom: 10px;">
-                    <div id="edit-gradient-preview" class="image-preview" style="margin-top: 0; height: 56px;">
+                    <div id="edit-gradient-preview" class="image-preview image-preview-short">
                       <div id="edit-gradient-preview-bg" class="image-preview-bg"></div>
                     </div>
                   </div>
@@ -1225,14 +1309,14 @@
               <div id="edit-section-image" class="section hidden">
                 <div class="control-group">
                   <div class="file-drop-area" id="edit-drop-area">
-                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px; margin-bottom: 8px; color: var(--text-secondary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <p style="margin: 0; font-size: 13px;"><span data-i18n="dragOrClick">Drag image here, or</span> <span class="upload-link" data-i18n="chooseFile" style="color: var(--primary-color); text-decoration: underline; font-weight: 500;">choose file</span></p>
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <p><span data-i18n="dragOrClick">Drag image here, or</span> <span class="upload-link" data-i18n="chooseFile">choose file</span></p>
                     <input type="file" id="edit-image-file" accept="image/*" hidden>
                   </div>
-                  <div id="edit-file-info" class="file-info-badge hidden" style="margin-top: 8px;">
+                  <div id="edit-file-info" class="file-info-badge hidden">
                     <div class="file-info-content">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; color: var(--text-secondary);"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                      <span class="filename" id="edit-filename" style="font-size: 12px; font-weight: 500;"></span>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                      <span class="filename" id="edit-filename"></span>
                     </div>
                     <button type="button" id="edit-remove-file" class="remove-file-btn" title="Clear Image">×</button>
                   </div>
@@ -1242,9 +1326,9 @@
                   <label for="edit-image-url" data-i18n="orPasteUrl">Or paste an image address</label>
                   <input type="url" id="edit-image-url" placeholder="https://example.com/image.jpg">
                 </div>
-                
-                <div class="control-group preview-group" style="margin-top: 12px; margin-bottom: 0;">
-                   <div id="edit-image-preview" class="image-preview" style="margin-top: 0;">
+
+                <div class="control-group preview-group" style="margin-bottom: 0;">
+                   <div id="edit-image-preview" class="image-preview">
                      <div id="edit-image-preview-bg" class="image-preview-bg"></div>
                    </div>
                 </div>
@@ -1255,22 +1339,22 @@
               <div id="edit-section-video" class="section hidden">
                 <div class="control-group">
                   <div class="file-drop-area" id="edit-video-drop-area">
-                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px; margin-bottom: 8px; color: var(--text-secondary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <p style="margin: 0; font-size: 13px;"><span data-i18n="dragVideoOrClick">Drag video here, or</span> <span class="upload-link" data-i18n="chooseFile" style="color: var(--primary-color); text-decoration: underline; font-weight: 500;">choose file</span></p>
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <p><span data-i18n="dragVideoOrClick">Drag video here, or</span> <span class="upload-link" data-i18n="chooseFile">choose file</span></p>
                     <input type="file" id="edit-video-file" accept="video/mp4,video/webm" hidden>
                   </div>
-                  <div id="edit-video-file-info" class="file-info-badge hidden" style="margin-top: 8px;">
+                  <div id="edit-video-file-info" class="file-info-badge hidden">
                     <div class="file-info-content">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; color: var(--text-secondary);"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-                      <span class="filename" id="edit-video-filename" style="font-size: 12px; font-weight: 500;"></span>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                      <span class="filename" id="edit-video-filename"></span>
                     </div>
                     <button type="button" id="edit-remove-video-file" class="remove-file-btn" title="Clear Video">×</button>
                   </div>
-                  <p class="hint" data-i18n="videoSizeHint" style="margin-top: 8px; margin-bottom: 0;">MP4 or WebM, up to 40 MB. Trim or compress long clips first.</p>
+                  <p class="hint" data-i18n="videoSizeHint">MP4 or WebM, up to 40 MB. Trim or compress long clips first.</p>
                 </div>
 
-                <div class="control-group preview-group" style="margin-top: 12px; margin-bottom: 0;">
-                   <div id="edit-video-preview" class="image-preview" style="margin-top: 0;">
+                <div class="control-group preview-group" style="margin-bottom: 0;">
+                   <div id="edit-video-preview" class="image-preview">
                      <video id="edit-video-preview-el" class="video-preview-el" muted loop autoplay playsinline></video>
                    </div>
                 </div>
@@ -1382,7 +1466,6 @@
                   </div>
 
                   <div class="filter-sliders-grid">
-                    <!-- Brightness -->
                     <div class="filter-slider-item">
                       <div class="label-row">
                         <label for="edit-filter-brightness" data-i18n="filterBrightness">Brightness</label>
@@ -1391,7 +1474,6 @@
                       <input type="range" id="edit-filter-brightness" min="0" max="200" value="100" step="1">
                     </div>
 
-                    <!-- Contrast -->
                     <div class="filter-slider-item">
                       <div class="label-row">
                         <label for="edit-filter-contrast" data-i18n="filterContrast">Contrast</label>
@@ -1400,7 +1482,6 @@
                       <input type="range" id="edit-filter-contrast" min="0" max="200" value="100" step="1">
                     </div>
 
-                    <!-- Grayscale -->
                     <div class="filter-slider-item">
                       <div class="label-row">
                         <label for="edit-filter-grayscale" data-i18n="filterGrayscale">Grayscale</label>
@@ -1409,7 +1490,6 @@
                       <input type="range" id="edit-filter-grayscale" min="0" max="100" value="0" step="1">
                     </div>
 
-                    <!-- Hue Rotate -->
                     <div class="filter-slider-item">
                       <div class="label-row">
                         <label for="edit-filter-hue" data-i18n="filterHue">Hue Rotate</label>
@@ -1418,7 +1498,6 @@
                       <input type="range" id="edit-filter-hue" min="0" max="360" value="0" step="1">
                     </div>
 
-                    <!-- Invert -->
                     <div class="filter-slider-item">
                       <div class="label-row">
                         <label for="edit-filter-invert" data-i18n="filterInvert">Invert</label>
@@ -1444,7 +1523,7 @@
                        </select>
                      </div>
                    </div>
-                   
+
                    <div class="control-group row" id="edit-image-repeat-row" style="margin-bottom: 0;">
                      <label class="checkbox-label">
                        <input type="checkbox" id="edit-bg-repeat">
@@ -1457,7 +1536,7 @@
           </details>
 
           <!-- Advanced Settings Accordion -->
-          <details class="accordion" id="edit-accordion-advanced" data-advanced-only>
+          <details class="accordion" id="edit-accordion-advanced">
             <summary class="accordion-summary">
               <span data-i18n="advanced">Advanced Settings</span>
               <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1504,16 +1583,15 @@
           </div>
           <div class="edit-actions-right">
             <button type="button" id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
-            <span class="version-text" id="edit-version">v0.11.3</span>
-            <span class="divider">|</span>
+            <span class="version-text" id="edit-version">v0.12.0</span>
             <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; display: block;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
             </a>
           </div>
         </div>
       </section>
 
-      <!-- Section 5: Edit Custom Effect -->
+      <!-- Edit Custom Effect: reached from the Library, not from the sidebar -->
       <section id="section-edit-custom-effect" class="content-section">
         <div class="section-header edit-site-header">
           <button type="button" id="edit-effect-back-btn" class="btn secondary-btn back-btn">
@@ -1566,10 +1644,10 @@
 
           <div class="control-group hidden" id="edit-custom-effect-url-control" style="margin-bottom: 0;">
             <label for="edit-custom-effect-url" data-i18n="effectUrlLabel">Website URL</label>
-            <input type="url" id="edit-custom-effect-url" placeholder="https://example.com/some-cool-wallpaper" style="width: 100%; box-sizing: border-box;">
+            <input type="url" id="edit-custom-effect-url" placeholder="https://example.com/some-cool-wallpaper">
             <p class="hint" data-i18n="effectUrlHint">Embed an HTTPS website in a sandboxed iframe background (HTTP is allowed only for localhost). Some websites may block embedding via X-Frame-Options/CSP.</p>
 
-            <details class="accordion" id="edit-accordion-custom-effect-advanced" style="margin-top: 15px;">
+            <details class="accordion" id="edit-accordion-custom-effect-advanced">
               <summary class="accordion-summary">
                 <span data-i18n="advanced">Advanced Settings</span>
                 <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1580,7 +1658,7 @@
                     <input type="checkbox" id="edit-custom-effect-interactive">
                     <span data-i18n="customEffectInteractive">Allow background interaction (clicks/scrolls)</span>
                   </label>
-                  <p class="hint" data-i18n="customEffectInteractiveHint" style="margin-top: 5px; margin-left: 24px;">Note: Because the background is layered behind the webpage, you need to hold the <strong>Alt</strong> key on your keyboard to bring the background to the front and click/interact with it.</p>
+                  <p class="hint hint-indent" data-i18n="customEffectInteractiveHint">Note: Because the background is layered behind the webpage, you need to hold the <strong>Alt</strong> key on your keyboard to bring the background to the front and click/interact with it.</p>
                 </div>
               </div>
             </details>
@@ -1592,12 +1670,14 @@
             <label data-i18n="effectPreviewLabel">Live Preview</label>
             <div class="effect-preview-box">
               <canvas id="edit-custom-effect-preview-canvas" width="280" height="160"></canvas>
-              <iframe id="edit-custom-effect-preview-iframe" title="Custom URL effect preview" sandbox="allow-scripts allow-forms allow-pointer-lock" referrerpolicy="no-referrer" allow="" width="280" height="160" style="display: none; border: none; background: #000;"></iframe>
+              <!-- Toggled through inline display by updateCustomEffectPreview,
+                   so it starts hidden the same way rather than via [hidden]. -->
+              <iframe id="edit-custom-effect-preview-iframe" title="Custom URL effect preview" sandbox="allow-scripts allow-forms allow-pointer-lock" referrerpolicy="no-referrer" allow="" width="280" height="160" style="display: none;"></iframe>
             </div>
           </div>
         </div>
 
-        <div class="edit-actions-card" style="justify-content: flex-end;">
+        <div class="edit-actions-card edit-actions-card-end">
           <div class="edit-actions-right">
             <button type="button" id="edit-custom-effect-export-btn" class="btn secondary-btn hidden" data-i18n="exportEffectBtn">Export</button>
             <button type="button" id="edit-custom-effect-delete-btn" class="btn danger-btn hidden" data-i18n="deleteBtn">Delete</button>
@@ -1643,6 +1723,7 @@
   <script src="../scripts/shared/code-editor.js"></script>
   <script src="../scripts/shared/rules-client.js"></script>
   <script src="../scripts/shared/markdown.js"></script>
+  <script src="../scripts/shared/ai-preferences.js"></script>
   <script src="../scripts/shared/ai-chat-store.js"></script>
   <script src="../scripts/shared/ai-chat.js"></script>
   <script src="../lib/prism.js"></script>

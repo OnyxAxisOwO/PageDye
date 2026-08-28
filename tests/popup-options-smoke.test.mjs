@@ -298,6 +298,83 @@ test('popup: auto mode edits the currently active dark scheme and replacing a st
   assert.equal(store['example.com'].light.type, 'image', 'the inactive light scheme must remain untouched');
 });
 
+test('popup: in Light/Dark mode the scheme thumbnail repaints on the edit, not on the save', async () => {
+  // The thumbnails used to render straight out of currentSettings, which only
+  // receives the form at save time — so picking a background left the card
+  // showing the previous one until something else forced a repaint.
+  const style = { fixed: true, size: 'cover', repeat: false };
+  const { chrome } = createChromeMock({
+    initialStorage: {
+      'example.com': {
+        mode: 'auto',
+        type: 'color',
+        value: '#111111',
+        opacity: 100,
+        blur: 0,
+        style,
+        light: { type: 'color', value: '#111111', opacity: 100, blur: 0, style },
+        dark: { type: 'color', value: '#222222', opacity: 100, blur: 0, style }
+      }
+    }
+  });
+  const { document, errors } = await loadExtensionPage('popup/popup.html', { chrome });
+  assert.deepEqual(errors, []);
+  assert.ok(document.getElementById('card-scheme-light').classList.contains('active'));
+
+  const colorPicker = document.getElementById('color-picker');
+  colorPicker.value = '#ff00aa';
+  fire(colorPicker, 'input');
+
+  // Synchronous on purpose: the save behind this edit is debounced, and the
+  // card must not wait for it.
+  assert.equal(document.getElementById('preview-card-light').style.backgroundColor, 'rgb(255, 0, 170)');
+  assert.equal(
+    document.getElementById('preview-card-dark').style.backgroundColor,
+    'rgb(34, 34, 34)',
+    'the scheme that is not being edited keeps its own background'
+  );
+
+  fire(document.getElementById('card-scheme-dark'), 'click');
+  assert.equal(document.getElementById('preview-card-light').style.backgroundColor, 'rgb(255, 0, 170)');
+});
+
+test('popup: a custom cursor image round-trips, and a custom cursor with no image still draws something', async () => {
+  const cursorImage = 'data:image/png;base64,iVBORw0KGgo=';
+  const { chrome, store } = createChromeMock({
+    initialStorage: {
+      'example.com': {
+        type: 'none',
+        value: '',
+        opacity: 100,
+        blur: 0,
+        style: { fixed: true, size: 'cover', repeat: false },
+        cursor: { enabled: true, preset: 'custom', image: cursorImage, color: '#3b82f6', size: 24 }
+      }
+    }
+  });
+  const { document, errors } = await loadExtensionPage('popup/popup.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  const customSwatch = document.querySelector('.cursor-preset-swatch[data-preset="custom"]');
+  assert.ok(customSwatch, 'the shape grid offers a custom-image swatch');
+  assert.ok(customSwatch.classList.contains('active'));
+  assert.equal(document.getElementById('cursor-custom-control').classList.contains('hidden'), false);
+  assert.equal(document.getElementById('cursor-file-info').classList.contains('hidden'), false);
+  assert.equal(document.getElementById('cursor-image-thumb').getAttribute('src'), cursorImage);
+
+  fire(document.getElementById('cursor-remove-file'), 'click');
+  await waitFor(() => store['example.com'].cursor && store['example.com'].cursor.image === '');
+  assert.equal(document.getElementById('cursor-drop-area').classList.contains('hidden'), false);
+  assert.equal(document.getElementById('cursor-file-info').classList.contains('hidden'), true);
+
+  // The native pointer is hidden while the overlay runs, so "custom shape,
+  // nothing to draw" must never reach the page as an invisible cursor.
+  const { PageDyeCursor } = document.defaultView;
+  assert.equal(PageDyeCursor.normalizeCursorConfig({ preset: 'custom' }).preset, 'ball');
+  assert.equal(PageDyeCursor.normalizeCursorConfig({ preset: 'custom', image: 'javascript:alert(1)' }).preset, 'ball');
+  assert.equal(PageDyeCursor.normalizeCursorConfig({ preset: 'custom', image: cursorImage }).preset, 'custom');
+});
+
 test('popup: text editor injects its in-page picker into the active tab', async () => {
   const { chrome, calls } = createChromeMock();
   const { document, errors } = await loadExtensionPage('popup/popup.html', { chrome });
@@ -498,6 +575,112 @@ test('options: the mobile sidebar drawer opens, closes on backdrop click, and cl
   fire(settingsNav, 'click');
   assert.ok(!sidebar.classList.contains('mobile-open'), 'picking a section must close the drawer');
   assert.ok(document.getElementById('section-settings').classList.contains('active'));
+});
+
+test('options: in-page tabs switch views, and old deep links still land on them', async () => {
+  const { chrome } = createChromeMock({
+    tab: null,
+    initialStorage: {
+      'example.com': { type: 'color', value: '#123456' },
+      __pagedye_url_rules_v081__: [{ id: 'r1', type: 'hostname', pattern: 'example.com', action: 'exclude', enabled: true }],
+      __pagedye_custom_effects__: [{ id: 'e1', name: 'Dot', type: 'code', code: 'return {};' }]
+    }
+  });
+  const { document, errors } = await loadExtensionPage('options/options.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  const active = (sectionId) => [...document.querySelectorAll(`#${sectionId} .tab-pane.active`)].map((pane) => pane.id);
+  assert.deepEqual(active('section-sites'), ['pane-sites-saved'], 'the first tab opens by default');
+
+  fire(document.querySelector('.page-tab[data-pane="pane-sites-rules"]'), 'click');
+  assert.deepEqual(active('section-sites'), ['pane-sites-rules']);
+  assert.equal(document.querySelector('.page-tab[data-pane="pane-sites-rules"]').classList.contains('active'), true);
+  assert.equal(document.querySelector('.page-tab[data-pane="pane-sites-saved"]').classList.contains('active'), false);
+
+  // Counts are on the tabs, so the other views answer "how many" without being opened.
+  await waitFor(() => document.getElementById('count-rules').textContent === '1');
+  assert.equal(document.getElementById('count-rules').hidden, false);
+  assert.equal(document.getElementById('count-effects').textContent, '1');
+});
+
+test('options: switching sections returns to the top of the new one', async () => {
+  // Below 768px the document scrolls, not .main-content. Resetting only the
+  // desktop scroller left a phone looking at empty space past the end of a
+  // short section, which reads as a blank page.
+  const { chrome } = createChromeMock({ tab: null });
+  const { document, window, errors } = await loadExtensionPage('options/options.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  const scrolls = [];
+  window.scrollTo = (...args) => scrolls.push(args);
+  fire(document.querySelector('.nav-item[data-target="section-settings"]'), 'click');
+
+  assert.deepEqual(scrolls, [[0, 0]], 'the document scroller has to be reset too');
+  assert.equal(document.querySelector('.main-content').scrollTop, 0);
+});
+
+test('options: a tab switch animates in the direction the tab bar moved', async () => {
+  const { chrome } = createChromeMock({ tab: null });
+  const { document, errors } = await loadExtensionPage('options/options.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  const pane = (id) => document.getElementById(id);
+  const tab = (id) => document.querySelector(`.page-tab[data-pane="${id}"]`);
+
+  // The first paint of a section has no previous tab, so no direction.
+  assert.equal(pane('pane-sites-saved').classList.contains('enter-forward'), false);
+  assert.equal(pane('pane-sites-saved').classList.contains('enter-back'), false);
+
+  fire(tab('pane-sites-rules'), 'click');
+  assert.ok(pane('pane-sites-rules').classList.contains('enter-forward'), 'rightwards move enters from the right');
+
+  fire(tab('pane-sites-saved'), 'click');
+  assert.ok(pane('pane-sites-saved').classList.contains('enter-back'), 'leftwards move enters from the left');
+  assert.equal(pane('pane-sites-rules').classList.contains('enter-forward'), false, 'the leaving panel is cleaned up');
+});
+
+test('options: a deep link to a section that became a tab opens that tab', async () => {
+  // Regression: the alias table is read while the page is still initialising,
+  // so declaring it below that point left every deep link throwing on a
+  // temporal-dead-zone reference and silently staying on the first section.
+  for (const [hash, section, pane] of [
+    ['#section-custom-effects', 'section-configs', 'pane-library-effects'],
+    ['#section-backup', 'section-storage', 'pane-data-backup'],
+    ['#section-appearance', 'section-settings', null]
+  ]) {
+    const { chrome } = createChromeMock({ tab: null });
+    const { document, errors } = await loadExtensionPage('options/options.html', { chrome, hash });
+    assert.deepEqual(errors, [], `${hash} should load cleanly`);
+    assert.ok(document.getElementById(section).classList.contains('active'), `${hash} should open ${section}`);
+    assert.ok(
+      document.querySelector(`.nav-item[data-target="${section}"]`).classList.contains('active'),
+      `${hash} should also highlight the ${section} nav item`
+    );
+    if (pane) {
+      assert.deepEqual([...document.querySelectorAll(`#${section} .tab-pane.active`)].map((p) => p.id), [pane]);
+    }
+  }
+});
+
+test('options: the dashboard repaints when its own preferences change from elsewhere', async () => {
+  // The AI chat's settings card (and the popup) can now write these keys, so
+  // the page has to follow the key rather than only its own picker — otherwise
+  // pressing apply looks like it did nothing until a reload.
+  const { chrome, store } = createChromeMock({ tab: null });
+  const { document, errors } = await loadExtensionPage('options/options.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  await chrome.storage.local.set({
+    __pagedye_ui_theme__: { accent: 'teal', disableAnimation: true },
+    __pagedye_debug_mode__: true,
+    __pagedye_pause_shortcut__: { code: 'KeyK', altKey: true, shiftKey: true, ctrlKey: false, metaKey: false }
+  });
+
+  await waitFor(() => document.querySelector('.theme-color-dot[data-theme-accent="teal"]').classList.contains('active'), { timeout: 3000 });
+  assert.equal(document.getElementById('theme-disable-animation').checked, true, 'the motion toggle follows too');
+  assert.equal(document.getElementById('debug-mode-toggle').checked, true);
+  assert.match(document.getElementById('pause-shortcut-input').value, /K/);
+  assert.equal(store.__pagedye_ui_theme__.accent, 'teal');
 });
 
 test('options: clearing local data removes default backgrounds, images, and preferences', async () => {

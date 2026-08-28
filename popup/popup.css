@@ -88,10 +88,6 @@
 
 
 
-body:not(.advanced-mode) [data-advanced-only] {
-  display: none !important;
-}
-
 .run-mode-hint {
   margin-top: 0;
 }
@@ -832,7 +828,9 @@ input[type="range"]::-moz-range-thumb {
 
 .cursor-presets-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* One column per preset, so the custom-image swatch sits on the same row
+     as the four built-in shapes instead of alone underneath them. */
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   margin-top: 6px;
 }
@@ -869,6 +867,23 @@ input[type="range"]::-moz-range-thumb {
   height: 8px;
   background: var(--text-secondary);
   box-shadow: 0 0 0 5px transparent, 0 0 0 6px var(--text-secondary);
+}
+
+/* Empty placeholder until a picture is chosen; afterwards popup.js sets the
+   picture as this element's background and adds .has-image. */
+.cursor-preset-swatch-shape.preset-custom {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: transparent;
+  border: 1px dashed var(--text-secondary);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.cursor-preset-swatch-shape.preset-custom.has-image {
+  border-color: transparent;
 }
 
 
@@ -1555,6 +1570,12 @@ input:checked + .slider.round:before {
   line-height: 14px;
   text-align: center;
   cursor: pointer;
+  /* Lifts the badge above the selection ring `.preset-color-dot.active::after`
+     draws below. That ring is a later sibling in paint order and its box
+     extends 4px past the swatch on every side, so without this it is drawn
+     across the badge's lower-left corner *and* swallows the click meant for
+     it -- on the selected swatch, deleting became impossible. */
+  z-index: 2;
 }
 .preset-color-dot-custom:hover .preset-color-dot-delete {
   display: block;
@@ -2709,6 +2730,9 @@ input[type="color"]::-webkit-color-swatch {
   border: 2px solid var(--primary-color);
   border-radius: 50%;
   border-color: var(--primary-color);
+  /* Decoration only: its box covers the whole swatch, so leaving it hit-
+     testable would intercept every click aimed at the delete badge. */
+  pointer-events: none;
 }
 
 .color-preview-container {

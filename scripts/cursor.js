@@ -30,7 +30,11 @@ window.PageDyeCursor = (function () {
     ball: { name_en: 'Ball', name_zh: '实心球' },
     ring: { name_en: 'Ring', name_zh: '空心环' },
     glow: { name_en: 'Glow Orb', name_zh: '发光球' },
-    'dot-ring': { name_en: 'Dot & Ring', name_zh: '点环组合' }
+    'dot-ring': { name_en: 'Dot & Ring', name_zh: '点环组合' },
+    // Draws the user's own picture instead of one of the shapes above. The
+    // picture itself lives in config.image; 'custom' with nothing to draw
+    // falls back to 'ball' in normalizeCursorConfig.
+    custom: { name_en: 'Custom Image', name_zh: '自定义图片' }
   };
 
   const TRAIL_STYLES = {
@@ -45,11 +49,30 @@ window.PageDyeCursor = (function () {
     return typeof n === 'number' && !isNaN(n) ? Math.max(min, Math.min(max, n)) : fallback;
   }
 
+  // The only two shapes that ever reach the <img src> in start(): a data:
+  // image (what the popup's own uploader produces) or an http(s) address.
+  // Settings can arrive from an imported backup, so this is checked rather
+  // than trusted — anything else is treated as "no image chosen".
+  function normalizeCursorImage(value) {
+    if (typeof value !== 'string') return '';
+    const url = value.trim();
+    if (/^data:image\//i.test(url)) return url;
+    if (/^https?:\/\//i.test(url)) return url;
+    return '';
+  }
+
   function normalizeCursorConfig(cfg) {
     const c = cfg || {};
     const trail = c.trail || {};
+    const preset = PRESETS[c.preset] ? c.preset : 'ball';
+    const image = normalizeCursorImage(c.image);
     return {
-      preset: PRESETS[c.preset] ? c.preset : 'ball',
+      // 'custom' with no usable image would draw nothing at all — and the
+      // native pointer is force-hidden while this overlay runs, so the page
+      // would be left with no visible cursor whatsoever. Fall back to the
+      // default shape until a picture is actually chosen.
+      preset: preset === 'custom' && !image ? 'ball' : preset,
+      image,
       color: (typeof c.color === 'string' && c.color) || '#3b82f6',
       size: clamp(c.size, 12, 48, 24),
       hoverScale: clamp(c.hoverScale, 1, 3, 1.6),
@@ -100,7 +123,20 @@ window.PageDyeCursor = (function () {
       borderRadius: '50%',
       willChange: 'transform'
     });
-    if (preset === 'ring') {
+    if (preset === 'custom') {
+      // `el` is the <img> created in start(); only its box is styled here —
+      // the picture itself comes from src, and is fitted inside the box so a
+      // non-square image keeps its aspect ratio at every Size/hover value.
+      Object.assign(el.style, {
+        width: size + 'px',
+        height: size + 'px',
+        borderRadius: '0',
+        objectFit: 'contain',
+        background: 'transparent',
+        border: 'none',
+        boxShadow: 'none'
+      });
+    } else if (preset === 'ring') {
       Object.assign(el.style, {
         width: size + 'px',
         height: size + 'px',
@@ -217,7 +253,17 @@ window.PageDyeCursor = (function () {
     document.documentElement.appendChild(root);
     const shadow = root.attachShadow({ mode: 'open' });
 
-    const dot = document.createElement('div');
+    // A custom cursor is a picture, so it needs an <img> rather than the
+    // styled <div> the built-in shapes are drawn with. normalizeCursorConfig
+    // guarantees there is an image to point at whenever the preset is
+    // 'custom', so this never renders an empty box.
+    const usesImage = config.preset === 'custom';
+    const dot = document.createElement(usesImage ? 'img' : 'div');
+    if (usesImage) {
+      dot.src = config.image;
+      dot.alt = '';
+      dot.draggable = false;
+    }
     styleDot(dot, config.preset, config.color, config.size);
     shadow.appendChild(dot);
 

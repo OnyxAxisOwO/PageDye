@@ -59,7 +59,7 @@ function chromeMock(store) {
         }
       }
     },
-    runtime: { onMessage: { addListener: (fn) => listeners.push(fn) } }
+    runtime: { onMessage: { addListener: (fn) => listeners.push(fn) }, onConnect: { addListener() {} } }
   };
   return {
     chrome,
@@ -176,7 +176,7 @@ test('a storage lookup failure costs the model one picture, not the whole turn',
         }
       }
     },
-    runtime: { onMessage: { addListener: (fn) => listeners.push(fn) } }
+    runtime: { onMessage: { addListener: (fn) => listeners.push(fn) }, onConnect: { addListener() {} } }
   };
   const capture = {};
   runBackgroundScript({ chrome, console, fetch: fakeFetch(capture, REPLY) });

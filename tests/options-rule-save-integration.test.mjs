@@ -19,7 +19,7 @@ function fire(el, type) {
 function attachRealBackground(chrome) {
   const backgroundListeners = [];
   runBackgroundScript({
-    chrome: { storage: chrome.storage, runtime: { onMessage: { addListener: (fn) => backgroundListeners.push(fn) } } },
+    chrome: { storage: chrome.storage, runtime: { onMessage: { addListener: (fn) => backgroundListeners.push(fn) }, onConnect: { addListener() {} } } },
     console
   });
   const originalSendMessage = chrome.runtime.sendMessage.bind(chrome.runtime);

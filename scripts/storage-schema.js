@@ -22,7 +22,6 @@
 
   const KEYS = Object.freeze({
     uiTheme: '__pagedye_ui_theme__',
-    advancedMode: '__pagedye_advanced_mode__',
     // Deliberately absent from BACKUP_GLOBAL_KEYS below: this holds the user's
     // own API key, which must not travel inside an exported backup file.
     aiConfig: '__pagedye_ai_config__',

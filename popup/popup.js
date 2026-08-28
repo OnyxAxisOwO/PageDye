@@ -358,7 +358,6 @@ const CUSTOM_PRESET_COLORS_KEY = '__pagedye_custom_preset_colors__';
 const EXTENSION_ENABLED_KEY = '__pagedye_extension_enabled__';
 const TEXT_OVERRIDES_KEY = '__pagedye_text_overrides_v1__';
 const UI_THEME_KEY = '__pagedye_ui_theme__';
-const ADVANCED_MODE_KEY = '__pagedye_advanced_mode__';
 const UI_THEME_DEFAULTS = { accent: 'neutral', customAccent: '#18181b', disableAnimation: false };
 // normalizeHexColor/hexToRgba/shiftHexColor/hexToHsl/hslToHex/getUiAccentColor/
 // getDisplayAccentColor/UI_THEME_ACCENTS live in scripts/shared/color-utils.js
@@ -578,6 +577,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       cursorPresetRing: "Ring",
       cursorPresetGlow: "Glow Orb",
       cursorPresetDotRing: "Dot & Ring",
+      cursorPresetCustom: "Custom Image",
+      cursorCustomDrag: "Drag a cursor image here, or",
+      cursorCustomHint: "A PNG or SVG with a transparent background works best. Size scales it; Color only tints the trail.",
       cursorColor: "Color",
       cursorSize: "Size",
       cursorHoverScale: "Hover Enlarge",
@@ -776,6 +778,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       cursorPresetRing: "空心环",
       cursorPresetGlow: "发光球",
       cursorPresetDotRing: "点环组合",
+      cursorPresetCustom: "自定义图片",
+      cursorCustomDrag: "把光标图片拖到这里，或",
+      cursorCustomHint: "推荐使用背景透明的 PNG 或 SVG。大小滑块控制缩放，颜色只影响拖尾。",
       cursorColor: "颜色",
       cursorSize: "大小",
       cursorHoverScale: "悬停放大",
@@ -955,6 +960,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     frostedAddBtn: document.getElementById('frosted-add-btn'),
     cursorToggle: document.getElementById('cursor-toggle'),
     cursorPresetsGrid: document.getElementById('cursor-presets-grid'),
+    cursorCustomControl: document.getElementById('cursor-custom-control'),
+    cursorDropArea: document.getElementById('cursor-drop-area'),
+    cursorImageFile: document.getElementById('cursor-image-file'),
+    cursorFileInfo: document.getElementById('cursor-file-info'),
+    cursorFileName: document.getElementById('cursor-filename'),
+    cursorImageThumb: document.getElementById('cursor-image-thumb'),
+    cursorRemoveFile: document.getElementById('cursor-remove-file'),
     cursorColor: document.getElementById('cursor-color'),
     cursorColorText: document.getElementById('cursor-color-text'),
     cursorSize: document.getElementById('cursor-size'),
@@ -1193,6 +1205,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   let contrastProfileTried = false;
   let contrastCheckTimer = null;
   let cursorPresetState = 'ball';
+  // The picture behind the 'custom' cursor preset, as a data: URL. Kept
+  // alongside cursorPresetState (rather than read back out of a DOM field)
+  // for the same reason currentImageBase64 is: there is nowhere in the form
+  // to hold it.
+  let cursorImageState = '';
   let cssEditorController = null;
   let isInitialLoad = true;
   let currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS);
@@ -1213,9 +1230,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Init
-  const interfaceData = await chrome.storage.local.get([UI_THEME_KEY, ADVANCED_MODE_KEY]);
+  const interfaceData = await chrome.storage.local.get([UI_THEME_KEY]);
   currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS, interfaceData[UI_THEME_KEY] || {});
-  document.body.classList.toggle('advanced-mode', !!interfaceData[ADVANCED_MODE_KEY]);
   applyUiTheme(currentUiTheme);
   initI18n();
   initUiThemeControls();
@@ -1248,9 +1264,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   await populateCustomEffectOptions(els.effectKind);
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && Object.prototype.hasOwnProperty.call(changes, ADVANCED_MODE_KEY)) {
-      document.body.classList.toggle('advanced-mode', !!changes[ADVANCED_MODE_KEY].newValue);
-    }
     if (area === 'local' && Object.prototype.hasOwnProperty.call(changes, CUSTOM_EFFECTS_KEY)) {
       populateCustomEffectOptions(els.effectKind);
     }
@@ -1681,8 +1694,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.cursorPresetsGrid.querySelectorAll('.cursor-preset-swatch').forEach((el) => {
       el.classList.toggle('active', el.dataset.preset === cursorPresetState);
     });
+    updateCursorCustomUI();
     triggerImmediateSave();
   });
+
+  // Custom cursor image upload — same drag/click/clear shape as the wallpaper
+  // and video drop areas above.
+  els.cursorDropArea.addEventListener('click', () => els.cursorImageFile.click());
+  els.cursorImageFile.addEventListener('change', (e) => {
+    if (e.target.files.length) handleCursorImageFile(e.target.files[0]);
+  });
+  els.cursorDropArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    els.cursorDropArea.classList.add('dragover');
+  });
+  els.cursorDropArea.addEventListener('dragleave', () => els.cursorDropArea.classList.remove('dragover'));
+  els.cursorDropArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    els.cursorDropArea.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleCursorImageFile(e.dataTransfer.files[0]);
+  });
+  els.cursorRemoveFile.addEventListener('click', clearCursorImage);
   els.cursorColor.addEventListener('input', (e) => {
     els.cursorColorText.value = e.target.value;
     queueAutoSave();
@@ -2152,6 +2184,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     updatePreview();
+    // Repaint the thumbnails against the form as it now stands. Every path
+    // that swaps which slot is being edited -- the Light/Dark cards, the
+    // slideshow grid, a mode change -- ends here, and each one has just
+    // written the outgoing slot's values into currentSettings, which is
+    // exactly what the card beside it is supposed to be showing.
+    updateInteractivePreviews();
   }
 
   function collectFormTo(dest) {
@@ -2404,6 +2442,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cursorCfg = window.PageDyeCursor.normalizeCursorConfig(currentSettings.cursor);
     els.cursorToggle.checked = !!(currentSettings.cursor && currentSettings.cursor.enabled);
     cursorPresetState = cursorCfg.preset;
+    cursorImageState = cursorCfg.image;
+    els.cursorFileName.textContent = cursorImageState ? t('savedImage') : '';
+    els.cursorImageFile.value = '';
+    updateCursorCustomUI();
     renderCursorPresetsGrid();
     els.cursorColor.value = cursorCfg.color;
     els.cursorColorText.value = cursorCfg.color;
@@ -2582,25 +2624,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     element.style.opacity = (subSettings.opacity !== undefined ? subSettings.opacity : 100) / 100;
   }
 
+  // The thumbnails render from currentSettings, but the one slot the user is
+  // actually editing only receives the form's values in collectFormTo() at
+  // save time. Every caller below repaints mid-edit -- picking a color, a
+  // file, an opacity -- so reading the stored slot directly would draw the
+  // state from *before* the current edit, and the card would only catch up
+  // once something else (switching scheme, reopening the popup) forced a
+  // repaint. Overlaying the live form onto a throwaway copy keeps the active
+  // card current without writing to currentSettings ahead of the save.
+  function liveSubSettings(base) {
+    const draft = Object.assign({}, base || {});
+    collectFormTo(draft);
+    return draft;
+  }
+
   function updateInteractivePreviews() {
     if (!currentSettings) return;
-    
+
     const mode = currentSettings.mode || 'single';
     if (mode === 'auto') {
-      updateCardPreview(els.previewCardLight, currentSettings.light);
-      updateCardPreview(els.previewCardDark, currentSettings.dark);
+      updateCardPreview(els.previewCardLight, activeScheme === 'light' ? liveSubSettings(currentSettings.light) : currentSettings.light);
+      updateCardPreview(els.previewCardDark, activeScheme === 'dark' ? liveSubSettings(currentSettings.dark) : currentSettings.dark);
     } else if (mode === 'timeRange') {
       const activeCard = els.timePeriodsList ? els.timePeriodsList.querySelector(`.scheme-card.active .scheme-card-preview`) : null;
       if (activeCard) {
         const item = currentSettings.timeRange.items[activeTimePeriodIndex];
         if (item) {
-          updateCardPreview(activeCard, item);
+          updateCardPreview(activeCard, liveSubSettings(item));
         }
       }
     } else if (mode === 'slideshow') {
       const activeCard = els.wallpapersGrid.querySelector(`.wallpaper-grid-card.active`);
       if (activeCard) {
-        const item = currentSettings.slideshow.items[activeSlideshowIndex];
+        const stored = currentSettings.slideshow.items[activeSlideshowIndex];
+        const item = stored ? liveSubSettings(stored) : stored;
         if (item) {
           activeCard.textContent = '';
           activeCard.style.backgroundColor = '';
@@ -3171,9 +3228,55 @@ document.addEventListener('DOMContentLoaded', async () => {
       swatch.dataset.preset = id;
       const shape = document.createElement('div');
       shape.className = 'cursor-preset-swatch-shape preset-' + id;
+      // Once a picture is chosen, this swatch stops being a placeholder and
+      // shows the actual cursor — it is the only place in the popup where the
+      // user can see what they picked at a glance.
+      if (id === 'custom' && cursorImageState) {
+        shape.classList.add('has-image');
+        shape.style.backgroundImage = `url('${cursorImageState}')`;
+      }
       swatch.appendChild(shape);
       els.cursorPresetsGrid.appendChild(swatch);
     });
+  }
+
+  // Shows the uploader only while the custom shape is selected, and inside it
+  // either the drop area or the chosen file's badge.
+  function updateCursorCustomUI() {
+    els.cursorCustomControl.classList.toggle('hidden', cursorPresetState !== 'custom');
+    const hasImage = !!cursorImageState;
+    els.cursorDropArea.classList.toggle('hidden', hasImage);
+    els.cursorFileInfo.classList.toggle('hidden', !hasImage);
+    if (hasImage) els.cursorImageThumb.src = cursorImageState;
+    else els.cursorImageThumb.removeAttribute('src');
+  }
+
+  async function handleCursorImageFile(file) {
+    if (!file || !file.type || !file.type.startsWith('image/')) return;
+    try {
+      const image = await window.PageDyeImage.prepareCursorImage(file);
+      cursorImageState = image.dataUrl;
+      els.cursorFileName.textContent = `${image.name} · ${formatBytes(image.bytes)}`;
+      updateCursorCustomUI();
+      renderCursorPresetsGrid();
+      triggerImmediateSave();
+    } catch (error) {
+      console.error('Failed to prepare cursor image:', error);
+      if (els.statusDot) els.statusDot.classList.add('error');
+      if (els.statusText) {
+        els.statusText.classList.add('status-text-error');
+        els.statusText.textContent = error && error.message ? error.message : t('error');
+      }
+    }
+  }
+
+  function clearCursorImage() {
+    cursorImageState = '';
+    els.cursorImageFile.value = '';
+    els.cursorFileName.textContent = '';
+    updateCursorCustomUI();
+    renderCursorPresetsGrid();
+    triggerImmediateSave();
   }
 
   function updateGradientExtractButtonState() {
@@ -3302,6 +3405,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentSettings.cursor = {
       enabled: els.cursorToggle.checked,
       preset: cursorPresetState,
+      image: cursorImageState,
       color: els.cursorColor.value,
       size: parseInt(els.cursorSize.value, 10),
       hoverScale: parseFloat(els.cursorHoverScale.value),
@@ -3468,6 +3572,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const snapshot = previewSnapshot;
         previewSnapshot = null;
         if (snapshot) await sendToActiveTab(snapshot);
+      },
+      onApplyPreferences: async (preferences) => {
+        await window.PageDyeAiPreferences.apply(chrome.storage.local, preferences);
       },
       onApply: async (settings) => {
         previewSnapshot = null;

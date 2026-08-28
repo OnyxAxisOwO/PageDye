@@ -26,7 +26,7 @@ function attachRealBackground(chrome) {
   const backgroundListeners = [];
   const backgroundChrome = {
     storage: chrome.storage,
-    runtime: { onMessage: { addListener: (fn) => backgroundListeners.push(fn) } }
+    runtime: { onMessage: { addListener: (fn) => backgroundListeners.push(fn) }, onConnect: { addListener() {} } }
   };
   runBackgroundScript({ chrome: backgroundChrome, console });
   chrome.runtime.onMessage = {

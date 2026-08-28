@@ -78,6 +78,16 @@
       undoPreview: 'Undo preview',
       apply: 'Apply',
       applied: 'Applied to this site.',
+      prefsTitle: 'PageDye settings',
+      prefsBody: 'This changes PageDye itself, not this page.',
+      prefsApply: 'Change settings',
+      prefsApplied: 'PageDye settings updated.',
+      prefsAccent: 'Interface colour',
+      prefsReduceMotion: 'Reduce interface motion',
+      prefsDiagnostics: 'Diagnostics on websites',
+      prefsPauseShortcut: 'Pause shortcut',
+      prefsOn: 'On',
+      prefsOff: 'Off',
       previewing: 'Previewing — not saved yet.',
       frostedCount: 'Frosted glass: {count}',
       light: 'Light',
@@ -129,6 +139,16 @@
       undoPreview: '撤销预览',
       apply: '应用',
       applied: '已应用到该网站。',
+      prefsTitle: 'PageDye 设置',
+      prefsBody: '这一项改的是 PageDye 自己，不是当前网页。',
+      prefsApply: '更改设置',
+      prefsApplied: 'PageDye 设置已更新。',
+      prefsAccent: '界面主题色',
+      prefsReduceMotion: '减少界面动画',
+      prefsDiagnostics: '网页上的诊断按钮',
+      prefsPauseShortcut: '暂停快捷键',
+      prefsOn: '开',
+      prefsOff: '关',
       previewing: '正在预览，尚未保存。',
       frostedCount: '磨砂玻璃：{count} 处',
       light: '浅色',
@@ -239,6 +259,9 @@
     const onPreview = config.onPreview || null;
     const onRestore = config.onRestore || null;
     const openAiSettings = config.openAiSettings || (() => {});
+    // Absent on a surface that does not offer it; the card is simply not
+    // rendered there, rather than offering a button that does nothing.
+    const onApplyPreferences = config.onApplyPreferences || null;
     // The generator trims a message to this before sending, so the field stops
     // there too rather than silently dropping the tail of a long one.
     const maxMessageChars = (globalThis.PageDyeAiTheme && globalThis.PageDyeAiTheme.MAX_INSTRUCTION_CHARS) || 1000;
@@ -268,6 +291,10 @@
     // a conversation, so switching conversations clears them.
     let pendingImages = [];
     let dragging = false;
+    // What has arrived of the current answer's visible half. Painted in place
+    // of the "thinking" line, so a long answer reads as it is written instead
+    // of appearing all at once after a spinner.
+    let streamingReply = '';
 
     // --- structure ------------------------------------------------------------
 
@@ -634,6 +661,47 @@
       return card;
     }
 
+    // PageDye's own settings, proposed rather than applied: this one button
+    // changes the extension everywhere, so it is never folded into the theme
+    // card and never happens without being pressed.
+    function renderPreferencesCard(message) {
+      const prefsApi = doc.defaultView && doc.defaultView.PageDyeAiPreferences;
+      if (!prefsApi) return null;
+      const parts = prefsApi.summarize(message.preferences);
+      if (!parts.length) return null;
+
+      const card = el('div', 'ai-chat-prefs');
+      card.appendChild(el('h4', 'ai-chat-prefs-title', str('prefsTitle')));
+      card.appendChild(el('p', 'ai-chat-prefs-body', str('prefsBody')));
+
+      const list = el('dl', 'ai-chat-prefs-list');
+      const labels = {
+        accent: 'prefsAccent',
+        reduceMotion: 'prefsReduceMotion',
+        diagnostics: 'prefsDiagnostics',
+        pauseShortcut: 'prefsPauseShortcut'
+      };
+      parts.forEach((part) => {
+        list.appendChild(el('dt', null, str(labels[part.field] || part.field)));
+        const value = typeof part.value === 'boolean' ? str(part.value ? 'prefsOn' : 'prefsOff') : String(part.value);
+        list.appendChild(el('dd', null, value));
+      });
+      card.appendChild(list);
+
+      const actions = el('div', 'ai-chat-theme-actions');
+      actions.appendChild(button('ai-chat-theme-btn primary', str('prefsApply'), async () => {
+        try {
+          await onApplyPreferences(message.preferences, active());
+          setFlash(str('prefsApplied'));
+          render();
+        } catch (error) {
+          setFlash(String((error && error.message) || error));
+        }
+      }));
+      card.appendChild(actions);
+      return card;
+    }
+
     function renderUserMessage(conversation, message) {
       const row = el('div', 'ai-msg ai-msg-user');
       const images = Array.isArray(message.images) ? message.images : [];
@@ -707,6 +775,10 @@
       row.appendChild(answer);
 
       if (message.theme && message.settings && message.themeChanged) row.appendChild(renderThemeCard(message));
+      if (message.preferences && onApplyPreferences) {
+        const prefsCard = renderPreferencesCard(message);
+        if (prefsCard) row.appendChild(prefsCard);
+      }
 
       const actions = el('div', 'ai-msg-actions');
       actions.appendChild(button('ai-chat-mini-btn', str('regenerate'), async () => {
@@ -722,6 +794,14 @@
 
     function renderPending(conversation) {
       const row = el('div', 'ai-msg ai-msg-assistant');
+      // Once text is arriving it replaces the spinner entirely: two indicators
+      // for one turn is noise, and the words are the better progress bar.
+      if (streamingReply) {
+        const answer = el('div', 'ai-answer ai-answer-streaming');
+        Markdown.renderInto(answer, streamingReply);
+        row.appendChild(answer);
+        return row;
+      }
       const pending = el('div', 'ai-chat-pending');
       pending.appendChild(el('span', 'ai-chat-spinner'));
       const firstTurn = conversation.messages.filter((message) => message.role === 'assistant' && !message.error).length === 0;
@@ -750,6 +830,9 @@
       if (busy && conversation) scroll.appendChild(renderPending(conversation));
 
       const empty = !conversation || !conversation.messages.length;
+      // Lets a skin centre the greeting in an empty transcript instead of
+      // pinning it to the top; ignored by any skin that does not want to.
+      host.classList.toggle('is-empty', empty);
       input.placeholder = str(empty ? 'placeholderFirst' : 'placeholder');
       input.disabled = busy || !configured;
       sendBtn.disabled = busy || !configured;
@@ -816,22 +899,84 @@
       return message || str('failed');
     }
 
+    // One turn, over a port so the reply can arrive in pieces. Resolves with
+    // the same object the one-shot path used to return, so everything
+    // downstream — the store, the theme card, the error handling — is unchanged.
+    //
+    // Falls back to sendMessage when the port cannot be opened at all (an older
+    // service worker, or a test harness that only mocks sendMessage), because a
+    // turn that works without streaming beats a turn that does not work.
+    function requestTurn(payload, onDelta) {
+      const connect = browser.runtime && browser.runtime.connect;
+      if (typeof connect !== 'function') {
+        return browser.runtime.sendMessage({ action: 'pagedyeAiChat', ...payload });
+      }
+
+      let port;
+      try {
+        port = browser.runtime.connect({ name: 'pagedye-ai-chat-stream' });
+      } catch (_) {
+        return browser.runtime.sendMessage({ action: 'pagedyeAiChat', ...payload });
+      }
+
+      return new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = (fn, value) => {
+          if (settled) return;
+          settled = true;
+          try {
+            port.disconnect();
+          } catch (_) {
+            // Already disconnected, which is the state we wanted.
+          }
+          fn(value);
+        };
+
+        port.onMessage.addListener((message) => {
+          if (!message) return;
+          if (message.type === 'delta') {
+            onDelta(String(message.reply || ''));
+            return;
+          }
+          if (message.type === 'done') finish(resolve, message);
+        });
+
+        // The worker can be torn down mid-turn, and a disconnect with nothing
+        // delivered would otherwise hang the chat on its spinner forever.
+        port.onDisconnect.addListener(() => {
+          finish(reject, new Error(str('failed')));
+        });
+
+        port.postMessage({ action: 'start', ...payload });
+      });
+    }
+
     async function runTurn(conversationId) {
       if (busy) return;
       const conversation = byId(conversationId);
       if (!conversation) return;
       busy = true;
+      streamingReply = '';
       setFlash('');
       render();
       scrollToEnd();
 
       try {
         const args = await resolveProfileArgs(conversation);
-        const response = await browser.runtime.sendMessage({
-          action: 'pagedyeAiChat',
-          turns: Store.toTurns(conversation),
-          ...args
-        });
+        const response = await requestTurn(
+          { turns: Store.toTurns(conversation), ...args },
+          (text) => {
+            // Ignore a straggling delta from a turn that is no longer the one
+            // on screen: switching conversations mid-request is allowed.
+            if (!busy || activeId !== conversationId) return;
+            const atEnd = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 40;
+            streamingReply = text;
+            render();
+            // Only follow along while the reader was already at the bottom, so
+            // scrolling up to re-read something is not fought by every chunk.
+            if (atEnd) scrollToEnd();
+          }
+        );
         if (!response) throw new Error(str('failed'));
         if (!response.ok) throw new Error(response.error || str('failed'));
 
@@ -847,6 +992,7 @@
         target.messages.push(message);
         target.updatedAt = at;
         await persist();
+        streamingReply = '';
         busy = false;
         render();
         scrollToEnd();
@@ -862,10 +1008,12 @@
         }, at));
         target.updatedAt = at;
         await persist();
+        streamingReply = '';
         busy = false;
         render();
         scrollToEnd();
       } finally {
+        streamingReply = '';
         busy = false;
       }
     }

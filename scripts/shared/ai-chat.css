@@ -489,6 +489,50 @@
   color: var(--primary-color-text);
 }
 
+/* --- proposed PageDye settings ---------------------------------------------------- */
+
+/* Deliberately not the theme card's shape: this one changes the extension
+   everywhere rather than one site, so it reads as a separate proposal with its
+   own button instead of another swatch strip. */
+.ai-chat-prefs {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 14px;
+  background: var(--surface-container);
+}
+
+.ai-chat-prefs-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ai-chat-prefs-body {
+  margin: 0 0 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.ai-chat-prefs-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  margin: 0 0 12px;
+  font-size: 12.5px;
+}
+
+.ai-chat-prefs-list dt {
+  color: var(--text-secondary);
+}
+
+.ai-chat-prefs-list dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 /* --- empty state, onboarding, errors --------------------------------------------- */
 
 .ai-chat-empty {
@@ -593,6 +637,31 @@
 @media (prefers-color-scheme: dark) {
   .ai-chat-error-text {
     color: #ff9a9a;
+  }
+}
+
+/* The answer while it is still being written. The caret marks the live end of
+   the text, which is what tells a slow reply apart from a stalled one now that
+   the spinner has been replaced by the words themselves. */
+.ai-answer-streaming > *:last-child::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  border-radius: 1px;
+  background: var(--primary-color);
+  vertical-align: text-bottom;
+  animation: aiChatCaret 1s steps(2, start) infinite;
+}
+
+@keyframes aiChatCaret {
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-answer-streaming > *:last-child::after {
+    animation: none;
   }
 }
 
@@ -827,26 +896,73 @@
 
 /* --- options skin ----------------------------------------------------------------- */
 
+/* The dashboard hands the chat a whole page, so it is laid out like a chat
+   app instead of a widget: a conversation rail on the left, a reading column
+   on the right, and the composer parked under it. options.css sizes the host;
+   everything here only fills what it is given. */
 .ai-chat-options {
-  height: min(660px, calc(100vh - 220px));
-  min-height: 420px;
+  gap: 14px;
+  height: 100%;
+  min-height: 0;
 }
 
 .ai-chat-options .ai-chat-sidebar {
   flex-shrink: 0;
-  width: 210px;
-  padding-right: 12px;
-  border-right: 1px solid var(--border-color);
+  gap: 12px;
+  width: 236px;
+  padding: 14px 12px;
+  border: none;
+  border-radius: 18px;
+  background: var(--surface-container);
 }
 
-/* The list is the navigation on a wide screen, so the bar's own history toggle
+.ai-chat-options .ai-chat-list {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The rail is the navigation on a wide screen, so the bar's own history toggle
    and title would only repeat it. */
 .ai-chat-options .ai-chat-bar {
   display: none;
 }
 
+.ai-chat-options .ai-chat-main {
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--surface-container);
+}
+
 .ai-chat-options .ai-chat-scroll {
-  padding: 4px 12px 4px 2px;
+  padding: 26px 24px 18px;
+}
+
+/* One reading column, centred: a paragraph set across the full width of a
+   1100px dashboard is not a conversation, it is a wall. */
+.ai-chat-options .ai-msg,
+.ai-chat-options .ai-chat-empty,
+.ai-chat-options .ai-chat-setup,
+.ai-chat-options .ai-chat-error,
+.ai-chat-options .ai-chat-pending {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* These two sit outside the scroll area, which is where the 24px gutter comes
+   from, so they carry their own. */
+.ai-chat-options .ai-chat-flash,
+.ai-chat-options .ai-chat-composer {
+  box-sizing: border-box;
+  width: min(680px, 100% - 48px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.ai-chat-options .ai-msg {
+  margin-bottom: 24px;
 }
 
 .ai-chat-options .ai-bubble,
@@ -855,7 +971,112 @@
   font-size: 14px;
 }
 
+.ai-chat-options .ai-bubble {
+  padding: 10px 14px;
+  border-radius: 18px 18px 6px 18px;
+}
+
+/* Nothing sent yet: the greeting sits in the middle of the empty column rather
+   than clinging to the top of a mostly blank page. */
+.ai-chat-options.is-empty .ai-chat-scroll {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.ai-chat-options .ai-chat-empty {
+  padding: 0;
+  text-align: center;
+}
+
+.ai-chat-options .ai-chat-empty-title {
+  margin-bottom: 10px;
+  font-size: 22px;
+  letter-spacing: -0.2px;
+}
+
+.ai-chat-options .ai-chat-empty-body {
+  max-width: 48ch;
+  margin: 0 auto;
+  font-size: 13.5px;
+}
+
+.ai-chat-options .ai-chat-suggestions {
+  justify-content: center;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.ai-chat-options .ai-chat-suggestion {
+  padding: 9px 16px;
+  font-size: 13px;
+}
+
+.ai-chat-options .ai-chat-setup {
+  text-align: center;
+}
+
+.ai-chat-options .ai-chat-setup-body {
+  max-width: 48ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* The composer is a card the field sits inside, not a bare textarea under a
+   rule. */
+.ai-chat-options .ai-chat-composer {
+  margin-bottom: 20px;
+  padding: 7px 7px 7px 8px;
+  border: none;
+  border-radius: 26px;
+  background: var(--surface-container-high);
+}
+
+.ai-chat-options .ai-chat-composer:focus-within {
+  box-shadow: 0 0 0 2px var(--input-focus-shadow);
+}
+
+.ai-chat-options .ai-chat-composer-row {
+  gap: 6px;
+}
+
+.ai-chat-options .ai-chat-input {
+  max-height: 200px;
+  padding: 9px 6px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ai-chat-options .ai-chat-input:focus {
+  box-shadow: none;
+}
+
+.ai-chat-options .ai-chat-attach {
+  border: none;
+}
+
+.ai-chat-options .ai-chat-send,
+.ai-chat-options .ai-chat-attach {
+  width: 36px;
+  height: 36px;
+}
+
+.ai-chat-options .ai-chat-attachments {
+  padding: 2px 4px 0;
+}
+
+.ai-chat-options .ai-chat-flash {
+  padding-bottom: 6px;
+}
+
+.ai-chat-options .ai-chat-drop {
+  border-radius: 18px;
+}
+
 @media (max-width: 900px) {
+  /* Too narrow for a permanent rail: it becomes the overlay the popup uses,
+     and the page goes back to scrolling as one document. */
   .ai-chat-options {
     height: auto;
     min-height: 0;
@@ -864,14 +1085,13 @@
   .ai-chat-options .ai-chat-sidebar {
     position: absolute;
     z-index: 5;
-    top: 34px;
+    top: 44px;
     right: 0;
     left: 0;
     width: auto;
     max-height: 300px;
-    padding: 10px;
+    padding: 12px;
     border: 1px solid var(--outline-variant);
-    border-right: none;
     border-radius: 14px;
     background: var(--surface-card);
     box-shadow: var(--shadow-md);
@@ -883,11 +1103,27 @@
 
   .ai-chat-options .ai-chat-bar {
     display: flex;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--outline-variant);
   }
 
   .ai-chat-options .ai-chat-scroll {
-    max-height: 60vh;
-    min-height: 240px;
+    max-height: 58vh;
+    min-height: 260px;
+    padding: 18px 14px 12px;
+  }
+
+  .ai-chat-options .ai-chat-flash,
+  .ai-chat-options .ai-chat-composer {
+    width: calc(100% - 28px);
+  }
+
+  .ai-chat-options .ai-chat-composer {
+    margin-bottom: 14px;
+  }
+
+  .ai-chat-options .ai-chat-empty-title {
+    font-size: 19px;
   }
 }
 
@@ -899,21 +1135,4 @@
   .ai-msg-actions {
     transition: none;
   }
-}
-
-/* The options page's target picker sits above the chat, in the same card. */
-.ai-chat-target-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.ai-chat-target-row select {
-  flex: 1;
-  min-width: 0;
-}
-
-.ai-chat-target {
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
 }

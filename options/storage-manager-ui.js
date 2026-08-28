@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const zh = (navigator.language || '').toLowerCase().startsWith('zh');
   const messages = {
     en: {
-      nav: 'Storage Space', title: 'Storage Space',
+      title: 'Storage space',
       subtitle: 'See how much space PageDye uses and safely remove images you no longer need.',
       refresh: 'Refresh', currentUsage: 'PageDye is using', calculating: 'Calculating...',
       localImages: 'Used by images', reclaimable: 'Ready to clean up', uniqueImages: 'Different images',
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
       operationFailed: 'The storage task could not be completed: {error}'
     },
     zh: {
-      nav: '存储空间', title: '存储空间',
+      title: '存储空间',
       subtitle: '查看 PageDye 使用了多少空间，并安全清理不再需要的图片。',
       refresh: '刷新', currentUsage: 'PageDye 已使用', calculating: '正在计算...',
       localImages: '其中图片占用', reclaimable: '可以清理', uniqueImages: '不同图片',
@@ -415,9 +415,6 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshTimer = setTimeout(load, 180);
   });
 
-  if (location.hash === '#section-storage') {
-    document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.target === 'section-storage'));
-    document.querySelectorAll('.content-section').forEach((item) => item.classList.toggle('active', item.id === 'section-storage'));
-  }
+  // Deep links are options.js's job — see the matching note in config-manager.js.
   load();
 });
