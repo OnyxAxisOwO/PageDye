@@ -2720,8 +2720,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   let editActiveSlideshowIndex = 0;
   let currentEditSettings = null;
   let editTargetSwitchChain = Promise.resolve();
-  let editGradientStopsState = [];
-  let editFrostedGlassState = [];
   let lastSelectedEditorTab = 'wallpaper';
 
   function populateEditForm(subSettings) {
@@ -2786,22 +2784,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-blur-val').textContent = `${document.getElementById('edit-blur').value}px`;
 
     // Populate advanced filters
-    const f = subSettings.filters || {};
-    const bri = f.brightness !== undefined ? f.brightness : 100;
-    const con = f.contrast !== undefined ? f.contrast : 100;
-    const gry = f.grayscale !== undefined ? f.grayscale : 0;
-    const hue = f.hue !== undefined ? f.hue : 0;
-    const inv = f.invert !== undefined ? f.invert : 0;
-    document.getElementById('edit-filter-brightness').value = bri;
-    document.getElementById('edit-filter-brightness-val').textContent = `${bri}%`;
-    document.getElementById('edit-filter-contrast').value = con;
-    document.getElementById('edit-filter-contrast-val').textContent = `${con}%`;
-    document.getElementById('edit-filter-grayscale').value = gry;
-    document.getElementById('edit-filter-grayscale-val').textContent = `${gry}%`;
-    document.getElementById('edit-filter-hue').value = hue;
-    document.getElementById('edit-filter-hue-val').textContent = `${hue}deg`;
-    document.getElementById('edit-filter-invert').value = inv;
-    document.getElementById('edit-filter-invert-val').textContent = `${inv}%`;
+    PageDyeEditorFilters.populate(subSettings.filters);
 
     if (subSettings.style) {
       document.getElementById('edit-bg-fixed').checked = subSettings.style.fixed !== false;
@@ -2819,7 +2802,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (type === 'color') {
       value = document.getElementById('edit-color-picker').value;
       dest.colorMode = document.querySelector('input[name="edit-colorMode"]:checked').value;
-      dest.gradient = collectEditGradientFromForm();
+      dest.gradient = PageDyeEditorGradientStops.collect();
     } else if (type === 'image') {
       value = editCurrentImageBase64 || document.getElementById('edit-image-url').value;
     } else if (type === 'video') {
@@ -2838,13 +2821,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     dest.value = value;
     dest.opacity = parseInt(document.getElementById('edit-opacity').value, 10);
     dest.blur = parseInt(document.getElementById('edit-blur').value, 10);
-    dest.filters = {
-      brightness: parseInt(document.getElementById('edit-filter-brightness').value, 10),
-      contrast:   parseInt(document.getElementById('edit-filter-contrast').value,   10),
-      grayscale:  parseInt(document.getElementById('edit-filter-grayscale').value,  10),
-      hue:        parseInt(document.getElementById('edit-filter-hue').value,        10),
-      invert:     parseInt(document.getElementById('edit-filter-invert').value,     10)
-    };
+    dest.filters = PageDyeEditorFilters.collect();
     dest.style = {
       fixed: document.getElementById('edit-bg-fixed').checked,
       size: document.getElementById('edit-bg-size').value,
@@ -3027,7 +3004,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('edit-custom-css').value = currentEditSettings.customCss || '';
     if (editCssEditorController) editCssEditorController.update();
 
-    renderEditFrostedList(normalizeFrostedGlassList(currentEditSettings.frostedGlass));
+    PageDyeEditorFrosted.render(PageDyeEditorFrosted.normalize(currentEditSettings.frostedGlass), t);
 
     // Deep Compatibility Mode now has its own always-expanded accordion.
     const editAccordionAdvanced = document.getElementById('edit-accordion-advanced');
@@ -3332,8 +3309,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       // through populateEditGradientPanel (e.g. a fresh domain whose type
       // starts as 'none'/'image') — without this, the stop list and live
       // preview would stay empty until the next full populateEditForm call.
-      if (editGradientStopsState.length < window.PageDyeGradient.MIN_STOPS) {
-        renderEditGradientStops(window.PageDyeGradient.defaultGradient(document.getElementById('edit-color-picker').value).stops);
+      if (PageDyeEditorGradientStops.getStops().length < window.PageDyeGradient.MIN_STOPS) {
+        PageDyeEditorGradientStops.render(window.PageDyeGradient.defaultGradient(document.getElementById('edit-color-picker').value).stops, t);
       }
       const kindRadio = document.querySelector('input[name="edit-gradientKind"]:checked');
       updateEditGradientKindUI(kindRadio ? kindRadio.value : 'linear');
@@ -3362,217 +3339,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const stops = (gradient.stops && gradient.stops.length >= window.PageDyeGradient.MIN_STOPS)
       ? gradient.stops
       : window.PageDyeGradient.defaultGradient().stops;
-    renderEditGradientStops(stops);
+    PageDyeEditorGradientStops.render(stops, t);
 
     updateEditGradientKindUI(gradient.kind || 'linear');
     updateEditGradientPreview();
   }
 
-  // Rebuilds the stop-row list from scratch; listeners are delegated on the
-  // parent (see the edit-gradient-stops-list input/click handlers below)
-  // since rows are recreated on every add/remove.
-  function renderEditGradientStops(stops) {
-    editGradientStopsState = stops.map(s => ({ color: s.color, position: s.position }));
-    const list = document.getElementById('edit-gradient-stops-list');
-    list.innerHTML = '';
-
-    editGradientStopsState.forEach((stop, idx) => {
-      const row = document.createElement('div');
-      row.className = 'gradient-stop-row';
-      row.dataset.index = idx;
-
-      const colorInput = document.createElement('input');
-      colorInput.type = 'color';
-      colorInput.className = 'gradient-stop-color';
-      colorInput.value = stop.color;
-
-      const hexInput = document.createElement('input');
-      hexInput.type = 'text';
-      hexInput.className = 'gradient-stop-hex';
-      hexInput.value = stop.color;
-
-      const posInput = document.createElement('input');
-      posInput.type = 'number';
-      posInput.className = 'gradient-stop-pos';
-      posInput.min = '0';
-      posInput.max = '100';
-      posInput.value = stop.position;
-
-      const removeBtn = document.createElement('button');
-      removeBtn.type = 'button';
-      removeBtn.className = 'gradient-stop-remove';
-      removeBtn.textContent = '×';
-      removeBtn.title = t('gradientRemoveStop');
-      removeBtn.disabled = editGradientStopsState.length <= window.PageDyeGradient.MIN_STOPS;
-
-      row.appendChild(colorInput);
-      row.appendChild(hexInput);
-      row.appendChild(posInput);
-      row.appendChild(removeBtn);
-      list.appendChild(row);
-    });
-
-    document.getElementById('edit-gradient-add-stop').disabled = editGradientStopsState.length >= window.PageDyeGradient.MAX_STOPS;
-  }
-
-  // Older saved settings stored frostedGlass as a single { selector, blur,
-  // opacity } object. Upgrade that shape to a one-entry array transparently.
-  function normalizeFrostedGlassList(fg) {
-    if (Array.isArray(fg)) return fg;
-    if (fg && typeof fg === 'object' && fg.selector) return [fg];
-    return [];
-  }
-
-  // Rebuilds the frosted-entry list from scratch, one card per element, so
-  // saving a new element never clobbers the others.
-  // The options-page half of the popup's applyFrostedTint; the derivation
-  // itself lives in scripts/gradient.js so the two cannot drift.
-  async function applyEditFrostedTint(index, button) {
-    const entry = editFrostedGlassState[index];
-    if (!entry) return;
-
-    const layer = {};
-    collectEditFormTo(layer);
-    button.disabled = true;
-    const result = await window.PageDyeGradient.extractLayerPalette(layer);
-    button.disabled = false;
-
-    const tint = result.ok ? window.PageDyeGradient.frostedTintFromColors(result.colors) : null;
-    if (!tint) {
-      showStatus(t('frostedTintFailed'), true);
-      return;
-    }
-
-    entry.color = tint;
-    renderEditFrostedList(editFrostedGlassState);
-    triggerEditImmediateSave();
-  }
-
-  function renderEditFrostedList(list) {
-    editFrostedGlassState = list.map(f => ({
-      selector: f.selector || '',
-      blur: f.blur !== undefined ? f.blur : 12,
-      opacity: f.opacity !== undefined ? f.opacity : 55,
-      color: f.color || null
-    }));
-    const container = document.getElementById('edit-frosted-list');
-    container.innerHTML = '';
-
-    editFrostedGlassState.forEach((entry, idx) => {
-      const row = document.createElement('div');
-      row.className = 'frosted-entry';
-      row.dataset.index = idx;
-
-      const selectorRow = document.createElement('div');
-      selectorRow.className = 'selector-row';
-
-      const selectorInput = document.createElement('input');
-      selectorInput.type = 'text';
-      selectorInput.className = 'frosted-entry-selector';
-      selectorInput.placeholder = '.card, main';
-      selectorInput.value = entry.selector;
-
-      const removeBtn = document.createElement('button');
-      removeBtn.type = 'button';
-      removeBtn.className = 'frosted-entry-remove';
-      removeBtn.textContent = '×';
-      removeBtn.title = t('gradientRemoveStop');
-
-      selectorRow.appendChild(selectorInput);
-      selectorRow.appendChild(removeBtn);
-
-      const blurLabelRow = document.createElement('div');
-      blurLabelRow.className = 'label-row';
-      const blurLabel = document.createElement('label');
-      blurLabel.textContent = t('frostedBlur');
-      const blurVal = document.createElement('span');
-      blurVal.className = 'val-badge frosted-entry-blur-val';
-      blurVal.textContent = `${entry.blur}px`;
-      blurLabelRow.appendChild(blurLabel);
-      blurLabelRow.appendChild(blurVal);
-
-      const blurInput = document.createElement('input');
-      blurInput.type = 'range';
-      blurInput.className = 'frosted-entry-blur';
-      blurInput.min = '0';
-      blurInput.max = '30';
-      blurInput.step = '0.1';
-      blurInput.value = entry.blur;
-
-      const opacityLabelRow = document.createElement('div');
-      opacityLabelRow.className = 'label-row';
-      const opacityLabel = document.createElement('label');
-      opacityLabel.textContent = t('frostedOpacity');
-      const opacityVal = document.createElement('span');
-      opacityVal.className = 'val-badge frosted-entry-opacity-val';
-      opacityVal.textContent = `${entry.opacity}%`;
-      opacityLabelRow.appendChild(opacityLabel);
-      opacityLabelRow.appendChild(opacityVal);
-
-      const opacityInput = document.createElement('input');
-      opacityInput.type = 'range';
-      opacityInput.className = 'frosted-entry-opacity';
-      opacityInput.min = '0';
-      opacityInput.max = '100';
-      opacityInput.value = entry.opacity;
-
-      const colorRow = document.createElement('div');
-      colorRow.className = 'frosted-entry-color-row';
-
-      const colorToggleLabel = document.createElement('label');
-      colorToggleLabel.className = 'checkbox-label';
-      const colorToggle = document.createElement('input');
-      colorToggle.type = 'checkbox';
-      colorToggle.className = 'frosted-entry-color-toggle';
-      colorToggle.checked = !!entry.color;
-      const colorToggleText = document.createElement('span');
-      colorToggleText.textContent = t('frostedCustomColor');
-      colorToggleLabel.appendChild(colorToggle);
-      colorToggleLabel.appendChild(colorToggleText);
-
-      const colorInput = document.createElement('input');
-      colorInput.type = 'color';
-      colorInput.className = 'frosted-entry-color';
-      colorInput.value = entry.color || '#ffffff';
-      colorInput.disabled = !entry.color;
-
-      // Seeds the picker from whatever the background is made of. It only
-      // fills in a starting value — the picker stays right beside it, because
-      // a tint derived from the wallpaper cannot know the color of the text it
-      // will end up sitting behind.
-      const tintBtn = document.createElement('button');
-      tintBtn.type = 'button';
-      tintBtn.className = 'frosted-entry-tint';
-      tintBtn.textContent = t('frostedTintFromBg');
-
-      colorRow.appendChild(colorToggleLabel);
-      colorRow.appendChild(colorInput);
-      colorRow.appendChild(tintBtn);
-
-      row.appendChild(selectorRow);
-      row.appendChild(blurLabelRow);
-      row.appendChild(blurInput);
-      row.appendChild(opacityLabelRow);
-      row.appendChild(opacityInput);
-      row.appendChild(colorRow);
-      container.appendChild(row);
-    });
-  }
-
-  function collectEditGradientFromForm() {
-    const kindRadio = document.querySelector('input[name="edit-gradientKind"]:checked');
-    return {
-      kind: kindRadio ? kindRadio.value : 'linear',
-      angle: parseInt(document.getElementById('edit-gradient-angle').value, 10),
-      shape: document.getElementById('edit-gradient-shape').value,
-      stops: editGradientStopsState.map(s => ({ color: s.color, position: s.position })),
-      animated: document.getElementById('edit-gradient-animated').checked,
-      speed: parseInt(document.getElementById('edit-gradient-speed').value, 10)
-    };
-  }
-
   function updateEditGradientPreview() {
-    const gradient = collectEditGradientFromForm();
+    const gradient = PageDyeEditorGradientStops.collect();
     const bg = document.getElementById('edit-gradient-preview-bg');
     bg.style.backgroundImage = window.PageDyeGradient.buildGradientCss(gradient);
     bg.style.opacity = (parseInt(document.getElementById('edit-opacity').value, 10) || 100) / 100;
@@ -3631,20 +3405,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const imageSize = document.getElementById('edit-bg-size').value;
     bgPreview.style.backgroundSize = imageSize === 'stretch' ? '100% 100%' : imageSize;
 
-    const blur       = parseInt(document.getElementById('edit-blur').value, 10) || 0;
-    const brightness = parseInt(document.getElementById('edit-filter-brightness').value, 10);
-    const contrast   = parseInt(document.getElementById('edit-filter-contrast').value, 10);
-    const grayscale  = parseInt(document.getElementById('edit-filter-grayscale').value, 10);
-    const hue        = parseInt(document.getElementById('edit-filter-hue').value, 10);
-    const invert     = parseInt(document.getElementById('edit-filter-invert').value, 10);
+    const blur = parseInt(document.getElementById('edit-blur').value, 10) || 0;
 
     const filterStr = [
-      blur        > 0                ? `blur(${blur}px)`              : '',
-      brightness !== 100             ? `brightness(${brightness}%)`   : '',
-      contrast   !== 100             ? `contrast(${contrast}%)`       : '',
-      grayscale  > 0                 ? `grayscale(${grayscale}%)`     : '',
-      hue        > 0                 ? `hue-rotate(${hue}deg)`        : '',
-      invert     > 0                 ? `invert(${invert}%)`           : ''
+      blur > 0 ? `blur(${blur}px)` : '',
+      ...PageDyeEditorFilters.buildCssFilterList(PageDyeEditorFilters.collect())
     ].filter(Boolean).join(' ') || 'none';
 
     bgPreview.style.filter = filterStr;
@@ -3690,12 +3455,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     collectEditDeepCompatRunMode();
     currentEditSettings.deepCompatExclude = document.getElementById('edit-deep-compat-exclude').value.trim();
     currentEditSettings.customCss = document.getElementById('edit-custom-css').value;
-    currentEditSettings.frostedGlass = editFrostedGlassState.map(f => ({
-      selector: f.selector.trim(),
-      blur: f.blur,
-      opacity: f.opacity,
-      color: f.color || null
-    }));
+    currentEditSettings.frostedGlass = PageDyeEditorFrosted.collect();
     currentEditSettings.timestamp = Date.now();
   }
 
@@ -3808,7 +3568,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     syncEditDeepCompatRunMode('normal');
     document.getElementById('edit-deep-compat-exclude').value = '';
     document.getElementById('edit-custom-css').value = '';
-    renderEditFrostedList([]);
+    PageDyeEditorFrosted.render([], t);
     if (editCssEditorController) editCssEditorController.update();
 
     notifyTabsOfDomain(currentEditingDomain);
@@ -4057,43 +3817,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     queueEditAutoSave();
   });
 
-  document.getElementById('edit-gradient-add-stop').addEventListener('click', () => {
-    if (editGradientStopsState.length >= window.PageDyeGradient.MAX_STOPS) return;
-    const lastPos = editGradientStopsState.length ? editGradientStopsState[editGradientStopsState.length - 1].position : 0;
-    editGradientStopsState.push({ color: '#ffffff', position: Math.min(100, lastPos + 10) });
-    renderEditGradientStops(editGradientStopsState);
-    triggerEditImmediateSave();
-    updateEditGradientPreview();
-  });
-
-  const editGradientStopsList = document.getElementById('edit-gradient-stops-list');
-
-  editGradientStopsList.addEventListener('input', (e) => {
-    const row = e.target.closest('.gradient-stop-row');
-    if (!row) return;
-    const idx = parseInt(row.dataset.index, 10);
-    if (e.target.classList.contains('gradient-stop-color')) {
-      row.querySelector('.gradient-stop-hex').value = e.target.value;
-      editGradientStopsState[idx].color = e.target.value;
-    } else if (e.target.classList.contains('gradient-stop-hex')) {
-      row.querySelector('.gradient-stop-color').value = e.target.value;
-      editGradientStopsState[idx].color = e.target.value;
-    } else if (e.target.classList.contains('gradient-stop-pos')) {
-      editGradientStopsState[idx].position = Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0));
-    }
-    updateEditGradientPreview();
-    queueEditAutoSave();
-  });
-
-  editGradientStopsList.addEventListener('click', (e) => {
-    const removeBtn = e.target.closest('.gradient-stop-remove');
-    if (!removeBtn) return;
-    if (editGradientStopsState.length <= window.PageDyeGradient.MIN_STOPS) return;
-    const idx = parseInt(removeBtn.closest('.gradient-stop-row').dataset.index, 10);
-    editGradientStopsState.splice(idx, 1);
-    renderEditGradientStops(editGradientStopsState);
-    triggerEditImmediateSave();
-    updateEditGradientPreview();
+  PageDyeEditorGradientStops.attachStopsListHandlers({
+    t,
+    onFieldChange: () => { updateEditGradientPreview(); queueEditAutoSave(); },
+    onStructuralChange: () => { triggerEditImmediateSave(); updateEditGradientPreview(); }
   });
 
   document.getElementById('edit-gradient-presets-grid').addEventListener('click', (e) => {
@@ -4108,7 +3835,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('edit-gradient-generate-btn').addEventListener('click', () => {
     const seed = editColorPicker.value;
     const stops = window.PageDyeGradient.clampStops(normalizeEditStopObjects(window.PageDyeGradient.generateTonalPalette(seed)));
-    renderEditGradientStops(stops);
+    PageDyeEditorGradientStops.render(stops, t);
     triggerEditImmediateSave();
     updateEditGradientPreview();
   });
@@ -4126,7 +3853,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     const stops = window.PageDyeGradient.clampStops(normalizeEditStopObjects(result.colors));
-    renderEditGradientStops(stops);
+    PageDyeEditorGradientStops.render(stops, t);
     triggerEditImmediateSave();
     updateEditGradientPreview();
   });
@@ -4256,32 +3983,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Advanced filter sliders
-  const filterDefs = [
-    { id: 'edit-filter-brightness', valId: 'edit-filter-brightness-val', unit: '%' },
-    { id: 'edit-filter-contrast',   valId: 'edit-filter-contrast-val',   unit: '%' },
-    { id: 'edit-filter-grayscale',  valId: 'edit-filter-grayscale-val',  unit: '%' },
-    { id: 'edit-filter-hue',        valId: 'edit-filter-hue-val',        unit: 'deg' },
-    { id: 'edit-filter-invert',     valId: 'edit-filter-invert-val',     unit: '%' }
-  ];
-  filterDefs.forEach(({ id, valId, unit }) => {
-    document.getElementById(id).addEventListener('input', (e) => {
-      document.getElementById(valId).textContent = `${e.target.value}${unit}`;
-      updateEditPreview();
-      queueEditAutoSave();
-    });
+  PageDyeEditorFilters.attachLiveUpdate(() => {
+    updateEditPreview();
+    queueEditAutoSave();
   });
 
   document.getElementById('edit-filters-reset').addEventListener('click', () => {
-    document.getElementById('edit-filter-brightness').value = 100;
-    document.getElementById('edit-filter-brightness-val').textContent = '100%';
-    document.getElementById('edit-filter-contrast').value = 100;
-    document.getElementById('edit-filter-contrast-val').textContent = '100%';
-    document.getElementById('edit-filter-grayscale').value = 0;
-    document.getElementById('edit-filter-grayscale-val').textContent = '0%';
-    document.getElementById('edit-filter-hue').value = 0;
-    document.getElementById('edit-filter-hue-val').textContent = '0deg';
-    document.getElementById('edit-filter-invert').value = 0;
-    document.getElementById('edit-filter-invert-val').textContent = '0%';
+    PageDyeEditorFilters.reset();
     updateEditPreview();
     triggerEditImmediateSave();
   });
@@ -4304,50 +4012,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('edit-deep-compat-exclude').addEventListener('input', () => queueEditAutoSave());
   document.getElementById('edit-custom-css').addEventListener('input', () => queueEditAutoSave());
-  // Frosted glass entries are rebuilt on every render, so listeners are
-  // delegated on the (stable) parent container rather than attached per-row.
-  const editFrostedList = document.getElementById('edit-frosted-list');
-  editFrostedList.addEventListener('input', (e) => {
-    const row = e.target.closest('.frosted-entry');
-    if (!row) return;
-    const idx = parseInt(row.dataset.index, 10);
-    if (e.target.classList.contains('frosted-entry-selector')) {
-      editFrostedGlassState[idx].selector = e.target.value;
-    } else if (e.target.classList.contains('frosted-entry-blur')) {
-      editFrostedGlassState[idx].blur = parseFloat(e.target.value) || 0;
-      row.querySelector('.frosted-entry-blur-val').textContent = `${e.target.value}px`;
-    } else if (e.target.classList.contains('frosted-entry-opacity')) {
-      editFrostedGlassState[idx].opacity = parseInt(e.target.value, 10);
-      row.querySelector('.frosted-entry-opacity-val').textContent = `${e.target.value}%`;
-    } else if (e.target.classList.contains('frosted-entry-color-toggle')) {
-      const colorInput = row.querySelector('.frosted-entry-color');
-      colorInput.disabled = !e.target.checked;
-      editFrostedGlassState[idx].color = e.target.checked ? colorInput.value : null;
-    } else if (e.target.classList.contains('frosted-entry-color')) {
-      editFrostedGlassState[idx].color = e.target.value;
-    }
-    queueEditAutoSave();
-  });
-
-  editFrostedList.addEventListener('click', (e) => {
-    const tintBtn = e.target.closest('.frosted-entry-tint');
-    if (tintBtn) {
-      const idx = parseInt(tintBtn.closest('.frosted-entry').dataset.index, 10);
-      applyEditFrostedTint(idx, tintBtn);
-      return;
-    }
-    const removeBtn = e.target.closest('.frosted-entry-remove');
-    if (!removeBtn) return;
-    const idx = parseInt(removeBtn.closest('.frosted-entry').dataset.index, 10);
-    editFrostedGlassState.splice(idx, 1);
-    renderEditFrostedList(editFrostedGlassState);
-    triggerEditImmediateSave();
-  });
-
-  document.getElementById('edit-frosted-add-btn').addEventListener('click', () => {
-    editFrostedGlassState.push({ selector: '', blur: 12, opacity: 55, color: null });
-    renderEditFrostedList(editFrostedGlassState);
-    triggerEditImmediateSave();
+  PageDyeEditorFrosted.attachHandlers({
+    t,
+    showStatus,
+    getCurrentLayer: () => { const layer = {}; collectEditFormTo(layer); return layer; },
+    onFieldChange: () => queueEditAutoSave(),
+    onStructuralChange: () => triggerEditImmediateSave()
   });
 
   document.getElementById('edit-back-btn').addEventListener('click', () => {
