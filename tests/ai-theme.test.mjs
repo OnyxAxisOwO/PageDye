@@ -948,3 +948,172 @@ test('a mid-stream error from the API fails the turn instead of half-answering',
     /Overloaded/
   );
 });
+
+// A turn that designs nothing sends no theme at all. It used to have to repeat
+// the previous one verbatim, which cost thousands of output tokens to answer
+// "hello" and — because a model that has just written a whole theme rarely then
+// says it changed nothing — put an apply button under the greeting.
+const QUESTION_ANSWER = JSON.stringify({
+  reply: '你好！想改哪里？',
+  themeChanged: false,
+  theme: null,
+  preferencesChanged: false,
+  preferences: null
+});
+
+test('a turn that only answers a question carries no theme and no card', async () => {
+  const result = await withMockApi(
+    () => ({ payload: { choices: [{ message: { content: QUESTION_ANSWER } }] } }),
+    (baseUrl) => aiTheme.chat({
+      config: { provider: 'openai', apiKey: 'sk-test', model: 'm', baseUrl },
+      profile: SAMPLE_PROFILE,
+      turns: [{ role: 'user', content: '你好' }]
+    })
+  );
+
+  assert.equal(result.reply, '你好！想改哪里？');
+  assert.equal(result.theme, null);
+  assert.equal(result.themeChanged, false);
+  assert.equal(result.settings, null, 'no settings means no apply button');
+});
+
+test('a claimed change with no theme is not turned into an apply button', async () => {
+  const answer = JSON.stringify({ reply: 'ok', themeChanged: true, theme: null, preferencesChanged: false, preferences: null });
+  const result = await withMockApi(
+    () => ({ payload: { choices: [{ message: { content: answer } }] } }),
+    (baseUrl) => aiTheme.chat({
+      config: { provider: 'openai', apiKey: 'sk-test', model: 'm', baseUrl },
+      profile: SAMPLE_PROFILE,
+      turns: [{ role: 'user', content: 'hm' }]
+    })
+  );
+
+  assert.equal(result.themeChanged, false, 'the flag follows the theme, not the claim');
+  assert.equal(result.settings, null);
+});
+
+test('the chat schema makes the theme nullable without dropping it from required', async () => {
+  const bodies = {};
+  for (const provider of ['openai', 'anthropic']) {
+    await withMockApi(({ body }) => {
+      bodies[provider] = body;
+      return {
+        payload: provider === 'anthropic'
+          ? { content: [{ type: 'text', text: QUESTION_ANSWER }] }
+          : { choices: [{ message: { content: QUESTION_ANSWER } }] }
+      };
+    }, (baseUrl) => aiTheme.chat({
+      config: { provider, apiKey: 'sk-test', model: 'm', baseUrl },
+      profile: SAMPLE_PROFILE,
+      turns: [{ role: 'user', content: 'hi' }]
+    }));
+  }
+
+  // Strict mode wants every property listed in `required`, so "nothing here"
+  // has to be a null value rather than a missing key.
+  const strict = bodies.openai.response_format.json_schema.schema;
+  assert.deepEqual(strict.properties.theme.type, ['object', 'null']);
+  assert.deepEqual(strict.properties.preferences.type, ['object', 'null']);
+  assert.ok(strict.required.includes('theme') && strict.required.includes('preferences'));
+
+  const anthropic = bodies.anthropic.output_config.format.schema;
+  assert.deepEqual(anthropic.properties.theme.type, ['object', 'null']);
+  assert.ok(anthropic.required.includes('theme'));
+});
+
+test('a reasoning model thinks in the open instead of into the answer', async () => {
+  // The reasoning quotes the schema's own field name and contains a brace:
+  // scanning the whole buffer would show the model's thinking as the reply, and
+  // the brace would be taken for the start of the JSON.
+  const thought = 'The user said hi. I will fill "reply" politely, theme stays null. {no theme}';
+  const answer = JSON.stringify({ reply: 'Hi there.', themeChanged: false, theme: null, preferencesChanged: false, preferences: null });
+  const thinking = [];
+  const replies = [];
+
+  const result = await withEventStream(
+    openAiFrames(`<think>${thought}</think>${answer}`),
+    (baseUrl) => aiTheme.chatStream({
+      config: { provider: 'openai', apiKey: 'sk-test', model: 'm', baseUrl },
+      profile: SAMPLE_PROFILE,
+      turns: [{ role: 'user', content: 'hi' }],
+      onReply: (text) => replies.push(text),
+      onThinking: (text) => thinking.push(text)
+    })
+  );
+
+  assert.equal(result.reply, 'Hi there.');
+  assert.equal(result.thinking, thought);
+  assert.ok(thinking.length > 1, 'the thinking should arrive in pieces too');
+  assert.ok(replies.every((text) => thought.indexOf(text) === -1), 'no reasoning may be shown as the reply');
+  assert.equal(replies[replies.length - 1], 'Hi there.');
+});
+
+test('reasoning sent as its own field is picked up as well', async () => {
+  const answer = JSON.stringify({ reply: 'Done.', themeChanged: false, theme: null, preferencesChanged: false, preferences: null });
+  const frames = [
+    { choices: [{ delta: { reasoning_content: 'weighing two palettes' } }] },
+    ...openAiFrames(answer)
+  ];
+
+  const result = await withEventStream(frames, (baseUrl) => aiTheme.chatStream({
+    config: { provider: 'openai', apiKey: 'sk-test', model: 'm', baseUrl },
+    profile: SAMPLE_PROFILE,
+    turns: [{ role: 'user', content: 'hi' }]
+  }));
+
+  assert.equal(result.thinking, 'weighing two palettes');
+  assert.equal(result.reply, 'Done.');
+});
+
+test('a turn reports whether it streamed, why it did not, and what it cost', async () => {
+  const answer = JSON.stringify({ reply: 'Done.', themeChanged: false, theme: null, preferencesChanged: false, preferences: null });
+
+  const streamed = await withEventStream(
+    [...openAiFrames(answer), { choices: [], usage: { prompt_tokens: 1200, completion_tokens: 40 } }],
+    (baseUrl) => aiTheme.chatStream({
+      config: { provider: 'openai', apiKey: 'sk-test', model: 'm', baseUrl },
+      profile: SAMPLE_PROFILE,
+      turns: [{ role: 'user', content: 'hi' }]
+    })
+  );
+
+  assert.equal(streamed.streamed, true);
+  assert.equal(streamed.streamFallback, '', 'nothing to explain when it streamed');
+  assert.equal(streamed.stats.inputTokens, 1200);
+  assert.equal(streamed.stats.outputTokens, 40);
+  assert.ok(streamed.stats.firstTokenMs !== null, 'the first token was seen, so it was timed');
+
+  // An endpoint that answers a stream request with ordinary JSON: the answer
+  // survives, and the turn says why it arrived all at once.
+  const fallback = await withMockApi(
+    () => ({ payload: { choices: [{ message: { content: answer } }], usage: { prompt_tokens: 1200, completion_tokens: 40 } } }),
+    (baseUrl) => aiTheme.chatStream({
+      config: { provider: 'openai', apiKey: 'sk-test', model: 'm', baseUrl },
+      profile: SAMPLE_PROFILE,
+      turns: [{ role: 'user', content: 'hi' }]
+    })
+  );
+
+  assert.equal(fallback.streamed, false);
+  assert.match(fallback.streamFallback, /application\/json/);
+  assert.equal(fallback.stats.firstTokenMs, null, 'nothing was streamed, so there is no first-token time');
+  assert.equal(fallback.stats.outputTokens, 40);
+});
+
+test('the streaming toggle skips the request that would have to be retried', async () => {
+  let calls = 0;
+  const answer = JSON.stringify({ reply: 'Done.', themeChanged: false, theme: null, preferencesChanged: false, preferences: null });
+  const result = await withMockApi(({ body }) => {
+    calls += 1;
+    assert.ok(!body.stream, 'no stream may be asked for when the user turned it off');
+    return { payload: { choices: [{ message: { content: answer } }] } };
+  }, (baseUrl) => aiTheme.chatStream({
+    config: { provider: 'openai', apiKey: 'sk-test', model: 'm', baseUrl, streaming: false },
+    profile: SAMPLE_PROFILE,
+    turns: [{ role: 'user', content: 'hi' }]
+  }));
+
+  assert.equal(calls, 1, 'one request, not a stream attempt and a retry');
+  assert.equal(result.streamed, false);
+  assert.equal(result.streamFallback, '', 'this is what was asked for, not a downgrade');
+});

@@ -762,17 +762,26 @@
     additionalProperties: false
   };
 
+  // `theme: null` rather than a property that may be absent: strict mode wants
+  // every property listed in `required`, so the way to say "nothing here" is a
+  // value, not an omission.
+  function nullable(schema) {
+    return { ...schema, type: [schema.type, 'null'] };
+  }
+
   const CHAT_SCHEMA = {
     type: 'object',
     properties: {
       reply: { type: 'string' },
       themeChanged: { type: 'boolean' },
-      theme: THEME_SCHEMA,
-      // Same two-field shape as the theme: a complete object every time, with
-      // a flag saying whether it is a proposal or just the current state
-      // echoed back.
+      // Null on every turn that is not proposing a design. It used to be a
+      // complete theme every time — the previous one repeated verbatim when
+      // nothing changed — which cost several thousand output tokens to answer
+      // "hello" and put a theme card under it, because a model that has just
+      // written a whole theme rarely then says it changed nothing.
+      theme: nullable(THEME_SCHEMA),
       preferencesChanged: { type: 'boolean' },
-      preferences: PREFERENCES_SCHEMA
+      preferences: nullable(PREFERENCES_SCHEMA)
     },
     required: ['reply', 'themeChanged', 'theme', 'preferencesChanged', 'preferences'],
     additionalProperties: false
@@ -782,22 +791,26 @@
     SYSTEM_PROMPT,
     '',
     'You are in a running conversation with the user about this one page, so split',
-    'your answer into three fields:',
+    'your answer into these fields:',
     '',
     '- `reply` — what you say to the user, and the only part they read. GitHub',
     '  flavoured markdown is rendered, so short paragraphs, lists and `code` are',
     '  fine. Describe what you changed and why, answer whatever was asked, or ask',
     '  for the one detail you are missing. Do not paste the JSON or list every hex',
     '  value; the user sees the palette rendered next to your message.',
-    '- `themeChanged` — true when `theme` differs from your previous answer, false',
-    '  when the user only asked a question, or when you could not honour a request.',
-    '- `theme` — always a complete theme, even when nothing changed: repeat your',
-    '  previous answer exactly and set `themeChanged` to false.',
+    '- `themeChanged` — true only when `theme` carries a design this turn.',
+    '- `theme` — `null` unless this turn is proposing a design. A greeting, a',
+    '  question about what you did, a request you could not honour: `theme` is',
+    '  `null` and `themeChanged` is false. Writing a theme nobody asked for is a',
+    '  mistake, not thoroughness — it puts an apply button in front of the user',
+    '  for a change they did not request. When you are designing, send a complete',
+    '  theme: it replaces the current one rather than being merged into it.',
     '- `preferencesChanged` — false in almost every answer. True only when the',
     '  user asked you to change PageDye itself rather than this page.',
-    '- `preferences` — PageDye\'s own settings: the dashboard accent, reduced',
-    '  motion, the pause shortcut, the in-page diagnostics overlay. They apply',
-    '  everywhere, not to this page, so only fill them in when asked to.',
+    '- `preferences` — `null` unless `preferencesChanged` is true. PageDye\'s own',
+    '  settings: the dashboard accent, reduced motion, the pause shortcut, the',
+    '  in-page diagnostics overlay. They apply everywhere, not to this page, so',
+    '  only fill them in when asked to.',
     '',
     'The theme covers more than the wallpaper:',
     '',
@@ -813,9 +826,10 @@
     '  asked for; pick the `kind` that matches what they described, and keep',
     '  `density` and `speed` low on a page meant for reading.',
     '',
-    'Your earlier answers are replayed to you as you sent them. Treat the most',
-    'recent one as the current design and make each change relative to it, unless',
-    'the user asks you to start over.',
+    'Your earlier answers are replayed to you as you sent them. The most recent',
+    'one carrying a theme is the current design; make each change relative to it,',
+    'unless the user asks you to start over. The turns in between with a null',
+    'theme changed nothing — they did not clear the design.',
     '',
     'Write `reply` in the language the user is writing to you in, and keep using',
     'it for the rest of the conversation. These instructions are in English',
