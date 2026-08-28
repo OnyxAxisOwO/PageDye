@@ -1,6 +1,6 @@
 // Service-worker-only script injection for optional debugging tools.
 // The regular content runtime asks for these files only when debug mode is on.
-importScripts('ai-theme.js');
+importScripts('ai-theme.js', 'storage-schema.js');
 
 const ABANDONED_URL_RULES_KEY = '__pagedye_url_rules__';
 const URL_RULES_RECOVERY_KEY = '__pagedye_url_rules_recovered_v080__';
@@ -99,6 +99,26 @@ async function resolveChatProfile(message, sender) {
   throw new Error('No target tab.');
 }
 
+// The picture already on the page, if this site has one configured, offered
+// back to the model as a numbered attachment it can choose to keep (see
+// ai-theme.js's collectAllImages). Only the everyday `auto` shape is read —
+// a site already running a schedule or a picture-free layer has nothing this
+// can usefully surface, and skipping those is simpler than guessing which of
+// several slides or periods the user means by "the current background".
+async function resolveCurrentImage(profile) {
+  const hostname = profile && typeof profile.hostname === 'string' ? profile.hostname : '';
+  if (!hostname) return null;
+  const Storage = self.PageDyeStorage;
+  const defaultKey = Storage.KEYS.defaultBackground;
+  const data = await chrome.storage.local.get([hostname, defaultKey]);
+  const settings = Storage.normalizeSiteSettings(data[hostname]) || Storage.normalizeSiteSettings(data[defaultKey]);
+  if (!settings) return null;
+  const candidate = [settings, settings.light, settings.dark].find(
+    (layer) => layer && layer.type === 'image' && typeof layer.value === 'string' && layer.value.startsWith('data:image/')
+  );
+  return candidate ? { dataUrl: candidate.value } : null;
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || message.action !== 'pagedyeAiChat') return false;
 
@@ -106,12 +126,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     try {
       const profile = await resolveChatProfile(message, sender);
       const data = await chrome.storage.local.get(AI_CONFIG_KEY);
+      // Best-effort: a lookup failure here should cost the model one picture
+      // it could have reused, not the whole turn.
+      const currentImage = await resolveCurrentImage(profile).catch(() => null);
       const result = await self.PageDyeAiTheme.chat({
         config: (data && data[AI_CONFIG_KEY]) || {},
         profile,
         // The whole visible transcript, owned by the caller: the API is
         // stateless, so editing an earlier message is just a shorter array.
-        turns: message.turns
+        turns: message.turns,
+        currentImage
       });
       sendResponse({ ok: true, ...result, profile });
     } catch (error) {

@@ -703,6 +703,55 @@ test('popup chat: an image theme is previewed as the picture, not as a palette',
   assert.equal(page.root.querySelector('.ai-chat-swatch-chip'), null);
 });
 
+test('popup chat: a solid color theme previews as a flat chip, not a gradient', async () => {
+  const theme = { ...SAMPLE_THEME, light: { colorMode: 'solid', solidColor: '#112233' }, dark: { colorMode: 'solid', solidColor: '#eeeeee' } };
+  const page = await bootPopupChat({
+    onMessage: () => chatReply({ theme, settings: aiTheme.toSiteSettings(theme, SAMPLE_PROFILE) })
+  });
+
+  type(page, page.root, 'just a plain color');
+  await waitFor(() => page.root.querySelector('.ai-chat-theme'), { timeout: 3000 });
+
+  const chips = page.root.querySelectorAll('.ai-chat-swatch-chip');
+  assert.equal(chips.length, 2);
+  assert.ok(chips[0].style.backgroundImage.includes('#112233'));
+});
+
+test('popup chat: a background turned off shows neither swatches nor a picture', async () => {
+  const theme = { ...SAMPLE_THEME, disableBackground: true };
+  const page = await bootPopupChat({
+    onMessage: () => chatReply({ theme, settings: aiTheme.toSiteSettings(aiTheme.sanitizeTheme(theme), SAMPLE_PROFILE) })
+  });
+
+  type(page, page.root, 'turn the background off');
+  await waitFor(() => page.root.querySelector('.ai-chat-theme'), { timeout: 3000 });
+
+  assert.equal(page.root.querySelector('.ai-chat-swatch-chip'), null);
+  assert.equal(page.root.querySelector('.ai-chat-theme-image'), null);
+  assert.ok(page.root.querySelector('.ai-chat-theme-meta').textContent.length > 0);
+});
+
+test('popup chat: a time-of-day schedule is summarized by its period count', async () => {
+  const theme = {
+    ...SAMPLE_THEME,
+    scheduleMode: 'timeRange',
+    timeRange: [
+      { name: 'Day', start: 6, end: 20, colorMode: 'solid', solidColor: '#fff7ed' },
+      { name: 'Night', start: 20, end: 6, colorMode: 'solid', solidColor: '#0f172a' }
+    ]
+  };
+  const sanitized = aiTheme.sanitizeTheme(theme);
+  const page = await bootPopupChat({
+    onMessage: () => chatReply({ theme: sanitized, settings: aiTheme.toSiteSettings(sanitized, SAMPLE_PROFILE) })
+  });
+
+  type(page, page.root, 'change through the day');
+  await waitFor(() => page.root.querySelector('.ai-chat-theme'), { timeout: 3000 });
+
+  assert.equal(page.root.querySelector('.ai-chat-swatch-chip'), null);
+  assert.match(page.root.querySelector('.ai-chat-theme-meta').textContent, /2/);
+});
+
 test('popup chat: a second message carries the first answer back as context', async () => {
   const page = await bootPopupChat();
 

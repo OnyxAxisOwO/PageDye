@@ -37,6 +37,9 @@ const SAMPLE_PROFILE = {
 // test only cares about where it is sent and how it is authenticated.
 const FIRST_TURN = [{ role: 'user', content: '' }];
 
+const PNG = 'data:image/png;base64,iVBORw0KGgo=';
+const JPEG = 'data:image/jpeg;base64,/9j/4AAQSkZJRg==';
+
 const SAMPLE_THEME = {
   themeName: 'Quiet Harbor',
   rationale: 'Muted blues that keep the dark body text readable.',
@@ -375,6 +378,155 @@ test('a gradient the model botched fails loudly instead of painting white', () =
     light: { stops: [{ color: 'not-a-color', position: 0 }] },
     dark: { stops: [{ color: '#000000', position: 0 }, { color: '#111111', position: 100 }] }
   }), /unusable light gradient/);
+});
+
+test('a solid color slot survives as a plain value, not a gradient', () => {
+  const theme = aiTheme.sanitizeTheme({
+    ...SAMPLE_THEME,
+    light: { colorMode: 'solid', solidColor: '#112233' },
+    dark: { colorMode: 'solid', solidColor: '#eeeeee' }
+  });
+  const settings = storageSchema.normalizeSiteSettings(aiTheme.toSiteSettings(theme, SAMPLE_PROFILE));
+
+  assert.equal(settings.mode, 'auto');
+  assert.equal(settings.light.colorMode, 'solid');
+  assert.equal(settings.light.value, '#112233');
+  assert.equal(settings.light.gradient, undefined);
+  assert.equal(settings.dark.value, '#eeeeee');
+});
+
+test('an explicit request to turn the background off produces an inert layer', () => {
+  const theme = aiTheme.sanitizeTheme({
+    ...SAMPLE_THEME,
+    disableBackground: true,
+    // Deliberately unusable, to prove the discarded slots cannot sink the turn.
+    light: { stops: [{ color: 'not-a-color', position: 0 }] }
+  });
+  const settings = storageSchema.normalizeSiteSettings(aiTheme.toSiteSettings(theme, SAMPLE_PROFILE));
+
+  assert.equal(settings.type, 'none');
+  assert.equal(settings.mode, 'single');
+  assert.deepEqual(settings.frostedGlass, []);
+});
+
+test('a time-of-day schedule becomes a timeRange with the right period count', () => {
+  const theme = aiTheme.sanitizeTheme({
+    ...SAMPLE_THEME,
+    scheduleMode: 'timeRange',
+    timeRange: [
+      { name: 'Morning', start: 6, end: 12, colorMode: 'solid', solidColor: '#fff7ed' },
+      { name: 'Night', start: 20, end: 6, colorMode: 'gradient', angle: 180, stops: [{ color: '#0f172a', position: 0 }, { color: '#1e293b', position: 100 }] }
+    ]
+  });
+  const settings = storageSchema.normalizeSiteSettings(aiTheme.toSiteSettings(theme, SAMPLE_PROFILE));
+
+  assert.equal(settings.mode, 'timeRange');
+  assert.equal(settings.timeRange.items.length, 2);
+  assert.equal(settings.timeRange.items[0].name, 'Morning');
+  assert.equal(settings.timeRange.items[0].value, '#fff7ed');
+  assert.equal(settings.timeRange.items[1].gradient.stops[0].color, '#0f172a');
+});
+
+test('a single time period fails loudly instead of a silent one-period schedule', () => {
+  assert.throws(() => aiTheme.sanitizeTheme({
+    ...SAMPLE_THEME,
+    scheduleMode: 'timeRange',
+    timeRange: [{ name: 'Only', start: 0, end: 24, colorMode: 'solid', solidColor: '#ffffff' }]
+  }), /fewer than two time periods/);
+});
+
+test('a slideshow slide can be one of the attached pictures', () => {
+  const theme = aiTheme.sanitizeTheme({
+    ...SAMPLE_THEME,
+    scheduleMode: 'slideshow',
+    slideshowInterval: '1h',
+    slideshowOrder: 'random',
+    slideshow: [
+      { colorMode: 'image', imageIndex: 2, fit: 'cover', fixed: true },
+      { colorMode: 'solid', solidColor: '#334155' }
+    ]
+  });
+  const settings = storageSchema.normalizeSiteSettings(
+    aiTheme.toSiteSettings(theme, SAMPLE_PROFILE, [{ dataUrl: PNG }, { dataUrl: JPEG }])
+  );
+
+  assert.equal(settings.mode, 'slideshow');
+  assert.equal(settings.slideshow.interval, '1h');
+  assert.equal(settings.slideshow.order, 'random');
+  assert.equal(settings.slideshow.items[0].type, 'image');
+  assert.equal(settings.slideshow.items[0].value, JPEG, 'index 2 is the second picture the model was shown');
+  assert.equal(settings.slideshow.items[1].value, '#334155');
+});
+
+test('a slideshow image slide the history no longer has degrades instead of failing', () => {
+  const theme = aiTheme.sanitizeTheme({
+    ...SAMPLE_THEME,
+    scheduleMode: 'slideshow',
+    slideshow: [
+      { colorMode: 'image', imageIndex: 1, fit: 'cover', fixed: true },
+      { colorMode: 'solid', solidColor: '#334155' }
+    ]
+  });
+  const settings = aiTheme.toSiteSettings(theme, SAMPLE_PROFILE, []);
+
+  assert.equal(settings.slideshow.items[0].type, 'none');
+});
+
+test('hue and invert ride on the image layer only when actually used', () => {
+  const on = aiTheme.toSiteSettings(
+    aiTheme.sanitizeTheme({ ...SAMPLE_THEME, wallpaperImage: { use: true, index: 1, hue: 200, invert: 30 } }),
+    SAMPLE_PROFILE,
+    [{ dataUrl: PNG }]
+  );
+  assert.deepEqual(on.light.filters, { brightness: 100, contrast: 100, grayscale: 0, hue: 200, invert: 30 });
+
+  const off = aiTheme.toSiteSettings(
+    aiTheme.sanitizeTheme({ ...SAMPLE_THEME, wallpaperImage: { use: true, index: 1 } }),
+    SAMPLE_PROFILE,
+    [{ dataUrl: PNG }]
+  );
+  assert.ok(!('filters' in off.light), 'an untouched picture still carries no filter block');
+});
+
+test('the page\'s current background is offered as a numbered picture alongside attachments', () => {
+  const theme = aiTheme.sanitizeTheme({ ...SAMPLE_THEME, wallpaperImage: { use: true, index: 1 } });
+  const images = aiTheme.collectAllImages(
+    [{ role: 'user', content: 'add frosted glass', images: [{ dataUrl: JPEG }] }],
+    { dataUrl: PNG, name: 'current' }
+  );
+
+  assert.deepEqual(images.map((image) => image.number), [1, 2]);
+  assert.equal(images[0].isCurrent, true);
+
+  // wallpaperImage.index === 1 now means "the current background", through
+  // the exact same mechanism as pointing at an upload.
+  const settings = aiTheme.toSiteSettings(theme, SAMPLE_PROFILE, images);
+  assert.equal(settings.value, PNG);
+});
+
+test('the current background is not evicted by the attachment recency cap', () => {
+  const manyAttachments = Array.from({ length: 8 }, (_, i) => ({
+    role: 'user',
+    images: [{ dataUrl: `data:image/png;base64,attachment${i}` }]
+  }));
+  const images = aiTheme.collectAllImages(manyAttachments, { dataUrl: PNG });
+
+  assert.equal(images.length, aiTheme.MAX_IMAGES_PER_REQUEST);
+  assert.equal(images[0].dataUrl, PNG);
+  assert.equal(images[0].isCurrent, true);
+});
+
+test('the current background is described to the model as an image block on the first turn', () => {
+  const request = aiTheme.buildChatRequest(
+    aiTheme.normalizeConfig({ apiKey: 'k' }),
+    SAMPLE_PROFILE,
+    [{ role: 'user', content: 'add frosted glass over this' }],
+    { dataUrl: PNG, name: 'wallpaper.png' }
+  );
+  const content = request.body.messages[0].content;
+
+  assert.ok(content.some((block) => block.type === 'text' && /CURRENT background/.test(block.text)));
+  assert.ok(content.some((block) => block.type === 'image'));
 });
 
 // Drives the real chat() against a loopback server standing in for the

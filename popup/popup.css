@@ -2828,7 +2828,11 @@ footer {
   flex: 0 0 auto;
   position: relative;
   bottom: auto;
-  margin: 6px -12px -12px;
+  /* .container already puts an 8px gap before this (like it does between
+     every other child). That alone was still eating into the AI tab's
+     clipped main, so this also claws back part of that shared gap instead
+     of just leaving it at 0. */
+  margin: -4px -12px -12px;
   padding: 5px 12px 7px;
   background: var(--surface-container);
   border-top: 1px solid var(--outline-variant);

@@ -44,6 +44,8 @@
       noHistory: 'No conversations yet.',
       deleteChat: 'Delete this conversation',
       confirmDelete: 'Delete this conversation?',
+      clearAll: 'Clear all',
+      confirmClearAll: 'Delete all conversations? This cannot be undone.',
       placeholder: 'Ask for a change…',
       placeholderFirst: 'Describe the look you want…',
       send: 'Send',
@@ -80,6 +82,9 @@
       frostedCount: 'Frosted glass: {count}',
       light: 'Light',
       dark: 'Dark',
+      backgroundOff: 'Background turned off',
+      timeRangeCount: 'Changes through the day: {count} periods',
+      slideshowCount: 'Slideshow: {count} slides',
       noTarget: 'Open the page you want a theme for, then try again.',
       failed: 'Something went wrong.'
     },
@@ -90,6 +95,8 @@
       noHistory: '还没有对话记录。',
       deleteChat: '删除这个对话',
       confirmDelete: '删除这个对话？',
+      clearAll: '清空全部',
+      confirmClearAll: '删除全部对话？此操作无法撤销。',
       placeholder: '想改哪里？直接说…',
       placeholderFirst: '描述你想要的风格…',
       send: '发送',
@@ -126,6 +133,9 @@
       frostedCount: '磨砂玻璃：{count} 处',
       light: '浅色',
       dark: '深色',
+      backgroundOff: '背景已关闭',
+      timeRangeCount: '按时段切换：{count} 个时段',
+      slideshowCount: '轮播：{count} 张',
       noTarget: '请先打开你想配背景的网页，然后再试一次。',
       failed: '出错了。'
     }
@@ -172,7 +182,15 @@
   // key — and this string goes straight into a style property. So every stop
   // is re-checked here instead of trusting that sanitizeTheme saw it.
   function swatchGradient(slot) {
-    if (!slot || !Array.isArray(slot.stops) || slot.stops.length < 2) return '';
+    if (!slot) return '';
+    // A solid slot has no stops to validate — it previews as a flat chip via
+    // a degenerate two-stop gradient, so callers do not need a second code
+    // path for "this slot has no gradient at all".
+    if (slot.colorMode === 'solid') {
+      const color = typeof slot.solidColor === 'string' ? slot.solidColor : '';
+      return HEX_RE.test(color) ? `linear-gradient(${color}, ${color})` : '';
+    }
+    if (!Array.isArray(slot.stops) || slot.stops.length < 2) return '';
     const angle = Number(slot.angle);
     if (!Number.isFinite(angle) || angle < 0 || angle > 360) return '';
     const stops = [];
@@ -261,8 +279,22 @@
     const newChatBtn = button('ai-chat-new', '', () => startNewConversation());
     newChatBtn.appendChild(icon(['M12 5v14', 'M5 12h14'], 14));
     newChatBtn.appendChild(el('span', null, str('newChat')));
+    const sidebarHeadActions = el('div', 'ai-chat-sidebar-head-actions');
+    const clearAllBtn = button('ai-chat-clear-all', '', async () => {
+      if (!conversations.length) return;
+      if (!doc.defaultView.confirm(str('confirmClearAll'))) return;
+      conversations = [];
+      activeId = '';
+      await persist();
+      await startNewConversation();
+    });
+    clearAllBtn.appendChild(icon(['M3 6h18', 'M8 6V4h8v2', 'M19 6l-1 14H6L5 6', 'M10 11v6', 'M14 11v6'], 13));
+    clearAllBtn.title = str('clearAll');
+    clearAllBtn.setAttribute('aria-label', str('clearAll'));
+    sidebarHeadActions.appendChild(clearAllBtn);
+    sidebarHeadActions.appendChild(newChatBtn);
     sidebarHead.appendChild(el('span', 'ai-chat-sidebar-title', str('history')));
-    sidebarHead.appendChild(newChatBtn);
+    sidebarHead.appendChild(sidebarHeadActions);
     const sidebarList = el('div', 'ai-chat-list');
     sidebar.appendChild(sidebarHead);
     sidebar.appendChild(sidebarList);
@@ -471,6 +503,7 @@
     // --- rendering ------------------------------------------------------------
 
     function renderSidebar() {
+      clearAllBtn.hidden = !conversations.length;
       sidebarList.textContent = '';
       if (!conversations.length) {
         sidebarList.appendChild(el('p', 'ai-chat-list-empty', str('noHistory')));
@@ -538,12 +571,13 @@
       head.appendChild(el('span', 'ai-chat-theme-name', (message.theme && message.theme.themeName) || ''));
       card.appendChild(head);
 
+      const settings = message.settings;
       // A theme built on one of the user's own pictures is shown as that
       // picture: the two gradient chips describe the fallback, not what the
-      // page would look like if it were applied.
-      const wallpaper = message.settings && message.settings.type === 'image'
-        ? safeImageSrc(message.settings.value)
-        : '';
+      // page would look like if it were applied. A schedule or a background
+      // turned off has no single palette to swatch, so those get their own
+      // one-line summary instead of a (misleading, or empty) light/dark pair.
+      const wallpaper = settings && settings.type === 'image' ? safeImageSrc(settings.value) : '';
       if (wallpaper) {
         const preview = el('div', 'ai-chat-theme-image');
         const thumb = el('img', 'ai-chat-theme-image-src');
@@ -552,6 +586,14 @@
         preview.appendChild(thumb);
         card.appendChild(preview);
         card.appendChild(el('p', 'ai-chat-theme-meta', str('imageWallpaper')));
+      } else if (settings && settings.mode === 'timeRange' && settings.timeRange) {
+        const count = Array.isArray(settings.timeRange.items) ? settings.timeRange.items.length : 0;
+        card.appendChild(el('p', 'ai-chat-theme-meta', str('timeRangeCount', { count })));
+      } else if (settings && settings.mode === 'slideshow' && settings.slideshow) {
+        const count = Array.isArray(settings.slideshow.items) ? settings.slideshow.items.length : 0;
+        card.appendChild(el('p', 'ai-chat-theme-meta', str('slideshowCount', { count })));
+      } else if (settings && settings.mode === 'single' && settings.type === 'none') {
+        card.appendChild(el('p', 'ai-chat-theme-meta', str('backgroundOff')));
       } else {
         const swatches = el('div', 'ai-chat-swatches');
         [['light', str('light')], ['dark', str('dark')]].forEach(([slot, label]) => {

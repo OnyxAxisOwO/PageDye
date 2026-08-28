@@ -77,40 +77,6 @@
   const HEX_RE = /^#[0-9a-fA-F]{6}$/;
   const SHORT_HEX_RE = /^#[0-9a-fA-F]{3}$/;
 
-  const GRADIENT_SCHEMA = {
-    type: 'object',
-    properties: {
-      // `angle` is meaningless for a radial gradient and `shape` for a linear
-      // one, but both are required: a union type is the first thing an
-      // OpenAI-compatible server drops, and the unused one costs one token.
-      kind: { type: 'string', enum: ['linear', 'radial'] },
-      shape: { type: 'string', enum: ['ellipse', 'circle'] },
-      angle: { type: 'integer', minimum: 0, maximum: 360 },
-      stops: {
-        type: 'array',
-        minItems: 2,
-        maxItems: 4,
-        items: {
-          type: 'object',
-          properties: {
-            color: { type: 'string', pattern: HEX_PATTERN },
-            position: { type: 'integer', minimum: 0, maximum: 100 }
-          },
-          required: ['color', 'position'],
-          additionalProperties: false
-        }
-      },
-      opacity: { type: 'integer', minimum: 0, maximum: 100 },
-      blur: { type: 'integer', minimum: 0, maximum: 100 },
-      animated: { type: 'boolean' },
-      // Seconds for one full cycle. Slower is calmer; the renderer treats this
-      // as the CSS animation duration.
-      speed: { type: 'integer', minimum: 4, maximum: 60 }
-    },
-    required: ['kind', 'shape', 'angle', 'stops', 'opacity', 'blur', 'animated', 'speed'],
-    additionalProperties: false
-  };
-
   // The user's own attachments, offered back as a wallpaper the model can pick
   // instead of a gradient. It never names a URL: `index` points into the
   // numbered list of images the user attached to this conversation, which is
@@ -128,13 +94,93 @@
       darkBlur: { type: 'integer', minimum: 0, maximum: 100 },
       // The renderer applies CSS filters to an image layer only, which is why
       // they live here rather than on the gradient slots. 100 is unchanged for
-      // brightness and contrast; 0 is unchanged for grayscale.
+      // brightness and contrast; 0 is unchanged for grayscale, hue and invert.
       brightness: { type: 'integer', minimum: 20, maximum: 180 },
       contrast: { type: 'integer', minimum: 20, maximum: 180 },
-      grayscale: { type: 'integer', minimum: 0, maximum: 100 }
+      grayscale: { type: 'integer', minimum: 0, maximum: 100 },
+      hue: { type: 'integer', minimum: 0, maximum: 360 },
+      invert: { type: 'integer', minimum: 0, maximum: 100 }
     },
     required: ['use', 'index', 'fit', 'fixed', 'lightOpacity', 'lightBlur', 'darkOpacity', 'darkBlur',
-      'brightness', 'contrast', 'grayscale'],
+      'brightness', 'contrast', 'grayscale', 'hue', 'invert'],
+    additionalProperties: false
+  };
+
+  // Shared by every place the model paints a flat area of color: the light and
+  // dark slots, one time-of-day period, or one slideshow slide. All ten fields
+  // are always present regardless of `colorMode` — same reasoning as `shape`
+  // and `angle` above — so `solidColor` sits right next to the gradient fields
+  // it replaces rather than the two being a union a compatible server would
+  // drop.
+  const COLOR_SLOT_PROPERTIES = {
+    colorMode: { type: 'string', enum: ['solid', 'gradient'] },
+    solidColor: { type: 'string', pattern: HEX_PATTERN },
+    kind: { type: 'string', enum: ['linear', 'radial'] },
+    shape: { type: 'string', enum: ['ellipse', 'circle'] },
+    angle: { type: 'integer', minimum: 0, maximum: 360 },
+    stops: {
+      type: 'array',
+      minItems: 2,
+      maxItems: 4,
+      items: {
+        type: 'object',
+        properties: {
+          color: { type: 'string', pattern: HEX_PATTERN },
+          position: { type: 'integer', minimum: 0, maximum: 100 }
+        },
+        required: ['color', 'position'],
+        additionalProperties: false
+      }
+    },
+    opacity: { type: 'integer', minimum: 0, maximum: 100 },
+    blur: { type: 'integer', minimum: 0, maximum: 100 },
+    animated: { type: 'boolean' },
+    // Seconds for one full cycle. Slower is calmer; the renderer treats this
+    // as the CSS animation duration.
+    speed: { type: 'integer', minimum: 4, maximum: 60 }
+  };
+  const COLOR_SLOT_REQUIRED = ['colorMode', 'solidColor', 'kind', 'shape', 'angle', 'stops', 'opacity', 'blur', 'animated', 'speed'];
+
+  const GRADIENT_SCHEMA = {
+    type: 'object',
+    properties: COLOR_SLOT_PROPERTIES,
+    required: COLOR_SLOT_REQUIRED,
+    additionalProperties: false
+  };
+
+  // One row of a time-of-day schedule. `start`/`end` are hours, 0-23; the page
+  // is on this period's colors whenever the local hour falls in [start, end),
+  // wrapping past midnight when start > end. No picture here on purpose — see
+  // SLIDE_SCHEMA below for why a slideshow slide can be a picture and a time
+  // period cannot.
+  const TIME_PERIOD_SCHEMA = {
+    type: 'object',
+    properties: {
+      name: { type: 'string' },
+      start: { type: 'integer', minimum: 0, maximum: 23 },
+      end: { type: 'integer', minimum: 0, maximum: 23 },
+      ...COLOR_SLOT_PROPERTIES
+    },
+    required: ['name', 'start', 'end', ...COLOR_SLOT_REQUIRED],
+    additionalProperties: false
+  };
+
+  // One slide of a rotating background. Unlike a time period, a slide may BE
+  // one of the attached pictures — `imageIndex` reuses the same numbering
+  // `wallpaperImage.index` does, including the page's current background when
+  // one is offered (see collectAllImages below). `fit`/`fixed` only matter
+  // when `colorMode` is `image`; they are still required for the same
+  // strict-schema reason every other unused-branch field is.
+  const SLIDE_SCHEMA = {
+    type: 'object',
+    properties: {
+      ...COLOR_SLOT_PROPERTIES,
+      colorMode: { type: 'string', enum: ['solid', 'gradient', 'image'] },
+      imageIndex: { type: 'integer', minimum: 1, maximum: 6 },
+      fit: { type: 'string', enum: ['cover', 'contain', 'stretch', 'tile'] },
+      fixed: { type: 'boolean' }
+    },
+    required: [...COLOR_SLOT_REQUIRED, 'imageIndex', 'fit', 'fixed'],
     additionalProperties: false
   };
 
@@ -143,9 +189,22 @@
     properties: {
       themeName: { type: 'string' },
       rationale: { type: 'string' },
+      // True only for an explicit "turn the background off for this page"
+      // request. Every other field is still required by the schema below and
+      // is simply ignored when this is true.
+      disableBackground: { type: 'boolean' },
       wallpaperImage: WALLPAPER_IMAGE_SCHEMA,
       light: GRADIENT_SCHEMA,
       dark: GRADIENT_SCHEMA,
+      // `auto` is the everyday case: light/dark above, switched by the OS
+      // scheme. `timeRange`/`slideshow` replace that with a schedule; light
+      // and dark are still required and are what the page falls back to if
+      // this answer is ever read by older code that does not know the mode.
+      scheduleMode: { type: 'string', enum: ['auto', 'timeRange', 'slideshow'] },
+      timeRange: { type: 'array', maxItems: 6, items: TIME_PERIOD_SCHEMA },
+      slideshow: { type: 'array', maxItems: 6, items: SLIDE_SCHEMA },
+      slideshowInterval: { type: 'string', enum: ['open', '15m', '30m', '1h', '24h'] },
+      slideshowOrder: { type: 'string', enum: ['sequential', 'random'] },
       frostedGlass: {
         type: 'array',
         maxItems: 6,
@@ -166,7 +225,8 @@
         }
       }
     },
-    required: ['themeName', 'rationale', 'wallpaperImage', 'light', 'dark', 'frostedGlass'],
+    required: ['themeName', 'rationale', 'disableBackground', 'wallpaperImage', 'light', 'dark',
+      'scheduleMode', 'timeRange', 'slideshow', 'slideshowInterval', 'slideshowOrder', 'frostedGlass'],
     additionalProperties: false
   };
 
@@ -244,26 +304,42 @@
     'artwork that must not be cropped, `tile` for a small repeating pattern; `fixed`',
     'true keeps the picture still while the page scrolls.',
     '',
-    'A picture also takes three filters, which apply to the picture alone and not to a',
+    'A picture also takes five filters, which apply to the picture alone and not to a',
     'gradient. `brightness` and `contrast` are percentages where 100 leaves it untouched;',
-    '`grayscale` is 0 untouched to 100 fully desaturated. They are the precise tools for',
-    'the usual problem: a photo that is too loud behind text. Dropping `contrast` to',
-    '60-80 flattens it into something closer to a backdrop, `brightness` above 100 pushes',
-    'it toward white behind dark text (below 100 toward black behind light text), and a',
-    'little `grayscale` calms a picture whose colors fight the site\'s own. Prefer these',
-    'over destroying the picture with opacity when the user chose it deliberately.',
+    '`grayscale` and `invert` are 0 untouched to 100 fully applied; `hue` rotates every',
+    'color 0-360 degrees and is the one to reach for when the user likes the picture but',
+    'wants a different color family out of it rather than a wash or a tint. These are the',
+    'precise tools for the usual problem: a photo that is too loud behind text. Dropping',
+    '`contrast` to 60-80 flattens it into something closer to a backdrop, `brightness`',
+    'above 100 pushes it toward white behind dark text (below 100 toward black behind',
+    'light text), and a little `grayscale` calms a picture whose colors fight the site\'s',
+    'own. Prefer these over destroying the picture with opacity when the user chose it',
+    'deliberately.',
     '',
     'Fill in `light` and `dark` even when you choose a picture: they are what the page',
     'falls back to if that attachment is no longer available, so keep them in the',
     'picture\'s own palette.',
     '',
     'With no image attached, `wallpaperImage.use` must be false. Never point `index` at',
-    'a number that was not attached.',
+    'a number that was not attached. One of the numbered images may be labeled as the',
+    'page\'s CURRENT background — already applied to this site. Pointing `index` at it',
+    'means "keep using this picture": do it when the user is asking for something other',
+    'than the picture itself (a new tint, different filters, frosting), so their photo',
+    'survives the change instead of being replaced by a gradient guess.',
     '',
     'Palette guidance: stay in the same family as the page\'s own accent colors so the',
     'wallpaper does not fight the site\'s branding. Prefer restraint — a low-contrast,',
     'two-to-three stop gradient reads as designed, while a saturated rainbow reads as a',
     'toy. Use the wallpaper opacity to keep the page comfortable to read for long periods.',
+    '',
+    'Solid or gradient. Every color slot — `light`, `dark`, a time period, a slideshow',
+    'slide — carries a `colorMode`. Use `solid` (with `solidColor`) when the user asks for',
+    'a plain color, a single named color, or a minimal/flat look; use `gradient` (with the',
+    '`kind`/`shape`/`angle`/`stops` fields below) otherwise, which is the right default.',
+    'Fill in both `solidColor` and the gradient fields regardless of which one you chose —',
+    'unused ones are simply ignored — and never leave `solidColor` as a placeholder that',
+    'clashes with the gradient: pick something plausible on its own, since a gradient may',
+    'later switch to it.',
     '',
     'Gradient shape. `kind` is `linear` for a wash across the page, which is the default',
     'and the right answer most of the time; `radial` puts a glow at the center, which',
@@ -276,6 +352,34 @@
     'distraction on anything the user reads, and it keeps a compositor busy for as long',
     'as the tab is open. Turn it on when the user asks for it, and then keep `speed` slow',
     '(20 or more) so it reads as ambient rather than as something demanding attention.',
+    '',
+    'TURNING THE BACKGROUND OFF. When the user asks to remove, disable, or pause the',
+    'wallpaper on this page entirely — not "tone it down", an actual "turn it off" — set',
+    '`disableBackground` to true. Every other field is still required by the schema, so',
+    'fill them with anything valid; none of it is used. Do not reach for this in answer to',
+    'a readability complaint (see below) — that means turn the strength down, not off.',
+    '',
+    'SCHEDULES. `scheduleMode` is `auto` by default: the everyday case above, `light` and',
+    '`dark` switched by the OS scheme. Two alternatives replace that switch entirely:',
+    '',
+    '- `timeRange` — the background changes through the day. Fill `timeRange` with 2-6',
+    '  periods, each a `name`, a `start`/`end` hour (0-23, local time, `end` may be less',
+    '  than `start` to wrap past midnight), and the same color fields as `light`/`dark`',
+    '  (solid or gradient — no picture; a photo does not suit an unattended hourly swap).',
+    '  Cover the full day without gaps or overlaps. Use this for "make it change through',
+    '  the day" or "warmer at night" requests.',
+    '- `slideshow` — the background rotates through a fixed sequence, on open or on a',
+    '  timer. Fill `slideshow` with 2-6 slides; each is a color slot exactly like a time',
+    '  period, OR set its `colorMode` to `image` and `imageIndex` to one of the numbered',
+    '  attachments to use a picture as that slide (reuse the numbering from the',
+    '  wallpaperImage discussion above, current background included). `slideshowInterval`',
+    '  is `open` (new slide each time the page loads — the usual choice unless asked',
+    '  otherwise), `15m`, `30m`, `1h`, or `24h`. `slideshowOrder` is `sequential` or',
+    '  `random`. Use this when the user attaches several pictures and asks for a rotation,',
+    '  slideshow, or "cycle through these".',
+    '',
+    'Leave `scheduleMode` as `auto` and `timeRange`/`slideshow` as short, valid',
+    'placeholders when neither applies; only the chosen mode\'s array is read.',
     '',
     'Keep `rationale` to one or two sentences describing the visual idea and how you kept',
     'the text readable. Keep `themeName` to at most four words.',
@@ -367,6 +471,34 @@
     // Over the cap the oldest go, matching capTurns: a picture from twenty
     // turns ago is rarely the one being talked about now.
     return found.slice(-MAX_IMAGES_PER_REQUEST).map((image, index) => ({ ...image, number: index + 1 }));
+  }
+
+  // Same numbering as collectImages, with one addition: the page's current
+  // background image (if the caller has one and vision is on) is pinned as
+  // the lowest-numbered picture and never evicted by the recency cap — only
+  // the conversation's own attachments compete for what is left. This is what
+  // lets `wallpaperImage.index` and a slideshow slide's `imageIndex` point at
+  // "the picture already on the page" through the exact same mechanism as
+  // pointing at an upload, with no schema of its own.
+  function collectAllImages(turns, currentImage) {
+    const currentUrl = currentImage && typeof currentImage.dataUrl === 'string' ? currentImage.dataUrl.trim() : '';
+    const pinned = currentUrl && currentUrl.length <= MAX_IMAGE_DATA_CHARS && IMAGE_DATA_URL_RE.test(currentUrl)
+      ? [{ dataUrl: currentUrl, name: trimTo(currentImage.name, 80), isCurrent: true }]
+      : [];
+    const seen = new Set(pinned.map((image) => image.dataUrl));
+    const attachments = [];
+    for (const turn of (Array.isArray(turns) ? turns : [])) {
+      if (!turn || turn.role !== 'user' || !Array.isArray(turn.images)) continue;
+      for (const image of turn.images) {
+        const dataUrl = image && typeof image.dataUrl === 'string' ? image.dataUrl.trim() : '';
+        if (!dataUrl || dataUrl.length > MAX_IMAGE_DATA_CHARS || !IMAGE_DATA_URL_RE.test(dataUrl)) continue;
+        if (seen.has(dataUrl)) continue;
+        seen.add(dataUrl);
+        attachments.push({ dataUrl, name: trimTo(image.name, 80) });
+      }
+    }
+    const room = Math.max(0, MAX_IMAGES_PER_REQUEST - pinned.length);
+    return pinned.concat(attachments.slice(-room)).map((image, index) => ({ ...image, number: index + 1 }));
   }
 
   function toImageBlock(provider, dataUrl) {
@@ -603,17 +735,18 @@
     return merged;
   }
 
-  function buildChatMessages(config, profile, turns) {
+  function buildChatMessages(config, profile, turns, currentImage) {
     const list = capTurns(turns);
     const firstUser = list.findIndex((turn) => turn.role === 'user');
     if (firstUser === -1) throw new Error('The conversation has no user message.');
-    // Keyed by the picture itself: what survived collectImages is what the
+    // Keyed by the picture itself: what survived collectAllImages is what the
     // model sees, under the number it will be asked to refer to. With vision
-    // off the map is empty, so a conversation that collected attachments while
-    // it was on stops replaying them rather than failing on every later turn.
-    const numbers = config.vision === false
-      ? new Map()
-      : new Map(collectImages(list).map((image) => [image.dataUrl, image.number]));
+    // off the list is empty, so a conversation that collected attachments (or
+    // was offered a current image) while it was on stops replaying them
+    // rather than failing on every later turn.
+    const images = config.vision === false ? [] : collectAllImages(list, currentImage);
+    const numbers = new Map(images.map((image) => [image.dataUrl, image.number]));
+    const current = images.find((image) => image.isCurrent);
 
     const messages = [];
     list.forEach((turn, index) => {
@@ -635,8 +768,19 @@
         : trimTo(turn.content, MAX_INSTRUCTION_CHARS);
 
       const blocks = [];
+      // The page's current background, if any, is shown once, alongside the
+      // profile in the first user turn — it belongs to no particular turn of
+      // the conversation, so there is nowhere else natural to put it.
+      if (index === firstUser && current) {
+        blocks.push({
+          type: 'text',
+          text: `Attached image ${current.number} (the page's CURRENT background, already applied here):`
+        });
+        blocks.push(toImageBlock(config.provider, current.dataUrl));
+      }
       for (const image of (Array.isArray(turn.images) ? turn.images : [])) {
         const dataUrl = image && typeof image.dataUrl === 'string' ? image.dataUrl.trim() : '';
+        if (current && dataUrl === current.dataUrl) continue;
         const number = numbers.get(dataUrl);
         if (!number) continue;
         // The number is stated rather than left implicit: it is how the answer
@@ -654,10 +798,10 @@
     return mergeAdjacent(messages);
   }
 
-  function buildChatRequest(config, profile, turns) {
+  function buildChatRequest(config, profile, turns, currentImage) {
     return {
       ...requestShell(config),
-      body: buildBody(config, CHAT_SCHEMA, 'pagedye_chat', CHAT_SYSTEM_PROMPT, buildChatMessages(config, profile, turns))
+      body: buildBody(config, CHAT_SCHEMA, 'pagedye_chat', CHAT_SYSTEM_PROMPT, buildChatMessages(config, profile, turns, currentImage))
     };
   }
 
@@ -746,8 +890,22 @@
     return null;
   }
 
-  function sanitizeSlot(slot, label) {
-    const source = slot && typeof slot === 'object' ? slot : {};
+  // Shared by light/dark, a time period, and the color branch of a slideshow
+  // slide. `colorMode` picks which half of the object is real; the other half
+  // is still validated when present (so a solid theme's gradient fields, kept
+  // around for a later switch, are not garbage) but never required to
+  // succeed.
+  function sanitizeColorFields(raw, label) {
+    const source = raw && typeof raw === 'object' ? raw : {};
+    const colorMode = source.colorMode === 'solid' ? 'solid' : 'gradient';
+    const solidColor = normalizeHex(source.solidColor) || '#0f172a';
+    const opacity = clampInt(source.opacity, 0, 100, 100);
+    const blur = clampInt(source.blur, 0, 100, 0);
+
+    if (colorMode === 'solid') {
+      return { colorMode, solidColor, opacity, blur };
+    }
+
     const stops = (Array.isArray(source.stops) ? source.stops : [])
       .map((stop) => {
         const color = normalizeHex(stop && stop.color);
@@ -762,18 +920,87 @@
     if (stops.length < 2) throw new Error(`Model returned an unusable ${label} gradient.`);
 
     return {
+      colorMode,
+      solidColor,
       kind: GRADIENT_KINDS.includes(source.kind) ? source.kind : 'linear',
       shape: GRADIENT_SHAPES.includes(source.shape) ? source.shape : 'ellipse',
       angle: clampInt(source.angle, 0, 360, 135),
       stops,
-      opacity: clampInt(source.opacity, 0, 100, 100),
-      blur: clampInt(source.blur, 0, 100, 0),
+      opacity,
+      blur,
       // Off unless asked for: a moving background behind text is a permanent
       // distraction, and a model with a free boolean reaches for it.
       animated: source.animated === true,
       speed: clampInt(source.speed, 4, 60, 12)
     };
   }
+
+  function sanitizeSlot(slot, label) {
+    return sanitizeColorFields(slot, label);
+  }
+
+  // Used only for `light`/`dark` when `disableBackground` is true: their
+  // content is discarded by toSiteSettings, so a model that sent garbage for
+  // a theme it was told to switch off should not fail the whole turn over it.
+  function safeColorFields(raw) {
+    try {
+      return sanitizeColorFields(raw, 'unused');
+    } catch (_) {
+      return { colorMode: 'solid', solidColor: '#0f172a', opacity: 100, blur: 0 };
+    }
+  }
+
+  const TIME_PERIODS_MIN = 2;
+  const TIME_PERIODS_MAX = 6;
+
+  function sanitizeTimePeriod(raw, index) {
+    const source = raw && typeof raw === 'object' ? raw : {};
+    return {
+      id: `period-${index + 1}`,
+      name: trimTo(source.name, 60) || `Period ${index + 1}`,
+      start: clampInt(source.start, 0, 23, 0),
+      end: clampInt(source.end, 0, 23, 0),
+      // Kept as color fields rather than a built layer, same reason as a
+      // slideshow slide's `colorFields`: toSiteSettings is the only place
+      // that knows how to turn a color slot into the shape storage expects.
+      colorFields: sanitizeColorFields(source, `time period ${index + 1}`)
+    };
+  }
+
+  function sanitizeTimeRange(list) {
+    const items = (Array.isArray(list) ? list : []).slice(0, TIME_PERIODS_MAX).map(sanitizeTimePeriod);
+    if (items.length < TIME_PERIODS_MIN) throw new Error('Model returned fewer than two time periods.');
+    return { items };
+  }
+
+  const SLIDES_MIN = 2;
+  const SLIDES_MAX = MAX_IMAGES_PER_REQUEST;
+
+  // A slide is either a color (validated exactly like a time period) or a
+  // picked image, resolved to an actual picture later in toSiteSettings once
+  // the real attachment list is known — same two-step as wallpaperImage.
+  function sanitizeSlide(raw, index) {
+    const source = raw && typeof raw === 'object' ? raw : {};
+    if (source.colorMode === 'image') {
+      return {
+        kind: 'image',
+        imageIndex: clampInt(source.imageIndex, 1, MAX_IMAGES_PER_REQUEST, 1),
+        fit: WALLPAPER_FITS.includes(source.fit) ? source.fit : 'cover',
+        fixed: source.fixed !== false,
+        opacity: clampInt(source.opacity, 0, 100, 100),
+        blur: clampInt(source.blur, 0, 100, 0)
+      };
+    }
+    return { kind: 'color', colorFields: sanitizeColorFields(source, `slide ${index + 1}`) };
+  }
+
+  function sanitizeSlideshow(list) {
+    const items = (Array.isArray(list) ? list : []).slice(0, SLIDES_MAX).map(sanitizeSlide);
+    if (items.length < SLIDES_MIN) throw new Error('Model returned fewer than two slideshow slides.');
+    return { items };
+  }
+
+  const SLIDESHOW_INTERVALS = ['open', '15m', '30m', '1h', '24h'];
 
   // Absent from every theme designed before attachments existed, and from any
   // answer a server shaped its own way, so the whole object is optional and
@@ -791,18 +1018,41 @@
       darkBlur: clampInt(source.darkBlur, 0, 100, 0),
       brightness: clampInt(source.brightness, 20, 180, 100),
       contrast: clampInt(source.contrast, 20, 180, 100),
-      grayscale: clampInt(source.grayscale, 0, 100, 0)
+      grayscale: clampInt(source.grayscale, 0, 100, 0),
+      hue: clampInt(source.hue, 0, 360, 0),
+      invert: clampInt(source.invert, 0, 100, 0)
     };
   }
 
   function sanitizeTheme(raw) {
     const source = raw && typeof raw === 'object' ? raw : {};
+    const disableBackground = source.disableBackground === true;
+    const scheduleMode = ['timeRange', 'slideshow'].includes(source.scheduleMode) ? source.scheduleMode : 'auto';
+
+    let timeRange = null;
+    let slideshow = null;
+    // A schedule the model was not asked to design (or was asked to switch
+    // off) is never validated: a garbage `timeRange` array should not fail a
+    // theme whose `scheduleMode` is `auto` and never reads it.
+    if (!disableBackground && scheduleMode === 'timeRange') timeRange = sanitizeTimeRange(source.timeRange);
+    if (!disableBackground && scheduleMode === 'slideshow') slideshow = sanitizeSlideshow(source.slideshow);
+
     return {
       themeName: String(source.themeName || '').slice(0, 80),
       rationale: String(source.rationale || '').slice(0, 400),
+      disableBackground,
       wallpaperImage: sanitizeWallpaperImage(source.wallpaperImage),
-      light: sanitizeSlot(source.light, 'light'),
-      dark: sanitizeSlot(source.dark, 'dark'),
+      // Failing loudly on a botched palette (see sanitizeColorFields) only
+      // makes sense when that palette is actually going to be used —
+      // disableBackground discards both, so a bad placeholder there must not
+      // sink an otherwise-valid "turn it off" answer.
+      light: disableBackground ? safeColorFields(source.light) : sanitizeSlot(source.light, 'light'),
+      dark: disableBackground ? safeColorFields(source.dark) : sanitizeSlot(source.dark, 'dark'),
+      scheduleMode: disableBackground ? 'auto' : scheduleMode,
+      timeRange,
+      slideshow,
+      slideshowInterval: SLIDESHOW_INTERVALS.includes(source.slideshowInterval) ? source.slideshowInterval : 'open',
+      slideshowOrder: source.slideshowOrder === 'random' ? 'random' : 'sequential',
       // Only the tint is normalized here; the rest of each entry is checked in
       // toSiteSettings, which is where the selector meets the profile.
       frostedGlass: (Array.isArray(source.frostedGlass) ? source.frostedGlass : []).slice(0, 6)
@@ -884,6 +1134,9 @@
   }
 
   function buildLayer(slot) {
+    if (slot.colorMode === 'solid') {
+      return { type: 'color', colorMode: 'solid', value: slot.solidColor, opacity: slot.opacity, blur: slot.blur };
+    }
     return {
       type: 'color',
       colorMode: 'gradient',
@@ -935,8 +1188,49 @@
       // every value is a no-op, so a plain picture does not carry a filter
       // string the renderer would have to parse on every apply.
       ...(wallpaper.brightness === 100 && wallpaper.contrast === 100 && wallpaper.grayscale === 0
+        && wallpaper.hue === 0 && wallpaper.invert === 0
         ? {}
-        : { filters: { brightness: wallpaper.brightness, contrast: wallpaper.contrast, grayscale: wallpaper.grayscale } })
+        : {
+          filters: {
+            brightness: wallpaper.brightness,
+            contrast: wallpaper.contrast,
+            grayscale: wallpaper.grayscale,
+            // Kept out of the object at their no-op value rather than always
+            // included: existing themes only ever carried the three fields
+            // above, and this keeps re-saving one of them a no-op diff.
+            ...(wallpaper.hue !== 0 ? { hue: wallpaper.hue } : {}),
+            ...(wallpaper.invert !== 0 ? { invert: wallpaper.invert } : {})
+          }
+        })
+    };
+  }
+
+  // The color half of a slideshow slide, in the same shape buildLayer
+  // produces — reused so a slide is editable by hand afterwards exactly like
+  // light/dark. The image half is resolved against the real attachment list,
+  // same two-step as pickWallpaperImage: sanitizeSlide only validated that
+  // `imageIndex` is in schema range, not that a picture with that number is
+  // still available.
+  function buildSlideLayer(slide, images) {
+    if (slide.kind === 'color') return buildLayer(slide.colorFields);
+    const list = Array.isArray(images) ? images : [];
+    const chosen = list[Math.min(list.length, Math.max(1, slide.imageIndex)) - 1];
+    const dataUrl = chosen && typeof chosen.dataUrl === 'string' ? chosen.dataUrl.trim() : '';
+    if (!dataUrl || dataUrl.length > MAX_IMAGE_DATA_CHARS || !IMAGE_DATA_URL_RE.test(dataUrl)) {
+      // A picked slide the history no longer has a picture for degrades to an
+      // empty slide rather than sinking the whole rotation.
+      return { type: 'none', value: '', opacity: 100, blur: 0 };
+    }
+    return {
+      type: 'image',
+      value: dataUrl,
+      opacity: slide.opacity,
+      blur: slide.blur,
+      style: {
+        size: slide.fit === 'tile' ? 'auto' : slide.fit,
+        repeat: slide.fit === 'tile',
+        fixed: slide.fixed !== false
+      }
     };
   }
 
@@ -949,7 +1243,18 @@
   // numbered for the model. Without them — an older conversation, or a picture
   // the history has since dropped — a theme that asked for one falls back to
   // the gradient it was made to carry alongside it.
+  // The inert top-level shape content.js falls back to whenever `mode` is
+  // something other than `auto` — it never reads type/value itself once a
+  // schedule takes over, but normalizeSiteSettings still validates it as a
+  // layer in its own right, so it has to be a valid empty one.
+  const INERT_LAYER = { type: 'none', value: '', opacity: 100, blur: 0, style: { fixed: true, size: 'cover', repeat: false } };
+
   function toSiteSettings(theme, profile, images) {
+    // An explicit "turn it off" wins over everything else the answer carries —
+    // there is no reading of a schedule or a picture choice that also means
+    // "and remove the background".
+    if (theme.disableBackground) return { ...INERT_LAYER, mode: 'single', frostedGlass: [] };
+
     const knownSelectors = new Set(
       (profile && Array.isArray(profile.containers) ? profile.containers : [])
         .map((container) => container && container.selector)
@@ -972,30 +1277,38 @@
         return clean;
       });
 
+    if (theme.scheduleMode === 'timeRange' && theme.timeRange) {
+      const items = theme.timeRange.items.map((period) => Object.assign(
+        { id: period.id, name: period.name, start: period.start, end: period.end },
+        buildLayer(period.colorFields)
+      ));
+      return { ...INERT_LAYER, mode: 'timeRange', timeRange: { items }, frostedGlass };
+    }
+
+    if (theme.scheduleMode === 'slideshow' && theme.slideshow) {
+      const items = theme.slideshow.items.map((slide) => buildSlideLayer(slide, images));
+      return {
+        ...INERT_LAYER,
+        mode: 'slideshow',
+        slideshow: { interval: theme.slideshowInterval, order: theme.slideshowOrder, currentIndex: 0, items },
+        frostedGlass
+      };
+    }
+
     const wallpaperImage = pickWallpaperImage(theme, images);
     if (wallpaperImage) {
       const wallpaper = theme.wallpaperImage;
       const light = buildImageLayer(wallpaperImage, wallpaper, wallpaper.lightOpacity, wallpaper.lightBlur);
       const dark = buildImageLayer(wallpaperImage, wallpaper, wallpaper.darkOpacity, wallpaper.darkBlur);
-      // Same as the gradient branch below: `mode: 'auto'` reads from
+      // Same as the plain-color branch below: `mode: 'auto'` reads from
       // light/dark, and the top level carries the light layer so the settings
       // still validate as a layer in their own right.
       return { ...light, mode: 'auto', light, dark, frostedGlass };
     }
 
-    return {
-      type: 'color',
-      mode: 'auto',
-      colorMode: 'gradient',
-      // `mode: 'auto'` reads from light/dark, but normalizeSiteSettings still
-      // validates the top-level layer, so it carries the light palette too.
-      gradient: buildLayer(theme.light).gradient,
-      opacity: theme.light.opacity,
-      blur: theme.light.blur,
-      light: buildLayer(theme.light),
-      dark: buildLayer(theme.dark),
-      frostedGlass
-    };
+    const light = buildLayer(theme.light);
+    const dark = buildLayer(theme.dark);
+    return { ...light, mode: 'auto', light, dark, frostedGlass };
   }
 
   function readyConfig(config, profile) {
@@ -1013,7 +1326,13 @@
   // the message just typed — the API is stateless, so the caller owning the
   // history is what makes editing an earlier message (and re-running from
   // there) a matter of truncating an array rather than of server state.
-  async function chat({ config, profile, turns, signal }) {
+  //
+  // `currentImage` is the picture already applied as this site's background,
+  // if any — the caller (background.js) reads it out of storage, this file
+  // never touches storage directly. It rides through exactly like an
+  // attachment (see collectAllImages), just pinned at the lowest number and
+  // labeled as the page's current background.
+  async function chat({ config, profile, turns, currentImage, signal }) {
     const clean = readyConfig(config, profile);
     // Capped once here so the attachments the answer can point at are exactly
     // the ones the request carried: buildChatRequest caps the same list again,
@@ -1022,8 +1341,8 @@
     // Empty when the model cannot see: nothing was sent, so nothing can be
     // pointed at, and a theme still asking for a picture falls back to its
     // gradient rather than reaching for one the model never saw.
-    const images = clean.vision === false ? [] : collectImages(list);
-    const request = buildChatRequest(clean, profile, list);
+    const images = clean.vision === false ? [] : collectAllImages(list, currentImage);
+    const request = buildChatRequest(clean, profile, list, currentImage);
     const answer = sanitizeChatReply(await sendRequest(clean, request, signal));
 
     return {
@@ -1055,6 +1374,7 @@
     buildChatRequest,
     capTurns,
     collectImages,
+    collectAllImages,
     parseJsonLoosely,
     extractReply,
     sanitizeTheme,

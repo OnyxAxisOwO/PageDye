@@ -94,6 +94,12 @@
   color: var(--text-secondary);
 }
 
+.ai-chat-sidebar-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .ai-chat-new {
   display: inline-flex;
   align-items: center;
@@ -109,6 +115,25 @@
 
 .ai-chat-new:hover {
   background: var(--state-layer-hover);
+}
+
+.ai-chat-clear-all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ai-chat-clear-all:hover {
+  background: var(--state-layer-hover);
+  color: #b91c1c;
 }
 
 .ai-chat-list {
