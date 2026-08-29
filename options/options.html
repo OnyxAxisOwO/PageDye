@@ -100,7 +100,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <span id="version" class="version-label">v0.13.1</span>
+        <span id="version" class="version-label">v0.13.2</span>
       </div>
     </aside>
 
@@ -475,6 +475,22 @@
 
                 <div class="settings-row">
                   <div class="settings-row-main">
+                    <span class="settings-row-title settings-row-title-icon">
+                      <svg class="row-title-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                      <svg class="row-title-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      <span data-i18n="aiEncryptKey">Encrypt the stored key</span>
+                    </span>
+                    <p class="settings-row-desc" data-i18n="aiEncryptKeyHint">Encrypts the key at rest with a key generated on this device, so a storage export, sync tool, or screen share does not show it in plain text. It cannot protect against anything that can already read this browser's own extension storage — the device key that unlocks it lives there too.</p>
+                  </div>
+                  <label class="mode-toggle" for="ai-encrypt-key-input">
+                    <input type="checkbox" id="ai-encrypt-key-input">
+                    <span class="mode-toggle-track" aria-hidden="true"><span></span></span>
+                    <span class="sr-only" data-i18n="aiEncryptKey">Encrypt the stored key</span>
+                  </label>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-main">
                     <label class="settings-row-title" for="ai-base-url-input" data-i18n="aiBaseUrl">API base URL</label>
                     <p class="settings-row-desc" data-i18n="aiBaseUrlHint">Leave this empty to use the selected provider's default endpoint. Your API key is sent to whatever host you enter here, so only fill in an endpoint you trust.</p>
                   </div>
@@ -552,6 +568,45 @@
                     <textarea id="ai-style-prompt-input" rows="3" spellcheck="false" data-i18n-placeholder="aiStylePromptExample"></textarea>
                   </div>
                 </div>
+
+                <details class="accordion" id="ai-accordion-advanced">
+                  <summary class="accordion-summary">
+                    <span data-i18n="aiAdvancedTitle">Advanced settings</span>
+                    <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </summary>
+                  <div class="accordion-content">
+                    <div class="settings-row">
+                      <div class="settings-row-main">
+                        <label class="settings-row-title" for="ai-temperature-input" data-i18n="aiTemperature">Temperature</label>
+                        <p class="settings-row-desc" data-i18n="aiTemperatureHint">Lower is more consistent, higher is more varied. Leave empty to use the endpoint's own default. Anthropic accepts 0–1; most OpenAI-compatible endpoints accept 0–2 — a value outside what your model supports is rejected by the endpoint, not by PageDye.</p>
+                      </div>
+                      <div class="settings-row-control settings-row-control-field">
+                        <input type="number" id="ai-temperature-input" inputmode="decimal" min="0" max="2" step="0.1" data-i18n-placeholder="aiTemperaturePlaceholder">
+                      </div>
+                    </div>
+
+                    <div class="settings-row">
+                      <div class="settings-row-main">
+                        <label class="settings-row-title" for="ai-max-tokens-input" data-i18n="aiMaxTokens">Max output tokens</label>
+                        <p class="settings-row-desc" data-i18n="aiMaxTokensHint">Caps how long one reply can be. Leave empty to use PageDye's default (8000). Some newer OpenAI reasoning models want max_completion_tokens instead of max_tokens — add that in the custom request body below if yours does.</p>
+                      </div>
+                      <div class="settings-row-control settings-row-control-field">
+                        <input type="number" id="ai-max-tokens-input" inputmode="numeric" min="1" step="1" placeholder="8000">
+                      </div>
+                    </div>
+
+                    <div class="settings-row settings-row-stack">
+                      <div class="settings-row-main">
+                        <label class="settings-row-title" for="ai-extra-body-input" data-i18n="aiExtraBody">Custom request body (JSON)</label>
+                        <p class="settings-row-desc" data-i18n="aiExtraBodyHint">Optional. Merged into every request sent to this endpoint — for a parameter this page has no control for (top_p, presence_penalty, seed, a provider-specific flag). Must be a JSON object; a field also set above (model, max tokens, temperature) always uses that dedicated control instead of the value here.</p>
+                      </div>
+                      <div class="settings-row-control">
+                        <textarea id="ai-extra-body-input" rows="3" spellcheck="false" data-i18n-placeholder="aiExtraBodyExample"></textarea>
+                        <p id="ai-extra-body-error" class="form-error hidden" role="alert"></p>
+                      </div>
+                    </div>
+                  </div>
+                </details>
               </section>
             </div>
           </aside>
@@ -1025,7 +1080,7 @@
           <div class="about-logo">
             <div class="logo-circle"><img src="../icons/icon128.png" alt="Logo"></div>
             <h3>PageDye</h3>
-            <span class="badge" id="about-version">v0.13.1</span>
+            <span class="badge" id="about-version">v0.13.2</span>
           </div>
 
           <p class="about-desc" data-i18n="aboutText">PageDye lets you give each website its own color, image, gradient, or animated background. Your choices are saved in this browser and return automatically.</p>
@@ -1680,7 +1735,7 @@
           </div>
           <div class="edit-actions-right">
             <button type="button" id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
-            <span class="version-text" id="edit-version">v0.13.1</span>
+            <span class="version-text" id="edit-version">v0.13.2</span>
             <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
             </a>

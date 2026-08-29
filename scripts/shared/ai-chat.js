@@ -391,6 +391,11 @@
     let cancelTurn = null;
     let editingId = '';
     let previewId = '';
+    // The id of a user message that was just pushed, so the very next render
+    // (and only that one) plays its send-in animation. Read-and-cleared like
+    // the flags above it — the turn-in-flight renders after it reuse the same
+    // node data but must not replay the animation on it.
+    let justSentId = '';
     let configured = false;
     // Whether the configured model reads images, answered by the user in AI
     // settings. Nothing can ask an endpoint, and a model that cannot see one
@@ -950,6 +955,11 @@
 
     function renderUserMessage(conversation, message) {
       const row = el('div', 'ai-msg ai-msg-user');
+      // Not cleared here: submit() and runTurn() each render synchronously
+      // before the first paint, so the node this creates is thrown away and
+      // rebuilt by runTurn's own render before anyone sees it. runTurn clears
+      // the flag once that second render is the one on screen.
+      if (message.id === justSentId) row.classList.add('ai-msg-sent');
       const images = Array.isArray(message.images) ? message.images : [];
       // Shown above the bubble in both modes: what was attached is part of the
       // question. Editing works on a copy, where a picture can also be taken
@@ -973,8 +983,10 @@
           // Everything after this message answered a question that no longer
           // exists, so the transcript is rewritten from here.
           conversation.messages = Store.truncateFrom(conversation, message.id);
-          conversation.messages.push(Store.userMessage(text, Date.now(), edited));
+          const resent = Store.userMessage(text, Date.now(), edited);
+          conversation.messages.push(resent);
           conversation.updatedAt = Date.now();
+          justSentId = resent.id;
           await persist();
           render();
           await runTurn(conversation.id);
@@ -1335,6 +1347,11 @@
       streamingThinking = '';
       setFlash('');
       render();
+      // This render (not submit's, which lands before the first paint) is the
+      // one that actually reaches the screen, so the send animation's job is
+      // done — clear before the streaming renders below rebuild the same row
+      // again and would otherwise replay it.
+      justSentId = '';
       scrollToEnd();
 
       try {
@@ -1450,9 +1467,11 @@
       renderComposerAttachments();
       resizeInput();
       const at = Date.now();
-      conversation.messages.push(Store.userMessage(text, at, images));
+      const sent = Store.userMessage(text, at, images);
+      conversation.messages.push(sent);
       conversation.updatedAt = at;
       if (!conversation.title) conversation.title = Store.deriveTitle(conversation);
+      justSentId = sent.id;
       await persist();
       render();
       scrollToEnd();
@@ -1548,8 +1567,7 @@
     // --- boot -----------------------------------------------------------------
 
     async function readConfig() {
-      const data = await browser.storage.local.get(AI_CONFIG_KEY);
-      const normalized = globalThis.PageDyeAiTheme.normalizeConfig(data && data[AI_CONFIG_KEY]);
+      const normalized = await globalThis.PageDyeAiTheme.loadConfig(browser.storage.local);
       configured = !!(normalized.apiKey && normalized.model);
       visionEnabled = normalized.vision === true;
       streamingEnabled = normalized.streaming !== false;

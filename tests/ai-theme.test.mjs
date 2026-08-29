@@ -270,6 +270,178 @@ test('an over-long standing preference is capped before it is stored or sent', (
   assert.equal(config.stylePrompt.length, 2000);
 });
 
+test('temperature and max tokens are unset by default, and clamped to a sane range when given', () => {
+  const blank = aiTheme.normalizeConfig({ apiKey: 'k' });
+  assert.equal(blank.temperature, null);
+  assert.equal(blank.maxTokens, null);
+
+  const clamped = aiTheme.normalizeConfig({ apiKey: 'k', temperature: 9, maxTokens: 50000000 });
+  assert.equal(clamped.temperature, 2);
+  assert.equal(clamped.maxTokens, 1000000);
+
+  const negative = aiTheme.normalizeConfig({ apiKey: 'k', temperature: -3, maxTokens: -5 });
+  assert.equal(negative.temperature, 0);
+  // Zero and negative are not a token count, so they fall back to unset
+  // (the request builder's own default) rather than sending max_tokens: 0.
+  assert.equal(negative.maxTokens, null);
+
+  const typed = aiTheme.normalizeConfig({ apiKey: 'k', temperature: '0.4', maxTokens: '2048' });
+  assert.equal(typed.temperature, 0.4);
+  assert.equal(typed.maxTokens, 2048);
+});
+
+test('temperature and max tokens reach the request body only when set', () => {
+  const bare = aiTheme.buildChatRequest(aiTheme.normalizeConfig({ apiKey: 'k' }), SAMPLE_PROFILE, FIRST_TURN);
+  assert.equal(bare.body.max_tokens, 8000);
+  assert.equal('temperature' in bare.body, false);
+
+  const tuned = aiTheme.buildChatRequest(
+    aiTheme.normalizeConfig({ provider: 'openai', apiKey: 'k', model: 'm', temperature: 0.4, maxTokens: 2048 }),
+    SAMPLE_PROFILE,
+    FIRST_TURN
+  );
+  assert.equal(tuned.body.max_tokens, 2048);
+  assert.equal(tuned.body.temperature, 0.4);
+});
+
+test('a custom request body adds parameters but cannot override what the turn depends on', () => {
+  const config = aiTheme.normalizeConfig({
+    provider: 'openai',
+    apiKey: 'k',
+    model: 'real-model',
+    maxTokens: 500,
+    extraBody: JSON.stringify({ top_p: 0.9, model: 'sneaky-model', max_tokens: 1, messages: 'not messages' })
+  });
+  const request = aiTheme.buildChatRequest(config, SAMPLE_PROFILE, FIRST_TURN);
+
+  // The user's own field, not covered by any dedicated control, comes
+  // through untouched.
+  assert.equal(request.body.top_p, 0.9);
+  // Everything the turn depends on to work is assigned after the spread and
+  // wins regardless of what the custom JSON also named.
+  assert.equal(request.body.model, 'real-model');
+  assert.equal(request.body.max_tokens, 500);
+  assert.ok(Array.isArray(request.body.messages));
+});
+
+test('invalid JSON in the custom request body is dropped rather than failing the request', () => {
+  const config = aiTheme.normalizeConfig({ apiKey: 'k', extraBody: '{not valid json' });
+  const request = aiTheme.buildChatRequest(config, SAMPLE_PROFILE, FIRST_TURN);
+
+  assert.equal(request.body.model, config.model);
+  assert.equal(request.body.max_tokens, 8000);
+});
+
+test('extraBodyLooksValid mirrors what parseExtraBody actually accepts', () => {
+  assert.equal(aiTheme.extraBodyLooksValid(''), true, 'blank is not an error');
+  assert.equal(aiTheme.extraBodyLooksValid('   '), true, 'whitespace-only is not an error');
+  assert.equal(aiTheme.extraBodyLooksValid('{"top_p": 0.9}'), true);
+  assert.equal(aiTheme.extraBodyLooksValid('{not valid json'), false);
+  // A JSON array parses fine but is not an object to merge into the body, so
+  // it is flagged the same as invalid JSON rather than silently doing nothing.
+  assert.equal(aiTheme.extraBodyLooksValid('[1, 2, 3]'), false);
+});
+
+// A minimal stand-in for chrome.storage.local: an in-memory object plus the
+// same get/set shape loadConfig/saveConfig call. Real enough to exercise the
+// encrypt-at-rest round trip without booting the extension pages.
+function memoryStore(initial = {}) {
+  const data = { ...initial };
+  return {
+    async get(keys) {
+      if (keys == null || typeof keys === 'undefined') return { ...data };
+      if (typeof keys === 'string') return Object.prototype.hasOwnProperty.call(data, keys) ? { [keys]: data[keys] } : {};
+      const out = {};
+      for (const key of keys) if (Object.prototype.hasOwnProperty.call(data, key)) out[key] = data[key];
+      return out;
+    },
+    async set(patch) { Object.assign(data, patch); },
+    raw: data
+  };
+}
+
+test('encryptApiKey defaults to off and is otherwise passed through as a plain boolean', () => {
+  assert.equal(aiTheme.normalizeConfig({ apiKey: 'k' }).encryptApiKey, false);
+  assert.equal(aiTheme.normalizeConfig({ apiKey: 'k', encryptApiKey: true }).encryptApiKey, true);
+  assert.equal(aiTheme.normalizeConfig({ apiKey: 'k', encryptApiKey: 'yes' }).encryptApiKey, false);
+});
+
+test('saveConfig encrypts the key at rest when the toggle is on, and loadConfig reads it back', async () => {
+  const store = memoryStore();
+  await aiTheme.saveConfig({ apiKey: 'sk-secret', model: 'claude-opus-5', encryptApiKey: true }, store);
+
+  const stored = store.raw['__pagedye_ai_config__'];
+  assert.equal(stored.apiKey, '', 'the plaintext key never lands in storage once encryption is on');
+  assert.ok(stored.apiKeyEnc && typeof stored.apiKeyEnc.iv === 'string' && typeof stored.apiKeyEnc.ct === 'string');
+  assert.ok(!JSON.stringify(stored).includes('sk-secret'), 'the secret does not appear anywhere in the stored record');
+
+  const loaded = await aiTheme.loadConfig(store);
+  assert.equal(loaded.apiKey, 'sk-secret');
+  assert.equal(loaded.encryptApiKey, true);
+});
+
+test('turning encryption on migrates an already-stored plaintext key without the caller re-entering it', async () => {
+  const store = memoryStore({ __pagedye_ai_config__: { apiKey: 'sk-existing', model: 'claude-opus-5' } });
+
+  const merged = await aiTheme.saveConfig({ encryptApiKey: true }, store);
+  assert.equal(merged.apiKey, 'sk-existing', 'the caller still sees the plaintext value in the returned config');
+
+  const stored = store.raw['__pagedye_ai_config__'];
+  assert.equal(stored.apiKey, '');
+  assert.ok(stored.apiKeyEnc);
+
+  const loaded = await aiTheme.loadConfig(store);
+  assert.equal(loaded.apiKey, 'sk-existing');
+});
+
+test('turning encryption back off reverts the stored record to plain text', async () => {
+  const store = memoryStore();
+  await aiTheme.saveConfig({ apiKey: 'sk-secret', encryptApiKey: true }, store);
+  await aiTheme.saveConfig({ encryptApiKey: false }, store);
+
+  const stored = store.raw['__pagedye_ai_config__'];
+  assert.equal(stored.apiKey, 'sk-secret');
+  assert.equal('apiKeyEnc' in stored, false);
+
+  const loaded = await aiTheme.loadConfig(store);
+  assert.equal(loaded.apiKey, 'sk-secret');
+  assert.equal(loaded.encryptApiKey, false);
+});
+
+test('the same device key material decrypts across separate loadConfig calls', async () => {
+  const store = memoryStore();
+  await aiTheme.saveConfig({ apiKey: 'sk-one', encryptApiKey: true }, store);
+
+  // Two independent reads, as two different extension pages would each do,
+  // both have to land on the same plaintext using the one stored device key.
+  const a = await aiTheme.loadConfig(store);
+  const b = await aiTheme.loadConfig(store);
+  assert.equal(a.apiKey, 'sk-one');
+  assert.equal(b.apiKey, 'sk-one');
+
+  // Saving again re-encrypts with a fresh IV rather than reusing one.
+  await aiTheme.saveConfig({ apiKey: 'sk-two', encryptApiKey: true }, store);
+  const ivAfterFirst = store.raw['__pagedye_ai_config__'].apiKeyEnc.iv;
+  await aiTheme.saveConfig({ model: 'claude-sonnet-5' }, store);
+  const ivAfterSecond = store.raw['__pagedye_ai_config__'].apiKeyEnc.iv;
+  assert.notEqual(ivAfterFirst, ivAfterSecond);
+});
+
+test('a corrupted encrypted key degrades to empty rather than throwing', async () => {
+  const store = memoryStore({
+    __pagedye_ai_config__: { encryptApiKey: true, apiKeyEnc: { iv: 'not-base64!!', ct: 'also-not-base64!!' } }
+  });
+
+  const loaded = await aiTheme.loadConfig(store);
+  assert.equal(loaded.apiKey, '');
+});
+
+test('with no storage area available, loadConfig hands back defaults instead of throwing', async () => {
+  const loaded = await aiTheme.loadConfig(null);
+  assert.equal(loaded.apiKey, '');
+  assert.equal(loaded.encryptApiKey, false);
+});
+
 test('chat hands the theme back so the next turn can refine it', async () => {
   const result = await withMockApi(
     () => ({ payload: { content: [{ type: 'text', text: MODEL_REPLY }] } }),

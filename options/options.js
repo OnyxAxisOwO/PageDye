@@ -98,6 +98,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       aiApiKeyHint: "The key is stored only in this browser's local extension storage and is never included in exported backups. Generating a theme sends a description of the page's colours and layout — never the page text — to the API endpoint you chose.",
       aiApiKeyReveal: "Show key",
       aiApiKeyHide: "Hide key",
+      aiEncryptKey: "Encrypt the stored key",
+      aiEncryptKeyHint: "Encrypts the key at rest with a key generated on this device, so a storage export, sync tool, or screen share does not show it in plain text. It cannot protect against anything that can already read this browser's own extension storage — the device key that unlocks it lives there too.",
       aiStatusReady: "Ready",
       aiStatusMissing: "No key yet",
       aiBaseUrl: "API base URL",
@@ -112,6 +114,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       aiStylePrompt: "Standing style preference",
       aiStylePromptHint: "Optional. Whatever you write here is added to every generation on every site — a palette you like, lower saturation, colour pairings to avoid for colour-vision reasons, or your own house style. It stays in effect until you change it; for a request that applies to one theme only, just say so in the AI chat.",
       aiStylePromptExample: "Prefer low-saturation, muted colors. Avoid pure black.",
+      aiAdvancedTitle: "Advanced settings",
+      aiTemperature: "Temperature",
+      aiTemperatureHint: "Lower is more consistent, higher is more varied. Leave empty to use the endpoint's own default. Anthropic accepts 0–1; most OpenAI-compatible endpoints accept 0–2 — a value outside what your model supports is rejected by the endpoint, not by PageDye.",
+      aiTemperaturePlaceholder: "Default",
+      aiMaxTokens: "Max output tokens",
+      aiMaxTokensHint: "Caps how long one reply can be. Leave empty to use PageDye's default (8000). Some newer OpenAI reasoning models want max_completion_tokens instead of max_tokens — add that in the custom request body below if yours does.",
+      aiExtraBody: "Custom request body (JSON)",
+      aiExtraBodyHint: "Optional. Merged into every request sent to this endpoint — for a parameter this page has no control for (top_p, presence_penalty, seed, a provider-specific flag). Must be a JSON object; a field also set above (model, max tokens, temperature) always uses that dedicated control instead of the value here.",
+      aiExtraBodyExample: "{\"top_p\": 0.9}",
+      aiExtraBodyInvalid: "Not valid JSON — this part will not be sent.",
       aiConfigSaved: "AI settings saved!",
       settingsDevGroupTitle: "Developer options",
       settingsDevGroupHint: "Extra troubleshooting tools for checking why PageDye may not work as expected on a website.",
@@ -406,8 +418,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       dataHint: "把 PageDye 保存的内容备份下来，或者清理掉不再需要的部分。",
       shortcutGroupTitle: "键盘快捷键",
       shortcutGroupHint: "一组快捷键，用于在你正在阅读的页面上临时让背景让路。",
-      navAiChat: "AI 对话",
-      aiChatTitle: "AI 对话",
+      navAiChat: "AI 工作台",
+      aiChatTitle: "AI 工作台",
       aiChatHint: "用一句话说出你想要的背景，再不断提要求慢慢改。每个对话只针对一个页面。",
       aiChatTargetHint: "从你已打开的标签页里选一个。每次发送消息时，PageDye 都会重新读取它的配色和布局，不会读取正文内容。",
       aiChatNoTabs: "没有可读取的已打开标签页。",
@@ -481,6 +493,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       aiApiKeyHint: "密钥仅保存在本浏览器的扩展本地存储中，导出备份时绝不会包含它。生成主题时只会把网页的配色和布局描述发送给你所选的 API 接口，绝不会发送网页正文内容。",
       aiApiKeyReveal: "显示密钥",
       aiApiKeyHide: "隐藏密钥",
+      aiEncryptKey: "加密保存密钥",
+      aiEncryptKeyHint: "用本机生成的密钥对它加密存储，这样存储导出、同步工具或截屏共享时都不会显示明文。但挡不住任何本来就能读取这个浏览器扩展本地存储的情况——解密要用的设备密钥也存在同一个地方。",
       aiStatusReady: "已就绪",
       aiStatusMissing: "还没填密钥",
       aiBaseUrl: "API 地址",
@@ -495,6 +509,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       aiStylePrompt: "固定风格偏好",
       aiStylePromptHint: "可选。这里填写的内容会附加到每一个网站的每一次生成中，例如你偏好的配色、更低的饱和度、出于色觉考虑需要避开的颜色搭配，或是你自己的统一风格。它会一直生效，直到你修改为止；如果只想对某一次生成提要求，直接在 AI 对话里说就行。",
       aiStylePromptExample: "偏好低饱和度的柔和配色，避免使用纯黑。",
+      aiAdvancedTitle: "高级设置",
+      aiTemperature: "温度",
+      aiTemperatureHint: "数值越低，回答越稳定；越高，变化越大。留空则使用接口自己的默认值。Anthropic 接受 0–1，多数 OpenAI 兼容接口接受 0–2——超出所选模型支持的范围会被接口拒绝，而不是被 PageDye 拦下。",
+      aiTemperaturePlaceholder: "默认",
+      aiMaxTokens: "最大输出 tokens",
+      aiMaxTokensHint: "限制单次回复的最长长度。留空则使用 PageDye 的默认值（8000）。部分较新的 OpenAI 推理模型要求用 max_completion_tokens 而不是 max_tokens——如果你用的是这类模型，请在下面的自定义请求体里补上这个字段。",
+      aiExtraBody: "自定义请求体（JSON）",
+      aiExtraBodyHint: "可选。会合并进发往这个接口的每一次请求——用于填写这个页面没有控件的参数（比如 top_p、presence_penalty、seed，或某个服务商特有的字段）。必须是一个 JSON 对象；如果某个字段上面也有专门的设置项（模型、最大 tokens、温度），以上面的为准，这里的同名字段不会生效。",
+      aiExtraBodyExample: "{\"top_p\": 0.9}",
+      aiExtraBodyInvalid: "不是合法的 JSON，这部分不会被发送。",
       aiConfigSaved: "AI 设置已保存!",
       settingsDevGroupTitle: "开发者选项",
       settingsDevGroupHint: "用于排查 PageDye 在某些网站上没有按预期显示的问题的额外工具。",
@@ -771,6 +795,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Mirrors MAX_STYLE_PROMPT_CHARS in scripts/ai-theme.js: the generator trims
   // to the same length anyway, so storing more would only hide the truncation.
   const AI_STYLE_PROMPT_MAX_CHARS = 2000;
+  // Mirrors MAX_EXTRA_BODY_CHARS in scripts/ai-theme.js, same reasoning.
+  const AI_EXTRA_BODY_MAX_CHARS = 4000;
   const URL_RULES_KEY = '__pagedye_url_rules_v081__';
   const SYSTEM_DARK_QUERY = window.matchMedia('(prefers-color-scheme: dark)');
   const UI_THEME_BASE_DEFAULTS = { pageBgImage: null, containerBgImage: null, accent: 'neutral', customAccent: '#18181b', disableAnimation: false };
@@ -981,7 +1007,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     aiModelSuggestions: document.getElementById('ai-model-suggestions'),
     aiVisionInput: document.getElementById('ai-vision-input'),
     aiStreamingInput: document.getElementById('ai-streaming-input'),
+    aiEncryptKeyInput: document.getElementById('ai-encrypt-key-input'),
     aiStylePromptInput: document.getElementById('ai-style-prompt-input'),
+    aiTemperatureInput: document.getElementById('ai-temperature-input'),
+    aiMaxTokensInput: document.getElementById('ai-max-tokens-input'),
+    aiExtraBodyInput: document.getElementById('ai-extra-body-input'),
+    aiExtraBodyError: document.getElementById('ai-extra-body-error'),
     aiChatRoot: document.getElementById('ai-chat-root'),
     aiApiKeyReveal: document.getElementById('ai-api-key-reveal'),
     aiConfigStatus: document.getElementById('ai-config-status'),
@@ -2540,9 +2571,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // versa) when a second options tab or a later version changes another field.
   function saveAiConfig(partial) {
     aiConfigWriteChain = aiConfigWriteChain.catch(() => {}).then(async () => {
-      const data = await chrome.storage.local.get(AI_CONFIG_KEY);
-      const stored = normalizeAiConfig(data[AI_CONFIG_KEY]);
-      await chrome.storage.local.set({ [AI_CONFIG_KEY]: Object.assign({}, stored, partial) });
+      await window.PageDyeAiTheme.saveConfig(partial);
       showStatus(t('aiConfigSaved'));
     });
     return aiConfigWriteChain;
@@ -2595,8 +2624,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function initAiConfig() {
     if (!els.aiProviderSelect && !els.aiApiKeyInput && !els.aiBaseUrlInput && !els.aiModelInput &&
       !els.aiVisionInput && !els.aiStreamingInput && !els.aiStylePromptInput) return;
-    const data = await chrome.storage.local.get(AI_CONFIG_KEY);
-    const config = normalizeAiConfig(data[AI_CONFIG_KEY]);
+    const config = await window.PageDyeAiTheme.loadConfig();
     syncAiProviderFields(config.provider);
 
     if (els.aiProviderSelect) {
@@ -2630,6 +2658,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         els.aiApiKeyInput.type = reveal ? 'text' : 'password';
         els.aiApiKeyReveal.setAttribute('aria-pressed', String(reveal));
         els.aiApiKeyReveal.title = t(reveal ? 'aiApiKeyHide' : 'aiApiKeyReveal');
+      });
+    }
+
+    if (els.aiEncryptKeyInput) {
+      els.aiEncryptKeyInput.checked = config.encryptApiKey === true;
+      els.aiEncryptKeyInput.addEventListener('change', () => {
+        saveAiConfig({ encryptApiKey: els.aiEncryptKeyInput.checked });
       });
     }
 
@@ -2676,6 +2711,51 @@ document.addEventListener('DOMContentLoaded', async () => {
         queueAiConfigSave('stylePrompt', () => els.aiStylePromptInput.value.trim().slice(0, AI_STYLE_PROMPT_MAX_CHARS));
       });
     }
+
+    // Blank means "not set" for both — the request builder then omits
+    // temperature and falls back to PageDye's own max_tokens default, so an
+    // empty field is a real, valid state rather than 0.
+    if (els.aiTemperatureInput) {
+      els.aiTemperatureInput.value = Number.isFinite(config.temperature) ? String(config.temperature) : '';
+      els.aiTemperatureInput.addEventListener('input', () => {
+        queueAiConfigSave('temperature', () => {
+          const raw = els.aiTemperatureInput.value.trim();
+          return raw === '' ? null : parseFloat(raw);
+        });
+      });
+    }
+
+    if (els.aiMaxTokensInput) {
+      els.aiMaxTokensInput.value = Number.isFinite(config.maxTokens) ? String(config.maxTokens) : '';
+      els.aiMaxTokensInput.addEventListener('input', () => {
+        queueAiConfigSave('maxTokens', () => {
+          const raw = els.aiMaxTokensInput.value.trim();
+          return raw === '' ? null : parseInt(raw, 10);
+        });
+      });
+    }
+
+    if (els.aiExtraBodyInput) {
+      els.aiExtraBodyInput.value = config.extraBody || '';
+      updateAiExtraBodyValidity();
+      els.aiExtraBodyInput.addEventListener('input', () => {
+        updateAiExtraBodyValidity();
+        // Capped on write like stylePrompt above, same reasoning: this is
+        // re-sent on every generation, so an accidental paste of something
+        // huge should not be stored.
+        queueAiConfigSave('extraBody', () => els.aiExtraBodyInput.value.trim().slice(0, AI_EXTRA_BODY_MAX_CHARS));
+      });
+    }
+  }
+
+  // Invalid JSON here is not a blocking error — buildBody quietly ignores it
+  // — but silently ignoring the user's own text would be worse, so the same
+  // rule is surfaced here as a hint instead.
+  function updateAiExtraBodyValidity() {
+    if (!els.aiExtraBodyInput || !els.aiExtraBodyError) return;
+    const valid = window.PageDyeAiTheme.extraBodyLooksValid(els.aiExtraBodyInput.value);
+    els.aiExtraBodyError.textContent = valid ? '' : t('aiExtraBodyInvalid');
+    els.aiExtraBodyError.classList.toggle('hidden', valid);
   }
 
   // Says whether the AI chat can actually run, at the top of the group that

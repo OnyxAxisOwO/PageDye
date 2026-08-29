@@ -377,6 +377,15 @@
   align-items: flex-end;
 }
 
+/* The message that was just sent, marked as it lands instead of just being
+   there on the next repaint. `justSentId` in ai-chat.js is read-and-cleared
+   by the render right after a send, so the turn's later re-renders (same
+   node, rebuilt) do not replay it. Reuses aiChatSwitch's rise-and-fade: a
+   sent message arriving is the same kind of event as a page arriving. */
+.ai-msg-user.ai-msg-sent {
+  animation: aiChatSwitch 0.34s cubic-bezier(0.2, 0, 0, 1);
+}
+
 /* The user's own words sit in a bubble; the assistant's are set as plain prose
    on the page, so a long answer reads as a document instead of a chat log. */
 .ai-bubble {

@@ -1105,6 +1105,7 @@ label {
 input[type="text"],
 input[type="url"],
 input[type="password"],
+input[type="number"],
 select,
 textarea {
   box-sizing: border-box;
@@ -1129,6 +1130,7 @@ textarea {
 input[type="text"]:focus,
 input[type="url"]:focus,
 input[type="password"]:focus,
+input[type="number"]:focus,
 select:focus,
 textarea:focus {
   outline: none;
@@ -1145,6 +1147,7 @@ textarea::placeholder {
 .accordion-content input[type="text"],
 .accordion-content input[type="url"],
 .accordion-content input[type="password"],
+.accordion-content input[type="number"],
 .accordion-content select,
 .accordion-content textarea,
 .accordion-content .color-preview-container,
@@ -1697,6 +1700,25 @@ input[type="color"]::-webkit-color-swatch {
   font-weight: 600;
 }
 
+.settings-row-title.settings-row-title-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.settings-row-title-icon .row-title-icon {
+  flex: none;
+  color: var(--md-sys-color-primary);
+}
+
+.settings-row-title-icon .row-title-icon + .row-title-icon {
+  margin-left: -1px;
+}
+
+.settings-row-title-icon > span {
+  margin-left: 2px;
+}
+
 .settings-row-desc {
   margin: 0;
   max-width: 66ch;
@@ -2143,6 +2165,29 @@ html.pd-ai-open body {
   border-radius: var(--pd-radius-nested);
   background: var(--md-sys-color-surface-container-high);
   box-shadow: var(--md-elevation-2);
+  transform-origin: top left;
+}
+
+.ai-chip-menu:not([hidden]) {
+  animation: aiChipMenuOpen 0.16s cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Held visible (hidden stays false) by options.js for the length of this
+   animation before it actually hides the panel — same trick the fullscreen
+   chat overlay uses to shrink back out instead of just vanishing. */
+.ai-chip-menu.ai-chip-menu-closing {
+  pointer-events: none;
+  animation: aiChipMenuClose 0.12s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+@keyframes aiChipMenuOpen {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes aiChipMenuClose {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(0.85); opacity: 0; }
 }
 
 .ai-chip-menu-note {

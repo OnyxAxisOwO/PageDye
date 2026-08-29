@@ -4,7 +4,6 @@ importScripts('ai-theme.js', 'storage-schema.js');
 
 const ABANDONED_URL_RULES_KEY = '__pagedye_url_rules__';
 const URL_RULES_RECOVERY_KEY = '__pagedye_url_rules_recovered_v080__';
-const AI_CONFIG_KEY = '__pagedye_ai_config__';
 
 restoreDomainSettingsFromAbandonedRules().catch((error) => {
   console.warn('Could not recover PageDye domain settings:', error);
@@ -125,12 +124,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
     try {
       const profile = await resolveChatProfile(message, sender);
-      const data = await chrome.storage.local.get(AI_CONFIG_KEY);
+      const config = await self.PageDyeAiTheme.loadConfig();
       // Best-effort: a lookup failure here should cost the model one picture
       // it could have reused, not the whole turn.
       const currentImage = await resolveCurrentImage(profile).catch(() => null);
       const result = await self.PageDyeAiTheme.chat({
-        config: (data && data[AI_CONFIG_KEY]) || {},
+        config,
         profile,
         // The whole visible transcript, owned by the caller: the API is
         // stateless, so editing an earlier message is just a shorter array.
@@ -173,10 +172,10 @@ chrome.runtime.onConnect.addListener((port) => {
     (async () => {
       try {
         const profile = await resolveChatProfile(message, port.sender);
-        const data = await chrome.storage.local.get(AI_CONFIG_KEY);
+        const config = await self.PageDyeAiTheme.loadConfig();
         const currentImage = await resolveCurrentImage(profile).catch(() => null);
         const result = await self.PageDyeAiTheme.chatStream({
-          config: (data && data[AI_CONFIG_KEY]) || {},
+          config,
           profile,
           turns: message.turns,
           currentImage,

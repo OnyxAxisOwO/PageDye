@@ -482,6 +482,7 @@
 
   const MAX_STYLE_PROMPT_CHARS = 2000;
   const MAX_INSTRUCTION_CHARS = 1000;
+  const MAX_EXTRA_BODY_CHARS = 4000;
 
   // Attachments. Every one of them is re-sent on every later turn, so the
   // conversation carries a handful at most; scripts/image.js keeps each one
@@ -561,6 +562,50 @@
 
   function trimTo(value, limit) {
     return typeof value === 'string' ? value.trim().slice(0, limit) : '';
+  }
+
+  // Temperature is provider-defined (Anthropic accepts 0-1, most
+  // OpenAI-compatible endpoints 0-2); the wider ceiling is kept here and the
+  // endpoint itself is left to reject whatever its own model does not
+  // accept — the same way an unrecognised model id is left to the endpoint.
+  function normalizeTemperature(value) {
+    const num = typeof value === 'number' ? value : parseFloat(value);
+    return Number.isFinite(num) ? Math.min(2, Math.max(0, num)) : null;
+  }
+
+  // Only a sanity ceiling against a stray extra digit, not a provider limit —
+  // again the endpoint's to enforce.
+  function normalizeMaxTokens(value) {
+    const num = typeof value === 'number' ? value : parseInt(value, 10);
+    return Number.isFinite(num) && num > 0 ? Math.min(1000000, Math.round(num)) : null;
+  }
+
+  // The escape hatch for a provider parameter this settings page has no
+  // dedicated control for (top_p, seed, a reasoning-effort flag, or a model
+  // that wants max_completion_tokens instead of max_tokens). Invalid JSON is
+  // treated as empty rather than failing the request — the settings page
+  // surfaces the parse error separately, at the point the user is typing it.
+  function parseExtraBody(raw) {
+    if (typeof raw !== 'string' || !raw.trim()) return {};
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  // Same rule as parseExtraBody, exposed as a yes/no so the settings page can
+  // tell the user their JSON is being ignored instead of silently dropping it
+  // the way parseExtraBody itself does at request time.
+  function extraBodyLooksValid(raw) {
+    if (typeof raw !== 'string' || !raw.trim()) return true;
+    try {
+      const parsed = JSON.parse(raw);
+      return !!parsed && typeof parsed === 'object' && !Array.isArray(parsed);
+    } catch (_) {
+      return false;
+    }
   }
 
   // The two user-authored strings are kept in their own labelled sections and
@@ -675,8 +720,123 @@
       streaming: typeof source.streaming === 'boolean' ? source.streaming : true,
       // A standing instruction applied to every generation, as opposed to the
       // per-run request the popup collects.
-      stylePrompt: trimTo(source.stylePrompt, MAX_STYLE_PROMPT_CHARS)
+      stylePrompt: trimTo(source.stylePrompt, MAX_STYLE_PROMPT_CHARS),
+      // Advanced request tuning. All three are optional and additive: left
+      // unset, the request body is byte-for-byte what it was before these
+      // existed (see buildBody).
+      temperature: normalizeTemperature(source.temperature),
+      maxTokens: normalizeMaxTokens(source.maxTokens),
+      extraBody: trimTo(source.extraBody, MAX_EXTRA_BODY_CHARS),
+      // Whether the key this object carries is stored at rest as
+      // apiKeyEnc (see encryptSecret) instead of the plain apiKey field
+      // above. This object itself always carries the plaintext key — the
+      // encrypted form only ever exists in chrome.storage.local, produced
+      // and consumed by saveConfig/loadConfig below.
+      encryptApiKey: typeof source.encryptApiKey === 'boolean' ? source.encryptApiKey : false
     };
+  }
+
+  // --- API key at rest -------------------------------------------------------
+  // AES-256-GCM with a key generated on-device and never itself sent
+  // anywhere. This defends the everyday accident — a storage dump, a synced
+  // backup tool, a screen share of devtools' Application tab — showing the
+  // key in the clear. It does not defend against anything that can read this
+  // extension's own storage.local, because the unwrap key necessarily lives
+  // there too: there is no password or remote secret to derive it from in a
+  // one-click browser toggle. That is the honest ceiling of "encrypt at rest"
+  // without asking the user to remember a passphrase.
+  const AI_CONFIG_STORAGE_KEY = '__pagedye_ai_config__';
+  const AI_KEY_MATERIAL_STORAGE_KEY = '__pagedye_ai_key_material__';
+
+  function bufToBase64(buf) {
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+
+  function base64ToBuf(b64) {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+  }
+
+  // Generated once per device and reused: chrome.storage.local is already the
+  // trust boundary this key lives inside, so there is nothing to gain from
+  // rotating it, only conversations that would fail to decrypt after.
+  async function getDeviceKey(store) {
+    const data = await store.get(AI_KEY_MATERIAL_STORAGE_KEY);
+    const existing = data && data[AI_KEY_MATERIAL_STORAGE_KEY];
+    if (typeof existing === 'string' && existing) {
+      return crypto.subtle.importKey('raw', base64ToBuf(existing), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+    }
+    const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+    const raw = await crypto.subtle.exportKey('raw', key);
+    await store.set({ [AI_KEY_MATERIAL_STORAGE_KEY]: bufToBase64(raw) });
+    return key;
+  }
+
+  async function encryptSecret(plainText, store) {
+    const key = await getDeviceKey(store);
+    // A fresh IV per encryption, as AES-GCM requires — reusing one with the
+    // same key is what breaks the scheme, so it is never derived from
+    // anything but the RNG.
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plainText));
+    return { iv: bufToBase64(iv), ct: bufToBase64(cipherBuf) };
+  }
+
+  // Never throws: a corrupted blob or a device key wiped out from under it
+  // (storage.local cleared by hand, profile copied without it) degrades to
+  // "no key configured" rather than breaking the settings page or the chat.
+  async function decryptSecret(payload, store) {
+    if (!payload || typeof payload !== 'object' || typeof payload.iv !== 'string' || typeof payload.ct !== 'string') return '';
+    try {
+      const key = await getDeviceKey(store);
+      const iv = new Uint8Array(base64ToBuf(payload.iv));
+      const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, base64ToBuf(payload.ct));
+      return new TextDecoder().decode(plainBuf);
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function defaultStorageArea() {
+    return (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) || null;
+  }
+
+  // Reads the AI config out of storage, transparently decrypting the API key
+  // when it was stored encrypted. Every caller — the settings page, the AI
+  // workspace, the chat component, the service worker's own request builder —
+  // goes through this instead of reading chrome.storage.local directly, so
+  // there is exactly one place that knows apiKeyEnc exists.
+  async function loadConfig(storageArea) {
+    const store = storageArea || defaultStorageArea();
+    if (!store) return normalizeConfig(null);
+    const data = await store.get(AI_CONFIG_STORAGE_KEY);
+    const raw = (data && data[AI_CONFIG_STORAGE_KEY]) || {};
+    const apiKey = raw.apiKeyEnc ? await decryptSecret(raw.apiKeyEnc, store) : raw.apiKey;
+    return normalizeConfig({ ...raw, apiKey });
+  }
+
+  // Read-modify-write against whatever is currently stored, same discipline
+  // the callers used to each implement themselves: the config is one object
+  // behind one storage key, so saving one field has to start from the latest
+  // copy of every other field or it clobbers a change made from another tab.
+  async function saveConfig(partial, storageArea) {
+    const store = storageArea || defaultStorageArea();
+    if (!store) throw new Error('No storage available.');
+    const current = await loadConfig(store);
+    const merged = normalizeConfig({ ...current, ...partial });
+    const record = { ...merged };
+    delete record.apiKeyEnc;
+    if (merged.encryptApiKey && merged.apiKey) {
+      record.apiKeyEnc = await encryptSecret(merged.apiKey, store);
+      record.apiKey = '';
+    }
+    await store.set({ [AI_CONFIG_STORAGE_KEY]: record });
+    return merged;
   }
 
   // Providers document the full endpoint, not a base — Groq's quickstart shows
@@ -794,11 +954,23 @@
   // The two providers ask for a JSON-shaped answer differently and disagree
   // about where the system prompt lives, so that difference is spelled out
   // once here rather than at each call site.
+  //
+  // The user's own extra body and the two tunable numbers are spread in
+  // first, so that everything the turn actually depends on to work — model
+  // id, schema enforcement, the messages themselves — is assigned after and
+  // always wins. A stray key in the user's own JSON can add a parameter but
+  // never break the request.
   function buildBody(config, schema, schemaName, system, messages) {
+    const extra = parseExtraBody(config.extraBody);
+    const maxTokens = Number.isFinite(config.maxTokens) ? config.maxTokens : 8000;
+    const temperature = Number.isFinite(config.temperature) ? { temperature: config.temperature } : null;
+
     if (config.provider === 'anthropic') {
       return {
+        ...extra,
         model: config.model,
-        max_tokens: 8000,
+        max_tokens: maxTokens,
+        ...temperature,
         system,
         output_config: {
           effort: 'medium',
@@ -809,8 +981,10 @@
     }
 
     return {
+      ...extra,
       model: config.model,
-      max_tokens: 8000,
+      max_tokens: maxTokens,
+      ...temperature,
       response_format: {
         type: 'json_schema',
         json_schema: { name: schemaName, strict: true, schema: toStrictSchema(schema) }
@@ -2099,6 +2273,9 @@
     MAX_IMAGES_PER_REQUEST,
     IMAGES_REJECTED_PREFIX,
     normalizeConfig,
+    loadConfig,
+    saveConfig,
+    extraBodyLooksValid,
     normalizeBaseUrl,
     resolveEndpoint,
     modelsEndpoint,

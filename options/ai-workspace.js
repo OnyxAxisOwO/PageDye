@@ -79,8 +79,7 @@
     let config = aiTheme.normalizeConfig(null);
 
     async function readConfig() {
-      const data = await chrome.storage.local.get(AI_CONFIG_KEY);
-      config = aiTheme.normalizeConfig(data && data[AI_CONFIG_KEY]);
+      config = await aiTheme.loadConfig();
     }
 
     // The same merge discipline as options.js's saveAiConfig: re-read before
@@ -88,9 +87,7 @@
     let writeChain = Promise.resolve();
     function saveConfig(partial) {
       writeChain = writeChain.catch(() => {}).then(async () => {
-        const data = await chrome.storage.local.get(AI_CONFIG_KEY);
-        const stored = aiTheme.normalizeConfig(data && data[AI_CONFIG_KEY]);
-        await chrome.storage.local.set({ [AI_CONFIG_KEY]: Object.assign({}, stored, partial) });
+        config = await aiTheme.saveConfig(partial);
       });
       return writeChain;
     }
@@ -98,24 +95,43 @@
     // --- chip menus -----------------------------------------------------------
 
     const menus = [
-      { chip: els.targetChip, panel: els.targetMenu },
-      { chip: els.modelChip, panel: els.modelMenu }
+      { chip: els.targetChip, panel: els.targetMenu, closeTimer: null },
+      { chip: els.modelChip, panel: els.modelMenu, closeTimer: null }
     ];
+
+    // Mirrors options.js's .ai-leaving handling for the fullscreen overlay:
+    // the panel stays un-hidden (so it keeps painting) for exactly as long as
+    // the CSS close animation runs, then is actually hidden.
+    function closeMenu(menu) {
+      if (menu.panel.hidden || menu.panel.classList.contains('ai-chip-menu-closing')) return;
+      menu.chip.setAttribute('aria-expanded', 'false');
+      menu.panel.classList.add('ai-chip-menu-closing');
+      clearTimeout(menu.closeTimer);
+      menu.closeTimer = setTimeout(() => {
+        menu.panel.classList.remove('ai-chip-menu-closing');
+        menu.panel.hidden = true;
+      }, 140);
+    }
 
     function closeMenus(except) {
       menus.forEach((menu) => {
-        if (menu.panel === except) return;
-        menu.panel.hidden = true;
-        menu.chip.setAttribute('aria-expanded', 'false');
+        if (menu.panel !== except) closeMenu(menu);
       });
     }
 
+    function openMenu(menu, onOpen) {
+      clearTimeout(menu.closeTimer);
+      menu.panel.classList.remove('ai-chip-menu-closing');
+      menu.panel.hidden = false;
+      menu.chip.setAttribute('aria-expanded', 'true');
+      if (onOpen) onOpen();
+    }
+
     function toggleMenu(menu, onOpen) {
-      const open = menu.panel.hidden;
-      closeMenus(open ? menu.panel : null);
-      menu.panel.hidden = !open;
-      menu.chip.setAttribute('aria-expanded', String(open));
-      if (open && onOpen) onOpen();
+      const isOpen = !menu.panel.hidden && !menu.panel.classList.contains('ai-chip-menu-closing');
+      closeMenus(isOpen ? null : menu.panel);
+      if (isOpen) closeMenu(menu);
+      else openMenu(menu, onOpen);
     }
 
     doc.addEventListener('click', (event) => {

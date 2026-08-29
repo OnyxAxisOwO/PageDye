@@ -871,6 +871,7 @@ test('the chat page is all conversation, with its controls in the header chips a
   click(targetChip);
   assert.equal(document.getElementById('ai-target-menu').hidden, false, 'the chip opens it');
   document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await waitFor(() => document.getElementById('ai-target-menu').hidden, { timeout: 1000 });
   assert.equal(document.getElementById('ai-target-menu').hidden, true, 'Escape closes it');
 
   // The rail carries two tabs: the history, and the dashboard's navigation —
