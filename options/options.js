@@ -154,6 +154,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       pauseShortcutReset: "Reset",
       pauseShortcutRequirement: "Use at least one modifier key (Ctrl, Alt, Shift, or ⌘).",
       pauseShortcutInvalid: "Add a modifier key to the shortcut.",
+      uiThemeMode: "Interface Appearance",
+      uiThemeModeHint: "Choose light or dark mode, or follow your system setting automatically.",
+      uiThemeAuto: "Auto",
+      uiThemeLight: "Light",
+      uiThemeDark: "Dark",
       uiThemeColor: "Interface Theme Color",
       uiThemeColorHint: "Changes PageDye popup and settings colors only. Websites stay unchanged.",
       dragOrClick: "Drag image here, or",
@@ -799,7 +804,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const AI_EXTRA_BODY_MAX_CHARS = 4000;
   const URL_RULES_KEY = '__pagedye_url_rules_v081__';
   const SYSTEM_DARK_QUERY = window.matchMedia('(prefers-color-scheme: dark)');
-  const UI_THEME_BASE_DEFAULTS = { pageBgImage: null, containerBgImage: null, accent: 'neutral', customAccent: '#18181b', disableAnimation: false };
+  const UI_THEME_BASE_DEFAULTS = { pageBgImage: null, containerBgImage: null, themeMode: 'auto', accent: 'neutral', customAccent: '#18181b', disableAnimation: false };
   function getSystemUiThemeDefaults() {
     return { ...UI_THEME_BASE_DEFAULTS };
   }
@@ -808,7 +813,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Colors from older versions are intentionally ignored. Surface colors are
     // now derived from the selected interface theme; only images are custom.
     const { pageBg, containerBg, backgroundMode, ...theme } = saved;
-    return Object.assign({}, getSystemUiThemeDefaults(), theme);
+    const themeMode = ['auto', 'light', 'dark'].includes(theme.themeMode) ? theme.themeMode : 'auto';
+    return Object.assign({}, getSystemUiThemeDefaults(), theme, { themeMode });
+  }
+  function isDarkUiTheme(theme) {
+    const isDark = SYSTEM_DARK_QUERY.matches;
+    return theme.themeMode === 'dark' || (theme.themeMode !== 'light' && isDark);
   }
   let currentUiTheme = getSystemUiThemeDefaults();
   // normalizeHexColor/hexToRgba/shiftHexColor/hexToHsl/hslToHex/getUiAccentColor/
@@ -926,9 +936,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function applyUiThemeAccent(theme) {
     const root = document.documentElement.style;
-    const isDark = SYSTEM_DARK_QUERY.matches;
+    const isDark = isDarkUiTheme(theme);
     const rawAccent = getUiAccentColor(theme);
-    const accent = getDisplayAccentColor(rawAccent, isDark);
+    // The neutral preset is black in light mode and white in dark mode. Do
+    // not run it through the generic lightness lift, which turns white into
+    // the grey-white #B0B0B9 used by the old dark-mode buttons.
+    const accent = isDark && theme.accent === 'neutral'
+      ? '#FFFFFF'
+      : getDisplayAccentColor(rawAccent, isDark);
     const onAccent = colorIsLight(accent) ? '#000000' : '#ffffff';
     const hover = shiftHexColor(accent, colorIsLight(accent) ? -32 : 24);
     root.setProperty('--primary-color', accent);
@@ -995,6 +1010,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     themeContainerBgFileInfo: document.getElementById('theme-container-bg-file-info'),
     themeContainerBgFilename: document.getElementById('theme-container-bg-filename'),
     themeContainerBgRemove: document.getElementById('theme-container-bg-remove'),
+    uiThemeMode: document.getElementsByName('uiThemeMode'),
     uiThemeColorGrid: document.getElementById('ui-theme-color-grid'),
     uiThemeCustomColor: document.getElementById('ui-theme-custom-color'),
     uiThemeCustomColorText: document.getElementById('ui-theme-custom-color-text'),
@@ -1397,6 +1413,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function t(key) {
     const zhFallback = {
+      uiThemeMode: "界面外观",
+      uiThemeModeHint: "选择浅色或深色模式，也可以自动跟随系统设置。",
+      uiThemeAuto: "自动",
+      uiThemeLight: "浅色",
+      uiThemeDark: "深色",
       uiThemeColor: "界面主题色",
       uiThemeColorHint: "只改变 PageDye 设置页和弹窗的颜色，不会影响网站背景。",
       newRule: "新建规则",
@@ -2787,6 +2808,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyUiTheme(currentUiTheme);
     syncUiThemeInputs(currentUiTheme);
 
+    if (els.uiThemeMode) {
+      els.uiThemeMode.forEach((input) => {
+        input.addEventListener('change', () => {
+          if (input.checked) saveUiTheme({ themeMode: input.value });
+        });
+      });
+    }
     if (els.uiThemeColorGrid) {
       els.uiThemeColorGrid.addEventListener('click', (e) => {
         const dot = e.target.closest('.theme-color-dot');
@@ -2875,6 +2903,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function syncUiThemeInputs(theme) {
+    if (els.uiThemeMode) {
+      els.uiThemeMode.forEach((input) => {
+        input.checked = input.value === (theme.themeMode || 'auto');
+      });
+    }
     if (els.uiThemeCustomColor) els.uiThemeCustomColor.value = normalizeHexColor(theme.customAccent, UI_THEME_ACCENTS.neutral);
     if (els.uiThemeCustomColorText) els.uiThemeCustomColorText.value = normalizeHexColor(theme.customAccent, UI_THEME_ACCENTS.neutral);
     if (els.uiThemeColorGrid) {
@@ -2905,7 +2938,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function applyUiTheme(theme) {
     const root = document.documentElement.style;
-    const palette = SYSTEM_DARK_QUERY.matches ? UI_THEME_DARK_PALETTE : UI_THEME_LIGHT_PALETTE;
+    const isDark = isDarkUiTheme(theme);
+    root.setProperty('color-scheme', isDark ? 'dark' : 'light');
+    const palette = isDark ? UI_THEME_DARK_PALETTE : UI_THEME_LIGHT_PALETTE;
     Object.keys(palette).forEach(name => root.setProperty(name, palette[name]));
     applyUiThemeAccent(theme);
 

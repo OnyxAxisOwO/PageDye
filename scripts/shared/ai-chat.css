@@ -1202,6 +1202,10 @@
   min-height: 0;
 }
 
+.ai-chat-options .ai-resize-handle.is-active::before {
+  background: var(--outline-variant);
+}
+
 .ai-chat-options .ai-chat-sidebar {
   box-sizing: border-box;
   flex-shrink: 0;

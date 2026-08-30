@@ -358,11 +358,22 @@ const CUSTOM_PRESET_COLORS_KEY = '__pagedye_custom_preset_colors__';
 const EXTENSION_ENABLED_KEY = '__pagedye_extension_enabled__';
 const TEXT_OVERRIDES_KEY = '__pagedye_text_overrides_v1__';
 const UI_THEME_KEY = '__pagedye_ui_theme__';
-const UI_THEME_DEFAULTS = { accent: 'neutral', customAccent: '#18181b', disableAnimation: false };
+const UI_THEME_DEFAULTS = { themeMode: 'auto', accent: 'neutral', customAccent: '#18181b', disableAnimation: false };
 // normalizeHexColor/hexToRgba/shiftHexColor/hexToHsl/hslToHex/getUiAccentColor/
 // getDisplayAccentColor/UI_THEME_ACCENTS live in scripts/shared/color-utils.js
 // (byte-identical to the options.js copies they were extracted from).
 const { UI_THEME_ACCENTS, normalizeHexColor, hexToRgba, shiftHexColor, hexToHsl, hslToHex, getUiAccentColor, getDisplayAccentColor } = window.PageDyeColorUtils;
+
+function normalizeUiTheme(value) {
+  const saved = value && typeof value === 'object' ? value : {};
+  const themeMode = ['auto', 'light', 'dark'].includes(saved.themeMode) ? saved.themeMode : 'auto';
+  return Object.assign({}, UI_THEME_DEFAULTS, saved, { themeMode });
+}
+
+function isDarkUiTheme(theme) {
+  return theme.themeMode === 'dark'
+    || (theme.themeMode !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
 
 function colorIsLight(color) {
   const hex = normalizeHexColor(color, '#18181B').replace('#', '');
@@ -417,9 +428,14 @@ function getNeutralSurfaceTones(accentHex, isDark) {
 
 function applyUiTheme(theme) {
   const root = document.documentElement.style;
-  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = isDarkUiTheme(theme);
+  root.setProperty('color-scheme', isDark ? 'dark' : 'light');
   const rawAccent = getUiAccentColor(theme);
-  const accent = getDisplayAccentColor(rawAccent, isDark);
+  // Keep the neutral preset truly black/white: the generic dark-mode
+  // lightness lift makes its white button fill look grey-white.
+  const accent = isDark && theme.accent === 'neutral'
+    ? '#FFFFFF'
+    : getDisplayAccentColor(rawAccent, isDark);
   const onAccent = colorIsLight(accent) ? '#000000' : '#ffffff';
   const hover = shiftHexColor(accent, colorIsLight(accent) ? -32 : 24);
   root.setProperty('--primary-color', accent);
@@ -1231,7 +1247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Init
   const interfaceData = await chrome.storage.local.get([UI_THEME_KEY]);
-  currentUiTheme = Object.assign({}, UI_THEME_DEFAULTS, interfaceData[UI_THEME_KEY] || {});
+  currentUiTheme = normalizeUiTheme(interfaceData[UI_THEME_KEY]);
   applyUiTheme(currentUiTheme);
   initI18n();
   initUiThemeControls();

@@ -177,8 +177,6 @@
 
 html {
   background: var(--md-sys-color-surface-container);
-  scrollbar-width: thin;
-  scrollbar-color: var(--md-sys-color-outline-variant) transparent;
 }
 
 body {
@@ -192,8 +190,8 @@ body {
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -201,12 +199,22 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  border-radius: 4px;
+  border-radius: 2.5px;
   background: var(--md-sys-color-outline-variant);
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--md-sys-color-outline);
+}
+
+/* Keep the standards-based fallback for browsers that do not support the
+   WebKit scrollbar pseudo-elements. In Chromium, scrollbar-color/width would
+   take precedence over the pixel width above. */
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--md-sys-color-outline-variant) transparent;
+  }
 }
 
 .hidden {
@@ -422,6 +430,18 @@ body {
   max-width: 900px;
   margin: 0 auto;
   padding: 40px;
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
+
+.main-content::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  border-radius: 1.5px;
+  background: var(--md-sys-color-outline-variant);
 }
 
 .content-section {
@@ -1442,6 +1462,10 @@ input[type="color"]::-webkit-color-swatch {
   gap: 10px;
 }
 
+.ui-theme-mode-control {
+  width: min(420px, 100%);
+}
+
 .theme-color-dot {
   position: relative;
   width: 30px;
@@ -2078,6 +2102,42 @@ html.pd-ai-open body {
   min-height: 0;
 }
 
+/* The handles occupy the existing 14px gaps, so resizing does not make the
+   three columns jump apart. The visible grip is slightly wider than the
+   layout item to make it easy to catch with the pointer. */
+.ai-resize-handle {
+  position: relative;
+  z-index: 20;
+  flex: 0 0 0;
+  width: 0;
+  margin-right: -7px;
+  margin-left: -7px;
+  cursor: col-resize;
+}
+
+.ai-resize-handle::before {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: -4px;
+  width: 8px;
+  border-radius: 999px;
+  background: transparent;
+  content: '';
+  transition: background-color 0.15s ease;
+}
+
+.ai-resize-handle:hover::before,
+.ai-resize-handle.is-active::before {
+  background: var(--md-sys-color-outline);
+}
+
+html.ai-resizing,
+html.ai-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
 /* The mount host: the chat component (rail + transcript) fills whatever the
    side panel leaves it. */
 #ai-chat-root {
@@ -2315,7 +2375,7 @@ html.pd-ai-open body {
   box-sizing: border-box;
   flex-direction: column;
   flex-shrink: 0;
-  width: 340px;
+  width: var(--ai-side-width, 340px);
   min-height: 0;
   overflow: hidden;
   border-radius: 18px;
@@ -2334,6 +2394,11 @@ html.pd-ai-open body {
   pointer-events: none;
   transition: margin-right 0.34s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease,
     visibility 0s linear 0.34s;
+}
+
+.ai-workspace.side-hidden .ai-resize-handle-side,
+.ai-chat-options.rail-collapsed .ai-resize-handle-rail {
+  display: none;
 }
 
 .ai-side-scroll {
@@ -2758,6 +2823,10 @@ html.pd-ai-open body {
    drawer from the right, opened and closed by the header's toggle.
    ai-workspace.js starts it hidden at these widths when nothing is stored. */
 @media (max-width: 1100px) {
+  .ai-resize-handle {
+    display: none;
+  }
+
   .ai-workspace {
     position: relative;
   }
@@ -2772,7 +2841,7 @@ html.pd-ai-open body {
     right: 0;
     bottom: 0;
     z-index: 40;
-    width: min(360px, calc(100vw - 40px));
+    width: min(360px, calc(100vw - 40px)) !important;
     box-shadow: var(--md-elevation-2);
   }
 

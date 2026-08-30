@@ -18,6 +18,8 @@
   const AI_CONFIG_KEY = '__pagedye_ai_config__';
   const SIDE_HIDDEN_KEY = 'pagedye-ai-side-hidden';
   const RAIL_COLLAPSED_KEY = 'pagedye-ai-rail-collapsed';
+  const RAIL_WIDTH_KEY = 'pagedye-ai-rail-width';
+  const SIDE_WIDTH_KEY = 'pagedye-ai-side-width';
   // Below this the side panel is an overlay drawer rather than a column;
   // mirrors the breakpoint in options.css.
   const DRAWER_QUERY = '(max-width: 1100px)';
@@ -38,6 +40,7 @@
       root: doc.getElementById('ai-chat-root'),
       workspace: doc.querySelector('#section-ai-chat .ai-workspace'),
       side: doc.getElementById('ai-side'),
+      sideResizeHandle: doc.querySelector('.ai-resize-handle-side'),
       sideToggle: doc.getElementById('ai-side-toggle'),
       railToggle: doc.getElementById('ai-rail-toggle'),
       mainHeader: doc.getElementById('ai-main-header'),
@@ -427,6 +430,124 @@
         localStorage.setItem(SIDE_HIDDEN_KEY, hidden ? '1' : '');
       } catch (_) {
         // A browser build without page storage just forgets the preference.
+      }
+    }
+
+    // The fullscreen workspace has two adjustable columns: the conversation
+    // rail inside the chat root and the preview/settings panel beside it.
+    // Store the widths in page-local storage so a user's layout survives the
+    // next time the AI workspace is opened, without affecting the popup.
+    function setupResizeHandles() {
+      if (!els.workspace || !els.root || !els.side) return;
+
+      const rail = els.root.querySelector('.ai-chat-sidebar');
+      const main = els.root.querySelector('.ai-chat-main');
+      if (!rail || !main) return;
+
+      const railHandle = doc.createElement('div');
+      railHandle.className = 'ai-resize-handle ai-resize-handle-rail';
+      railHandle.setAttribute('role', 'separator');
+      railHandle.setAttribute('aria-orientation', 'vertical');
+      railHandle.setAttribute('aria-label', 'Resize history panel');
+      railHandle.tabIndex = 0;
+      main.parentNode.insertBefore(railHandle, main);
+
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const readWidth = (element, fallback) => {
+        const measured = element.getBoundingClientRect().width;
+        if (measured > 0) return measured;
+        const computed = window.getComputedStyle(element).width;
+        const parsed = parseFloat(computed);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+      };
+      const readStored = (key) => {
+        try {
+          const value = Number(localStorage.getItem(key));
+          return Number.isFinite(value) && value > 0 ? value : null;
+        } catch (_) {
+          return null;
+        }
+      };
+      const writeStored = (key, value) => {
+        try { localStorage.setItem(key, String(Math.round(value))); } catch (_) {}
+      };
+      const desktop = () => window.matchMedia('(min-width: 1101px)').matches;
+      const workspaceWidth = () => els.workspace.clientWidth || window.innerWidth || 1440;
+      const railWidth = () => readWidth(rail, 260);
+      const sideWidth = () => readWidth(els.side, 340);
+      const maxRailWidth = () => Math.max(200, Math.min(460, workspaceWidth() - sideWidth() - 390));
+      const maxSideWidth = () => Math.max(280, Math.min(520, workspaceWidth() - railWidth() - 390));
+
+      const storedRail = readStored(RAIL_WIDTH_KEY);
+      if (storedRail !== null) {
+        els.root.style.setProperty('--ai-rail-width', `${clamp(storedRail, 200, maxRailWidth())}px`);
+      }
+      const storedSide = readStored(SIDE_WIDTH_KEY);
+      if (storedSide !== null) {
+        els.workspace.style.setProperty('--ai-side-width', `${clamp(storedSide, 280, maxSideWidth())}px`);
+      }
+
+      const setResizing = (active, activeHandle) => {
+        els.workspace.classList.toggle('is-resizing', active);
+        els.root.classList.toggle('is-resizing', active);
+        document.documentElement.classList.toggle('ai-resizing', active);
+        railHandle.classList.toggle('is-active', active && activeHandle === railHandle);
+        if (els.sideResizeHandle) {
+          els.sideResizeHandle.classList.toggle('is-active', active && activeHandle === els.sideResizeHandle);
+        }
+      };
+
+      const begin = (kind, handle, event) => {
+        if (!desktop() || event.button !== 0) return;
+        event.preventDefault();
+        const startX = event.clientX;
+        const start = kind === 'rail' ? railWidth() : sideWidth();
+        setResizing(true, handle);
+
+        const move = (moveEvent) => {
+          const delta = moveEvent.clientX - startX;
+          const next = kind === 'rail'
+            ? clamp(start + delta, 200, maxRailWidth())
+            : clamp(start - delta, 280, maxSideWidth());
+          if (kind === 'rail') els.root.style.setProperty('--ai-rail-width', `${next}px`);
+          else els.workspace.style.setProperty('--ai-side-width', `${next}px`);
+        };
+        const end = () => {
+          window.removeEventListener('pointermove', move);
+          window.removeEventListener('pointerup', end);
+          window.removeEventListener('pointercancel', end);
+          setResizing(false, null);
+          writeStored(kind === 'rail' ? RAIL_WIDTH_KEY : SIDE_WIDTH_KEY, kind === 'rail' ? railWidth() : sideWidth());
+        };
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', end, { once: true });
+        window.addEventListener('pointercancel', end, { once: true });
+        if (typeof handle.setPointerCapture === 'function' && event.pointerId !== undefined) {
+          try { handle.setPointerCapture(event.pointerId); } catch (_) {}
+        }
+      };
+
+      const keyboardResize = (kind, event) => {
+        if (!desktop() || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+        event.preventDefault();
+        const amount = event.shiftKey ? 40 : 10;
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        if (kind === 'rail') {
+          const next = clamp(railWidth() + direction * amount, 200, maxRailWidth());
+          els.root.style.setProperty('--ai-rail-width', `${next}px`);
+          writeStored(RAIL_WIDTH_KEY, next);
+        } else {
+          const next = clamp(sideWidth() - direction * amount, 280, maxSideWidth());
+          els.workspace.style.setProperty('--ai-side-width', `${next}px`);
+          writeStored(SIDE_WIDTH_KEY, next);
+        }
+      };
+
+      railHandle.addEventListener('pointerdown', (event) => begin('rail', railHandle, event));
+      railHandle.addEventListener('keydown', (event) => keyboardResize('rail', event));
+      if (els.sideResizeHandle) {
+        els.sideResizeHandle.addEventListener('pointerdown', (event) => begin('side', els.sideResizeHandle, event));
+        els.sideResizeHandle.addEventListener('keydown', (event) => keyboardResize('side', event));
       }
     }
 
@@ -921,6 +1042,8 @@
         location.href = chrome.runtime.getURL('options/welcome.html');
       }
     });
+
+    setupResizeHandles();
 
     // --- boot -----------------------------------------------------------------
 
