@@ -2388,7 +2388,12 @@ html.ai-resizing * {
 }
 
 .ai-workspace.side-hidden .ai-side {
-  margin-right: -354px;
+  /* Has to retract by the panel's actual current width (plus the row's own
+     14px gap, since the negative margin also has to close that) or a panel
+     the user dragged wider than the old hardcoded 340px+14px default leaves
+     its now-invisible remainder still reserved in the flex row — a blank
+     gap on the right that only shows up once the panel has been resized. */
+  margin-right: calc(-1 * (var(--ai-side-width, 340px) + 14px));
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
