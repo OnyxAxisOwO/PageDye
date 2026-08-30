@@ -321,6 +321,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       customEffectsTitle: "Custom Effects",
       customEffectsHint: "Write your own animated Canvas wallpaper and use it on any site. Custom Canvas code executes JavaScript, so only import effects from sources you trust. Extension only - not available in PageDye Lite.",
       newCustomEffect: "New Custom Effect",
+      newCustomEffectAi: "Generate with AI",
       importEffectBtn: "Import",
       thEffectName: "Name",
       thEffectUpdated: "Updated",
@@ -694,6 +695,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       customEffectsTitle: "自定义动效",
       customEffectsHint: "编写你自己的 Canvas 动态壁纸并在任意网站使用。Canvas 代码会执行 JavaScript，请只导入可信来源的动效。仅浏览器扩展版支持——PageDye Lite 暂不支持。",
       newCustomEffect: "新建自定义动效",
+      newCustomEffectAi: "AI 生成",
       importEffectBtn: "导入",
       thEffectName: "名称",
       thEffectUpdated: "更新时间",
@@ -1061,6 +1063,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     customEffectsListBody: document.getElementById('custom-effects-list-body'),
     noCustomEffectsMsg: document.getElementById('no-custom-effects-msg'),
     newCustomEffectBtn: document.getElementById('new-custom-effect-btn'),
+    aiCustomEffectBtn: document.getElementById('ai-custom-effect-btn'),
     importCustomEffectBtn: document.getElementById('import-custom-effect-btn'),
     importEffectFile: document.getElementById('import-effect-file'),
     editCustomEffectBackBtn: document.getElementById('edit-effect-back-btn'),
@@ -4566,6 +4569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Custom Effects
   els.newCustomEffectBtn.addEventListener('click', openNewCustomEffect);
+  els.aiCustomEffectBtn.addEventListener('click', () => navigateToSection('section-ai-chat'));
   els.editCustomEffectBackBtn.addEventListener('click', closeCustomEffectEditor);
   els.editCustomEffectSaveBtn.addEventListener('click', saveCustomEffect);
 

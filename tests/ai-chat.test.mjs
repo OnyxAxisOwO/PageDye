@@ -937,6 +937,78 @@ test('a proposed PageDye setting is shown as its own card and only applied on re
   assert.equal(mock.store.__pagedye_ui_theme__.pageBgImage, 'data:image/png;base64,x', 'the rest of the theme survived');
 });
 
+test('a proposed custom effect is shown as its own card, can be previewed, and saves into the library', async () => {
+  const now = 1700000000000;
+  const CODE = 'return { init(cfg){ return {cfg}; }, resize(){}, draw(){} };';
+  const mock = createChromeMock({
+    initialStorage: {
+      [AI_CONFIG_KEY]: { provider: 'anthropic', apiKey: 'sk-test', model: 'claude-opus-5' },
+      __pagedye_ai_chats__: [{
+        id: 'c1',
+        hostname: '',
+        title: 'A new custom effect',
+        createdAt: now,
+        updatedAt: now,
+        messages: [
+          { id: 'm1', role: 'user', content: 'can you create a custom effect?', images: [], at: now },
+          {
+            id: 'm2',
+            role: 'assistant',
+            reply: 'Here is a breathing dot.',
+            themeChanged: false,
+            at: now,
+            customEffectChanged: true,
+            customEffect: { name: 'Breathing Dot', code: CODE }
+          }
+        ]
+      }]
+    }
+  });
+  const { document, window, errors } = await loadExtensionPage('options/options.html', { chrome: mock.chrome });
+  assert.deepEqual(errors, []);
+
+  const card = await waitFor(() => document.querySelector('.ai-chat-prefs'), { timeout: 3000 });
+  assert.ok(card, 'a custom-effect proposal gets its own card');
+  assert.equal(card.querySelector('.ai-chat-prefs-title').textContent, 'Breathing Dot');
+  assert.equal(card.querySelector('iframe'), null, 'no preview until asked for');
+
+  // The real sandbox needs a live extension origin to hand its iframe the
+  // ready handshake, which this jsdom page cannot provide; stand in for it so
+  // the card's own wiring (not the sandbox's postMessage protocol, already
+  // covered by the manifest/CSP checks in extension.test.mjs) is what is
+  // under test here.
+  const validateCalls = [];
+  window.PageDyeCustomSandbox = {
+    start: async () => ({ ok: true }),
+    stop() {},
+    release() {},
+    validate: async (code) => {
+      validateCalls.push(code);
+      return { ok: true };
+    }
+  };
+
+  // render() rebuilds the whole transcript from scratch on every state
+  // change, so a captured node is only good until the next click — every
+  // lookup after one has to go back to the live document, not the stale card.
+  // The page's language is whatever the harness's navigator.language resolves
+  // to, not necessarily English, so button text is matched in both.
+  const liveCard = () => document.querySelector('.ai-chat-prefs');
+  const buttons = () => [...liveCard().querySelectorAll('button')];
+  buttons().find((b) => /^(Preview|预览)$/.test(b.textContent)).dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await waitFor(() => liveCard().querySelector('iframe'), { timeout: 3000 });
+  assert.ok(buttons().some((b) => /Stop preview|停止预览/.test(b.textContent)), 'the toggle now offers to stop it');
+
+  buttons().find((b) => /Save as custom effect|保存为自定义动效/.test(b.textContent)).dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+  await waitFor(() => Array.isArray(mock.store.__pagedye_custom_effects__) && mock.store.__pagedye_custom_effects__.length === 1, { timeout: 3000 });
+  assert.equal(validateCalls[0], CODE, 'saving validates the exact code the model wrote');
+  const saved = mock.store.__pagedye_custom_effects__[0];
+  assert.equal(saved.name, 'Breathing Dot');
+  assert.equal(saved.type, 'code');
+  assert.equal(saved.code, CODE);
+});
+
 test('the vision checkbox is stored, and switching provider re-seeds it', async () => {
   const mock = createChromeMock({
     initialStorage: { [AI_CONFIG_KEY]: { provider: 'anthropic', apiKey: 'sk-test', model: 'claude-opus-5' } }

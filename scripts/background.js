@@ -91,11 +91,25 @@ async function capturePageProfile(tabId) {
 // started. That is only honoured for extension pages (`sender.tab` is unset
 // there): a content script must never be able to describe the page it is
 // running on as something other than what page-profile.js would report.
+//
+// Null rather than a thrown error when nothing resolves — a tab that can no
+// longer be captured, or no target at all (the AI workspace with no matching
+// open tab, a request that never needed a page in the first place). The turn
+// still deserves an answer: ai-theme.js tells the model plainly there is no
+// page open, and it can fall back to PageDye preferences or a brand-new
+// custom effect instead of designing a theme, rather than the whole request
+// dead-ending in a client-side error before it is ever sent.
 async function resolveChatProfile(message, sender) {
-  if (Number.isInteger(message.tabId)) return capturePageProfile(message.tabId);
+  if (Number.isInteger(message.tabId)) {
+    try {
+      return await capturePageProfile(message.tabId);
+    } catch (_) {
+      return null;
+    }
+  }
   const replayed = message.profile;
   if (!sender.tab && replayed && typeof replayed === 'object') return replayed;
-  throw new Error('No target tab.');
+  return null;
 }
 
 // The picture already on the page, if this site has one configured, offered

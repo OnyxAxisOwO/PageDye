@@ -662,6 +662,19 @@ test('options: a deep link to a section that became a tab opens that tab', async
   }
 });
 
+test('options: the AI-generate button on Custom Effects opens the AI workspace', async () => {
+  const { chrome } = createChromeMock({ tab: null });
+  const { document, errors } = await loadExtensionPage('options/options.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  fire(document.querySelector('.nav-item[data-target="section-configs"]'), 'click');
+  fire(document.querySelector('.page-tab[data-pane="pane-library-effects"]'), 'click');
+  fire(document.getElementById('ai-custom-effect-btn'), 'click');
+
+  assert.ok(document.getElementById('section-ai-chat').classList.contains('active'));
+  assert.ok(document.querySelector('.nav-item[data-target="section-ai-chat"]').classList.contains('active'));
+});
+
 test('options: the dashboard repaints when its own preferences change from elsewhere', async () => {
   // The AI chat's settings card (and the popup) can now write these keys, so
   // the page has to follow the key rather than only its own picker — otherwise

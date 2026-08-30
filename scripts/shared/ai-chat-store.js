@@ -140,6 +140,12 @@
       // button survives a reload. Re-validated by ai-theme before it is
       // written, the same as `settings`.
       preferences: isPlainObject(raw.preferences) ? raw.preferences : null,
+      // A brand-new custom effect the answer proposed, kept so the Save
+      // button survives a reload (and the round-trip through save() every
+      // turn already does) — re-validated by the sandbox before it is ever
+      // written, the same discipline as `settings` and `preferences`.
+      customEffectChanged: !!raw.customEffectChanged,
+      customEffect: isPlainObject(raw.customEffect) ? raw.customEffect : null,
       stats: normalizeStats(raw.stats),
       // The model's own reasoning, shown collapsed under the answer.
       thinking: trimTo(raw.thinking, MAX_THINKING_CHARS),
@@ -215,6 +221,8 @@
       theme: isPlainObject(source.theme) ? source.theme : null,
       settings: isPlainObject(source.settings) ? source.settings : null,
       preferences: isPlainObject(source.preferences) ? source.preferences : null,
+      customEffectChanged: !!source.customEffectChanged,
+      customEffect: isPlainObject(source.customEffect) ? source.customEffect : null,
       stats: normalizeStats(source.stats),
       thinking: trimTo(source.thinking, MAX_THINKING_CHARS),
       error: trimTo(source.error, 400),
@@ -227,10 +235,17 @@
   // model that refusing is a valid answer shape.
   function toTurns(conversation) {
     return (conversation && Array.isArray(conversation.messages) ? conversation.messages : [])
-      .filter((message) => message.role === 'user' || (!message.error && (message.reply || message.theme)))
+      .filter((message) => message.role === 'user' || (!message.error && (message.reply || message.theme || message.customEffect)))
       .map((message) => {
         if (message.role !== 'user') {
-          return { role: 'assistant', reply: message.reply, themeChanged: message.themeChanged, theme: message.theme };
+          return {
+            role: 'assistant',
+            reply: message.reply,
+            themeChanged: message.themeChanged,
+            theme: message.theme,
+            customEffectChanged: message.customEffectChanged,
+            customEffect: message.customEffect
+          };
         }
         // Omitted rather than sent empty: a turn with no attachment is the
         // common case, and an empty array would travel on every one of them.

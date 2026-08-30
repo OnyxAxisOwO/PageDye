@@ -189,3 +189,41 @@ test('a storage lookup failure costs the model one picture, not the whole turn',
 
   assert.equal(response.ok, true, response.error);
 });
+
+// Regression: the AI workspace can be asked for a brand-new custom effect (or
+// a PageDye preference change) with no matching browser tab open at all —
+// neither a tabId nor a replayed profile. This used to dead-end in a
+// client-side "open the page you want a theme for" error before the request
+// was even sent, which blocked a request that never needed a page in the
+// first place.
+test('a turn with no page open still gets an answer instead of a hard error', async () => {
+  const store = { [AI_CONFIG_KEY]: { provider: 'anthropic', apiKey: 'test-key', model: 'claude-opus-5' } };
+  const { chrome, listeners, bind } = chromeMock(store);
+  const capture = {};
+  const CUSTOM_EFFECT_REPLY = {
+    reply: 'Here is a breathing dot effect.',
+    themeChanged: false,
+    theme: null,
+    preferencesChanged: false,
+    preferences: null,
+    customEffectChanged: true,
+    customEffect: { name: 'Breathing Dot', code: 'return { init(cfg){ return {cfg}; }, resize(){}, draw(){} };' }
+  };
+  bind(runBackgroundScript({ chrome, console, fetch: fakeFetch(capture, CUSTOM_EFFECT_REPLY) }));
+
+  const response = await sendMessage(listeners, {
+    action: 'pagedyeAiChat',
+    turns: [{ role: 'user', content: 'can you create a custom effect for me?' }]
+  });
+
+  assert.equal(response.ok, true, response.error);
+  assert.equal(response.settings, null, 'no page means no theme settings, even if the model returned a theme');
+  assert.equal(response.customEffectChanged, true);
+  assert.equal(response.customEffect.name, 'Breathing Dot');
+
+  // The model was told plainly that no page is open, not silently handed a
+  // profile block containing the literal text "null".
+  const prompt = capture.body.messages[0].content;
+  assert.equal(typeof prompt, 'string', 'no images attached, so the message is a plain string');
+  assert.match(prompt, /No page is currently open/);
+});

@@ -1031,6 +1031,34 @@
       onSaveTheme: async (settings, theme) => window.PageDyeConfigPresets.saveToLibrary(
         chrome.storage.local, settings, theme && theme.themeName
       ),
+      // Compile-validated already (the card's own Save handler runs the
+      // sandbox before calling this); what is re-checked here is shape and
+      // size, the same boundary normalizeSiteSettings guards for onApply
+      // above — a theme travelling through storage is never trusted just
+      // because it was already sanitized once upstream.
+      onSaveCustomEffect: async (effect) => {
+        const Storage = window.PageDyeStorage;
+        const key = Storage.KEYS.customEffects;
+        const data = await chrome.storage.local.get(key);
+        const list = Storage.normalizeCustomEffects(data[key]);
+        if (list.length >= Storage.MAX_CUSTOM_EFFECTS) {
+          throw new Error(deps.lang === 'zh' ? '自定义动效数量已达到上限' : 'The custom effect limit has been reached.');
+        }
+        const id = 'ce_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        const entry = Storage.normalizeCustomEffect({
+          id,
+          name: effect && effect.name,
+          type: 'code',
+          code: (effect && effect.code) || '',
+          url: '',
+          interactive: false,
+          updatedAt: Date.now()
+        });
+        if (!entry) throw new Error(t('error'));
+        list.push(entry);
+        await chrome.storage.local.set({ [key]: list });
+        return entry;
+      },
       onThemeUpdate: (message) => {
         previewMessage = message;
         renderPreview();
