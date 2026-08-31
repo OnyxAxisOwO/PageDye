@@ -7,6 +7,10 @@ const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
 const failures = [];
 
+if (manifest.manifest_version === 3 && manifest.background && typeof manifest.background.service_worker !== 'string') {
+  failures.push('Manifest V3 background.service_worker must be a file path string');
+}
+
 function walk(dir) {
   const files = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -27,6 +31,7 @@ const manifestAssets = [
   manifest.action?.default_popup,
   manifest.options_ui?.page,
   manifest.background?.service_worker,
+  ...(manifest.background?.scripts || []),
   ...(manifest.sandbox?.pages || []),
   ...manifest.content_scripts.flatMap((entry) => entry.js || []),
   ...(manifest.web_accessible_resources || []).flatMap((entry) => entry.resources || []),

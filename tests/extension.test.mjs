@@ -28,7 +28,7 @@ test('manifest has valid required extension assets', () => {
   const iconAssets = [...Object.values(manifest.action.default_icon || {}), ...Object.values(manifest.icons || {})];
   const sandboxAssets = manifest.sandbox?.pages || [];
   const webAssets = (manifest.web_accessible_resources || []).flatMap((entry) => entry.resources || []);
-  for (const asset of [manifest.action.default_popup, manifest.options_ui.page, manifest.background?.service_worker, ...contentScripts, ...sandboxAssets, ...webAssets, ...iconAssets]) {
+  for (const asset of [manifest.action.default_popup, manifest.options_ui.page, manifest.background?.service_worker, ...(manifest.background?.scripts || []), ...contentScripts, ...sandboxAssets, ...webAssets, ...iconAssets]) {
     assert.ok(existsSync(resolve(root, asset)), `missing manifest asset: ${asset}`);
   }
 });
@@ -191,9 +191,13 @@ test('content injection is complete, idempotent, and tears down replaced runtime
   ]);
   assert.ok(!eagerScripts.includes('scripts/debug.js'));
   assert.ok(!eagerScripts.includes('scripts/debug-network.js'));
+  assert.equal(manifest.background.scripts, undefined);
   assert.equal(manifest.background.service_worker, 'scripts/background.js');
   assert.ok(!manifest.permissions.includes('activeTab'));
 
+  const background = read('scripts/background.js');
+  assert.match(background, /typeof importScripts === 'function'/);
+  assert.match(background, /globalThis\.PageDyeAiTheme/);
   const injection = read('scripts/injection.js');
   assert.match(injection, /async function ensure[\s\S]*await ping\(tabId\)[\s\S]*await inject\(tabId\)/);
   assert.match(injection, /scripts\/cursor\.js/);

@@ -1428,6 +1428,11 @@ input[type="color"]::-webkit-color-swatch {
   border-radius: 10px;
 }
 
+input[type="color"]::-moz-color-swatch {
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 10px;
+}
+
 .color-preview-container {
   display: flex;
   flex: 1;

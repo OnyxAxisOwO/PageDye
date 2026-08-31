@@ -753,7 +753,10 @@
           <div class="control-group" style="margin-top: 14px; margin-bottom: 0; border-top: 1px dashed var(--border-color); padding-top: 12px;">
             <label data-i18n="textEditor">Edit Page Text</label>
             <p class="hint" data-i18n="textEditorHint">Edit text directly on this page. Your changes are saved for this exact page without reloading it.</p>
-            <button type="button" id="text-editor-start-btn" class="secondary pick-btn" data-i18n="textEditorStart">Edit text on page</button>
+            <div class="text-editor-actions">
+              <button type="button" id="text-editor-start-btn" class="secondary pick-btn" data-i18n="textEditorStart">Edit text on page</button>
+              <button type="button" id="text-editor-clear-btn" class="secondary pick-btn" data-i18n="textEditorClear" hidden>Clear saved edits</button>
+            </div>
           </div>
         </div>
       </details>

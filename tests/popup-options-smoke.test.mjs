@@ -431,6 +431,30 @@ test('in-page text picker highlights, edits, and persists text without reloading
   ]);
 });
 
+test('popup: clear edited text removes only the active page override', async () => {
+  const pageUrl = 'https://example.com/article#comments';
+  const { chrome, store } = createChromeMock({
+    tab: { id: 1, url: pageUrl, active: true },
+    initialStorage: {
+      __pagedye_text_overrides_v1__: {
+        'https://example.com/article': { entries: [{ selector: '#copy', text: 'Updated text' }] },
+        'https://example.com/other': { entries: [{ selector: '#copy', text: 'Keep this' }] }
+      }
+    }
+  });
+  const { document, errors } = await loadExtensionPage('popup/popup.html', { chrome });
+  assert.deepEqual(errors, []);
+
+  const originalConfirm = document.defaultView.confirm;
+  document.defaultView.confirm = () => true;
+  document.getElementById('text-editor-clear-btn').click();
+  await waitFor(() => store.__pagedye_text_overrides_v1__ &&
+    !store.__pagedye_text_overrides_v1__['https://example.com/article']);
+  document.defaultView.confirm = originalConfirm;
+
+  assert.ok(store.__pagedye_text_overrides_v1__['https://example.com/other']);
+});
+
 test('options.html boots with no uncaught errors', async () => {
   const { chrome } = createChromeMock({ tab: null });
   const { document, errors } = await loadExtensionPage('options/options.html', { chrome });

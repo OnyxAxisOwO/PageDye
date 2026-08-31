@@ -494,6 +494,27 @@ input[type="color"]::-webkit-color-swatch {
   border-radius: 6px;
 }
 
+input[type="color"]::-moz-color-swatch {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.text-editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.text-editor-actions .pick-btn {
+  flex: 1;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+  }
+}
+
 .theme-color-grid {
   display: flex;
   flex-wrap: wrap;
@@ -2688,6 +2709,11 @@ textarea:focus {
 }
 
 input[type="color"]::-webkit-color-swatch {
+  border-color: var(--outline-variant);
+  box-shadow: var(--shadow-sm);
+}
+
+input[type="color"]::-moz-color-swatch {
   border-color: var(--outline-variant);
   box-shadow: var(--shadow-sm);
 }

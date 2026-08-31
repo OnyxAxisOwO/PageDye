@@ -1,6 +1,10 @@
-// Service-worker-only script injection for optional debugging tools.
-// The regular content runtime asks for these files only when debug mode is on.
-importScripts('ai-theme.js', 'storage-schema.js');
+// Chrome runs this file as a service worker and needs to load the shared
+// globals explicitly. Firefox runs the same file as an MV3 event-page script;
+// manifest.json loads those globals before this file there, and event pages do
+// not provide importScripts().
+if (typeof importScripts === 'function' && !globalThis.PageDyeAiTheme) {
+  importScripts('ai-theme.js', 'storage-schema.js');
+}
 
 const ABANDONED_URL_RULES_KEY = '__pagedye_url_rules__';
 const URL_RULES_RECOVERY_KEY = '__pagedye_url_rules_recovered_v080__';

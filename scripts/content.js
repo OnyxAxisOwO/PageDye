@@ -38,6 +38,7 @@
   let lastKnownDefault = null;
   let savedTextOverrides = {};
   let textEditor = null;
+  const textOverrideOriginals = new Map();
   let textOverridesDomReadyListenerAdded = false;
   let textOverridesLoadListenerAdded = false;
 
@@ -433,20 +434,33 @@
     // page visit (and is already visible in the current page).
     if (textEditor) return;
     const apply = () => {
-      const page = savedTextOverrides && savedTextOverrides[textOverridePageKey()];
+      const pageKey = textOverridePageKey();
+      const page = savedTextOverrides && savedTextOverrides[pageKey];
       const entries = page && Array.isArray(page.entries) ? page.entries : [];
+      const activeSelectors = new Set();
       for (const entry of entries) {
-        if (!entry || typeof entry.selector !== 'string' || typeof entry.text !== 'string') continue;
+        if (!entry || typeof entry.selector !== "string" || typeof entry.text !== "string") continue;
         try {
           const element = document.querySelector(entry.selector);
-          if (element && element.children.length === 0 && element.textContent !== entry.text && !element.closest('[data-pagedye-text-editor-host]')) {
-            // The editor only permits text-only elements, so replacing the
-            // text cannot remove markup that belongs to the website.
-            element.textContent = entry.text;
+          if (!element || element.children.length !== 0 || element.closest("[data-pagedye-text-editor-host]")) continue;
+          const key = pageKey + "\\u0000" + entry.selector;
+          if (!textOverrideOriginals.has(key)) {
+            textOverrideOriginals.set(key, { element, originalText: element.textContent, lastAppliedText: entry.text });
+          } else {
+            textOverrideOriginals.get(key).element = element;
           }
+          element.textContent = entry.text;
+          textOverrideOriginals.get(key).lastAppliedText = entry.text;
+          activeSelectors.add(key);
         } catch (_) {}
       }
+      for (const [key, record] of textOverrideOriginals) {
+        if (!key.startsWith(pageKey + "\\u0000") || activeSelectors.has(key)) continue;
+        if (record.element && record.element.isConnected) record.element.textContent = record.originalText;
+        textOverrideOriginals.delete(key);
+      }
     };
+
     const applyAfterPageLoad = () => {
       if (textOverridesLoadListenerAdded) return;
       textOverridesLoadListenerAdded = true;
@@ -582,17 +596,25 @@
   async function saveTextEdits() {
     const state = textEditor;
     if (!state) return;
+    const pageKey = textOverridePageKey();
     const changes = [];
     for (const [element, entry] of state.entries) {
       if (element.isConnected && entry.selector) {
-        changes.push({ selector: entry.selector, text: element.textContent });
+        const text = element.textContent;
+        const key = pageKey + "\\u0000" + entry.selector;
+        const previous = textOverrideOriginals.get(key);
+        textOverrideOriginals.set(key, {
+          element,
+          originalText: previous ? previous.originalText : entry.originalText,
+          lastAppliedText: text
+        });
+        changes.push({ selector: entry.selector, text });
       }
     }
     try {
       const data = await chrome.storage.local.get(TEXT_OVERRIDES_KEY);
       const overrides = data[TEXT_OVERRIDES_KEY] && typeof data[TEXT_OVERRIDES_KEY] === 'object'
         ? data[TEXT_OVERRIDES_KEY] : {};
-      const pageKey = textOverridePageKey();
       const previous = overrides[pageKey] && Array.isArray(overrides[pageKey].entries)
         ? overrides[pageKey].entries : [];
       const bySelector = new Map(previous.filter((entry) => entry && typeof entry.selector === 'string').map((entry) => [entry.selector, entry]));

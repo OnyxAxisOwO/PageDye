@@ -614,6 +614,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       textEditor: "Edit Page Text",
       textEditorHint: "Edit text directly on this page. Your changes are saved for this exact page without reloading it.",
       textEditorStart: "Edit text on page",
+      textEditorClear: "Clear saved edits",
+      textEditorClearConfirm: "Remove saved text edits from this page?",
       pickerFailed: "Can't pick on this page",
       wallpaperMode: "Background Schedule",
       modeSingle: "Always",
@@ -815,6 +817,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       textEditor: "编辑网页文字",
       textEditorHint: "直接在网页上修改文字。修改会保存到当前页面，且不会刷新网页。",
       textEditorStart: "编辑网页文字",
+      textEditorClear: "清除当前页面修改",
+      textEditorClearConfirm: "要清除当前页面保存的文字修改吗？",
       pickerFailed: "此页面无法拾取",
       wallpaperMode: "背景切换",
       modeSingle: "始终使用",
@@ -1001,6 +1005,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     cursorTrailSpeedVal: document.getElementById('cursor-trail-speed-val'),
     customCss: document.getElementById('custom-css'),
     textEditorStartBtn: document.getElementById('text-editor-start-btn'),
+    textEditorClearBtn: document.getElementById('text-editor-clear-btn'),
     settingsBtn: document.getElementById('settings-btn'),
 
     resetBtn: document.getElementById('reset-btn'),
@@ -1283,6 +1288,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (area === 'local' && Object.prototype.hasOwnProperty.call(changes, CUSTOM_EFFECTS_KEY)) {
       populateCustomEffectOptions(els.effectKind);
     }
+    if (area === 'local' && Object.prototype.hasOwnProperty.call(changes, TEXT_OVERRIDES_KEY)) {
+      syncTextEditorClearButton();
+    }
   });
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab && tab.url) {
@@ -1298,6 +1306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
       await loadSettings(currentDomain);
+      await syncTextEditorClearButton();
 
       // Restore last active tab on popup startup
       const lastSelectedPopupTab = localStorage.getItem('pagedye_last_popup_tab') || 'wallpaper';
@@ -1770,6 +1779,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   els.pickBtn.addEventListener('click', startPicker);
   els.deepCompatPickBtn.addEventListener('click', startDeepCompatPicker);
   els.textEditorStartBtn.addEventListener('click', startTextEditor);
+  els.textEditorClearBtn.addEventListener('click', clearSavedTextEdits);
 
   // Top-level tabs: Wallpaper / Frosted Glass / AI share one horizontal slider.
   const panelsSlider = document.getElementById('panels-slider');
@@ -3828,6 +3838,62 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.log('Cannot start text editor on this page', err);
       setSavingState();
       els.statusText.textContent = t('pickerFailed');
+    }
+  }
+
+  function getTextOverridePageKey(url) {
+    try {
+      const page = new URL(url);
+      page.hash = '';
+      return page.href;
+    } catch (_) {
+      return String(url || '').split('#')[0];
+    }
+  }
+
+  async function syncTextEditorClearButton() {
+    const button = els.textEditorClearBtn;
+    if (!button) return;
+    button.hidden = true;
+    button.disabled = true;
+    if (!/^https?:/i.test(activePageUrl)) return;
+
+    try {
+      const data = await chrome.storage.local.get(TEXT_OVERRIDES_KEY);
+      const overrides = data[TEXT_OVERRIDES_KEY];
+      const page = overrides && typeof overrides === 'object' && !Array.isArray(overrides)
+        ? overrides[getTextOverridePageKey(activePageUrl)]
+        : null;
+      const hasEntries = !!(page && Array.isArray(page.entries) && page.entries.length);
+      button.hidden = !hasEntries;
+      button.disabled = !hasEntries;
+    } catch (_) {
+      // A storage read failure should not make the popup unusable; the button
+      // stays hidden until the next storage change or popup open.
+    }
+  }
+
+  async function clearSavedTextEdits() {
+    if (!/^https?:/i.test(activePageUrl)) return;
+    if (!window.confirm(t('textEditorClearConfirm'))) return;
+
+    const pageKey = getTextOverridePageKey(activePageUrl);
+    try {
+      const data = await chrome.storage.local.get(TEXT_OVERRIDES_KEY);
+      const stored = data[TEXT_OVERRIDES_KEY];
+      const overrides = stored && typeof stored === 'object' && !Array.isArray(stored)
+        ? { ...stored }
+        : {};
+      if (!Object.prototype.hasOwnProperty.call(overrides, pageKey)) {
+        await syncTextEditorClearButton();
+        return;
+      }
+      delete overrides[pageKey];
+      await chrome.storage.local.set({ [TEXT_OVERRIDES_KEY]: overrides });
+      await syncTextEditorClearButton();
+      setSyncedState();
+    } catch (error) {
+      console.error('Cannot clear saved text edits', error);
     }
   }
 
