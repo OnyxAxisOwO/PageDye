@@ -6,11 +6,7 @@
   // legacy dictionaries; these compact overlays provide consistent wording
   // for the most visible shared controls and a stable extension point for more
   // locale files.
-  const LANGUAGE_NAMES = Object.freeze({
-    en: 'English', zh: '中文', ja: '日本語', ko: '한국어',
-    de: 'Deutsch', fr: 'Français', es: 'Español', pt: 'Português',
-    it: 'Italiano', ru: 'Русский'
-  });
+  const LANGUAGE_NAMES = Object.freeze({ en: 'English', zh: '中文' });
 
   const OVERRIDES = {
     ja: {
@@ -63,8 +59,17 @@
     }
   };
 
+  function previewLanguage() {
+    if (typeof location === 'undefined' || !location.search) return '';
+    try {
+      return new URLSearchParams(location.search).get('lang') || '';
+    } catch (_) {
+      return '';
+    }
+  }
+
   let loaded = {};
-  const initialLanguage = detect(typeof navigator !== 'undefined' ? navigator.language : 'en');
+  const initialLanguage = detect(previewLanguage() || (typeof navigator !== 'undefined' ? navigator.language : 'en'));
   const ready = (async () => {
     if (initialLanguage === 'en' || typeof fetch !== 'function') return;
     try {
@@ -91,7 +96,9 @@
   }
 
   function applyDocumentLanguage(language) {
-    const resolved = detect(language);
+    // `?lang=` is a read-only preview used for localized store screenshots.
+    // Normal extension pages never include it and keep following the browser.
+    const resolved = detect(previewLanguage() || language);
     if (typeof document !== 'undefined' && document.documentElement) document.documentElement.lang = resolved;
     return resolved;
   }
