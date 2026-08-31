@@ -2,7 +2,7 @@ window.PAGEDYE_I18N_MESSAGES = {
   "zh-CN": {
     "lang": { "label": "语言", "zh": "中文（简体）", "en": "English", "ja": "日本語", "ko": "한국어", "de": "Deutsch", "fr": "Français", "es": "Español", "pt": "Português", "it": "Italiano", "ru": "Русский" },
     "meta": { "title": "PageDye — 给任意网站换背景", "description": "给任意网站设置自定义背景——纯色、渐变、图片或动态特效壁纸，按站点独立保存，完全本地、无追踪。支持 Chrome / Edge / Firefox 扩展版，以及 PageDye Lite 用户脚本（Safari / 手机 / 平板）。" },
-    "global": { "downloadExtension": "下载扩展版", "downloadLite": "安装 PageDye Lite（手机 / 平板）", "viewInstall": "查看安装方式", "switchLanguage": "语言", "new": "新", "version": "v1.0.2" },
+    "global": { "downloadExtension": "下载扩展版", "downloadLite": "安装 PageDye Lite（手机 / 平板）", "viewInstall": "查看安装方式", "switchLanguage": "语言", "new": "新", "version": "v1.0.2", "privacy": "隐私政策" },
     "nav": { "home": "返回首页" },
     "index": {
       "heroTitle": "给任意网站设置自定义背景——纯色、渐变、图片或动态特效壁纸。按站点独立保存，完全本地，无追踪、无网络请求。",
