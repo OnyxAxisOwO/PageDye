@@ -686,17 +686,17 @@ test('options: a deep link to a section that became a tab opens that tab', async
   }
 });
 
-test('options: the AI-generate button on Custom Effects opens the AI workspace', async () => {
+test('options: Custom Effects has manual and import entry points, not AI code generation', async () => {
   const { chrome } = createChromeMock({ tab: null });
   const { document, errors } = await loadExtensionPage('options/options.html', { chrome });
   assert.deepEqual(errors, []);
 
   fire(document.querySelector('.nav-item[data-target="section-configs"]'), 'click');
   fire(document.querySelector('.page-tab[data-pane="pane-library-effects"]'), 'click');
-  fire(document.getElementById('ai-custom-effect-btn'), 'click');
 
-  assert.ok(document.getElementById('section-ai-chat').classList.contains('active'));
-  assert.ok(document.querySelector('.nav-item[data-target="section-ai-chat"]').classList.contains('active'));
+  assert.equal(document.getElementById('ai-custom-effect-btn'), null);
+  assert.ok(document.getElementById('new-custom-effect-btn'));
+  assert.ok(document.getElementById('import-custom-effect-btn'));
 });
 
 test('options: the dashboard repaints when its own preferences change from elsewhere', async () => {

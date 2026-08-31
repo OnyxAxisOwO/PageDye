@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { runInNewContext } from 'node:vm';
+import { runInContext, runInNewContext } from 'node:vm';
 import { runBackgroundScript } from './helpers/dom-harness.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -23,6 +23,11 @@ test('manifest has valid required extension assets', () => {
   const manifest = JSON.parse(read('manifest.json'));
   assert.equal(manifest.manifest_version, 3);
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
+  assert.deepEqual(manifest.browser_specific_settings.gecko.data_collection_permissions.required, []);
+  assert.deepEqual(
+    manifest.browser_specific_settings.gecko.data_collection_permissions.optional,
+    ['browsingActivity', 'websiteContent', 'personalCommunications', 'technicalAndInteraction']
+  );
 
   const contentScripts = manifest.content_scripts.flatMap((entry) => entry.js || []);
   const iconAssets = [...Object.values(manifest.action.default_icon || {}), ...Object.values(manifest.icons || {})];
@@ -191,7 +196,11 @@ test('content injection is complete, idempotent, and tears down replaced runtime
   ]);
   assert.ok(!eagerScripts.includes('scripts/debug.js'));
   assert.ok(!eagerScripts.includes('scripts/debug-network.js'));
-  assert.equal(manifest.background.scripts, undefined);
+  assert.deepEqual(manifest.background.scripts, [
+    'scripts/ai-theme.js',
+    'scripts/storage-schema.js',
+    'scripts/background.js'
+  ]);
   assert.equal(manifest.background.service_worker, 'scripts/background.js');
   assert.ok(!manifest.permissions.includes('activeTab'));
 
@@ -239,6 +248,87 @@ test('the abandoned URL-rule migration restores domain settings once', async () 
     'restored.example': recovered,
     __pagedye_url_rules_recovered_v080__: true
   });
+});
+
+test('the post-update migration removes URL effects and normalizes CSS-facing settings', async () => {
+  const marker = '__pagedye_storage_migrated_v0135__';
+  const customKey = storageSchema.KEYS.customEffects;
+  const store = {
+    [customKey]: [
+      { id: 'remote', name: 'Remote', type: 'url', url: 'https://attacker.example/effect.html' },
+      { id: 'local', name: 'Local', type: 'code', code: 'return { init(){return {};}, resize(){}, draw(){} };' }
+    ],
+    'example.com': {
+      mode: 'single',
+      type: 'image',
+      value: 'data:image/png;base64,x',
+      style: { size: 'cover; } body { background-image: url(https://attacker.example/x)' },
+      gradient: {
+        kind: 'linear',
+        stops: [{ color: '#fff', position: 0 }, { color: '#000', position: 100 }],
+        speed: '10s; background-image: url(https://attacker.example/x)'
+      },
+      frostedGlass: [{ selector: '.card', opacity: '55; color: red', blur: '12px' }]
+    }
+  };
+  let hostJson;
+  let resolveMigration;
+  const migrationFinished = new Promise((resolvePromise) => { resolveMigration = resolvePromise; });
+  const listeners = [];
+  const chrome = {
+    storage: { local: {
+      get: async () => hostJson ? hostJson.parse(JSON.stringify(store)) : store,
+      set: async (value) => {
+        Object.assign(store, JSON.parse(JSON.stringify(value)));
+        if (store[marker]) resolveMigration();
+      },
+      remove: async (keys) => {
+        for (const key of (Array.isArray(keys) ? keys : [keys])) delete store[key];
+      }
+    } },
+    runtime: {
+      onMessage: { addListener() {} },
+      onConnect: { addListener() {} },
+      onInstalled: { addListener: (listener) => listeners.push(listener) }
+    }
+  };
+
+  const context = runBackgroundScript({ chrome, console });
+  runInContext('globalThis.__hostJSON = JSON;', context);
+  hostJson = context.__hostJSON;
+  assert.equal(listeners.length, 1);
+  listeners[0]({ reason: 'update' });
+  await migrationFinished;
+
+  assert.deepEqual(store[customKey].map((entry) => entry.id), ['local']);
+  assert.equal(store['example.com'].style.size, 'cover');
+  assert.equal(store['example.com'].gradient.speed, 10);
+  assert.equal(store['example.com'].frostedGlass[0].opacity, 55);
+  assert.equal(store[marker], true);
+});
+
+test('settings returned for rendering are rebuilt from safe CSS-facing fields', () => {
+  const hostile = {
+    mode: 'single',
+    type: 'image',
+    value: 'data:image/png;base64,x',
+    style: { size: 'cover; } body { color: red }', fixed: 'yes', repeat: 'yes' },
+    gradient: {
+      kind: 'linear',
+      stops: [{ color: '#fff', position: 0 }, { color: '#000', position: 100 }],
+      speed: '10s; color: red'
+    },
+    frostedGlass: [{ selector: '.card', opacity: '55; color: red', blur: '12px' }]
+  };
+  const normalized = storageSchema.normalizeSiteSettings(hostile);
+  assert.notEqual(normalized, hostile);
+  assert.deepEqual(JSON.parse(JSON.stringify(normalized.style)), { size: 'cover', fixed: true, repeat: false });
+  assert.equal(normalized.gradient.speed, 10);
+  assert.deepEqual(normalized.frostedGlass, [{ selector: '.card', opacity: 55, blur: 12 }]);
+
+  const resolved = storageSchema.resolveUrlSettings('https://example.com/', [], hostile, null);
+  assert.notEqual(resolved.settings, hostile);
+  assert.equal(resolved.settings.style.size, 'cover');
 });
 
 test('backup schema accepts supported data and blocks arbitrary storage keys', () => {
@@ -706,25 +796,21 @@ test('options expose rule priority, drag sorting, disabling, and rule editing', 
   assert.match(options, /currentEditingRuleId/);
 });
 
-test('custom effect URLs and code imports are constrained', () => {
-  assert.equal(storageSchema.normalizeEffectUrl('example.com'), 'https://example.com/');
-  assert.equal(storageSchema.normalizeEffectUrl('http://example.com'), null);
-  assert.equal(storageSchema.normalizeEffectUrl('javascript:alert(1)'), null);
-  assert.equal(storageSchema.normalizeEffectUrl('http://localhost:3000/demo'), 'http://localhost:3000/demo');
-  assert.equal(storageSchema.normalizeCustomEffect({ type: 'url', url: 'javascript:alert(1)' }), null);
+test('custom effects are limited to isolated Canvas code', () => {
+  assert.equal(storageSchema.normalizeCustomEffect({ type: 'url', url: 'https://example.com/' }), null);
   assert.equal(storageSchema.normalizeCustomEffect({ type: 'code', code: 'x'.repeat(storageSchema.MAX_EFFECT_CODE_CHARS + 1) }), null);
 });
 
-test('clearing local data removes all extension storage and URL iframes are sandboxed', () => {
+test('clearing local data removes all extension storage and custom previews are sandboxed', () => {
   const options = read('options/options.js');
   const clearBlock = options.match(/async function clearAllSites\(\) \{([\s\S]*?)showStatus\(t\('clearAllDone'\)\)/)?.[1] || '';
   assert.match(clearBlock, /await chrome\.storage\.local\.clear\(\)/);
   assert.match(clearBlock, /localStorage\.clear\(\)/);
-  assert.match(read('options/options.html'), /sandbox="allow-scripts allow-forms allow-pointer-lock"/);
+  assert.match(read('options/options.html'), /sandbox="allow-scripts"/);
   assert.match(read('options/options.html'), /referrerpolicy="no-referrer"/);
   const content = read('scripts/content.js');
-  assert.match(content, /setAttribute\('sandbox', 'allow-scripts allow-forms allow-pointer-lock'\)/);
-  assert.match(content, /normalizeEffectUrl/);
+  assert.match(content, /setAttribute\('sandbox', 'allow-scripts'\)/);
+  assert.doesNotMatch(content, /normalizeEffectUrl|custom URL|Website URL/);
 });
 
 test('extension icons are non-empty PNGs with exact dimensions', () => {

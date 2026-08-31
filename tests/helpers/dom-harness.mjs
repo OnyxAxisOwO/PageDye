@@ -218,6 +218,9 @@ export async function loadExtensionPage(relHtmlPath, { chrome, patches = [], set
     pretendToBeVisual: true,
     beforeParse(window) {
       installPolyfills(window, { prefersDark });
+      // jsdom's placeholder window.scrollTo emits a noisy not-implemented
+      // error; browsers provide the real scrolling method.
+      window.scrollTo = () => {};
       // Real chrome.storage.local.get() always hands back plain objects
       // freshly deserialized in the CALLING page's own realm -- there's no
       // such thing as "the wrong realm" in a real browser. Our mock's store

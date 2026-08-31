@@ -100,7 +100,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <span id="version" class="version-label">v0.13.5</span>
+        <span id="version" class="version-label">v1.0.0</span>
       </div>
     </aside>
 
@@ -364,13 +364,6 @@
               <button type="button" id="new-custom-effect-btn" class="btn primary-btn">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 <span data-i18n="newCustomEffect">New Custom Effect</span>
-              </button>
-              <button type="button" id="ai-custom-effect-btn" class="btn secondary-btn">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-                  <path d="M12 8.2v1.1"></path><path d="M12 14v1.1"></path><path d="M9.4 11.6h1.1"></path><path d="M13.5 11.6h1.1"></path>
-                </svg>
-                <span data-i18n="newCustomEffectAi">Generate with AI</span>
               </button>
               <button type="button" id="import-custom-effect-btn" class="btn secondary-btn" data-i18n="importEffectBtn">Import</button>
               <input type="file" id="import-effect-file" accept="application/json" hidden>
@@ -1105,7 +1098,7 @@
           <div class="about-logo">
             <div class="logo-circle"><img src="../icons/icon128.png" alt="Logo"></div>
             <h3>PageDye</h3>
-            <span class="badge" id="about-version">v0.13.5</span>
+            <span class="badge" id="about-version">v1.0.0</span>
           </div>
 
           <p class="about-desc" data-i18n="aboutText">PageDye lets you give each website its own color, image, gradient, or animated background. Your choices are saved in this browser and return automatically.</p>
@@ -1760,7 +1753,7 @@
           </div>
           <div class="edit-actions-right">
             <button type="button" id="edit-reset-btn" class="btn secondary-btn" data-i18n="reset">Reset</button>
-            <span class="version-text" id="edit-version">v0.13.5</span>
+            <span class="version-text" id="edit-version">v1.0.0</span>
             <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" class="github-icon-link" title="GitHub">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
             </a>
@@ -1787,16 +1780,6 @@
             <input type="text" id="edit-custom-effect-name" placeholder="Breathing Dot" maxlength="60">
           </div>
 
-          <div class="control-group">
-            <label data-i18n="customEffectTypeLabel">Effect Type</label>
-            <div class="segmented-control" id="edit-custom-effect-type-toggle">
-              <input type="radio" name="edit-custom-effect-type" value="code" id="edit-custom-effect-type-code" checked>
-              <label for="edit-custom-effect-type-code" data-i18n="customEffectTypeCode">Canvas Code</label>
-              <input type="radio" name="edit-custom-effect-type" value="url" id="edit-custom-effect-type-url">
-              <label for="edit-custom-effect-type-url" data-i18n="customEffectTypeUrl">Website URL</label>
-            </div>
-          </div>
-
           <div class="control-group" id="edit-custom-effect-template-control">
             <label for="edit-custom-effect-template" data-i18n="startFromTemplate">Start from template</label>
             <select id="edit-custom-effect-template">
@@ -1819,27 +1802,6 @@
             <p id="edit-custom-effect-error" class="effect-error-banner hidden"></p>
           </div>
 
-          <div class="control-group hidden" id="edit-custom-effect-url-control" style="margin-bottom: 0;">
-            <label for="edit-custom-effect-url" data-i18n="effectUrlLabel">Website URL</label>
-            <input type="url" id="edit-custom-effect-url" placeholder="https://example.com/some-cool-wallpaper">
-            <p class="hint" data-i18n="effectUrlHint">Embed an HTTPS website in a sandboxed iframe background (HTTP is allowed only for localhost). Some websites may block embedding via X-Frame-Options/CSP.</p>
-
-            <details class="accordion" id="edit-accordion-custom-effect-advanced">
-              <summary class="accordion-summary">
-                <span data-i18n="advanced">Advanced Settings</span>
-                <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </summary>
-              <div class="accordion-content">
-                <div class="control-group" style="margin-bottom: 0;">
-                  <label class="checkbox-label">
-                    <input type="checkbox" id="edit-custom-effect-interactive">
-                    <span data-i18n="customEffectInteractive">Allow background interaction (clicks/scrolls)</span>
-                  </label>
-                  <p class="hint hint-indent" data-i18n="customEffectInteractiveHint">Note: Because the background is layered behind the webpage, you need to hold the <strong>Alt</strong> key on your keyboard to bring the background to the front and click/interact with it.</p>
-                </div>
-              </div>
-            </details>
-          </div>
         </div>
 
         <div class="card">
@@ -1849,7 +1811,7 @@
               <canvas id="edit-custom-effect-preview-canvas" width="280" height="160"></canvas>
               <!-- Toggled through inline display by updateCustomEffectPreview,
                    so it starts hidden the same way rather than via [hidden]. -->
-              <iframe id="edit-custom-effect-preview-iframe" title="Custom URL effect preview" sandbox="allow-scripts allow-forms allow-pointer-lock" referrerpolicy="no-referrer" allow="" width="280" height="160" style="display: none;"></iframe>
+              <iframe id="edit-custom-effect-preview-iframe" title="PageDye isolated custom Canvas effect preview" sandbox="allow-scripts" referrerpolicy="no-referrer" allow="" width="280" height="160" style="display: none;"></iframe>
             </div>
           </div>
         </div>
@@ -1884,6 +1846,7 @@
     </div>
   </div>
   <script src="../scripts/storage-schema.js"></script>
+  <script src="../scripts/data-consent.js"></script>
   <!-- Loaded for its PROVIDERS table and normalizeConfig only; the settings UI
        must not keep its own copy of the endpoints and model ids the generator
        actually uses, or the two drift apart. -->

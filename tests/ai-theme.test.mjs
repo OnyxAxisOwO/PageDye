@@ -950,41 +950,18 @@ test('a preference proposal is only read when the answer flagged one', () => {
   assert.equal(echoed.preferences, null);
 });
 
-test('a custom effect proposal is only read when the answer flagged one, and is capped/named like sanitizeCustomEffect', () => {
-  const withFlag = aiTheme.sanitizeChatReply({
-    reply: 'Here is a breathing dot.',
+test('AI responses never carry executable custom effect code', () => {
+  const sanitized = aiTheme.sanitizeChatReply({
+    reply: 'I can help.',
     themeChanged: false,
     customEffectChanged: true,
-    customEffect: { name: 'Breathing Dot', code: 'return { init(cfg){ return {cfg}; }, resize(){}, draw(){} };' }
+    customEffect: { name: 'Breathing Dot', code: 'return { draw(){} };' }
   });
-  assert.deepEqual(withFlag.customEffect, {
-    name: 'Breathing Dot',
-    code: 'return { init(cfg){ return {cfg}; }, resize(){}, draw(){} };'
-  });
-  assert.equal(withFlag.customEffectChanged, true);
 
-  // Echoing a previous effect back without flagging it must not put a save
-  // button in front of the user for a change nobody asked for.
-  const echoed = aiTheme.sanitizeChatReply({
-    reply: 'Nothing to change.',
-    themeChanged: false,
-    customEffectChanged: false,
-    customEffect: { name: 'Breathing Dot', code: 'return {};' }
-  });
-  assert.equal(echoed.customEffect, null);
-  assert.equal(echoed.customEffectChanged, false);
-
-  // Empty code sanitizes down to nothing, same as an empty preferences object.
-  assert.equal(aiTheme.sanitizeCustomEffect({ name: 'Empty', code: '   ' }), null);
-  assert.equal(aiTheme.sanitizeCustomEffect(null), null);
-
-  // A missing name falls back rather than failing the whole turn.
-  const unnamed = aiTheme.sanitizeCustomEffect({ code: 'return {};' });
-  assert.equal(unnamed.name, 'AI Effect');
-
-  // Oversized code is capped rather than rejected outright.
-  const huge = aiTheme.sanitizeCustomEffect({ name: 'Huge', code: 'x'.repeat(aiTheme.MAX_CUSTOM_EFFECT_CODE_CHARS + 500) });
-  assert.equal(huge.code.length, aiTheme.MAX_CUSTOM_EFFECT_CODE_CHARS);
+  assert.equal(sanitized.customEffect, undefined);
+  assert.equal(sanitized.customEffectChanged, undefined);
+  assert.equal(aiTheme.CHAT_SCHEMA.properties.customEffect, undefined);
+  assert.doesNotMatch(aiTheme.CHAT_SCHEMA.required.join(','), /customEffect/);
 });
 
 test('applying preferences merges into the stored theme instead of replacing it', async () => {

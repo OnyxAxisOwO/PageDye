@@ -54,11 +54,11 @@ function sendMessage(listeners, message) {
 
 test('concurrent setRuleSettings writes to DIFFERENT rules do not lose either update', async () => {
   const initialRules = [
-    { id: 'rule-a', pattern: 'a.example', enabled: true, settings: { type: 'none' } },
-    { id: 'rule-b', pattern: 'b.example', enabled: true, settings: { type: 'none' } }
+    { id: 'rule-a', type: 'hostname', pattern: 'a.example', action: 'apply', enabled: true, settings: { type: 'none' } },
+    { id: 'rule-b', type: 'hostname', pattern: 'b.example', action: 'apply', enabled: true, settings: { type: 'none' } }
   ];
   const { chrome, listeners, getStore } = createChromeMock(initialRules, { delayMs: 5 });
-  runBackgroundScript({ chrome, console });
+  runBackgroundScript({ chrome, console, URL });
 
   const [respA, respB] = await Promise.all([
     sendMessage(listeners, { action: 'pagedyeMutateUrlRules', op: 'setRuleSettings', payload: { ruleId: 'rule-a', settings: { type: 'color', value: '#111111' } } }),
@@ -73,12 +73,51 @@ test('concurrent setRuleSettings writes to DIFFERENT rules do not lose either up
   assert.equal(rules.find((r) => r.id === 'rule-b').settings.value, '#222222');
 });
 
-test('a concurrent insertRule does not get lost behind an overlapping setRuleSettings', async () => {
-  const initialRules = [{ id: 'rule-a', pattern: 'a.example', enabled: true, settings: { type: 'none' } }];
-  const { chrome, listeners, getStore } = createChromeMock(initialRules, { delayMs: 5 });
-  runBackgroundScript({ chrome, console });
+test('rule writes normalize CSS-facing settings before storage', async () => {
+  const initialRules = [{
+    id: 'rule-a',
+    type: 'hostname',
+    pattern: 'a.example',
+    action: 'apply',
+    enabled: true,
+    settings: { type: 'none' }
+  }];
+  const { chrome, listeners, getStore } = createChromeMock(initialRules, { delayMs: 1 });
+  runBackgroundScript({ chrome, console, URL });
 
-  const newRule = { id: 'rule-new', pattern: 'new.example', enabled: true, settings: { type: 'image', value: 'x' } };
+  const response = await sendMessage(listeners, {
+    action: 'pagedyeMutateUrlRules',
+    op: 'setRuleSettings',
+    payload: {
+      ruleId: 'rule-a',
+      settings: {
+        type: 'color',
+        value: '#111111',
+        style: { size: 'url(https://evil.example)', fixed: 'yes', repeat: 'yes' },
+        gradient: {
+          stops: [{ color: '#ffffff', position: 0 }, { color: '#000000', position: 100 }],
+          speed: 999
+        },
+        frostedGlass: [{ selector: 'body; background:url(https://evil.example)', opacity: 50, blur: 10 }]
+      }
+    }
+  });
+
+  assert.equal(response.ok, true);
+  const settings = getStore()[RULES_KEY][0].settings;
+  assert.equal(settings.style.size, 'cover');
+  assert.equal(settings.style.fixed, true);
+  assert.equal(settings.style.repeat, false);
+  assert.equal(settings.gradient.speed, 60);
+  assert.equal(JSON.stringify(settings.frostedGlass), '[]');
+});
+
+test('a concurrent insertRule does not get lost behind an overlapping setRuleSettings', async () => {
+  const initialRules = [{ id: 'rule-a', type: 'hostname', pattern: 'a.example', action: 'apply', enabled: true, settings: { type: 'none' } }];
+  const { chrome, listeners, getStore } = createChromeMock(initialRules, { delayMs: 5 });
+  runBackgroundScript({ chrome, console, URL });
+
+  const newRule = { id: 'rule-new', type: 'hostname', pattern: 'new.example', action: 'apply', enabled: true, settings: { type: 'image', value: 'x' } };
   const [respSet, respInsert] = await Promise.all([
     sendMessage(listeners, { action: 'pagedyeMutateUrlRules', op: 'setRuleSettings', payload: { ruleId: 'rule-a', settings: { type: 'color', value: '#333333' } } }),
     sendMessage(listeners, { action: 'pagedyeMutateUrlRules', op: 'insertRule', payload: { rule: newRule } })
@@ -95,12 +134,12 @@ test('a concurrent insertRule does not get lost behind an overlapping setRuleSet
 
 test('reorderRules keeps a rule the sender did not know about instead of dropping it', async () => {
   const initialRules = [
-    { id: 'rule-a', pattern: 'a.example', enabled: true, settings: {} },
-    { id: 'rule-b', pattern: 'b.example', enabled: true, settings: {} },
-    { id: 'rule-c', pattern: 'c.example', enabled: true, settings: {} }
+    { id: 'rule-a', type: 'hostname', pattern: 'a.example', action: 'apply', enabled: true, settings: { type: 'none' } },
+    { id: 'rule-b', type: 'hostname', pattern: 'b.example', action: 'apply', enabled: true, settings: { type: 'none' } },
+    { id: 'rule-c', type: 'hostname', pattern: 'c.example', action: 'apply', enabled: true, settings: { type: 'none' } }
   ];
   const { chrome, listeners, getStore } = createChromeMock(initialRules, { delayMs: 1 });
-  runBackgroundScript({ chrome, console });
+  runBackgroundScript({ chrome, console, URL });
 
   // Sender's ordering only knows about rule-a/rule-b (as if rule-c was
   // inserted by someone else after this sender last fetched the list).
@@ -113,11 +152,11 @@ test('reorderRules keeps a rule the sender did not know about instead of droppin
 
 test('deleteRule and setRuleEnabled apply correctly and unknown ops are rejected', async () => {
   const initialRules = [
-    { id: 'rule-a', pattern: 'a.example', enabled: true, settings: {} },
-    { id: 'rule-b', pattern: 'b.example', enabled: true, settings: {} }
+    { id: 'rule-a', type: 'hostname', pattern: 'a.example', action: 'apply', enabled: true, settings: { type: 'none' } },
+    { id: 'rule-b', type: 'hostname', pattern: 'b.example', action: 'apply', enabled: true, settings: { type: 'none' } }
   ];
   const { chrome, listeners, getStore } = createChromeMock(initialRules, { delayMs: 1 });
-  runBackgroundScript({ chrome, console });
+  runBackgroundScript({ chrome, console, URL });
 
   await sendMessage(listeners, { action: 'pagedyeMutateUrlRules', op: 'setRuleEnabled', payload: { ruleId: 'rule-b', enabled: false } });
   await sendMessage(listeners, { action: 'pagedyeMutateUrlRules', op: 'deleteRule', payload: { ruleId: 'rule-a' } });

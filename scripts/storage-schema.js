@@ -48,6 +48,9 @@
   ]);
   const MODES = new Set(['single', 'auto', 'timeRange', 'slideshow']);
   const TYPES = new Set(['none', 'color', 'image', 'effect', 'video']);
+  const BACKGROUND_SIZES = new Set(['cover', 'contain', 'auto', 'stretch']);
+  const GRADIENT_KINDS = new Set(['linear', 'radial']);
+  const GRADIENT_SHAPES = new Set(['ellipse', 'circle']);
   const URL_RULE_TYPES = new Set(['hostname', 'exact', 'prefix', 'wildcard']);
   const FORBIDDEN_OBJECT_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 
@@ -69,10 +72,10 @@
 
   // Selectors are spliced verbatim into a live <style> tag's CSS text
   // (content.js's applyTargetBackground/applyFrostedGlass). A selector
-  // containing `{`, `}` or a comment opener could close the intended rule
-  // early and smuggle in unrelated CSS rules, so any selector containing
+  // containing `{`, `}`, `;` or a comment opener could close the intended
+  // rule early and smuggle in unrelated CSS rules, so any selector containing
   // those sequences is rejected outright rather than escaped.
-  const UNSAFE_SELECTOR_RE = /[{}]|\/\*|[\r\n]/;
+  const UNSAFE_SELECTOR_RE = /[{};]|\/\*|[\r\n]/;
   function isSafeSelectorList(value) {
     return typeof value === 'string' && value.length > 0 && !UNSAFE_SELECTOR_RE.test(value);
   }
@@ -97,6 +100,39 @@
       clean[key] = clampNumber(filters[key], min, max, fallback);
     }
     return clean;
+  }
+
+  // These values are interpolated into CSS declarations by content.js. Keep
+  // them as a small, explicit data shape instead of allowing sanitizeJson() to
+  // preserve arbitrary strings from an imported backup.
+  function normalizeLayerStyle(style) {
+    if (!isPlainObject(style)) return undefined;
+    const clean = Object.create(null);
+    clean.size = BACKGROUND_SIZES.has(style.size) ? style.size : 'cover';
+    clean.fixed = style.fixed !== false;
+    clean.repeat = style.repeat === true;
+    return clean;
+  }
+
+  function normalizeGradient(gradient) {
+    if (!isPlainObject(gradient)) return undefined;
+    const stops = Array.isArray(gradient.stops) ? gradient.stops.slice(0, 6).map((stop) => {
+      if (!isPlainObject(stop) || typeof stop.color !== 'string' ||
+        !/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3}([0-9a-fA-F]{2})?)?$/.test(stop.color)) return null;
+      return {
+        color: stop.color,
+        position: clampNumber(stop.position, 0, 100, 0)
+      };
+    }).filter(Boolean).sort((a, b) => a.position - b.position) : [];
+    if (stops.length < 2) return undefined;
+    return {
+      kind: GRADIENT_KINDS.has(gradient.kind) ? gradient.kind : 'linear',
+      shape: GRADIENT_SHAPES.has(gradient.shape) ? gradient.shape : 'ellipse',
+      angle: clampNumber(gradient.angle, 0, 360, 90),
+      stops,
+      animated: gradient.animated === true,
+      speed: clampNumber(gradient.speed, 4, 60, 10)
+    };
   }
 
   function sanitizeJson(value, depth = 0) {
@@ -135,6 +171,16 @@
     }
     if (Object.prototype.hasOwnProperty.call(layer, 'filters')) {
       clean.filters = normalizeFilters(layer.filters);
+    }
+    if (Object.prototype.hasOwnProperty.call(layer, 'style')) {
+      const style = normalizeLayerStyle(layer.style);
+      if (style) clean.style = style;
+      else delete clean.style;
+    }
+    if (Object.prototype.hasOwnProperty.call(layer, 'gradient')) {
+      const gradient = normalizeGradient(layer.gradient);
+      if (gradient) clean.gradient = gradient;
+      else delete clean.gradient;
     }
     if (Object.prototype.hasOwnProperty.call(layer, 'customCss')) {
       clean.customCss = trimString(layer.customCss, MAX_EFFECT_CODE_CHARS);
@@ -195,8 +241,20 @@
       clean.frostedGlass = settings.frostedGlass.slice(0, 100).map((item) => {
         const entry = sanitizeJson(item);
         if (!entry) return null;
-        if (typeof entry.selector === 'string' && entry.selector && !isSafeSelectorList(entry.selector)) return null;
-        return entry;
+        if (typeof entry.selector !== 'string') return null;
+        const selector = entry.selector.trim();
+        // Keep an empty selector as an editable draft. The renderer skips it,
+        // while dropping it here would make the Add panel lose its unsaved
+        // row before the user can pick an element.
+        if (selector && !isSafeSelectorList(selector)) return null;
+        return {
+          selector,
+          opacity: clampNumber(entry.opacity, 0, 100, 55),
+          blur: clampNumber(entry.blur, 0, 100, 12),
+          ...(typeof entry.color === 'string' && /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3}([0-9a-fA-F]{2})?)?$/.test(entry.color)
+            ? { color: entry.color }
+            : {})
+        };
       }).filter(Boolean);
     }
     return clean;
@@ -321,34 +379,24 @@
       const settings = normalizeSiteSettings(rule.settings);
       if (settings) return { settings, rule, source: 'rule', excluded: false };
     }
-    if (normalizeSiteSettings(hostnameSettings)) {
-      return { settings: hostnameSettings, rule: null, source: 'hostname', excluded: false };
+    const hostname = normalizeSiteSettings(hostnameSettings);
+    if (hostname) {
+      return { settings: hostname, rule: null, source: 'hostname', excluded: false };
     }
-    if (normalizeSiteSettings(defaultSettings)) {
-      return { settings: defaultSettings, rule: null, source: 'default', excluded: false };
+    const fallback = normalizeSiteSettings(defaultSettings);
+    if (fallback) {
+      return { settings: fallback, rule: null, source: 'default', excluded: false };
     }
     return { settings: null, rule: null, source: 'none', excluded: false };
   }
 
-  function normalizeEffectUrl(value) {
-    if (typeof value !== 'string') return null;
-    let candidate = value.trim();
-    if (!candidate || candidate.length > MAX_URL_CHARS) return null;
-    if (!/^[a-z][a-z\d+.-]*:/i.test(candidate)) candidate = `https://${candidate}`;
-    try {
-      const url = new URL(candidate);
-      const localHttp = url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]', '::1'].includes(url.hostname);
-      if (url.protocol !== 'https:' && !localHttp) return null;
-      if (url.username || url.password) return null;
-      return url.href;
-    } catch (_) {
-      return null;
-    }
-  }
-
   function normalizeCustomEffect(entry, options = {}) {
     if (!isPlainObject(entry)) return null;
-    const type = entry.type === 'url' ? 'url' : entry.type === 'code' || entry.type == null ? 'code' : null;
+    // Custom effects are intentionally limited to local Canvas source. A
+    // previous version accepted remote URL effects, which could load and run
+    // third-party page scripts inside the extension's background layer.
+    if (entry.type === 'url') return null;
+    const type = entry.type === 'code' || entry.type == null ? 'code' : null;
     if (!type) return null;
     const id = trimString(entry.id, 100);
     if (!id || !/^[a-zA-Z0-9_-]+$/.test(id)) return null;
@@ -357,18 +405,10 @@
       name: trimString(entry.name, MAX_EFFECT_NAME_CHARS) || options.fallbackName || 'Untitled Effect',
       type,
       code: '',
-      url: '',
-      interactive: !!entry.interactive,
       updatedAt: clampNumber(entry.updatedAt, 0, Number.MAX_SAFE_INTEGER, Date.now())
     };
-    if (type === 'code') {
-      if (typeof entry.code !== 'string' || entry.code.length > MAX_EFFECT_CODE_CHARS) return null;
-      clean.code = entry.code;
-    } else {
-      const url = normalizeEffectUrl(entry.url);
-      if (!url) return null;
-      clean.url = url;
-    }
+    if (typeof entry.code !== 'string' || entry.code.length > MAX_EFFECT_CODE_CHARS) return null;
+    clean.code = entry.code;
     return clean;
   }
 
@@ -640,7 +680,6 @@
     normalizeUrlRules,
     urlRuleMatches,
     resolveUrlSettings,
-    normalizeEffectUrl,
     normalizeCustomEffect,
     normalizeCustomEffects,
     normalizePresetColors,

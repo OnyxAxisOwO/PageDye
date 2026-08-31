@@ -130,14 +130,7 @@
       applied: 'Applied to this site.',
       saveTheme: 'Add to themes',
       themeSaved: 'Kept as “{name}” in your themes.',
-      customEffectBody: 'An animated Canvas background the model wrote for you.',
-      customEffectPreview: 'Preview',
-      customEffectPreviewStop: 'Stop preview',
-      customEffectSave: 'Save as custom effect',
-      customEffectSaved: 'Saved “{name}” to your custom effects.',
-      customEffectSandboxMissing: 'The custom-effect sandbox is not available on this page.',
-      customEffectFixRequest: 'The custom effect code failed validation: {error}\n\nPlease fix it and reply with the corrected effect.',
-      customEffectUntitled: 'Untitled effect',
+      dataConsentRequired: 'AI data-sharing consent is required before sending this request.',
       prefsTitle: 'PageDye settings',
       prefsBody: 'This changes PageDye itself, not this page.',
       prefsApply: 'Change settings',
@@ -227,14 +220,7 @@
       applied: '已应用到该网站。',
       saveTheme: '添加到主题',
       themeSaved: '已收进主题库，名字是“{name}”。',
-      customEffectBody: '模型为你写的一个动画 Canvas 背景。',
-      customEffectPreview: '预览',
-      customEffectPreviewStop: '停止预览',
-      customEffectSave: '保存为自定义动效',
-      customEffectSaved: '已保存为自定义动效“{name}”。',
-      customEffectSandboxMissing: '这个页面没有加载自定义动效沙箱。',
-      customEffectFixRequest: '生成的动效代码未通过校验：{error}\n\n请修正后重新给出完整的动效代码。',
-      customEffectUntitled: '未命名动效',
+      dataConsentRequired: '发送请求前需要同意 AI 数据传输。',
       prefsTitle: 'PageDye 设置',
       prefsBody: '这一项改的是 PageDye 自己，不是当前网页。',
       prefsApply: '更改设置',
@@ -369,17 +355,9 @@
     // so it can be applied to others later. Absent on a surface that has no
     // library to put it in; the button is then simply not offered.
     const onSaveTheme = config.onSaveTheme || null;
-    // Saves a model-written custom effect straight into the user's effect
-    // library — no page to write it back onto, unlike a theme, so there is
-    // nothing to "apply" here, only somewhere to keep it. Absent on a surface
-    // with no library to put it in (the popup does not load the custom-effect
-    // sandbox); the card is then simply not offered.
-    const onSaveCustomEffect = config.onSaveCustomEffect || null;
-    // Where the custom-effect card validates a proposal before it can be
-    // saved — the same sandbox the manual code editor uses. Looked up per
-    // call for the same reason imageApi is: defaults to the page global, but
-    // a test can substitute its own.
-    const customSandbox = () => config.customSandbox || (doc.defaultView && doc.defaultView.PageDyeCustomSandbox) || null;
+    const ensureAiDataConsent = typeof config.ensureAiDataConsent === 'function'
+      ? config.ensureAiDataConsent
+      : null;
     // A second pane for the sidebar, supplied by the host page: the dashboard
     // hands over its own navigation so the fullscreen chat still offers a way
     // back to the rest of PageDye. When present the sidebar grows a two-tab
@@ -416,12 +394,6 @@
     let cancelTurn = null;
     let editingId = '';
     let previewId = '';
-    // At most one custom-effect card previews itself at a time — the sandbox
-    // iframe is real, running JS, not just a swatch, so nothing keeps more
-    // than one alive. effectPreviewIframe is released whenever render()
-    // notices its message is no longer the one on screen (see render() below).
-    let effectPreviewId = '';
-    let effectPreviewIframe = null;
     // The id of a user message that was just pushed, so the very next render
     // (and only that one) plays its send-in animation. Read-and-cleared like
     // the flags above it — the turn-in-flight renders after it reuse the same
@@ -984,103 +956,6 @@
       return card;
     }
 
-    // Pushes a corrective turn describing why the sandbox rejected the code,
-    // and asks for a fixed one — the same repair loop a person gets from the
-    // manual editor's own inline error, just driven by a message instead of
-    // a keystroke. One user-visible turn per failed Save, so the transcript
-    // stays honest about why a new answer appeared.
-    async function requestEffectFix(conversation, errorText) {
-      if (!conversation || busy) return;
-      const at = Date.now();
-      const sent = Store.userMessage(str('customEffectFixRequest', { error: errorText }), at, []);
-      conversation.messages.push(sent);
-      conversation.updatedAt = at;
-      justSentId = sent.id;
-      await persist();
-      render();
-      scrollToEnd();
-      await runTurn(conversation.id);
-    }
-
-    // Stops and tears down the one live custom-effect preview, if there is
-    // one. Safe to call whether or not anything is actually running.
-    function releaseEffectPreview() {
-      const sandbox = customSandbox();
-      const iframe = effectPreviewIframe;
-      effectPreviewId = '';
-      effectPreviewIframe = null;
-      if (sandbox && iframe) {
-        try {
-          sandbox.release(iframe);
-        } catch (_) {
-          // Already gone, which is the state this was trying to reach anyway.
-        }
-      }
-    }
-
-    // A brand-new effect the model wrote, offered as something to keep
-    // rather than something to apply — it belongs to no page, so there is no
-    // "this site" to write it onto, only a library to add it to.
-    function renderCustomEffectCard(message) {
-      const effect = message.customEffect;
-      const card = el('div', 'ai-chat-prefs');
-      card.appendChild(el('h4', 'ai-chat-prefs-title', (effect && effect.name) || str('customEffectUntitled')));
-      card.appendChild(el('p', 'ai-chat-prefs-body', str('customEffectBody')));
-
-      const previewing = effectPreviewId === message.id;
-      if (previewing) {
-        const frame = doc.createElement('iframe');
-        frame.className = 'ai-chat-effect-preview';
-        Object.assign(frame.style, {
-          display: 'block', width: '100%', height: '160px', border: '0', borderRadius: '10px', marginTop: '4px'
-        });
-        card.appendChild(frame);
-        effectPreviewIframe = frame;
-        const sandbox = customSandbox();
-        if (sandbox) {
-          // start() already reports a failure (bad code, crashed frame) through
-          // onError; nothing further to do with its own return value here.
-          sandbox.start(frame, effect, { color: '#ffffff', bgColor: '#000000', density: 50, speed: 50, text: effect.name || 'PageDye' }, {
-            opacity: 100,
-            onError: (error) => setFlash(String((error && error.message) || error))
-          }).catch((error) => setFlash(String((error && error.message) || error)));
-        }
-      }
-
-      const actions = el('div', 'ai-chat-theme-actions');
-      actions.appendChild(button('ai-chat-theme-btn', str(previewing ? 'customEffectPreviewStop' : 'customEffectPreview'), () => {
-        if (previewing) releaseEffectPreview();
-        else {
-          releaseEffectPreview();
-          effectPreviewId = message.id;
-        }
-        render();
-      }));
-      const save = button('ai-chat-theme-btn primary', str('customEffectSave'), async () => {
-        save.disabled = true;
-        try {
-          const sandbox = customSandbox();
-          if (!sandbox) throw new Error(str('customEffectSandboxMissing'));
-          releaseEffectPreview();
-          // Never trusted for what it claims to compile to: the same check
-          // the manual code editor runs before it will let a save through.
-          const validation = await sandbox.validate(effect.code);
-          if (!validation.ok) {
-            await requestEffectFix(active(), validation.error);
-            return;
-          }
-          const saved = await onSaveCustomEffect(effect, active());
-          setFlash(str('customEffectSaved', { name: (saved && saved.name) || effect.name || '' }));
-        } catch (error) {
-          save.disabled = false;
-          setFlash(String((error && error.message) || error));
-        }
-      });
-      actions.appendChild(save);
-      card.appendChild(actions);
-      return card;
-    }
-
     function renderUserMessage(conversation, message) {
       const row = el('div', 'ai-msg ai-msg-user');
       // Not cleared here: submit() and runTurn() each render synchronously
@@ -1199,7 +1074,6 @@
       row.appendChild(answer);
 
       if (message.theme && message.settings && message.themeChanged) row.appendChild(renderThemeCard(message));
-      if (message.customEffect && onSaveCustomEffect) row.appendChild(renderCustomEffectCard(message));
       if (message.preferences && onApplyPreferences) {
         const prefsCard = renderPreferencesCard(message);
         if (prefsCard) row.appendChild(prefsCard);
@@ -1268,13 +1142,6 @@
     function render() {
       pendingNodes = null;
       const conversation = active();
-      // A running preview's message can vanish out from under it — the
-      // conversation switched, was deleted, or the message it belonged to was
-      // edited away — and every one of those is easiest to catch here, once,
-      // rather than at each of the several places that can cause it.
-      if (effectPreviewId && !(conversation && conversation.messages.some((message) => message.id === effectPreviewId))) {
-        releaseEffectPreview();
-      }
       // Whether this render is a different conversation than the one on
       // screen, decided before anything is rebuilt: a turn in flight causes
       // many renders of the same conversation, and only an actual switch is
@@ -1593,6 +1460,10 @@
 
     async function submit() {
       if (busy || !configured) return;
+      if (ensureAiDataConsent && !(await ensureAiDataConsent())) {
+        setFlash(str('dataConsentRequired'));
+        return;
+      }
       let conversation = active();
       if (!conversation) conversation = await startNewConversation({ silent: true });
 

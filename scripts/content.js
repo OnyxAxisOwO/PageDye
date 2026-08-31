@@ -118,7 +118,7 @@
         debugModeEnabled = !!data[DEBUG_MODE_KEY];
         if (extensionEnabled && debugModeEnabled) ensureDebugRuntime();
         pauseShortcut = normalizePauseShortcut(data[PAUSE_SHORTCUT_KEY]);
-        currentCustomEffects = data[CUSTOM_EFFECTS_KEY] || [];
+        currentCustomEffects = window.PageDyeStorage.normalizeCustomEffects(data[CUSTOM_EFFECTS_KEY]);
         savedTextOverrides = data[TEXT_OVERRIDES_KEY] || {};
         applySavedTextOverrides();
         lastKnownDefault = data[DEFAULT_BG_KEY] || null;
@@ -183,42 +183,10 @@
           currentSettings = null;
           applyBackground({ type: 'none' });
         }
-    // Listen to Alt key keyboard events for background interaction
+    // Listen for the per-tab pause shortcut.
     if (window.__pagedyeKeydownListener) {
       window.removeEventListener('keydown', window.__pagedyeKeydownListener);
     }
-    if (window.__pagedyeKeyupListener) {
-      window.removeEventListener('keyup', window.__pagedyeKeyupListener);
-    }
-    if (window.__pagedyeBlurListener) {
-      window.removeEventListener('blur', window.__pagedyeBlurListener);
-    }
-
-    let isAltActive = false;
-    function updateBackgroundInteractiveState() {
-      const root = document.getElementById(ROOT_ID);
-      if (!root) return;
-      const iframe = root.shadowRoot.getElementById('pagedye-effect-iframe');
-      if (!iframe) return;
-
-      const activeSettings = currentActiveSettings;
-      let customEffect = null;
-      if (activeSettings && activeSettings.effectEnabled && activeSettings.effect && activeSettings.effect.startsWith('custom:')) {
-        const customId = activeSettings.effect.replace('custom:', '');
-        customEffect = currentCustomEffects.find((eff) => eff.id === customId);
-      }
-
-      if (customEffect && customEffect.type === 'url' && customEffect.interactive) {
-        if (isAltActive) {
-          root.style.zIndex = '2147483647';
-          iframe.style.pointerEvents = 'auto';
-        } else {
-          root.style.zIndex = '-2147483648';
-          iframe.style.pointerEvents = 'none';
-        }
-      }
-    }
-
     window.__pagedyeKeydownListener = (e) => {
       // This state intentionally lives only in the current document.  It is a
       // quick per-tab pause, not a surprising persistent change to the site's
@@ -236,34 +204,9 @@
         showTemporaryPauseNotice(temporarilyPaused);
         return;
       }
-      if (e.key === 'Alt') {
-        const activeSettings = currentActiveSettings;
-        let customEffect = null;
-        if (activeSettings && activeSettings.effectEnabled && activeSettings.effect && activeSettings.effect.startsWith('custom:')) {
-          const customId = activeSettings.effect.replace('custom:', '');
-          customEffect = currentCustomEffects.find((eff) => eff.id === customId);
-        }
-        if (customEffect && customEffect.type === 'url' && customEffect.interactive) {
-          e.preventDefault();
-          isAltActive = true;
-          updateBackgroundInteractiveState();
-        }
-      }
-    };
-    window.__pagedyeKeyupListener = (e) => {
-      if (e.key === 'Alt') {
-        isAltActive = false;
-        updateBackgroundInteractiveState();
-      }
-    };
-    window.__pagedyeBlurListener = () => {
-      isAltActive = false;
-      updateBackgroundInteractiveState();
     };
 
     window.addEventListener('keydown', window.__pagedyeKeydownListener);
-    window.addEventListener('keyup', window.__pagedyeKeyupListener);
-    window.addEventListener('blur', window.__pagedyeBlurListener);
       });
     } catch (e) {}
   }
@@ -338,9 +281,11 @@
       return false;
     }
     if (message.action === 'updateBackground') {
-      currentSettings = message.settings;
+      const normalized = window.PageDyeStorage.normalizeSiteSettings(message.settings);
+      if (!normalized) return false;
+      currentSettings = normalized;
       if (extensionEnabled) {
-        applyBackground(message.settings);
+        applyBackground(normalized);
       } else {
         disablePageDyeFeatures();
       }
@@ -404,7 +349,7 @@
     if (!extensionEnabled) return;
 
     if (Object.prototype.hasOwnProperty.call(changes, CUSTOM_EFFECTS_KEY)) {
-      currentCustomEffects = changes[CUSTOM_EFFECTS_KEY].newValue || [];
+      currentCustomEffects = window.PageDyeStorage.normalizeCustomEffects(changes[CUSTOM_EFFECTS_KEY].newValue);
       // The custom-effect library changed (edited/deleted) — re-apply in case
       // the active background (possibly nested under auto/slideshow) is
       // running one of them. Harmless no-op otherwise.
@@ -680,6 +625,10 @@
   }
 
   function persistActiveSettings(settings, callback) {
+    const normalized = window.PageDyeStorage.normalizeSiteSettings(settings);
+    if (!normalized) return;
+    settings = normalized;
+
     if (!activeRuleId) {
       chrome.storage.local.set({ [usingDefault ? DEFAULT_BG_KEY : window.location.hostname]: settings }, callback);
       return;
@@ -897,10 +846,10 @@
   }
 
   function configureEffectIframe(iframe) {
-    iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-pointer-lock');
+    iframe.setAttribute('sandbox', 'allow-scripts');
     iframe.setAttribute('referrerpolicy', 'no-referrer');
     iframe.setAttribute('allow', '');
-    iframe.setAttribute('title', 'PageDye custom URL background');
+    iframe.setAttribute('title', 'PageDye isolated custom Canvas effect');
   }
 
   // Full-page background: a fixed layer behind everything, with html/body
@@ -1088,7 +1037,7 @@
       }
     } else if (settings.type === 'image') {
       style.backgroundColor = 'transparent';
-      style.backgroundImage = `url("${settings.value}")`;
+      style.backgroundImage = `url("${cssStringEscape(settings.value)}")`;
       style.filter = buildFilterString(settings);
       style.transform = (settings.blur || 0) > 0 ? 'scale(1.05)' : 'none'; // Prevent blur edge artifacts
       style.animation = 'none';
@@ -1181,8 +1130,8 @@
     }
   }
 
-  // Starts/stops the animated-effect canvas (or an interactive custom-URL
-  // iframe), independent of the base layer paintBaseLayer() paints above.
+  // Starts/stops the animated-effect canvas, independent of the base layer
+  // paintBaseLayer() paints above.
   // `transparent: settings.type !== 'none'` tells built-in canvas engines
   // (see clearFrame() in effects.js) to clear each frame instead of painting
   // their own opaque background, so the base layer shows through underneath.
@@ -1221,27 +1170,6 @@
       text: settings.effectText,
       transparent: settings.type !== 'none'
     };
-
-    if (customEffect && customEffect.type === 'url') {
-      window.PageDyeEffects.stopEffect();
-      canvas.style.display = 'none';
-      releaseSandbox();
-      configureEffectIframe(iframe);
-
-      iframe.style.display = 'block';
-      iframe.style.opacity = ((typeof settings.opacity === 'number' ? settings.opacity : 100) / 100).toString();
-      iframe.style.pointerEvents = customEffect.interactive ? 'auto' : 'none';
-
-      const targetUrl = window.PageDyeStorage.normalizeEffectUrl(customEffect.url);
-      if (!targetUrl) {
-        iframe.style.display = 'none';
-        iframe.style.pointerEvents = 'none';
-        iframe.src = 'about:blank';
-        return;
-      }
-      if (iframe.src !== targetUrl) iframe.src = targetUrl;
-      return;
-    }
 
     if (customEffect && customEffect.type === 'code') {
       window.PageDyeEffects.stopEffect();
@@ -1366,10 +1294,10 @@
   // to boost specificity so our !important rules outrank the site's own rules
   // on the same element, independent of stylesheet order. The target is always
   // a descendant of <html>, so `:root <sel>` still matches it.
-  // A selector containing `{`, `}` or a comment opener could close the rule
+  // A selector containing `{`, `}`, `;` or a comment opener could close the rule
   // this gets spliced into early and smuggle in unrelated CSS, so any segment
   // containing those sequences is dropped rather than passed through.
-  const UNSAFE_SELECTOR_RE = /[{}]|\/\*|[\r\n]/;
+  const UNSAFE_SELECTOR_RE = /[{};]|\/\*|[\r\n]/;
   function scopeSelector(selector) {
     return selector
       .split(',')
@@ -1564,12 +1492,6 @@
     if (window.__pagedyeKeydownListener) {
       window.removeEventListener('keydown', window.__pagedyeKeydownListener);
     }
-    if (window.__pagedyeKeyupListener) {
-      window.removeEventListener('keyup', window.__pagedyeKeyupListener);
-    }
-    if (window.__pagedyeBlurListener) {
-      window.removeEventListener('blur', window.__pagedyeBlurListener);
-    }
     if (window.__pagedyeVisibilityListener) {
       document.removeEventListener('visibilitychange', window.__pagedyeVisibilityListener);
       window.__pagedyeVisibilityListener = null;
@@ -1586,8 +1508,6 @@
       document.addEventListener('visibilitychange', onPageVisibilityChanged);
     }
     if (window.__pagedyeKeydownListener) window.addEventListener('keydown', window.__pagedyeKeydownListener);
-    if (window.__pagedyeKeyupListener) window.addEventListener('keyup', window.__pagedyeKeyupListener);
-    if (window.__pagedyeBlurListener) window.addEventListener('blur', window.__pagedyeBlurListener);
   }
 
   function onPageVisibilityChanged() {

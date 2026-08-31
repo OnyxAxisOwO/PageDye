@@ -8,10 +8,29 @@ if (typeof importScripts === 'function' && !globalThis.PageDyeAiTheme) {
 
 const ABANDONED_URL_RULES_KEY = '__pagedye_url_rules__';
 const URL_RULES_RECOVERY_KEY = '__pagedye_url_rules_recovered_v080__';
+const STORAGE_MIGRATION_KEY = '__pagedye_storage_migrated_v0135__';
+const AI_DATA_COLLECTION = Object.freeze([
+  'browsingActivity',
+  'websiteContent',
+  'personalCommunications',
+  'technicalAndInteraction'
+]);
 
 restoreDomainSettingsFromAbandonedRules().catch((error) => {
   console.warn('Could not recover PageDye domain settings:', error);
 });
+
+if (chrome.runtime.onInstalled && typeof chrome.runtime.onInstalled.addListener === 'function') {
+  chrome.runtime.onInstalled.addListener(() => {
+    // Finish the one-time URL-rule recovery before taking the migration
+    // snapshot. Both actions touch site settings during an upgrade, and
+    // running them concurrently could let the recovery write a legacy-shaped
+    // object after the sanitizer had already marked the migration complete.
+    restoreDomainSettingsFromAbandonedRules().then(() => migrateStoredSettings()).catch((error) => {
+      console.warn('Could not migrate PageDye settings:', error);
+    });
+  });
+}
 
 async function restoreDomainSettingsFromAbandonedRules() {
   const data = await chrome.storage.local.get(null);
@@ -31,6 +50,85 @@ async function restoreDomainSettingsFromAbandonedRules() {
     ...restored,
     [URL_RULES_RECOVERY_KEY]: true
   });
+}
+
+function jsonEqual(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+// Older releases stored URL custom effects and trusted a few nested CSS
+// values on the next read. Normalize the complete managed store once after an
+// update so those entries cannot remain visible or reach a renderer before a
+// page happens to be reloaded.
+async function migrateStoredSettings() {
+  const Storage = self.PageDyeStorage;
+  if (!Storage) return;
+  const data = await chrome.storage.local.get(null);
+  if (data[STORAGE_MIGRATION_KEY]) return;
+
+  const write = Object.create(null);
+  const remove = [];
+  const normalizeAndCompare = (key, raw, normalized) => {
+    if (normalized === null || normalized === undefined) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) remove.push(key);
+      return;
+    }
+    if (!jsonEqual(raw, normalized)) write[key] = normalized;
+  };
+
+  if (Object.prototype.hasOwnProperty.call(data, Storage.KEYS.customEffects)) {
+    normalizeAndCompare(
+      Storage.KEYS.customEffects,
+      data[Storage.KEYS.customEffects],
+      Storage.normalizeCustomEffects(data[Storage.KEYS.customEffects])
+    );
+  }
+  if (Object.prototype.hasOwnProperty.call(data, Storage.KEYS.defaultBackground)) {
+    normalizeAndCompare(
+      Storage.KEYS.defaultBackground,
+      data[Storage.KEYS.defaultBackground],
+      Storage.normalizeSiteSettings(data[Storage.KEYS.defaultBackground])
+    );
+  }
+
+  for (const [key, value] of Object.entries(data)) {
+    // Site settings are the only non-reserved storage entries with a type
+    // field. Invalid entries are removed instead of being left for a content
+    // script to interpret.
+    if (key.startsWith('__pagedye_') || !value || typeof value !== 'object' ||
+      Array.isArray(value) || !Object.prototype.hasOwnProperty.call(value, 'type')) continue;
+    normalizeAndCompare(key, value, Storage.normalizeSiteSettings(value));
+  }
+
+  for (const [key, normalizer] of [
+    [Storage.KEYS.urlRules, Storage.normalizeUrlRules],
+    [Storage.KEYS.configPresets, Storage.normalizeConfigPresets],
+    [Storage.KEYS.siteGroups, Storage.normalizeSiteGroups]
+  ]) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      normalizeAndCompare(key, data[key], normalizer(data[key]));
+    }
+  }
+
+  write[STORAGE_MIGRATION_KEY] = true;
+  if (Object.keys(write).length) await chrome.storage.local.set(write);
+  if (remove.length) await chrome.storage.local.remove(remove);
+}
+
+async function hasAiDataConsent() {
+  const permissions = chrome.permissions;
+  if (!permissions || typeof permissions.getAll !== 'function') return true;
+  try {
+    const granted = await permissions.getAll();
+    // Chrome and older compatible hosts do not expose Firefox's
+    // data_collection field. Firefox does, and an absent category means the
+    // optional consent was not granted.
+    if (!Object.prototype.hasOwnProperty.call(granted, 'data_collection')) return true;
+    const current = new Set(Array.isArray(granted.data_collection) ? granted.data_collection : []);
+    return AI_DATA_COLLECTION.every((type) => current.has(type));
+  } catch (_) {
+    return false;
+  }
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -141,6 +239,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   (async () => {
     try {
+      if (!(await hasAiDataConsent())) {
+        sendResponse({ ok: false, error: 'AI data-sharing consent is required.' });
+        return;
+      }
       const profile = await resolveChatProfile(message, sender);
       const config = await self.PageDyeAiTheme.loadConfig();
       // Best-effort: a lookup failure here should cost the model one picture
@@ -189,6 +291,10 @@ chrome.runtime.onConnect.addListener((port) => {
 
     (async () => {
       try {
+        if (!(await hasAiDataConsent())) {
+          if (!closed) port.postMessage({ type: 'done', ok: false, error: 'AI data-sharing consent is required.' });
+          return;
+        }
         const profile = await resolveChatProfile(message, port.sender);
         const config = await self.PageDyeAiTheme.loadConfig();
         const currentImage = await resolveCurrentImage(profile).catch(() => null);
@@ -313,11 +419,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
+  const storage = self.PageDyeStorage;
+  if (!storage) {
+    sendResponse({ ok: false, error: 'PageDye storage validator is unavailable.' });
+    return false;
+  }
+
   serializeUrlRulesWrite(async () => {
     try {
       const data = await chrome.storage.local.get(URL_RULES_KEY);
-      const current = Array.isArray(data[URL_RULES_KEY]) ? data[URL_RULES_KEY] : [];
-      const next = op(message.payload || {}, current);
+      const current = storage.normalizeUrlRules(
+        cloneJson(Array.isArray(data[URL_RULES_KEY]) ? data[URL_RULES_KEY] : [])
+      );
+      const payload = cloneJson(message.payload || {});
+      const next = storage.normalizeUrlRules(op(payload, current));
       if (next !== current) await chrome.storage.local.set({ [URL_RULES_KEY]: next });
       sendResponse({ ok: true, rules: next });
     } catch (error) {

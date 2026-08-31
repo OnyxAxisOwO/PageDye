@@ -321,19 +321,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       customEffectsTitle: "Custom Effects",
       customEffectsHint: "Write your own animated Canvas wallpaper and use it on any site. Custom Canvas code executes JavaScript, so only import effects from sources you trust. Extension only - not available in PageDye Lite.",
       newCustomEffect: "New Custom Effect",
-      newCustomEffectAi: "Generate with AI",
       importEffectBtn: "Import",
       thEffectName: "Name",
       thEffectUpdated: "Updated",
       noCustomEffects: "No custom effects yet.",
       backToCustomEffects: "Back to Custom Effects",
-      customEffectTypeLabel: "Effect Type",
-      customEffectTypeCode: "Canvas Code",
-      customEffectTypeUrl: "Website URL",
-      effectUrlLabel: "Website URL",
-      effectUrlHint: "Embed an HTTPS website in a sandboxed iframe background (HTTP is allowed only for localhost). Some websites may block embedding via X-Frame-Options/CSP.",
-      customEffectInteractive: "Allow background interaction (clicks/scrolls)",
-      customEffectInteractiveHint: "Note: Because the background is layered behind the webpage, you need to hold the **Alt** key on your keyboard to bring the background to the front and click/interact with it.",
       effectNameLabel: "Name",
       startFromTemplate: "Start from template",
       templateBlank: "Blank skeleton",
@@ -695,19 +687,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       customEffectsTitle: "自定义动效",
       customEffectsHint: "编写你自己的 Canvas 动态壁纸并在任意网站使用。Canvas 代码会执行 JavaScript，请只导入可信来源的动效。仅浏览器扩展版支持——PageDye Lite 暂不支持。",
       newCustomEffect: "新建自定义动效",
-      newCustomEffectAi: "AI 生成",
       importEffectBtn: "导入",
       thEffectName: "名称",
       thEffectUpdated: "更新时间",
       noCustomEffects: "还没有自定义动效。",
       backToCustomEffects: "返回自定义动效",
-      customEffectTypeLabel: "动效类型",
-      customEffectTypeCode: "Canvas 代码",
-      customEffectTypeUrl: "网站 URL",
-      effectUrlLabel: "网站 URL",
-      effectUrlHint: "通过沙箱 iframe 将 HTTPS 网站嵌入为背景（HTTP 仅允许本机地址）。部分网站可能通过 X-Frame-Options/CSP 阻止嵌入。",
-      customEffectInteractive: "允许与背景交互（点击/滚动）",
-      customEffectInteractiveHint: "注意：由于背景层铺在网页底层，您需要在网页上按住 **Alt** 键即可临时将背景置顶并与其交互（点击/滚动）。",
       effectNameLabel: "名称",
       startFromTemplate: "起始模板",
       templateBlank: "空白骨架",
@@ -1063,7 +1047,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     customEffectsListBody: document.getElementById('custom-effects-list-body'),
     noCustomEffectsMsg: document.getElementById('no-custom-effects-msg'),
     newCustomEffectBtn: document.getElementById('new-custom-effect-btn'),
-    aiCustomEffectBtn: document.getElementById('ai-custom-effect-btn'),
     importCustomEffectBtn: document.getElementById('import-custom-effect-btn'),
     importEffectFile: document.getElementById('import-effect-file'),
     editCustomEffectBackBtn: document.getElementById('edit-effect-back-btn'),
@@ -1778,7 +1761,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.sitesListBody.innerHTML = '';
     const data = await chrome.storage.local.get(null);
 
-    els.sitesListBody.appendChild(buildDefaultBgRow(data[DEFAULT_BG_KEY] || null));
+    els.sitesListBody.appendChild(buildDefaultBgRow(
+      window.PageDyeStorage.normalizeSiteSettings(data[DEFAULT_BG_KEY])
+    ));
 
     // Filter out potential non-domain configuration keys
     const domains = Object.keys(data).filter((key) => window.PageDyeStorage.isSiteSettingsKey(key, data[key]));
@@ -1793,7 +1778,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Sort domain keys alphabetically
     domains.sort().forEach(domain => {
-      const settings = data[domain];
+      const settings = window.PageDyeStorage.normalizeSiteSettings(data[domain]);
+      if (!settings) return;
       const tr = document.createElement('tr');
       tr.dataset.domain = domain.toLowerCase();
 
@@ -2043,7 +2029,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function loadCustomEffectsList() {
     els.customEffectsListBody.innerHTML = '';
     const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
-    const list = (data[CUSTOM_EFFECTS_KEY] || []).slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    const list = window.PageDyeStorage.normalizeCustomEffects(data[CUSTOM_EFFECTS_KEY])
+      .slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
     setTabCount('count-effects', list.length);
 
     if (list.length === 0) {
@@ -2060,18 +2047,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const tdName = document.createElement('td');
       tdName.textContent = entry.name || t('untitledEffect');
-      if (entry.type === 'url') {
-        const badge = document.createElement('span');
-        badge.className = 'bg-type-badge';
-        badge.style.marginLeft = '8px';
-        badge.style.fontSize = '10px';
-        badge.style.padding = '2px 6px';
-        badge.style.borderRadius = '4px';
-        badge.style.background = 'rgba(99, 102, 241, 0.12)';
-        badge.style.color = '#4f46e5';
-        badge.textContent = 'URL';
-        tdName.appendChild(badge);
-      }
       tr.appendChild(tdName);
 
       const tdUpdated = document.createElement('td');
@@ -2105,7 +2080,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       deleteBtn.addEventListener('click', async () => {
         if (!(await showConfirm(t('confirmDeleteEffect').replace('{name}', entry.name || t('untitledEffect'))))) return;
         const freshData = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
-        const freshList = (freshData[CUSTOM_EFFECTS_KEY] || []).filter((e) => e.id !== entry.id);
+        const freshList = window.PageDyeStorage.normalizeCustomEffects(freshData[CUSTOM_EFFECTS_KEY])
+          .filter((e) => e.id !== entry.id);
         await chrome.storage.local.set({ [CUSTOM_EFFECTS_KEY]: freshList });
         await loadCustomEffectsList();
       });
@@ -2122,13 +2098,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // production startEffect() path does (that fallback is right for a real
   // site background, but would be confusing here: "why does my broken code
   // look fine?").
-  function configureCustomUrlPreviewIframe(iframe) {
-    iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-pointer-lock');
-    iframe.setAttribute('referrerpolicy', 'no-referrer');
-    iframe.setAttribute('allow', '');
-    iframe.setAttribute('title', 'Custom URL effect preview');
-  }
-
   function showCustomEffectPreviewError(error) {
     els.editCustomEffectError.textContent = error && error.message ? error.message : String(error);
     els.editCustomEffectError.classList.remove('hidden');
@@ -2143,20 +2112,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.PageDyeEffects.stopEffect();
       const canvas = els.editCustomEffectPreviewCanvas;
       const iframe = document.getElementById('edit-custom-effect-preview-iframe');
-      const type = document.querySelector('input[name="edit-custom-effect-type"]:checked').value;
-
-      if (type === 'url') {
-        window.PageDyeCustomSandbox.release(iframe);
-        configureCustomUrlPreviewIframe(iframe);
-        canvas.style.display = 'none';
-        iframe.style.display = 'block';
-        iframe.style.pointerEvents = document.getElementById('edit-custom-effect-interactive').checked ? 'auto' : 'none';
-        const targetUrl = window.PageDyeStorage.normalizeEffectUrl(document.getElementById('edit-custom-effect-url').value.trim());
-        iframe.src = targetUrl || 'about:blank';
-        els.editCustomEffectError.classList.add('hidden');
-        return;
-      }
-
       const code = els.editCustomEffectCode.value;
       canvas.style.display = 'none';
       if (!code.trim()) {
@@ -2194,12 +2149,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     els.editCustomEffectHeading.textContent = t('newCustomEffect');
     els.editCustomEffectName.value = '';
 
-    document.querySelector('input[name="edit-custom-effect-type"][value="code"]').checked = true;
     document.getElementById('edit-custom-effect-code-control').classList.remove('hidden');
-    document.getElementById('edit-custom-effect-url-control').classList.add('hidden');
-    document.getElementById('edit-custom-effect-url').value = '';
-    document.getElementById('edit-custom-effect-interactive').checked = false;
-    setAccordionOpen(document.getElementById('edit-accordion-custom-effect-advanced'), false, false);
 
     els.editCustomEffectTemplateControl.classList.remove('hidden');
     els.editCustomEffectTemplate.value = 'blank';
@@ -2216,32 +2166,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function openEditCustomEffect(id) {
     const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
-    const entry = (data[CUSTOM_EFFECTS_KEY] || []).find((e) => e.id === id);
+    const entry = window.PageDyeStorage.normalizeCustomEffects(data[CUSTOM_EFFECTS_KEY]).find((e) => e.id === id);
     if (!entry) return;
 
     currentEditingEffectId = id;
     els.editCustomEffectHeading.textContent = entry.name || t('untitledEffect');
     els.editCustomEffectName.value = entry.name || '';
 
-    const type = entry.type || 'code';
-    document.querySelector(`input[name="edit-custom-effect-type"][value="${type}"]`).checked = true;
-
-    const codeControl = document.getElementById('edit-custom-effect-code-control');
-    const urlControl = document.getElementById('edit-custom-effect-url-control');
-    const urlInput = document.getElementById('edit-custom-effect-url');
-
-    if (type === 'url') {
-      codeControl.classList.add('hidden');
-      urlControl.classList.remove('hidden');
-      urlInput.value = entry.url || '';
-    } else {
-      codeControl.classList.remove('hidden');
-      urlControl.classList.add('hidden');
-      urlInput.value = '';
-    }
-
-    document.getElementById('edit-custom-effect-interactive').checked = !!entry.interactive;
-    setAccordionOpen(document.getElementById('edit-accordion-custom-effect-advanced'), !!entry.interactive, false);
+    document.getElementById('edit-custom-effect-code-control').classList.remove('hidden');
 
     els.editCustomEffectTemplateControl.classList.add('hidden');
     els.editCustomEffectCode.value = entry.code || '';
@@ -2269,42 +2201,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function saveCustomEffect() {
     const name = (els.editCustomEffectName.value.trim() || t('untitledEffect')).slice(0, window.PageDyeStorage.MAX_EFFECT_NAME_CHARS);
-    const type = document.querySelector('input[name="edit-custom-effect-type"]:checked').value;
-    let code = '';
-    let url = '';
-    const interactive = document.getElementById('edit-custom-effect-interactive').checked;
-
-    if (type === 'url') {
-      url = window.PageDyeStorage.normalizeEffectUrl(document.getElementById('edit-custom-effect-url').value);
-      if (!url) {
-        showStatus(lang === 'zh' ? '仅支持 HTTPS URL（本机地址可使用 HTTP）' : 'Only HTTPS URLs are allowed (HTTP is allowed for localhost).');
-        return;
-      }
-    } else {
-      code = els.editCustomEffectCode.value;
-      if (code.length > window.PageDyeStorage.MAX_EFFECT_CODE_CHARS) {
-        showStatus(lang === 'zh' ? '动效代码过大' : 'Effect code is too large.');
-        return;
-      }
-      const validation = await window.PageDyeCustomSandbox.validate(code);
-      if (!validation.ok) {
-        els.editCustomEffectError.textContent = validation.error;
-        els.editCustomEffectError.classList.remove('hidden');
-        return;
-      }
+    const type = 'code';
+    const code = els.editCustomEffectCode.value;
+    if (code.length > window.PageDyeStorage.MAX_EFFECT_CODE_CHARS) {
+      showStatus(lang === 'zh' ? '动效代码过大' : 'Effect code is too large.');
+      return;
     }
-
-    if (type === 'url' && interactive) {
-      const warning = lang === 'zh'
-        ? '交互模式会让嵌入的网站接收你的点击、滚动和键盘操作。iframe 已启用沙箱，但仍应只使用可信 URL。继续保存吗？'
-        : 'Interactive mode lets the embedded site receive clicks, scrolling, and keyboard input. The iframe is sandboxed, but you should still use only trusted URLs. Save it?';
-      if (!(await showConfirm(warning))) return;
+    const validation = await window.PageDyeCustomSandbox.validate(code);
+    if (!validation.ok) {
+      els.editCustomEffectError.textContent = validation.error;
+      els.editCustomEffectError.classList.remove('hidden');
+      return;
     }
 
     const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
     const list = window.PageDyeStorage.normalizeCustomEffects(data[CUSTOM_EFFECTS_KEY]);
     const id = currentEditingEffectId || generateEffectId();
-    const entry = window.PageDyeStorage.normalizeCustomEffect({ id, name, type, code, url, interactive, updatedAt: Date.now() });
+    const entry = window.PageDyeStorage.normalizeCustomEffect({ id, name, type, code, updatedAt: Date.now() });
     if (!entry) {
       showStatus(t('importError'));
       return;
@@ -2329,10 +2242,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const payload = {
       pagedyeCustomEffect: true,
       name: entry.name,
-      type: entry.type || 'code',
-      code: entry.code || '',
-      url: entry.url || '',
-      interactive: !!entry.interactive
+      type: 'code',
+      code: entry.code || ''
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -2358,10 +2269,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const normalized = window.PageDyeStorage.normalizeCustomEffect({
           id: generateEffectId(),
           name: parsed.name || t('untitledEffect'),
-          type: parsed.type,
+          type: 'code',
           code: parsed.code,
-          url: parsed.url,
-          interactive: parsed.interactive,
           updatedAt: Date.now()
         }, { fallbackName: t('untitledEffect') });
         if (!normalized) throw new Error('Invalid custom effect payload.');
@@ -2406,7 +2315,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (existingGroup) existingGroup.remove();
 
     const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
-    const list = data[CUSTOM_EFFECTS_KEY] || [];
+    const list = window.PageDyeStorage.normalizeCustomEffects(data[CUSTOM_EFFECTS_KEY]);
     if (list.length > 0) {
       const group = document.createElement('optgroup');
       group.setAttribute('data-custom-effects', '');
@@ -3261,7 +3170,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const data = rule ? null : await chrome.storage.local.get(domain);
-    currentEditSettings = (rule ? rule.settings : data[domain]) || {
+    currentEditSettings = (rule ? rule.settings : window.PageDyeStorage.normalizeSiteSettings(data[domain])) || {
       mode: 'single',
       type: 'none',
       value: '',
@@ -3837,6 +3746,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function saveEditSettings(silent = true) {
     if (!currentEditSettings) return;
     collectEditSettings();
+    const normalized = window.PageDyeStorage.normalizeSiteSettings(currentEditSettings);
+    if (!normalized) {
+      els.editStatusText.textContent = t('error');
+      return;
+    }
+    currentEditSettings = normalized;
 
     try {
       if (currentEditingRuleId) {
@@ -4569,7 +4484,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Custom Effects
   els.newCustomEffectBtn.addEventListener('click', openNewCustomEffect);
-  els.aiCustomEffectBtn.addEventListener('click', () => navigateToSection('section-ai-chat'));
   els.editCustomEffectBackBtn.addEventListener('click', closeCustomEffectEditor);
   els.editCustomEffectSaveBtn.addEventListener('click', saveCustomEffect);
 
@@ -4583,34 +4497,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   els.editCustomEffectCode.addEventListener('input', updateCustomEffectPreview);
 
-  document.getElementsByName('edit-custom-effect-type').forEach((radio) => {
-    radio.addEventListener('change', () => {
-      const type = radio.value;
-      const codeControl = document.getElementById('edit-custom-effect-code-control');
-      const urlControl = document.getElementById('edit-custom-effect-url-control');
-      if (type === 'url') {
-        codeControl.classList.add('hidden');
-        urlControl.classList.remove('hidden');
-        els.editCustomEffectTemplateControl.classList.add('hidden');
-      } else {
-        codeControl.classList.remove('hidden');
-        urlControl.classList.add('hidden');
-        if (!currentEditingEffectId) {
-          els.editCustomEffectTemplateControl.classList.remove('hidden');
-        }
-      }
-      updateCustomEffectPreview();
-    });
-  });
-
-  document.getElementById('edit-custom-effect-url').addEventListener('input', updateCustomEffectPreview);
-
   els.editCustomEffectDeleteBtn.addEventListener('click', async () => {
     if (!currentEditingEffectId) return;
     const name = els.editCustomEffectName.value.trim() || t('untitledEffect');
     if (!(await showConfirm(t('confirmDeleteEffect').replace('{name}', name)))) return;
     const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
-    const list = (data[CUSTOM_EFFECTS_KEY] || []).filter((e) => e.id !== currentEditingEffectId);
+    const list = window.PageDyeStorage.normalizeCustomEffects(data[CUSTOM_EFFECTS_KEY])
+      .filter((e) => e.id !== currentEditingEffectId);
     await chrome.storage.local.set({ [CUSTOM_EFFECTS_KEY]: list });
     closeCustomEffectEditor();
   });

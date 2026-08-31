@@ -190,13 +190,13 @@ test('a storage lookup failure costs the model one picture, not the whole turn',
   assert.equal(response.ok, true, response.error);
 });
 
-// Regression: the AI workspace can be asked for a brand-new custom effect (or
-// a PageDye preference change) with no matching browser tab open at all —
+// Regression: the AI workspace can be asked for a PageDye preference change
+// with no matching browser tab open at all —
 // neither a tabId nor a replayed profile. This used to dead-end in a
 // client-side "open the page you want a theme for" error before the request
 // was even sent, which blocked a request that never needed a page in the
 // first place.
-test('a turn with no page open still gets an answer instead of a hard error', async () => {
+test('a turn with no page open still gets an answer and ignores executable effects', async () => {
   const store = { [AI_CONFIG_KEY]: { provider: 'anthropic', apiKey: 'test-key', model: 'claude-opus-5' } };
   const { chrome, listeners, bind } = chromeMock(store);
   const capture = {};
@@ -218,8 +218,8 @@ test('a turn with no page open still gets an answer instead of a hard error', as
 
   assert.equal(response.ok, true, response.error);
   assert.equal(response.settings, null, 'no page means no theme settings, even if the model returned a theme');
-  assert.equal(response.customEffectChanged, true);
-  assert.equal(response.customEffect.name, 'Breathing Dot');
+  assert.equal(response.customEffectChanged, undefined);
+  assert.equal(response.customEffect, undefined);
 
   // The model was told plainly that no page is open, not silently handed a
   // profile block containing the literal text "null".

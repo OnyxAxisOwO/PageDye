@@ -2043,7 +2043,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (existingGroup) existingGroup.remove();
 
     const data = await chrome.storage.local.get(CUSTOM_EFFECTS_KEY);
-    const list = data[CUSTOM_EFFECTS_KEY] || [];
+    const list = window.PageDyeStorage.normalizeCustomEffects(data[CUSTOM_EFFECTS_KEY]);
     if (list.length > 0) {
       const group = document.createElement('optgroup');
       group.setAttribute('data-custom-effects', '');
@@ -2327,7 +2327,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function loadSettings(domain) {
     const data = await chrome.storage.local.get([domain, DEFAULT_BG_KEY, URL_RULES_KEY]);
     const isSiteTarget = domain === siteDomain;
-    let ownEntry = data[domain];
+    let ownEntry = window.PageDyeStorage.normalizeSiteSettings(data[domain]);
     activeRuleId = null;
     activeRulePattern = '';
     pageExcluded = false;
@@ -2347,7 +2347,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Editing "this site" with no override of its own falls back to the
     // global default — the form should show what the page actually
     // renders right now, not a misleading blank slate.
-    const fallbackDefault = isSiteTarget && !pageExcluded ? data[DEFAULT_BG_KEY] : null;
+    const fallbackDefault = isSiteTarget && !pageExcluded
+      ? window.PageDyeStorage.normalizeSiteSettings(data[DEFAULT_BG_KEY])
+      : null;
     currentSettings = ownEntry || fallbackDefault || {
       mode: 'single',
       type: 'none',
@@ -3481,9 +3483,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function saveSettingsToCurrentTarget(settings) {
+    // Runtime messages are structured-cloned in a real browser. JSON round
+    // tripping here also keeps the boundary correct in test harnesses and
+    // makes sure no foreign object/prototype travels into the storage schema.
+    let storageCandidate = settings;
+    try { storageCandidate = JSON.parse(JSON.stringify(settings)); } catch (_) {}
+    const normalizedSettings = window.PageDyeStorage.normalizeSiteSettings(storageCandidate);
+    if (!normalizedSettings) throw new Error('Unable to save invalid PageDye settings.');
+    settings = normalizedSettings;
+
     if (currentDomain === DEFAULT_BG_KEY) {
       await chrome.storage.local.set({ [DEFAULT_BG_KEY]: settings });
-      return;
+      return settings;
     }
     // Rule-array mutations route through the background service worker's
     // serialized write queue (see scripts/background.js) instead of doing our
@@ -3492,7 +3503,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // silently clobber this one (or be clobbered by it).
     if (activeRuleId) {
       const rules = await window.PageDyeRulesClient.setRuleSettings(activeRuleId, settings);
-      if (rules.some((rule) => rule && rule.id === activeRuleId)) return;
+      if (rules.some((rule) => rule && rule.id === activeRuleId)) return settings;
       activeRuleId = null;
     }
     if (pageExcluded) {
@@ -3510,9 +3521,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       activeRulePattern = pattern;
       pageExcluded = false;
       updateTargetHint();
-      return;
+      return settings;
     }
     await chrome.storage.local.set({ [siteDomain]: settings });
+    return settings;
   }
 
   function currentStorageTarget() {
@@ -3581,6 +3593,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       variant: 'popup',
       lang,
       autoPreview: true,
+      ensureAiDataConsent: () => window.PageDyeDataConsent
+        ? window.PageDyeDataConsent.ensureForAi()
+        : true,
       resolveTarget: async () => {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab || !tab.url) return null;
@@ -3793,8 +3808,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // content script isn't reachable. The picker applies the result immediately
   // via the content script's storage listener — no popup reopen needed.
   async function startPicker() {
-    const settings = collectSettings();
-    await saveSettingsToCurrentTarget(settings);
+    const settings = await saveSettingsToCurrentTarget(collectSettings());
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
     try {
@@ -3902,8 +3916,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // entry keeps its own selector, so picking a new element never overwrites
   // any other entry's.
   async function startFrostedPicker(index) {
-    const settings = collectSettings();
-    await saveSettingsToCurrentTarget(settings);
+    const settings = await saveSettingsToCurrentTarget(collectSettings());
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
     try {
@@ -3924,8 +3937,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Same flow as startPicker(), but writes the picked selector into
   // deepCompatExclude selector list.
   async function startDeepCompatPicker() {
-    const settings = collectSettings();
-    await saveSettingsToCurrentTarget(settings);
+    const settings = await saveSettingsToCurrentTarget(collectSettings());
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
     try {
