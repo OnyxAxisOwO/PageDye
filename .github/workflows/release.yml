@@ -56,7 +56,7 @@ jobs:
           FIREFOX_DIR="release-firefox"
           EDGE_ZIP="pagedye-edge-${VERSION}.zip"
           FIREFOX_ZIP="pagedye-firefox-${VERSION}.zip"
-          FILES="popup options scripts sandbox icons lib"
+          FILES="popup options scripts sandbox icons lib _locales"
           [ -d images ] && FILES="$FILES images"
 
           mkdir "$EDGE_DIR" "$FIREFOX_DIR"

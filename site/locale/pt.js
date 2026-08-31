@@ -1,7 +1,7 @@
 window.PAGEDYE_I18N_MESSAGES['pt'] = {
   "lang": { "label": "Idioma", "zh": "中文（简体）", "en": "English", "ja": "日本語", "ko": "한국어", "de": "Deutsch", "fr": "Français", "es": "Español", "pt": "Português", "it": "Italiano", "ru": "Русский" },
   "meta": { "title": "PageDye — Altere o fundo de qualquer site", "description": "Defina um fundo personalizado em qualquer site: cor sólida, gradiente, imagem ou papel de parede animado, salvo por site, totalmente local, sem rastreamento. Suporta a extensão do Chrome/Edge/Firefox e o userscript PageDye Lite (Safari/móvel/tablet)." },
-  "global": { "downloadExtension": "Baixar extensão", "downloadLite": "Instalar PageDye Lite (móvel / tablet)", "viewInstall": "Ver instalação", "switchLanguage": "Idioma", "new": "Novo", "version": "v1.0.2" },
+  "global": { "downloadExtension": "Baixar extensão", "downloadLite": "Instalar PageDye Lite (móvel / tablet)", "viewInstall": "Ver instalação", "switchLanguage": "Idioma", "new": "Novo", "version": "v1.0.3" },
   "nav": { "home": "Voltar para home" },
   "index": {
     "heroTitle": "Defina um fundo personalizado em qualquer site: cor sólida, gradiente, imagem ou papel de parede animado. Salvo por site, totalmente local, sem rastreamento, sem requisições de rede.",

@@ -23,7 +23,7 @@ window.PAGEDYE_I18N_MESSAGES['ko'] = {
       "viewInstall": "설치 방법 보기",
       "switchLanguage": "언어",
       "new": "새",
-      "version": "v1.0.2"
+      "version": "v1.0.3"
     },
     "nav": {
       "home": "홈으로 돌아가기"

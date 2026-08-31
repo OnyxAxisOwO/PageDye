@@ -1,7 +1,7 @@
 window.PAGEDYE_I18N_MESSAGES['fr'] = {
   "lang": { "label": "Langue", "zh": "中文（简体）", "en": "English", "ja": "日本語", "ko": "한국어", "de": "Deutsch", "fr": "Français", "es": "Español", "pt": "Português", "it": "Italiano", "ru": "Русский" },
   "meta": { "title": "PageDye — Modifier l'arrière-plan de n'importe quel site", "description": "Personnalisez l'arrière-plan de n'importe quel site Web : couleur unie, dégradé, image ou fond d'écran animé, enregistré par site, entièrement local, sans suivi. Compatible avec l'extension Chrome / Edge / Firefox et le userscript PageDye Lite (Safari / mobile / tablette)." },
-  "global": { "downloadExtension": "Télécharger l'extension", "downloadLite": "Installer PageDye Lite (mobile / tablette)", "viewInstall": "Voir l'installation", "switchLanguage": "Langue", "new": "Nouveau", "version": "v1.0.2" },
+  "global": { "downloadExtension": "Télécharger l'extension", "downloadLite": "Installer PageDye Lite (mobile / tablette)", "viewInstall": "Voir l'installation", "switchLanguage": "Langue", "new": "Nouveau", "version": "v1.0.3" },
   "nav": { "home": "Retour à l'accueil" },
   "index": {
     "heroTitle": "Personnalisez l'arrière-plan de n'importe quel site Web : couleur unie, dégradé, image ou fond animé. Enregistré par site, entièrement local, sans suivi, sans requêtes réseau.",

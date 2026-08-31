@@ -22,7 +22,7 @@ window.PAGEDYE_I18N_MESSAGES['it'] = {
     "viewInstall": "Guarda istruzioni di installazione",
     "switchLanguage": "Lingua",
     "new": "Nuovo",
-    "version": "v1.0.2"
+    "version": "v1.0.3"
   },
   "nav": { "home": "Torna alla home" },
   "index": {

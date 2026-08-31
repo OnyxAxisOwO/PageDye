@@ -22,7 +22,7 @@ window.PAGEDYE_I18N_MESSAGES['ru'] = {
     "viewInstall": "Посмотреть способ установки",
     "switchLanguage": "Язык",
     "new": "Новое",
-    "version": "v1.0.2"
+    "version": "v1.0.3"
   },
   "nav": {
     "home": "На главную"

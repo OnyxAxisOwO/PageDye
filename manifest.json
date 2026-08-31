@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "PageDye - Custom Website Backgrounds",
-  "version": "1.0.2",
-  "description": "Customize the background of any website with images or colors.",
+  "name": "__MSG_extensionName__",
+  "default_locale": "en",
+  "version": "1.0.3",
+  "description": "__MSG_extensionDescription__",
   "permissions": [
     "storage",
     "unlimitedStorage",
@@ -13,7 +14,7 @@
   ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "PageDye Settings",
+    "default_title": "__MSG_actionTitle__",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

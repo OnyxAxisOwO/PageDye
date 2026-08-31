@@ -23,7 +23,7 @@ window.PAGEDYE_I18N_MESSAGES['de'] = {
     viewInstall: "Installationsweise anzeigen",
     switchLanguage: "Sprache",
     new: "Neu",
-    version: "v1.0.2"
+    version: "v1.0.3"
   },
   nav: {
     home: "Zurück zur Startseite"

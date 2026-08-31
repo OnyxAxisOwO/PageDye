@@ -1,0 +1,5 @@
+{
+  "extensionName": { "message": "PageDye - 自定义网站背景" },
+  "extensionDescription": { "message": "使用颜色、渐变、图片、视频、动态效果和页面规则自定义网站背景，并可选择使用 AI 辅助生成主题。" },
+  "actionTitle": { "message": "打开 PageDye" }
+}

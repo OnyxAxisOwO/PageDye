@@ -22,7 +22,7 @@ window.PAGEDYE_I18N_MESSAGES['ja'] = {
     "viewInstall": "インストール方法を表示",
     "switchLanguage": "言語",
     "new": "新規",
-    "version": "v1.0.2"
+    "version": "v1.0.3"
   },
   "nav": {
     "home": "ホームへ戻る"

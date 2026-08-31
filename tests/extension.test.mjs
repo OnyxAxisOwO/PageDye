@@ -991,4 +991,5 @@ test('image and backup limits reject oversize data instead of truncating it', ()
 
 test('release package includes sandbox resources', () => {
   assert.match(read('.github/workflows/release.yml'), /FILES="[^"]*\bsandbox\b[^"]*"/);
+  assert.match(read('.github/workflows/release.yml'), /FILES="[^"]*\b_locales\b[^"]*"/);
 });
