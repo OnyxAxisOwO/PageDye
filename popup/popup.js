@@ -1252,6 +1252,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Init
   const interfaceData = await chrome.storage.local.get([UI_THEME_KEY]);
+  if (window.PageDyeLocale && window.PageDyeLocale.ready) await window.PageDyeLocale.ready;
   currentUiTheme = normalizeUiTheme(interfaceData[UI_THEME_KEY]);
   applyUiTheme(currentUiTheme);
   initI18n();
@@ -1989,11 +1990,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Functions
   function initI18n() {
     const browserLang = navigator.language || navigator.userLanguage; 
-    if (browserLang.toLowerCase().startsWith('zh')) {
-      lang = 'zh';
-    } else {
-      lang = 'en';
-    }
+    lang = window.PageDyeLocale ? window.PageDyeLocale.applyDocumentLanguage(browserLang) : (browserLang.toLowerCase().startsWith('zh') ? 'zh' : 'en');
     
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');
@@ -2027,7 +2024,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Precedence matches options.js's copy of this function: the primary
     // i18n[lang] table wins if it has the key at all, zhFallback only fills
     // gaps the primary table doesn't cover, i18n.en is the last resort.
-    if (i18n[lang][key]) return i18n[lang][key];
+    const localeValue = window.PageDyeLocale && window.PageDyeLocale.translations(lang)[key];
+    if (localeValue) return localeValue;
+    if (i18n[lang] && i18n[lang][key]) return i18n[lang][key];
     if (lang === 'zh' && zhFallback[key]) return zhFallback[key];
     return i18n.en[key] || key;
   }

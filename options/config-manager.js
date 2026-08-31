@@ -1,11 +1,13 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   'use strict';
 
   const schema = window.PageDyeStorage;
   const presetApi = window.PageDyeConfigPresets;
   if (!schema || !presetApi) return;
 
-  const zh = presetApi.language() === 'zh';
+  if (window.PageDyeLocale && window.PageDyeLocale.ready) await window.PageDyeLocale.ready;
+  const language = window.PageDyeLocale ? window.PageDyeLocale.detect() : presetApi.language();
+  const zh = language === 'zh';
   const messages = {
     en: {
       exportSelected: 'Export selected', importSelected: 'Import selected',
@@ -72,7 +74,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let pendingImport = null;
 
   function text(key, values = {}) {
-    return Object.entries(values).reduce((value, [name, replacement]) => value.replace(`{${name}}`, replacement), messages[key] || key);
+    const localized = window.PageDyeLocale && window.PageDyeLocale.translations(language)[key];
+    const source = localized || messages[key] || key;
+    return Object.entries(values).reduce((value, [name, replacement]) => value.replace(`{${name}}`, replacement), source);
   }
 
   function translate() {

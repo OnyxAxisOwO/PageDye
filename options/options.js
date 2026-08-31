@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  if (window.PageDyeLocale && window.PageDyeLocale.ready) await window.PageDyeLocale.ready;
   const i18n = {
     en: {
       title: "PageDye Settings",
@@ -1369,11 +1370,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function initI18n() {
     const browserLang = navigator.language || navigator.userLanguage; 
-    if (browserLang.toLowerCase().startsWith('zh')) {
-      lang = 'zh';
-    } else {
-      lang = 'en';
-    }
+    lang = window.PageDyeLocale ? window.PageDyeLocale.applyDocumentLanguage(browserLang) : (browserLang.toLowerCase().startsWith('zh') ? 'zh' : 'en');
     
     // Set tab title
     document.title = t('title');
@@ -1427,7 +1424,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       confirmDeleteRule: "删除规则 {pattern}？",
       ruleSaved: "页面规则已保存！"
     };
-    if (i18n[lang][key]) return i18n[lang][key];
+    const localeValue = window.PageDyeLocale && window.PageDyeLocale.translations(lang)[key];
+    if (localeValue) return localeValue;
+    if (i18n[lang] && i18n[lang][key]) return i18n[lang][key];
     if (lang === 'zh' && zhFallback[key]) return zhFallback[key];
     return i18n.en[key] || key;
   }

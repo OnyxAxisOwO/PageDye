@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   'use strict';
 
   const schema = window.PageDyeStorage;
@@ -10,7 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const status = document.getElementById('quick-preset-status');
   if (!schema || !presetApi || !select) return;
 
-  const zh = presetApi.language() === 'zh';
+  if (window.PageDyeLocale && window.PageDyeLocale.ready) await window.PageDyeLocale.ready;
+  const language = window.PageDyeLocale ? window.PageDyeLocale.detect() : presetApi.language();
+  const zh = language === 'zh';
   const copy = zh ? {
     label: '主题', apply: '应用', saveCurrent: '保存', manage: '管理主题',
     customGroup: '我的主题', builtInGroup: '内置主题',
@@ -31,7 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let userPresets = [];
 
   function message(key, values = {}) {
-    return Object.entries(values).reduce((value, [name, replacement]) => value.replace(`{${name}}`, replacement), copy[key] || key);
+    const localized = window.PageDyeLocale && window.PageDyeLocale.translations(language)[key];
+    const source = localized || copy[key] || key;
+    return Object.entries(values).reduce((value, [name, replacement]) => value.replace(`{${name}}`, replacement), source);
   }
 
   function translate() {
