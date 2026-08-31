@@ -5,11 +5,17 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
+const firefoxManifest = JSON.parse(readFileSync(join(root, 'manifest.firefox.json'), 'utf8'));
 const failures = [];
 
 if (manifest.manifest_version === 3 && manifest.background && typeof manifest.background.service_worker !== 'string') {
   failures.push('Manifest V3 background.service_worker must be a file path string');
 }
+if (manifest.background?.scripts) failures.push('Edge manifest must not contain background.scripts');
+if (!Array.isArray(firefoxManifest.background?.scripts) || firefoxManifest.background.scripts.length === 0) {
+  failures.push('Firefox manifest must contain background.scripts');
+}
+if (firefoxManifest.background?.service_worker) failures.push('Firefox manifest must not contain background.service_worker');
 
 function walk(dir) {
   const files = [];
@@ -27,17 +33,20 @@ for (const file of walk(root).filter((file) => ['.js', '.mjs'].includes(extname(
   if (result.status !== 0) failures.push(`Syntax error in ${relative(root, file)}:\n${result.stderr}`);
 }
 
-const manifestAssets = [
-  manifest.action?.default_popup,
-  manifest.options_ui?.page,
-  manifest.background?.service_worker,
-  ...(manifest.background?.scripts || []),
-  ...(manifest.sandbox?.pages || []),
-  ...manifest.content_scripts.flatMap((entry) => entry.js || []),
-  ...(manifest.web_accessible_resources || []).flatMap((entry) => entry.resources || []),
-  ...Object.values(manifest.action?.default_icon || {}),
-  ...Object.values(manifest.icons || {})
-].filter(Boolean);
+function assetsFor(source) {
+  return [
+    source.action?.default_popup,
+    source.options_ui?.page,
+    source.background?.service_worker,
+    ...(source.background?.scripts || []),
+    ...(source.sandbox?.pages || []),
+    ...(source.content_scripts || []).flatMap((entry) => entry.js || []),
+    ...(source.web_accessible_resources || []).flatMap((entry) => entry.resources || []),
+    ...Object.values(source.action?.default_icon || {}),
+    ...Object.values(source.icons || {})
+  ].filter(Boolean);
+}
+const manifestAssets = [...new Set([...assetsFor(manifest), ...assetsFor(firefoxManifest)])];
 for (const asset of manifestAssets) {
   const path = join(root, asset);
   try {
@@ -85,6 +94,7 @@ for (const size of [16, 48, 128]) {
 
 const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 if (packageJson.version !== manifest.version) failures.push('package.json and manifest.json versions differ');
+if (firefoxManifest.version !== manifest.version) failures.push('Edge and Firefox manifest versions differ');
 const versionTargets = ['popup/popup.html', 'options/options.html', 'site/index.html', 'userscript/pagedye.user.js'];
 for (const target of versionTargets) {
   if (!readFileSync(join(root, target), 'utf8').includes(manifest.version)) failures.push(`${target} does not contain ${manifest.version}`);

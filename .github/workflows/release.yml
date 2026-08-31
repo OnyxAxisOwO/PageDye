@@ -52,11 +52,23 @@ jobs:
         id: package
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          ZIP="pagedye-${VERSION}.zip"
-          FILES="manifest.json popup options scripts sandbox icons lib"
+          EDGE_DIR="release-edge"
+          FIREFOX_DIR="release-firefox"
+          EDGE_ZIP="pagedye-edge-${VERSION}.zip"
+          FIREFOX_ZIP="pagedye-firefox-${VERSION}.zip"
+          FILES="popup options scripts sandbox icons lib"
           [ -d images ] && FILES="$FILES images"
-          zip -r "$ZIP" $FILES
-          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+
+          mkdir "$EDGE_DIR" "$FIREFOX_DIR"
+          cp -r $FILES "$EDGE_DIR/"
+          cp -r $FILES "$FIREFOX_DIR/"
+          cp manifest.json "$EDGE_DIR/manifest.json"
+          cp manifest.firefox.json "$FIREFOX_DIR/manifest.json"
+
+          (cd "$EDGE_DIR" && zip -r "../$EDGE_ZIP" .)
+          (cd "$FIREFOX_DIR" && zip -r "../$FIREFOX_ZIP" .)
+          echo "edge_zip=$EDGE_ZIP" >> "$GITHUB_OUTPUT"
+          echo "firefox_zip=$FIREFOX_ZIP" >> "$GITHUB_OUTPUT"
 
           USERSCRIPT="pagedye-lite-${VERSION}.user.js"
           cp userscript/pagedye.user.js "$USERSCRIPT"
@@ -92,5 +104,6 @@ jobs:
           name: PageDye ${{ steps.version.outputs.version }}
           body_path: release_notes.md
           files: |
-            ${{ steps.package.outputs.zip }}
+            ${{ steps.package.outputs.edge_zip }}
+            ${{ steps.package.outputs.firefox_zip }}
             ${{ steps.package.outputs.userscript }}

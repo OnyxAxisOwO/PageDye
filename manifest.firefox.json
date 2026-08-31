@@ -3,6 +3,24 @@
   "name": "PageDye - Custom Website Backgrounds",
   "version": "1.0.1",
   "description": "Customize the background of any website with images or colors.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "pagedye@onyxaxisowo.github.io",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [],
+        "optional": [
+          "browsingActivity",
+          "websiteContent",
+          "personalCommunications",
+          "technicalAndInteraction"
+        ]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  },
   "permissions": [
     "storage",
     "unlimitedStorage",
@@ -46,7 +64,11 @@
     }
   ],
   "background": {
-    "service_worker": "scripts/background.js"
+    "scripts": [
+      "scripts/ai-theme.js",
+      "scripts/storage-schema.js",
+      "scripts/background.js"
+    ]
   },
   "sandbox": {
     "pages": [

@@ -21,20 +21,29 @@ function pngDimensions(file) {
 
 test('manifest has valid required extension assets', () => {
   const manifest = JSON.parse(read('manifest.json'));
+  const firefoxManifest = JSON.parse(read('manifest.firefox.json'));
   assert.equal(manifest.manifest_version, 3);
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
-  assert.deepEqual(manifest.browser_specific_settings.gecko.data_collection_permissions.required, []);
+  assert.equal(manifest.background.service_worker, 'scripts/background.js');
+  assert.equal(manifest.background.scripts, undefined);
+  assert.equal(firefoxManifest.background.service_worker, undefined);
+  assert.deepEqual(firefoxManifest.background.scripts, [
+    'scripts/ai-theme.js', 'scripts/storage-schema.js', 'scripts/background.js'
+  ]);
+  assert.deepEqual(firefoxManifest.browser_specific_settings.gecko.data_collection_permissions.required, []);
   assert.deepEqual(
-    manifest.browser_specific_settings.gecko.data_collection_permissions.optional,
+    firefoxManifest.browser_specific_settings.gecko.data_collection_permissions.optional,
     ['browsingActivity', 'websiteContent', 'personalCommunications', 'technicalAndInteraction']
   );
 
-  const contentScripts = manifest.content_scripts.flatMap((entry) => entry.js || []);
-  const iconAssets = [...Object.values(manifest.action.default_icon || {}), ...Object.values(manifest.icons || {})];
-  const sandboxAssets = manifest.sandbox?.pages || [];
-  const webAssets = (manifest.web_accessible_resources || []).flatMap((entry) => entry.resources || []);
-  for (const asset of [manifest.action.default_popup, manifest.options_ui.page, manifest.background?.service_worker, ...(manifest.background?.scripts || []), ...contentScripts, ...sandboxAssets, ...webAssets, ...iconAssets]) {
-    assert.ok(existsSync(resolve(root, asset)), `missing manifest asset: ${asset}`);
+  for (const source of [manifest, firefoxManifest]) {
+    const contentScripts = source.content_scripts.flatMap((entry) => entry.js || []);
+    const iconAssets = [...Object.values(source.action.default_icon || {}), ...Object.values(source.icons || {})];
+    const sandboxAssets = source.sandbox?.pages || [];
+    const webAssets = (source.web_accessible_resources || []).flatMap((entry) => entry.resources || []);
+    for (const asset of [source.action.default_popup, source.options_ui.page, source.background?.service_worker, ...(source.background?.scripts || []), ...contentScripts, ...sandboxAssets, ...webAssets, ...iconAssets].filter(Boolean)) {
+      assert.ok(existsSync(resolve(root, asset)), `missing manifest asset: ${asset}`);
+    }
   }
 });
 
@@ -153,10 +162,12 @@ test('performance safeguards cancel hidden-page work and retain the temporary sh
 
 test('release versions stay synchronized and Lite defines the time-range icon', () => {
   const manifest = JSON.parse(read('manifest.json'));
+  const firefoxManifest = JSON.parse(read('manifest.firefox.json'));
   const packageJson = JSON.parse(read('package.json'));
   const userscript = read('userscript/pagedye.user.js');
 
   assert.equal(packageJson.version, manifest.version);
+  assert.equal(firefoxManifest.version, manifest.version);
   assert.match(userscript, new RegExp(`^// @version\\s+${manifest.version.replaceAll('.', '\\.')}\\s*$`, 'm'));
   assert.match(userscript, new RegExp(`const VERSION = '${manifest.version.replaceAll('.', '\\.')}';`));
   assert.match(userscript, /clock:\s*'<circle[^']+<polyline/);
@@ -185,6 +196,7 @@ test('Lite mode and time-period controls use responsive layout classes', () => {
 
 test('content injection is complete, idempotent, and tears down replaced runtimes', () => {
   const manifest = JSON.parse(read('manifest.json'));
+  const firefoxManifest = JSON.parse(read('manifest.firefox.json'));
   const eagerScripts = manifest.content_scripts.flatMap((entry) => entry.js || []);
   assert.deepEqual(eagerScripts.slice(0, 6), [
     'scripts/storage-schema.js',
@@ -196,7 +208,7 @@ test('content injection is complete, idempotent, and tears down replaced runtime
   ]);
   assert.ok(!eagerScripts.includes('scripts/debug.js'));
   assert.ok(!eagerScripts.includes('scripts/debug-network.js'));
-  assert.deepEqual(manifest.background.scripts, [
+  assert.deepEqual(firefoxManifest.background.scripts, [
     'scripts/ai-theme.js',
     'scripts/storage-schema.js',
     'scripts/background.js'

@@ -1,3 +1,8 @@
+### 🛠️ v1.0.1 更新日志
+
+- 拆分 Edge 与 Firefox 发布包，修复 Edge 商店拒绝 Manifest V3 `background.scripts` 的问题。
+- Edge 包使用 `background.service_worker`，Firefox 包使用 `background.scripts`。
+
 ### ✨ v1.0.0 更新日志
 
 - 首个正式公开版本，支持 Edge 与 Firefox。
