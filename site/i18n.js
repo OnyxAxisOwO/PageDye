@@ -146,6 +146,8 @@
     buildSwitcherLabels(pack);
 
     localStorage.setItem(STORAGE_KEY, lang);
+
+    window.dispatchEvent(new CustomEvent('pagedye:langchange', { detail: { lang } }));
   }
 
   function initSwitcher() {

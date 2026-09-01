@@ -86,6 +86,65 @@
   </div>
 </section>
 
+<!-- Interactive Screenshots Showcase (Gallery) -->
+<section id="gallery" class="gallery-section">
+  <div class="wrap">
+    <div class="section-head" style="text-align: center;">
+      <h2 data-i18n="index.galleryHeading">真实界面与功能演示</h2>
+      <p class="hint" data-i18n="index.gallerySubtitle">探索 PageDye v1.0 的强大功能与精美界面（点击标签或箭头翻页）</p>
+    </div>
+
+    <!-- Quick Tab Buttons -->
+    <div class="gallery-tabs" id="gallery-tabs" role="tablist">
+      <button type="button" class="gallery-tab-btn active" data-slide="0" data-i18n="index.slide1Tag">AI 主题实验室</button>
+      <button type="button" class="gallery-tab-btn" data-slide="1" data-i18n="index.slide2Tag">多站点独立规则</button>
+      <button type="button" class="gallery-tab-btn" data-slide="2" data-i18n="index.slide3Tag">16 种动态着色器</button>
+      <button type="button" class="gallery-tab-btn" data-slide="3" data-i18n="index.slide4Tag">快捷弹窗调控</button>
+      <button type="button" class="gallery-tab-btn" data-slide="4" data-i18n="index.slide5Tag">磨砂玻璃与滤镜</button>
+      <button type="button" class="gallery-tab-btn" data-slide="5" data-i18n="index.slide6Tag">主题预设与备份</button>
+    </div>
+
+    <!-- Browser Mockup Window -->
+    <div class="gallery-window">
+      <div class="gallery-window-header">
+        <div class="window-dots" aria-hidden="true">
+          <span class="window-dot dot-red"></span>
+          <span class="window-dot dot-yellow"></span>
+          <span class="window-dot dot-green"></span>
+        </div>
+        <div class="window-address-bar" id="gallery-address-bar">pagedye://ai-theme-lab</div>
+      </div>
+
+      <div class="gallery-viewport" id="gallery-viewport">
+        <img id="gallery-img" class="gallery-image" src="assets/screenshots/zh_CN/screenshot-01-ai-theme-lab-1280x800.png" alt="PageDye Screenshot" loading="lazy">
+        <button type="button" class="gallery-nav-btn gallery-nav-prev" id="gallery-prev" aria-label="Previous Slide">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button type="button" class="gallery-nav-btn gallery-nav-next" id="gallery-next" aria-label="Next Slide">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+
+      <div class="gallery-caption-bar">
+        <div class="gallery-caption-content">
+          <span class="gallery-caption-tag" id="gallery-caption-tag" data-i18n="index.slide1Tag">AI 实验室</span>
+          <h3 class="gallery-caption-title" id="gallery-caption-title" data-i18n="index.slide1Title">AI 主题工作台</h3>
+          <p class="gallery-caption-desc" id="gallery-caption-desc" data-i18n="index.slide1Desc">用自然语言直接描述想要的视觉氛围，AI 智能感知当前网页色彩与结构并实时生成主题，支持多轮对话持续微调。</p>
+        </div>
+
+        <div class="gallery-pagination" id="gallery-pagination" role="group" aria-label="Pagination">
+          <button type="button" class="gallery-dot active" data-slide="0" aria-label="Slide 1"></button>
+          <button type="button" class="gallery-dot" data-slide="1" aria-label="Slide 2"></button>
+          <button type="button" class="gallery-dot" data-slide="2" aria-label="Slide 3"></button>
+          <button type="button" class="gallery-dot" data-slide="3" aria-label="Slide 4"></button>
+          <button type="button" class="gallery-dot" data-slide="4" aria-label="Slide 5"></button>
+          <button type="button" class="gallery-dot" data-slide="5" aria-label="Slide 6"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- Three Core Pillars -->
 <section id="pillars">
   <div class="wrap">
@@ -337,5 +396,6 @@
 <script src="locale/it.js"></script>
 <script src="locale/ru.js"></script>
 <script src="i18n.js"></script>
+<script src="gallery.js"></script>
 </body>
 </html>
