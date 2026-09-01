@@ -11,28 +11,28 @@
     },
     {
       file: 'screenshot-02-site-management-1280x800.png',
-      address: 'pagedye://rules-manager',
+      address: 'pagedye://site-manager',
       tagKey: 'index.slide2Tag',
       titleKey: 'index.slide2Title',
       descKey: 'index.slide2Desc'
     },
     {
       file: 'screenshot-03-live-background-1280x800.png',
-      address: 'pagedye://dynamic-shaders',
+      address: 'pagedye://live-preview',
       tagKey: 'index.slide3Tag',
       titleKey: 'index.slide3Title',
       descKey: 'index.slide3Desc'
     },
     {
       file: 'screenshot-04-quick-customization-1280x800.png',
-      address: 'pagedye://popup-editor',
+      address: 'pagedye://quick-customization',
       tagKey: 'index.slide4Tag',
       titleKey: 'index.slide4Title',
       descKey: 'index.slide4Desc'
     },
     {
       file: 'screenshot-05-fine-tuning-1280x800.png',
-      address: 'pagedye://filters-and-frosted',
+      address: 'pagedye://fine-tuning',
       tagKey: 'index.slide5Tag',
       titleKey: 'index.slide5Title',
       descKey: 'index.slide5Desc'
