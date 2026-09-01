@@ -1,161 +1,170 @@
 <p align="center">
-  <img src="icons/icon128.png" width="128" alt="PageDye 图标">
+  <img src="icons/icon128.png" width="112" alt="PageDye Logo">
 </p>
 
 <h1 align="center">PageDye</h1>
 
-<p align="center">给你常用的网站换上真正属于自己的背景。</p>
-
 <p align="center">
-  <a href="https://pagedye.pages.dev">官网</a> ·
-  <a href="https://github.com/OnyxAxisOwO/PageDye/releases/latest">下载最新版</a> ·
-  <a href="CHANGELOG.md">更新日志</a>
+  <strong>Transform almost any website with AI — without writing a single line of code.</strong>
 </p>
 
-PageDye 是一个浏览器扩展，可以把网站背景换成纯色、渐变、图片或动态特效。每个网站的设置单独保存，下次打开时会自动恢复。
+<p align="center">
+  <a href="https://pagedye.pages.dev">Website</a> ·
+  <a href="https://microsoftedge.microsoft.com/addons/detail/jdfkphphagodkilembkklhnepbnnkihh">Edge Add-ons Store</a> ·
+  <a href="https://github.com/OnyxAxisOwO/PageDye/releases/latest">GitHub Releases</a> ·
+  <a href="https://pagedye.pages.dev/privacy.html">Privacy Policy</a> ·
+  <a href="CHANGELOG.md">Changelog</a>
+</p>
 
-它支持 Chrome、Edge、Brave、Firefox 以及 Firefox for Android。手机和平板还可以使用精简版 **PageDye Lite**。
+<p align="center">
+  <strong>English</strong> | <a href="README_zh.md">简体中文</a>
+</p>
 
-## 它能做什么
+---
 
-- 使用纯色、渐变、本地图片、网络图片或 16 种动态特效作为背景
-- 为白天和夜间设置不同背景，并跟随系统主题自动切换
-- 调整图片透明度、模糊度、亮度、对比度、灰度和色相
-- 给网页卡片添加磨砂玻璃效果
-- 保存整套配置为预设，并批量应用到多个网站
-- 按网址、路径或子域名使用不同配置
-- 导出和导入备份，配置和本地图片都可以一起迁移
-- 统计各站点和图片占用，查重、清理未引用图片并批量重新压缩
+## 5-Second Overview
 
-所有配置默认只保存在浏览器本地。PageDye 没有账号、云同步、广告或遥测。唯一会联网的功能是 AI 主题生成，它需要你自己填写 API 密钥，默认关闭。
+Traditionally, personalizing or theming websites meant dealing with arcane CSS rules, brittle DOM selectors, DevTools inspection, or writing complex Tampermonkey userscripts.
 
-## 安装
+**PageDye changes that.**
 
-### 桌面浏览器
+PageDye is an **AI-powered, zero-code website customization browser extension** built for everyone. Whether you want to turn a glaring white documentation site into eye-friendly dark glassmorphism, add animated aurora particle wallpapers to your daily tools, or simply describe your dream style in plain English to AI — PageDye instantly transforms the page while preserving crystal-clear text readability.
 
-1. 从 [GitHub Releases](https://github.com/OnyxAxisOwO/PageDye/releases/latest) 下载最新版 `pagedye-v*.zip`。
-2. 解压下载的文件。
-3. 按浏览器对应的方式加载解压后的文件夹。
+- ❌ **No CSS or JavaScript required**
+- ❌ **No DevTools or DOM debugging needed**
+- ❌ **No need to find separate themes for every single website**
+- ✅ **Natural language prompts + Intuitive visual controls + Universal compatibility**
 
-**Chrome / Edge / Brave**
+---
 
-1. 打开 `chrome://extensions`；Edge 使用 `edge://extensions`。
-2. 开启“开发者模式”。
-3. 点击“加载已解压的扩展程序”，选择刚才解压的文件夹。
+## Visual Transformation: Describe What You Want
 
-**Firefox 140+**
+```
+[ Original Website ]
+  Default stark white / glaring colors / eye strain during night reading
+      ↓
+[ Natural Language AI Prompt ]
+  "Make this page dark glassmorphism with custom aurora gradient, keeping text crystal clear"
+      ↓
+[ Transformed by PageDye ]
+  Sleek Glassmorphism + Dynamic Aurora Shader + Auto-Calibrated Readability Contrast
+```
 
-1. 打开 `about:debugging#/runtime/this-firefox`。
-2. 点击“临时载入附加组件”。
-3. 选择解压目录中的 `manifest.json`。
+---
 
-Firefox 版本目前未经 Mozilla 签名，因此浏览器重启后需要重新载入。Firefox for Android 需要 142 或更高版本。
+## Three Core Pillars
 
-### 手机和平板
+### 🤖 1. AI-Assisted Customization
+- **Context-Aware Intelligence**: Automatically extracts dominant page colors and container layouts, generating cohesive themes that match the site's content.
+- **Multi-Turn Conversational Refinement**: Iterate effortlessly without starting over (e.g., *"Make it darker"*, *"Add a warm retro vibe"*, *"Enhance cyberpunk glowing accents"*).
+- **Hardcoded Readability Guard**: Built-in contrast protection strictly ensures original body copy remains legible against any generated wallpaper.
+- **Multi-Model & Vision Support**: Connect your own Claude, OpenAI, DeepSeek, OpenRouter, or local Ollama endpoints; attach reference images for vision-guided theming.
 
-PageDye Lite 是通过脚本管理器安装的轻量版，适合 Android 和 iPhone/iPad：
+### 🌐 2. One Extension. Almost Any Website.
+- **Universal Compatibility**: One tool works across blogs, documentation sites, developer platforms, and social feeds without needing site-specific extensions.
+- **Smart Compatibility Engine**: Three selectable operational modes (**Standard, Enhanced, Strong**) penetrate stubborn opaque CSS wrappers.
+- **Visual Element Picker**: Click any specific container on the page to target background injection or apply frosted glass locally.
 
-1. Android 上安装 Tampermonkey；iPhone/iPad 上安装 Userscripts。
-2. 打开 [PageDye Lite 安装链接](https://raw.githubusercontent.com/OnyxAxisOwO/PageDye/main/userscript/pagedye.user.js)。
-3. 在脚本管理器的确认页完成安装。
+### ⚡ 3. Zero Code Required
+- **Intuitive Visual Controls**: Adjust colors, gradient angles, glassmorphism blur, and screen filters with smooth visual sliders.
+- **What You See Is What You Get**: Real-time live preview. No knowledge of CSS specificity, selectors, or box models required.
 
-安装后，网页右下角会出现 PageDye 按钮。Chrome 移动版不支持扩展或脚本管理器，建议改用 Edge、Firefox 或其他支持扩展的浏览器。
+---
 
-## 开始使用
+## Feature Matrix
 
-1. 打开想要修改的网站，点击浏览器工具栏中的 PageDye 图标。
-2. 选择纯色、渐变、图片或特效，然后调整透明度和模糊度。
-3. 设置会自动保存，只对当前网站生效。
+| Category | Real Capabilities Available in v1.0 |
+| :--- | :--- |
+| **🎨 Versatile Backgrounds** | Solid colors, linear & radial gradients, local & web high-res wallpapers (Cover, Contain, Tile, Stretch). |
+| **✨ 16 Dynamic Shaders** | Built-in Matrix rain, aurora, particle stars, winter snow, typewriter, waves Canvas wallpapers with speed & density tuning. |
+| **🎬 Local Video Wallpapers** | Set local MP4 / WebM videos as live backgrounds with opacity, blur, fill, and playback controls. |
+| **🧊 Frosted Glass (Glassmorphism)** | Add translucent glassmorphism to target content cards and containers, with independent blur and tint adjustments. |
+| **🎛️ Full-Screen Visual Filters** | Fine-tune brightness, contrast, grayscale, invert, hue-rotate, saturation, and opacity for dark/retro comfort. |
+| **🖱️ Interactive Custom Cursors** | Solid dots, hollow rings, glowing orbs, and custom image cursors with smooth following, trails, and hover interactions. |
+| **⏱️ Day/Night & Time Automation** | Follow system dark/light mode automatically; schedule wallpapers by time of day or rotate via slideshow. |
+| **🎯 Per-URL & Wildcard Rules** | Configure visual profiles by full URL, path prefix, root domain, or wildcard subdomains (`*.example.com`). |
+| **🔒 100% Local & Privacy-First** | All data and images stay in your browser local storage. No accounts, no ads, no telemetry, with full JSON backup import/export. |
 
-弹窗中的预设可以快速应用“浅色极光”“深色极光”“日间”和“夜间”配置。点击保存按钮还能把当前网站的完整设置保存为自己的预设。
+---
 
-## 背景没有变化？
+## Traditional Customization vs PageDye
 
-有些网站会用不透明容器盖住页面背景。通常按下面的顺序处理即可：
+| Dimension | Traditional Method (Stylus / Userscripts / Custom CSS) | PageDye (Visual + AI-Powered) |
+| :--- | :--- | :--- |
+| **Skill Barrier** | Requires proficiency in CSS syntax, DOM selectors, and layout rules | **Zero Barrier**: Natural language prompts or visual sliders |
+| **Debugging Cost** | Requires opening DevTools and inspecting elements manually | **Real-Time Live Preview**: Instant one-click application |
+| **Maintenance** | Fragile styles break whenever websites update their CSS classes | **Smart Compatibility**: Auto-detects layout hierarchy and containers |
+| **Readability** | High risk of illegible text on mismatched backgrounds | **Readability Safety Guard**: Automatic contrast verification |
+| **Dynamic Effects** | Writing custom Canvas shaders or video backgrounds is very difficult | **Out of the Box**: 16 Shaders, local video wallpapers, and custom cursors included |
 
-1. 把弹窗最上方的运行模式从“普通”切换为“增强”。
-2. 仍然无效时尝试“强兼”模式。
-3. 如果只想修改某个区域，在高级设置中使用“背景选择器”，然后点击网页上的目标区域。
+---
 
-运行模式只针对当前网站保存。强兼模式会尝试清除更多遮挡背景，不建议作为所有网站的默认设置。
+## Installation
 
-浏览器内部页面、扩展商店和其他受保护页面不允许扩展修改，这是浏览器本身的安全限制。PageDye 会在这些页面显示禁用状态。
+### Desktop Browsers (Chrome / Edge / Firefox / Brave)
 
-## 完整版和 Lite
+1. **Microsoft Edge (Recommended)**
+   - Install directly from the official [Microsoft Edge Add-ons Store](https://microsoftedge.microsoft.com/addons/detail/jdfkphphagodkilembkklhnepbnnkihh) with one click and automatic silent updates.
 
-| | 浏览器扩展 | PageDye Lite |
-|---|---|---|
-| 适合设备 | 桌面浏览器、Firefox for Android | Android、iPhone、iPad、Safari |
-| 背景与特效 | 完整支持 | 支持常用功能 |
-| 磨砂玻璃与兼容模式 | 支持 | 支持 |
-| 多站点管理与批量操作 | 支持 | 不支持 |
-| 配置预设与备份 | 完整预设、分组与批量备份 | 当前网站导入/导出 |
-| 自定义 Canvas 动效 | 支持 | 不支持 |
+2. **Chrome / Brave / Other Chromium Browsers (Load Unpacked)**
+   - Download the latest `pagedye-v*.zip` from [GitHub Releases](https://github.com/OnyxAxisOwO/PageDye/releases/latest) and extract it.
+   - Navigate to `chrome://extensions` in your address bar and enable **Developer mode** in the top-right corner.
+   - Click **Load unpacked** and select the extracted folder.
 
-## 更多功能
+3. **Firefox (140+)**
+   - Navigate to `about:debugging#/runtime/this-firefox`.
+   - Click **Load Temporary Add-on…** and select `manifest.json` from the extracted folder.
 
-### 配置预设与站点分组
+---
 
-设置页可以保存自定义预设、管理站点分组，并把同一套配置批量应用到多个网站。也可以只导出或导入选中的网站，不必恢复整份备份。
+### Mobile & Tablets: PageDye Lite
 
-### 存储空间管理
+For Android, iPhone, iPad, and Safari users, a lightweight single-file userscript **PageDye Lite** is provided:
 
-设置页会显示浏览器报告的当前存储占用、各站点与来源大小、图片占用和可立即回收空间。本地图片可以按大小排序或筛选重复项；未被当前模式引用的图片字段可以批量清理，已有 PNG、JPEG、WebP 等图片也可以按画质档位重新压缩。导出完整或选中站点备份前会先显示预计文件大小与图片数量。
+1. Install **Tampermonkey** on Android, or **Userscripts** on iOS/iPadOS (free & open source on the App Store).
+2. Open the [PageDye Lite One-Click Install Link](https://raw.githubusercontent.com/OnyxAxisOwO/PageDye/main/userscript/pagedye.user.js).
+3. Confirm the installation in your script manager. A floating control button will appear in the bottom-right corner of any website.
 
-### URL 规则
+---
 
-同一个网站的不同页面可以使用不同背景。例如，可以为首页、阅读页面和设置页面分别配置。规则支持完整网址、路径前缀、hostname 和 `*.example.com` 形式的子域名。
+## Extension vs PageDye Lite
 
-### 自定义动效和 CSS
+| Feature | Browser Extension (Full) | PageDye Lite (Userscript) |
+| :--- | :---: | :---: |
+| **Platforms** | Desktop (Edge/Chrome/Firefox), Firefox for Android | Mobile / Tablet / Safari / Mobile Browsers |
+| **AI Theme Studio** | ✅ Full Support | ❌ |
+| **Backgrounds & Slideshows** | ✅ Full Support | ✅ Full Support |
+| **Frosted Glass & Filters** | ✅ Full Support | ✅ Full Support |
+| **16 Dynamic Shaders** | ✅ Full Support | ✅ Common Shaders Supported |
+| **Local Video Backgrounds** | ✅ Full Support | ❌ |
+| **Custom Cursor System** | ✅ Full Support | ❌ |
+| **Multi-Site Rules & Dashboard** | ✅ Dedicated Options UI | ❌ Per-Site Storage |
+| **Backup Import & Export** | ✅ Full / Selected Sites JSON | ✅ Current Site Import/Export |
+| **Custom Canvas Effects API** | ✅ Sandboxed Compilation | ❌ |
 
-熟悉前端开发的用户可以编写自己的 Canvas 动效或为网站添加自定义 CSS。自定义动效在隔离沙箱中运行，详细用法见 [自定义动效 API 文档](https://pagedye.pages.dev/custom-effects.html)。
+---
 
-只导入你信任的 JavaScript 动效代码。
+## Privacy & Security Guarantee
 
-## 隐私与权限
+- **Local Storage Only**: Except for AI requests you explicitly configure and initiate, PageDye never sends your page content or settings to external servers.
+- **Strict Sensitive Data Isolation**: AI theme generation only extracts color profiles and container layout metrics. It **never reads page body copy, form inputs, passwords, or cookies**.
+- **API Key Protection**: Your API keys are stored solely in local browser storage and are **automatically stripped when exporting backup files**.
+- **Zero Telemetry**: No account registration, no third-party tracking SDKs, no telemetry.
 
-PageDye 使用的权限都直接服务于背景功能：
+---
 
-- `storage` 和 `unlimitedStorage`：保存网站配置和本地图片
-- `scripting`：把背景和样式应用到当前网页
-- `<all_urls>`：让扩展能在你访问的网站上工作
+## Local Development & Contributing
 
-PageDye 不会把普通配置上传到服务器。只有当你主动填写远程图片地址时，浏览器才会请求对应图片；自定义动效只支持用户手写或导入的本地 Canvas 代码，不再支持远程 URL 动效。
+PageDye is built on pure standard Web APIs with zero complex build toolchains. Clone the repository and load it directly as an unpacked extension.
 
-### AI 主题生成
-
-在设置页填入 API 密钥后，弹窗里会出现「根据本页生成」。使用 AI 时，它会把当前页面的**配色和布局特征**——背景色、强调色、几个主要容器的选择器、面积和文字颜色——以及当前页面的 hostname/path 发送给你指定的服务商，换回一套背景配置。
-
-生成前可以在输入框里写要求，例如「赛博朋克风格」「暖色调，低饱和」。生成后输入框会变成修改框：输入「再暗一点」再点一次，AI 会在**当前这套主题**上修改，而不是重新生成一套。设置页还可以写一条长期生效的风格偏好，每次生成都会带上。
-
-无论你提什么要求，可读性始终是硬约束——PageDye 改不了网页的文字颜色，所以 AI 会在保证原有文字可读的前提下尽量满足你的要求，做不到的部分会写在生成说明里。
-
-**PageDye 不读取网页正文、标题或输入框内容。** 但 AI 请求会包含你的聊天提示和历史、你主动附加的图片，以及当前已经应用的本地背景图片（启用视觉功能时），这些内容会发送到你配置的接口。
-
-自定义 Canvas 动效只能由你手写或从本地文件导入；AI 主题生成不会返回或执行 JavaScript 代码。
-
-支持 Anthropic 和任意 OpenAI 兼容接口（DeepSeek、OpenRouter、本地 Ollama 等），可自定义 base URL。密钥只保存在浏览器本地，**不会写入导出的备份文件**。base URL 必须是 https，只有 localhost 允许 http。
-
-生成结果会先在页面上预览，点「保留」才会写入配置，点「放弃」立即恢复原样。
-
-备份文件使用当前 schema v3 格式，并兼容旧版备份。导入内容会经过格式、大小和危险字段检查，不会覆盖扩展总开关、调试状态等保留设置。
-
-## 本地开发
-
-项目不需要构建步骤，克隆仓库后即可作为未打包扩展加载。
-
-运行测试和发布前检查：
+Run code validation and tests:
 
 ```bash
 npm run check
 ```
 
-## 特别感谢
- - Claude Sonnet 5/GPT 5.6 Sol 主导开发
- - Claude Opus 4.8/Fable 5 的 Bug 修复
- - Gemini 3.1 Pro 的 UI 设计
- - 豆包的拖后腿
+---
 
-## 许可证
+## License
 
-[MIT](LICENSE)
+This project is licensed under the [MIT License](LICENSE).

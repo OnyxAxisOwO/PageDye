@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title data-i18n="meta.title">PageDye — 给任意网站换背景</title>
-<meta name="description" data-i18n="meta.description" content="给任意网站设置自定义背景——纯色、渐变、图片或动态特效壁纸，按站点独立保存，完全本地、无追踪。支持 Chrome / Edge / Firefox 扩展版，以及 PageDye Lite 用户脚本（Safari / 手机 / 平板）。">
+<title data-i18n="meta.title">PageDye — 用 AI 深度定制任意网站视觉，无需编写代码</title>
+<meta name="description" data-i18n="meta.description" content="AI 驱动的零代码网页视觉定制扩展。用自然语言或可视化工具为几乎任何网站添加自定义背景、磨砂玻璃、全局滤镜、动态特效与专属主题，完全本地存储、无追踪。">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,7 +12,9 @@
 <header class="hero">
   <div class="wrap">
     <div class="topbar">
-      <div class="badge" data-i18n="global.version">v1.0.4</div>
+      <div class="topbar-left">
+        <span class="brand-badge" data-i18n="global.version">PageDye v1.0.4</span>
+      </div>
       <div class="lang-switch">
         <label for="lang-switch" id="lang-switch-label" data-i18n="global.switchLanguage">语言</label>
         <select id="lang-switch" aria-label="language switch">
@@ -30,107 +32,239 @@
       </div>
     </div>
 
-    <h1>PageDye</h1>
-    <p class="tagline" data-i18n="index.heroTitle">给任意网站设置自定义背景——纯色、渐变、图片或动态特效壁纸。按站点独立保存，完全本地，无追踪、无网络请求。</p>
+    <div class="hero-pill" data-i18n="index.heroPill">✨ AI 驱动 · 全网通用 · 零代码门槛</div>
+    <h1 data-i18n="index.heroTitle">用 AI 重新定义任意网页视觉</h1>
+    <p class="tagline" data-i18n="index.heroSubtitle">背景、磨砂玻璃、全局滤镜、动态特效与专属主题 —— 无需编写一行代码。</p>
+    <p class="sub-tagline" data-i18n="index.heroDesc">描述你想要的视觉风格，PageDye 感知页面结构并智能生成。所见即所得，按站点独立保存，完全运行在浏览器本地。</p>
+
     <div class="cta-row">
-      <a class="btn btn-primary" data-i18n="global.downloadExtension" href="#desktop-install">下载扩展版</a>
-      <a class="btn btn-outline" data-i18n="global.downloadLite" href="#lite-install">安装 PageDye Lite（手机 / 平板）</a>
+      <a class="btn btn-primary" href="https://microsoftedge.microsoft.com/addons/detail/jdfkphphagodkilembkklhnepbnnkihh" target="_blank" rel="noopener" data-i18n="global.getForEdge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+        <span data-i18n="global.getForEdgeText">从 Edge 商店获取</span>
+      </a>
+      <a class="btn btn-outline" href="#desktop-install" data-i18n="global.getOtherBrowsers">Chrome / Firefox / 离线安装</a>
+      <a class="btn btn-outline" href="#lite-install" data-i18n="global.getLite">手机 / 平板 (PageDye Lite)</a>
     </div>
   </div>
 </header>
 
-<section id="editions" class="editions">
+<!-- Before -> Prompt -> After Showcase -->
+<section class="showcase-section">
   <div class="wrap">
-    <h2 data-i18n="index.editionTitle">两种使用方式</h2>
-    <p class="hint" data-i18n="index.editionHint">核心渲染逻辑两者共享，设置也能互相导入备份，选一种最适合你的场景就行。</p>
-    <div class="grid">
-      <div class="card">
-        <h3 data-i18n="index.editionLiteTitle">PageDye Lite</h3><span class="edition-tag" data-i18n="index.editionLiteTag">手机 / 平板 / Safari</span>
-        <p data-i18n="index.editionLiteDesc">单文件用户脚本，通过 Tampermonkey 等脚本管理器安装，每个网站的设置都会独立保存下来，长期用、切网站都记得住。不含完整版的多站点管理页面和跨标签页实时同步。</p>
-        <a class="btn btn-outline" data-i18n="global.viewInstall" href="#lite-install">查看安装方式</a>
-      </div>
-      <div class="card">
-        <h3 data-i18n="index.editionFullTitle">完整版</h3><span class="edition-tag" data-i18n="index.editionFullTag">Chrome / Edge / Firefox 扩展</span>
-        <p data-i18n="index.editionFullDesc">浏览器扩展，功能最全：独立设置页面可以统一管理所有站点的壁纸，支持跨标签页实时同步和右键菜单快捷入口，适合桌面日常使用。</p>
-        <a class="btn btn-outline" data-i18n="global.viewInstall" href="#desktop-install">查看安装方式</a>
+    <div class="section-head" style="text-align: center;">
+      <h2 data-i18n="index.showcaseTitle">动动嘴，网站焕然一新</h2>
+      <p class="hint" data-i18n="index.showcaseSubtitle">告别繁琐的手写 CSS 和调试，用自然语言即可指挥 AI 定制页面</p>
+    </div>
+
+    <div class="showcase-box">
+      <div class="showcase-steps">
+        <!-- Stage 1: Before -->
+        <div class="showcase-stage">
+          <span class="stage-badge" data-i18n="index.stageBefore">原始网页</span>
+          <div class="stage-preview preview-original">
+            <span style="font-weight: 600; font-size: 13px;" data-i18n="index.previewDocTitle">默认白底或刺眼配色</span>
+            <span class="preview-mock-text" data-i18n="index.previewDocDesc">千篇一律的布局，夜晚阅读容易疲劳</span>
+          </div>
+        </div>
+
+        <!-- Stage 2: Prompt -->
+        <div class="showcase-prompt-pill">
+          <div class="prompt-icon-wrap">🪄</div>
+          <div class="prompt-bubble" data-i18n="index.mockPrompt">“改成深色磨砂玻璃风，配幽蓝极光渐变，保留文字清晰度”</div>
+        </div>
+
+        <!-- Stage 3: After -->
+        <div class="showcase-stage">
+          <span class="stage-badge" style="color: #a78bfa;" data-i18n="index.stageAfter">AI 一键重塑</span>
+          <div class="stage-preview preview-transformed">
+            <span class="preview-chip" data-i18n="index.previewTransformTitle">深色磨砂玻璃 + 动态极光</span>
+            <span class="preview-mock-text" style="color: #cbd5e1;" data-i18n="index.previewTransformDesc">对比度自动校准 · 文字清晰可读</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="features">
+<!-- Three Core Pillars -->
+<section id="pillars">
   <div class="wrap">
-    <h2 data-i18n="index.featuresTitle">功能</h2>
+    <div class="section-head">
+      <h2 data-i18n="index.pillarsTitle">为什么选择 PageDye？</h2>
+      <p class="hint" data-i18n="index.pillarsSubtitle">三大核心支柱，让每个人都能轻松掌控网页视觉</p>
+    </div>
+
+    <div class="pillars-grid">
+      <div class="pillar-card">
+        <div class="pillar-icon">🤖</div>
+        <h3 data-i18n="index.pillarAiTitle">AI 智能辅助</h3>
+        <p data-i18n="index.pillarAiDesc">内置上下文感知的 AI 主题工作台。自动识别当前网页色彩与结构，通过自然语言对话生成或微调主题，并有硬性文字可读性保护。</p>
+      </div>
+
+      <div class="pillar-card">
+        <div class="pillar-icon">🌐</div>
+        <h3 data-i18n="index.pillarUniversalTitle">通用适配几乎所有网站</h3>
+        <p data-i18n="index.pillarUniversalDesc">无需为 GitHub、YouTube、文档站分别寻找不同插件。一个扩展，通用于几乎所有网页，并具备标准、增强与强兼兼容模式。</p>
+      </div>
+
+      <div class="pillar-card">
+        <div class="pillar-icon">⚡</div>
+        <h3 data-i18n="index.pillarNoCodeTitle">完全零代码门槛</h3>
+        <p data-i18n="index.pillarNoCodeDesc">不需要学 CSS，不需要懂 JavaScript，不需要打开 DevTools。所有调整都是可视化的滑块、调色盘、点选器与自然语言。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Comprehensive Feature Studio -->
+<section id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 data-i18n="index.featuresHeading">全方位的视觉定制能力</h2>
+      <p class="hint" data-i18n="index.featuresSubtitle">从背景、动效到毛玻璃与光标，所有工具开箱即用</p>
+    </div>
+
     <div class="grid">
-      <div class="card">
-        <h3 data-i18n="index.fTypeTitle">多种背景类型</h3>
-        <p data-i18n="index.fTypeDesc">纯色、线性/径向渐变、图片，或 16 种动态特效壁纸（Matrix 雨、粒子、极光、雪花、打字机等）</p>
-      </div>
-      <div class="card">
-        <h3 data-i18n="index.fFrostTitle">磨砂玻璃</h3>
-        <p data-i18n="index.fFrostDesc">为指定卡片/容器元素加毛玻璃背景，透出下层壁纸，模糊度与底色独立可调</p>
-      </div>
-      <div class="card">
-        <h3 data-i18n="index.fThemeTitle">昼夜双态联动</h3>
-        <p data-i18n="index.fThemeDesc" data-i18n-html>跟随系统 <code>prefers-color-scheme</code> 自动切换浅色/深色壁纸</p>
-      </div>
-      <div class="card">
-        <h3 data-i18n="index.fSliderTitle">幻灯轮换</h3>
-        <p data-i18n="index.fSliderDesc">多张壁纸按间隔自动轮换，支持随机顺序</p>
-      </div>
       <div class="card">
         <h3 data-i18n="index.fAiTitle">AI 主题工作台 <span class="badge-new" data-i18n="index.fAiNew">新</span></h3>
-        <p data-i18n="index.fAiDesc">用自然语言描述想要的风格，AI 会根据当前页面的配色与布局生成主题，还能继续对话微调亮度、色调和氛围。</p>
+        <p data-i18n="index.fAiDesc">用自然语言描述想要的风格，AI 结合当前网页配色与布局智能生成主题，支持多轮对话持续微调色调、亮度与氛围。</p>
       </div>
+
       <div class="card">
-        <h3 data-i18n="index.fMultiModelTitle">多模型与视觉支持</h3>
-        <p data-i18n="index.fMultiModelDesc">支持 Anthropic 和 OpenAI 兼容接口，可接入 DeepSeek、OpenRouter、本地 Ollama 等服务；支持模型列表识别、昵称和图片输入。</p>
+        <h3 data-i18n="index.fMultiModelTitle">多模型与视觉分析</h3>
+        <p data-i18n="index.fMultiModelDesc">可自由接入 Claude、OpenAI、DeepSeek、OpenRouter 或本地 Ollama 服务；支持附加图片进行视觉分析生成主题。</p>
       </div>
+
       <div class="card">
-        <h3 data-i18n="index.fVideoTitle">视频背景</h3>
-        <p data-i18n="index.fVideoDesc">使用本地 MP4 或 WebM 作为动态背景，支持固定、填充、透明度、模糊和播放控制，不依赖远程媒体。</p>
+        <h3 data-i18n="index.fFrostTitle">卡片磨砂玻璃</h3>
+        <p data-i18n="index.fFrostDesc">为网页内容容器添加高质感毛玻璃（Glassmorphism）效果，透出底层壁纸，模糊度与底色浓度均可独立无级调节。</p>
       </div>
+
       <div class="card">
-        <h3 data-i18n="index.fSelectorTitle">背景选择器</h3>
-        <p data-i18n="index.fSelectorDesc">网站自身 CSS 遮挡整页背景时，直接把背景应用到任意元素</p>
+        <h3 data-i18n="index.fTypeTitle">丰富背景类型</h3>
+        <p data-i18n="index.fTypeDesc">支持纯色、线性/径向渐变、本地与网络高清图片（平铺/拉伸/适应），满足各种视觉需求。</p>
       </div>
+
       <div class="card">
-        <h3 data-i18n="index.fCursorTitle">自定义光标</h3>
-        <p data-i18n="index.fCursorDesc">提供实心球、空心环、发光球和组合样式，可调整颜色、大小、透明度、平滑跟随与鼠标拖尾。</p>
+        <h3 data-i18n="index.fShaderTitle">16 种动态特效壁纸</h3>
+        <p data-i18n="index.fShaderDesc">内置 Matrix 雨、极光、星空粒子、落雪、打字机、波浪等 Canvas 动态着色器壁纸，支持自定义密度与播放速度。</p>
       </div>
+
       <div class="card">
-        <h3 data-i18n="index.fRuleTitle">页面规则</h3>
-        <p data-i18n="index.fRuleDesc">按完整网址、路径前缀、网站或子域名分别设置背景，也可以让特定页面保持原样；规则支持排序和临时禁用。</p>
+        <h3 data-i18n="index.fVideoTitle">本地视频背景</h3>
+        <p data-i18n="index.fVideoDesc">支持将本地 MP4 或 WebM 视频作为动态背景，支持透明度、模糊、铺满与播放控制，无需依赖远程视频服务器。</p>
       </div>
+
       <div class="card">
-        <h3 data-i18n="index.fLibraryTitle">主题库与批量管理</h3>
-        <p data-i18n="index.fLibraryDesc">保存可复用主题，按分组管理多个网站，并将一套背景批量应用到选中的站点。</p>
+        <h3 data-i18n="index.fFilterTitle">全局画面滤镜</h3>
+        <p data-i18n="index.fFilterDesc">精细调节亮度、对比度、灰度、反色、色相旋转、饱和度与透明度，轻松营造护眼或复古氛围。</p>
       </div>
+
       <div class="card">
-        <h3 data-i18n="index.fReadTitle">可读性保护</h3>
-        <p data-i18n="index.fReadDesc">应用磨砂玻璃和壁纸时检查文字对比度，提前提示可能影响阅读的组合，减少背景盖住内容的情况。</p>
+        <h3 data-i18n="index.fCursorTitle">个性化光标与动效</h3>
+        <p data-i18n="index.fCursorDesc">提供实心球、空心环、发光球与自定义图片光标，支持平滑跟随、鼠标拖尾及悬停放大交互。</p>
       </div>
+
       <div class="card">
-        <h3 data-i18n="index.fLocalTitle">完全本地</h3>
-        <p data-i18n="index.fLocalDesc">普通设置、图片和主题都存储在浏览器本地，不含账号、广告或遥测；支持导出/导入备份。AI 仅在你主动配置接口后联网。</p>
+        <h3 data-i18n="index.fSelectorTitle">可视化元素选择器</h3>
+        <p data-i18n="index.fSelectorDesc">遇到复杂网站 CSS 遮挡时，直接点击网页上的任意目标元素注入背景，或切换增强/强兼模式清除遮罩。</p>
       </div>
+
       <div class="card">
-        <h3 data-i18n="index.fCustomEffTitle">自定义动效 API <span class="badge-new" data-i18n="index.fCustomEffBadge">v0.6</span></h3>
-        <p data-i18n="index.fCustomEffDesc">在设置页里编写自己的 Canvas 动效，实时预览，和内置的 16 种一样直接在任意站点选用。仅扩展版支持。</p>
-        <a class="card-link" href="custom-effects.html" data-i18n="index.fCustomEffLink">查看 API 文档 →</a>
+        <h3 data-i18n="index.fScheduleTitle">昼夜联动与定时调度</h3>
+        <p data-i18n="index.fScheduleDesc">跟随系统深浅色模式自动切换对应壁纸；支持按一天中的时间段自动更替，或按间隔时间幻灯片轮换。</p>
+      </div>
+
+      <div class="card">
+        <h3 data-i18n="index.fRuleTitle">细粒度网址规则</h3>
+        <p data-i18n="index.fRuleDesc">可按域名、子域名、路径前缀或完整 URL 分别设置不同视觉方案，规则支持优先级排序和临时禁用。</p>
+      </div>
+
+      <div class="card">
+        <h3 data-i18n="index.fLocalTitle">纯本地运行 · 隐私无忧</h3>
+        <p data-i18n="index.fLocalDesc">普通设置、图片和配置全部存储在浏览器本地，无账号体系、无广告、无遥测追踪；支持一键 JSON 备份与迁移。</p>
       </div>
     </div>
   </div>
 </section>
 
+<!-- Comparison: Traditional vs PageDye -->
+<section id="comparison">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 data-i18n="index.compTitle">告别手写代码，拥抱直觉定制</h2>
+      <p class="hint" data-i18n="index.compSubtitle">网页美化不该是程序员的专属特权</p>
+    </div>
+
+    <div class="comparison-box">
+      <div class="comparison-grid">
+        <div class="comparison-col">
+          <h4 data-i18n="index.compTradTitle">传统方式 (Stylus / 脚本 / 手写 CSS)</h4>
+          <ul class="comparison-list">
+            <li><span class="icon-cross">✕</span> <span data-i18n="index.compTrad1">必须学习 CSS 语法、选择器与布局规则</span></li>
+            <li><span class="icon-cross">✕</span> <span data-i18n="index.compTrad2">需要打开 DevTools 一行行调试 DOM 元素</span></li>
+            <li><span class="icon-cross">✕</span> <span data-i18n="index.compTrad3">网站一旦更新类名，写好的样式容易失效崩坏</span></li>
+            <li><span class="icon-cross">✕</span> <span data-i18n="index.compTrad4">无法自动保证文字与背景的对比度可读性</span></li>
+          </ul>
+        </div>
+        <div class="comparison-col">
+          <h4 data-i18n="index.compPageDyeTitle">PageDye (可视化 + AI 驱动)</h4>
+          <ul class="comparison-list">
+            <li><span class="icon-check">✓</span> <span data-i18n="index.compPageDye1"><strong>零代码</strong>：自然语言 Prompt 或拖动可视化滑块</span></li>
+            <li><span class="icon-check">✓</span> <span data-i18n="index.compPageDye2"><strong>AI 智能感知</strong>：自动分析网页配色并生成和谐主题</span></li>
+            <li><span class="icon-check">✓</span> <span data-i18n="index.compPageDye3"><strong>智能兼容引擎</strong>：内置标准/增强/强兼模式清除遮挡</span></li>
+            <li><span class="icon-check">✓</span> <span data-i18n="index.compPageDye4"><strong>可读性安全锁</strong>：严格保护原网页正文文字清晰可见</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Editions Section -->
+<section id="editions" class="editions">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 data-i18n="index.editionTitle">全平台支持</h2>
+      <p class="hint" data-i18n="index.editionHint">核心渲染引擎与配置相互兼容，无论桌面还是移动端都能体验</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h3 data-i18n="index.editionFullTitle">完整版</h3><span class="edition-tag" data-i18n="index.editionFullTag">Edge / Chrome / Firefox 扩展</span>
+        <p data-i18n="index.editionFullDesc">功能最全的浏览器扩展：已上架 Edge 官方商店；支持 AI 主题工作台、独立设置管理面板、跨标签页实时同步、视频背景与自定义动效。</p>
+        <a class="btn btn-primary" data-i18n="index.editionFullBtn" href="#desktop-install" style="margin-top: auto;">获取扩展版</a>
+      </div>
+      <div class="card">
+        <h3 data-i18n="index.editionLiteTitle">PageDye Lite</h3><span class="edition-tag" data-i18n="index.editionLiteTag">手机 / 平板 / Safari</span>
+        <p data-i18n="index.editionLiteDesc">轻量单文件用户脚本（UserScript），通过 Tampermonkey 或 Userscripts 安装，在手机与平板上提供核心背景、毛玻璃与滤镜定制。</p>
+        <a class="btn btn-outline" data-i18n="index.editionLiteBtn" href="#lite-install" style="margin-top: auto;">安装 Lite 版</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Desktop Installation Section -->
 <section id="desktop-install" class="install">
   <div class="wrap">
-    <h2 data-i18n="index.installDesktopTitle">桌面安装</h2>
-    <p class="hint" data-i18n="index.installDesktopHint">扩展尚未上架各浏览器商店，目前需要手动加载已解压的扩展包。</p>
-    <a class="btn btn-primary" data-i18n="index.installDesktopBtn" href="https://github.com/OnyxAxisOwO/PageDye/releases/latest" target="_blank" rel="noopener">前往 GitHub Releases 下载最新版</a>
+    <div class="section-head">
+      <h2 data-i18n="index.installDesktopTitle">桌面版安装</h2>
+      <p class="hint" data-i18n="index.installDesktopHint">已正式上架 Microsoft Edge 附加组件商店，支持一键安装与自动更新；Chrome、Firefox 及其他 Chromium 浏览器也可从 GitHub Releases 下载离线包手动加载。</p>
+    </div>
+
+    <div class="install-primary">
+      <h3 data-i18n="index.installEdgeTitle">Microsoft Edge（官方商店 · 推荐）</h3>
+      <p class="hint" data-i18n="index.installEdgeDesc">直接在 Microsoft Edge 附加组件商店一键安装，享受自动静默更新。</p>
+      <a class="btn btn-primary btn-big" data-i18n="index.installEdgeBtn" href="https://microsoftedge.microsoft.com/addons/detail/jdfkphphagodkilembkklhnepbnnkihh" target="_blank" rel="noopener">Microsoft Edge 商店一键安装</a>
+    </div>
 
     <div class="step-block">
-      <h3 data-i18n="index.installChromiumTitle">Chrome / Edge / Brave 等 Chromium 内核浏览器</h3>
+      <h3 data-i18n="index.installManualTitle">离线安装包（Chrome / Firefox / Brave 等）</h3>
+      <p class="hint" data-i18n="index.installManualDesc">从 GitHub Releases 下载扩展离线压缩包并解压使用。</p>
+      <a class="btn btn-outline" data-i18n="index.installDesktopBtn" href="https://github.com/OnyxAxisOwO/PageDye/releases/latest" target="_blank" rel="noopener">前往 GitHub Releases 下载最新版</a>
+    </div>
+
+    <div class="step-block">
+      <h3 data-i18n="index.installChromiumTitle">Chrome / Brave 等 Chromium 内核浏览器</h3>
       <ol>
         <li data-i18n="index.installChromium1">解压下载的压缩包</li>
         <li data-i18n="index.installChromium2" data-i18n-html>地址栏输入 <code>chrome://extensions</code>（Edge 为 <code>edge://extensions</code>）</li>
@@ -151,10 +285,13 @@
   </div>
 </section>
 
+<!-- Mobile Lite Installation Section -->
 <section id="lite-install" class="install lite">
   <div class="wrap">
-    <h2 data-i18n="index.liteTitle">手机 / 平板：PageDye Lite</h2>
-    <p class="hint" data-i18n="index.liteHint">精简的用户脚本（UserScript）版本，核心渲染逻辑和扩展版共享，功能是完整版的子集，通过脚本管理器运行。</p>
+    <div class="section-head">
+      <h2 data-i18n="index.liteTitle">手机 / 平板：PageDye Lite</h2>
+      <p class="hint" data-i18n="index.liteHint">精简的用户脚本（UserScript）版本，核心渲染逻辑和扩展版共享，通过脚本管理器运行。</p>
+    </div>
 
     <div class="install-primary">
       <p data-i18n="index.liteInstallHint1">已经装好 Tampermonkey / Violentmonkey / Userscripts 的话，直接点这个：</p>
@@ -180,13 +317,13 @@
       </ol>
     </div>
 
-    <p class="hint" data-i18n="index.liteHint3">安装完成后，打开任意网站，右下角会出现一个悬浮按钮，点开即为设置面板；按钮的颜色、大小、图标、拖动、贴边隐藏都可以在面板的"高级设置"标签页里自定义。</p>
+    <p class="hint" data-i18n="index.liteHint3">安装完成后，打开任意网站，右下角会出现一个悬浮按钮，点开即为设置面板；按钮外观与行为均可在高级设置中自定义。</p>
   </div>
 </section>
 
 <footer>
   <div class="wrap">
-    <p><span data-i18n="index.license">MIT License</span> · <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" rel="noopener">GitHub</a> · <a href="privacy.html" data-i18n="global.privacy">Privacy Policy</a></p>
+    <p><span data-i18n="index.license">MIT License</span> · <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" rel="noopener">GitHub</a> · <a href="privacy.html" data-i18n="global.privacy">隐私政策</a> · <a href="custom-effects.html" data-i18n="index.customEffDoc">自定义动效 API</a></p>
   </div>
 </footer>
 

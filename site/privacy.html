@@ -3,33 +3,143 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title data-i18n="meta.title">PageDye Privacy Policy</title>
-<meta name="description" data-i18n="meta.description" content="How PageDye stores and handles information.">
+<title data-i18n="meta.title">PageDye — 隐私政策</title>
+<meta name="description" data-i18n="meta.description" content="PageDye 隐私政策：说明哪些信息保存在你的设备上，以及使用可选 AI 功能时的信息处理方式。">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="privacy.css">
 </head>
 <body>
-<header class="privacy-header"><div class="wrap">
-  <div class="privacy-topbar"><a class="back-link" href="index.html" data-i18n="global.home">← Home</a>
-    <div class="lang-switch"><label for="lang-switch" id="lang-switch-label" data-i18n="global.switchLanguage">Language</label>
+
+<header class="docs-header">
+  <div class="wrap topbar-nav">
+    <a class="docs-back" href="index.html" data-i18n="global.home">← 返回首页</a>
+    <div class="lang-switch">
+      <label for="lang-switch" id="lang-switch-label" data-i18n="global.switchLanguage">语言</label>
       <select id="lang-switch" aria-label="language switch">
-        <option value="zh-CN">中文（简体）</option><option value="en">English</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="de">Deutsch</option><option value="fr">Français</option><option value="es">Español</option><option value="pt">Português</option><option value="it">Italiano</option><option value="ru">Русский</option>
+        <option value="zh-CN" data-i18n="lang.zh">中文（简体）</option>
+        <option value="en" data-i18n="lang.en">English</option>
+        <option value="ja" data-i18n="lang.ja">日本語</option>
+        <option value="ko" data-i18n="lang.ko">한국어</option>
+        <option value="de" data-i18n="lang.de">Deutsch</option>
+        <option value="fr" data-i18n="lang.fr">Français</option>
+        <option value="es" data-i18n="lang.es">Español</option>
+        <option value="pt" data-i18n="lang.pt">Português</option>
+        <option value="it" data-i18n="lang.it">Italiano</option>
+        <option value="ru" data-i18n="lang.ru">Русский</option>
       </select>
     </div>
   </div>
-  <h1 data-i18n="title">Privacy Policy</h1>
-  <p class="privacy-date" data-i18n="updated">Last updated: August 31, 2026</p>
-</div></header>
+</header>
+
+<header class="hero docs-hero">
+  <div class="wrap">
+    <div class="badge" data-i18n="badge">本地优先 · 隐私无追踪</div>
+    <h1 data-i18n="title">隐私政策</h1>
+    <p class="tagline" data-i18n="intro">PageDye 用于自定义网站背景和视觉呈现。本政策说明哪些信息保留在你的设备上，以及主动使用可选 AI 功能时可能发送哪些信息。</p>
+    <div class="privacy-date-badge">
+      <span data-i18n="updated">最后更新：2026 年 8 月 31 日</span>
+    </div>
+  </div>
+</header>
+
 <main class="privacy-main wrap">
-  <p class="lead" data-i18n="intro">PageDye helps you customize website backgrounds and visual presentation. This policy explains what stays on your device and what may be sent when you explicitly use optional AI features.</p>
-  <section><h2 data-i18n="localTitle">Information stored locally</h2><p data-i18n="localBody">Normal settings, local images, videos, themes, site rules, custom effects, AI settings, prompts and conversations are stored in your browser on your device. PageDye has no account system, advertising, analytics or telemetry.</p></section>
-  <section><h2 data-i18n="aiTitle">Optional AI features</h2><p data-i18n="aiBody">AI is optional and is called only after you configure a provider and actively request it. Depending on your settings, PageDye may send your API key, the current hostname and path, page color and layout features or selected selectors, your prompts and conversations, images you actively attach, and the current local background image when visual analysis is enabled. PageDye does not send page body text, form inputs or passwords.</p></section>
-  <section><h2 data-i18n="providersTitle">Service providers</h2><p data-i18n="providersBody">Requests go only to the Anthropic, OpenAI-compatible, or custom endpoint that you choose. The selected provider handles submitted information under its own privacy policy and terms. Custom endpoints may have additional security and privacy risks; use only endpoints you trust.</p></section>
-  <section><h2 data-i18n="networkTitle">Remote images and URLs</h2><p data-i18n="networkBody">If you choose a remote image or URL, your browser must contact that source to load it. The source may receive standard network information such as your IP address according to the source’s own policies.</p></section>
-  <section><h2 data-i18n="securityTitle">Security and control</h2><p data-i18n="securityBody">PageDye uses secure transport when supported by the endpoint. API keys are stored locally and are not included in PageDye backups. You can disable AI, remove providers, delete conversations and clear PageDye data at any time through the extension settings.</p></section>
-  <section><h2 data-i18n="sharingTitle">Data sharing</h2><p data-i18n="sharingBody">PageDye does not sell user data. Information is sent to a provider only when required for an AI request that you initiate, or to a remote image or URL that you choose to load.</p></section>
-  <section><h2 data-i18n="contactTitle">Contact</h2><p><span data-i18n="contactBody">For questions or privacy requests, please use GitHub Issues:</span> <a href="https://github.com/OnyxAxisOwO/PageDye/issues" target="_blank" rel="noopener">GitHub Issues</a></p></section>
+  <!-- Highlights summary cards -->
+  <section class="privacy-highlights">
+    <div class="grid highlights-grid">
+      <div class="card highlight-card">
+        <div class="card-icon">💾</div>
+        <h3 data-i18n="hlLocalTitle">100% 本地存储</h3>
+        <p data-i18n="hlLocalDesc">普通设置、本地图片、主题与规则保存在浏览器本地，无账号体系。</p>
+      </div>
+      <div class="card highlight-card">
+        <div class="card-icon">🛡️</div>
+        <h3 data-i18n="hlNoTrackTitle">零遥测与零追踪</h3>
+        <p data-i18n="hlNoTrackDesc">无第三方分析，无广告，不收集任何使用数据与浏览记录。</p>
+      </div>
+      <div class="card highlight-card">
+        <div class="card-icon">⚡</div>
+        <h3 data-i18n="hlAiTitle">AI 完全可选</h3>
+        <p data-i18n="hlAiDesc">仅在你主动配置 API 并发起请求时，才直接连接指定服务商端点。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Detailed articles -->
+  <div class="privacy-sections">
+    <article class="privacy-article">
+      <div class="section-number">01</div>
+      <div class="section-content">
+        <h2 data-i18n="localTitle">本地存储的信息</h2>
+        <p data-i18n="localBody">普通设置、本地图片、视频、主题、网站规则、自定义效果、AI 设置、提示词和对话默认保存在浏览器本地。PageDye 没有账号系统、广告、分析或遥测。</p>
+      </div>
+    </article>
+
+    <article class="privacy-article">
+      <div class="section-number">02</div>
+      <div class="section-content">
+        <h2 data-i18n="aiTitle">可选 AI 功能</h2>
+        <p data-i18n="aiBody">AI 完全可选，仅在你配置服务商并主动请求后调用。根据你的设置，PageDye 可能发送 API 密钥、当前 hostname 和路径、页面配色与布局特征或选定选择器、提示词和对话、你主动附加的图片，以及启用视觉分析时当前本地背景图片。PageDye 不发送页面正文、表单输入或密码。</p>
+      </div>
+    </article>
+
+    <article class="privacy-article">
+      <div class="section-number">03</div>
+      <div class="section-content">
+        <h2 data-i18n="providersTitle">服务商</h2>
+        <p data-i18n="providersBody">请求只会发送到你选择的 Anthropic、OpenAI 兼容或自定义端点。所选服务商会依照其隐私政策和条款处理信息。自定义端点可能带来额外安全和隐私风险，请只使用信任的端点。</p>
+      </div>
+    </article>
+
+    <article class="privacy-article">
+      <div class="section-number">04</div>
+      <div class="section-content">
+        <h2 data-i18n="networkTitle">远程图片和 URL</h2>
+        <p data-i18n="networkBody">如果你选择远程图片或 URL，浏览器必须访问来源才能加载。来源可能按照其自身政策接收 IP 地址等标准网络信息。</p>
+      </div>
+    </article>
+
+    <article class="privacy-article">
+      <div class="section-number">05</div>
+      <div class="section-content">
+        <h2 data-i18n="securityTitle">安全与控制</h2>
+        <p data-i18n="securityBody">端点支持时 PageDye 使用安全传输。API 密钥保存在本地，不会进入 PageDye 备份。你可以随时在扩展设置中关闭 AI、移除服务商、删除对话并清除 PageDye 数据。</p>
+      </div>
+    </article>
+
+    <article class="privacy-article">
+      <div class="section-number">06</div>
+      <div class="section-content">
+        <h2 data-i18n="sharingTitle">数据共享</h2>
+        <p data-i18n="sharingBody">PageDye 不出售用户数据。只有在你主动发起 AI 请求确有必要时，或你选择加载远程图片/URL 时，信息才会发送给相应服务商或来源。</p>
+      </div>
+    </article>
+
+    <article class="privacy-article">
+      <div class="section-number">07</div>
+      <div class="section-content">
+        <h2 data-i18n="contactTitle">联系</h2>
+        <p><span data-i18n="contactBody">如有问题或隐私请求，请通过 GitHub Issues 联系：</span> <a class="privacy-link" href="https://github.com/OnyxAxisOwO/PageDye/issues" target="_blank" rel="noopener">GitHub Issues →</a></p>
+      </div>
+    </article>
+  </div>
 </main>
-<footer><div class="wrap"><p><span data-i18n="footer">PageDye Privacy Policy</span> · <a href="index.html" data-i18n="global.home">Home</a></p></div></footer>
-<script src="locale/messages.js"></script><script src="locale/ja.js"></script><script src="locale/ko.js"></script><script src="locale/de.js"></script><script src="locale/fr.js"></script><script src="locale/es.js"></script><script src="locale/pt.js"></script><script src="locale/it.js"></script><script src="locale/ru.js"></script><script src="privacy-messages.js"></script><script src="i18n.js"></script>
-</body></html>
+
+<footer>
+  <div class="wrap">
+    <p><span data-i18n="footer">PageDye 隐私政策</span> · <a href="index.html" data-i18n="global.home">返回首页</a> · <a href="https://github.com/OnyxAxisOwO/PageDye" target="_blank" rel="noopener">GitHub</a></p>
+  </div>
+</footer>
+
+<script src="locale/messages.js"></script>
+<script src="locale/ja.js"></script>
+<script src="locale/ko.js"></script>
+<script src="locale/de.js"></script>
+<script src="locale/fr.js"></script>
+<script src="locale/es.js"></script>
+<script src="locale/pt.js"></script>
+<script src="locale/it.js"></script>
+<script src="locale/ru.js"></script>
+<script src="privacy-messages.js"></script>
+<script src="i18n.js"></script>
+</body>
+</html>
