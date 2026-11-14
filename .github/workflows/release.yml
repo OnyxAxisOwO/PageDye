@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      skip_edge_publish:
+        description: Skip publishing the Edge package to the Microsoft Edge Add-ons store
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -12,6 +17,12 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      edge_zip: ${{ steps.package.outputs.edge_zip }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -58,10 +69,11 @@ jobs:
           FIREFOX_ZIP="pagedye-firefox-${VERSION}.zip"
           FILES="popup options scripts sandbox icons lib _locales"
           [ -d images ] && FILES="$FILES images"
+          read -r -a PACKAGE_FILES <<< "$FILES"
 
           mkdir "$EDGE_DIR" "$FIREFOX_DIR"
-          cp -r $FILES "$EDGE_DIR/"
-          cp -r $FILES "$FIREFOX_DIR/"
+          cp -r "${PACKAGE_FILES[@]}" "$EDGE_DIR/"
+          cp -r "${PACKAGE_FILES[@]}" "$FIREFOX_DIR/"
           cp manifest.json "$EDGE_DIR/manifest.json"
           cp manifest.firefox.json "$FIREFOX_DIR/manifest.json"
 
@@ -107,3 +119,88 @@ jobs:
             ${{ steps.package.outputs.edge_zip }}
             ${{ steps.package.outputs.firefox_zip }}
             ${{ steps.package.outputs.userscript }}
+
+      - name: Upload Edge package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: edge-package
+          path: |
+            ${{ steps.package.outputs.edge_zip }}
+            release_notes.md
+          if-no-files-found: error
+          retention-days: 14
+
+  # Publish API v1.1: https://learn.microsoft.com/microsoft-edge/extensions/update/api/using-addons-api
+  # Uploads the Edge zip built above, then submits it for store review.
+  publish-edge:
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      actions: read
+    concurrency:
+      group: pagedye-edge-addons
+      cancel-in-progress: false
+    steps:
+      - name: Decide whether to publish
+        id: gate
+        env:
+          EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
+          EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+          EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+          SKIP_EDGE_PUBLISH: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_edge_publish }}
+        run: |
+          set -euo pipefail
+          if [ "${SKIP_EDGE_PUBLISH:-}" = "true" ]; then
+            echo "::notice title=Edge Add-ons::Skipping Microsoft Edge Add-ons publish because skip_edge_publish is set."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          missing=()
+          [ -z "${EDGE_PRODUCT_ID:-}" ] && missing+=("EDGE_PRODUCT_ID")
+          [ -z "${EDGE_CLIENT_ID:-}" ] && missing+=("EDGE_CLIENT_ID")
+          [ -z "${EDGE_API_KEY:-}" ] && missing+=("EDGE_API_KEY")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::notice title=Edge Add-ons::Skipping Microsoft Edge Add-ons publish; missing GitHub secret(s): ${missing[*]}. The GitHub Release was still created. Setup steps are in README_zh.md."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        if: steps.gate.outputs.publish == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        if: steps.gate.outputs.publish == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download Edge package artifact
+        if: steps.gate.outputs.publish == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: edge-package
+          path: edge-package
+
+      - name: Publish to Microsoft Edge Add-ons
+        if: steps.gate.outputs.publish == 'true'
+        env:
+          EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
+          EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+          EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+          EDGE_VERSION: ${{ needs.release.outputs.version }}
+          EDGE_ZIP_NAME: ${{ needs.release.outputs.edge_zip }}
+          EDGE_RELEASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          zip="edge-package/${EDGE_ZIP_NAME}"
+          if [ ! -f "$zip" ]; then
+            echo "::error::Edge package not found at ${zip}"
+            exit 1
+          fi
+          node tools/publish-edge-addon.mjs --zip "$zip" --notes-file edge-package/release_notes.md

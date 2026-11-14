@@ -165,6 +165,20 @@ npm run check
 
 ---
 
+## Releasing to the Edge Add-ons store
+
+Pushing a `v*` tag runs [`.github/workflows/release.yml`](.github/workflows/release.yml). That workflow builds `pagedye-edge-<version>.zip`, publishes the GitHub Release, then the `publish-edge` job uploads that same zip to the [Edge Add-ons listing](https://microsoftedge.microsoft.com/addons/detail/jdfkphphagodkilembkklhnepbnnkihh).
+
+Publishing uses the [Edge Add-ons Publish API v1.1](https://learn.microsoft.com/microsoft-edge/extensions/update/api/using-addons-api) (API key). Requests go to `https://api.addons.microsoftedge.microsoft.com` with `Authorization: ApiKey <key>` and `X-ClientID: <client id>`. The older OAuth client-secret flow is retired. The API updates a product that was published once in Partner Center; it does not create the listing. `Succeeded` means the submission entered review. The store listing updates after Microsoft finishes that review.
+
+Setup in [Partner Center](https://partner.microsoft.com/dashboard), with the account that publishes the extension:
+
+1. Open **Microsoft Edge → Publish API**. If the page still shows the old experience, choose **Enable**, then **Create API credentials**. Copy the **Client ID** and the **API key** (shown once), and note the key expiry.
+2. Open **Microsoft Edge → Overview**, select PageDye, and copy the **Product ID** from Extension identity. It is the GUID in the address bar between `microsoftedge/` and `/packages`. The public store URL uses a different listing id.
+3. Add repository Actions secrets `EDGE_PRODUCT_ID`, `EDGE_CLIENT_ID`, and `EDGE_API_KEY`.
+
+If any of those secrets is unset, the store step logs a notice and skips. The GitHub Release is still created. API keys expire about every 72 days (Partner Center emails before expiry). Create a new key on the Publish API page and update `EDGE_API_KEY` before the current key lapses. A manual **Release** run can set **Skip Microsoft Edge Add-ons publish** to skip the store. The same steps are written in Chinese in [README_zh.md](README_zh.md).
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
