@@ -165,6 +165,42 @@ npm run check
 
 ---
 
+## 发布到 Microsoft Edge 附加组件商店
+
+推送 `v*` 标签时，[`.github/workflows/release.yml`](.github/workflows/release.yml) 会构建 `pagedye-edge-<version>.zip`、Firefox 包和用户脚本，创建 GitHub Release，再由 `publish-edge` 作业把同一个 Edge zip 提交到 [Edge 附加组件商店](https://microsoftedge.microsoft.com/addons/detail/jdfkphphagodkilembkklhnepbnnkihh)。
+
+发布走 Microsoft Edge Add-ons [Publish API v1.1](https://learn.microsoft.com/microsoft-edge/extensions/update/api/using-addons-api)（API key）。请求发往 `https://api.addons.microsoftedge.microsoft.com`，请求头为 `Authorization: ApiKey <key>` 和 `X-ClientID: <client id>`。旧的 v1 OAuth（access token / client secret）已经停用。这个 API 只能更新已经在 Partner Center 手工上架过的产品，不能用来创建新商品。
+
+`tools/publish-edge-addon.mjs` 按文档顺序调用：
+
+1. `POST /v1/products/{productId}/submissions/draft/package` 上传 zip（`Content-Type: application/zip`）。成功时返回 `202`，`Location` 头里是 operation id。
+2. 轮询 `GET /v1/products/{productId}/submissions/draft/package/operations/{operationId}`，直到 `status` 为 `Succeeded`。
+3. `POST /v1/products/{productId}/submissions`，正文是 JSON：`{"notes":"..."}`。notes 使用当前版本在 `CHANGELOG.md` 里的更新日志（标题形如 `### ✨ v0.7.13 更新日志`），并附上这次 GitHub Release 的链接。
+4. 轮询 `GET /v1/products/{productId}/submissions/operations/{operationId}`，直到 `Succeeded`。
+
+这里的 `Succeeded` 表示商店已经收下提交、进入审核，并不表示人工审核已经结束。审核通过后，商店会自动向用户推送更新。单次操作最长等待约 15 分钟；接口返回的错误正文会写进 Actions 日志。日志不会打印上述三个 secret。
+
+### 一次性配置
+
+1. 用发布该扩展的开发者账号登录 [Partner Center](https://partner.microsoft.com/dashboard)。
+2. 打开 **Microsoft Edge → Publish API**。
+3. 如果页面仍提示 enable the new experience，先点 **Enable** 切换到 API key，再点 **Create API credentials**。记下页面上的 **Client ID**、**API key**（只显示一次）以及每把 key 的 **Expiry**。
+4. 复制 **Product ID**。它是 Partner Center 里的 GUID，商店公开链接里的 `jdfkphphagodkilembkklhnepbnnkihh` 是另一套 listing id，填进去会被拒绝。
+   - 打开 **Microsoft Edge → Overview**，选中 PageDye。
+   - 在 **Extension identity** 里复制 Product ID，也可以从该页地址栏 `microsoftedge/` 和 `/packages` 之间复制 GUID。
+5. 在 GitHub 仓库 **Settings → Secrets and variables → Actions** 里添加三个 secret：
+   - `EDGE_PRODUCT_ID`：上一步的 Product ID
+   - `EDGE_CLIENT_ID`：Publish API 页面的 Client ID
+   - `EDGE_API_KEY`：Publish API 页面的 API key
+
+三个 secret 缺任何一个时，`publish-edge` 会打出 notice 并跳过，已经创建的 GitHub Release 仍然保留。
+
+在 Actions 里手动运行 **Release** 时，可以勾选 **Skip Microsoft Edge Add-ons publish**，只发布 GitHub Release，不提交商店。
+
+### 轮换 API key
+
+API key 大约每 **72 天**过期。Partner Center 会在到期前发邮件。到期后上传会返回 401。到 Publish API 页面新建一把 key，更新 GitHub secret `EDGE_API_KEY`，确认下一版能提交之后再删除旧 key。Client ID 一般不用改。
+
 ## 许可证
 
 本项目基于 [MIT License](LICENSE) 开源。
